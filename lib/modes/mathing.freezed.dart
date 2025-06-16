@@ -34,6 +34,7 @@ mixin _$MatchingRoom {
   String? get theme => throw _privateConstructorUsedError;
   String? get choice1 => throw _privateConstructorUsedError;
   String? get choice2 => throw _privateConstructorUsedError;
+  String? get password => throw _privateConstructorUsedError;
 
   /// Create a copy of MatchingRoom
   /// with the given fields replaced by the non-null parameter values.
@@ -66,7 +67,8 @@ abstract class $MatchingRoomCopyWith<$Res> {
       DateTime? player2_time,
       String? theme,
       String? choice1,
-      String? choice2});
+      String? choice2,
+      String? password});
 }
 
 /// @nodoc
@@ -102,6 +104,7 @@ class _$MatchingRoomCopyWithImpl<$Res, $Val extends MatchingRoom>
     Object? theme = freezed,
     Object? choice1 = freezed,
     Object? choice2 = freezed,
+    Object? password = freezed,
   }) {
     return _then(_value.copyWith(
       roomId: freezed == roomId
@@ -176,6 +179,10 @@ class _$MatchingRoomCopyWithImpl<$Res, $Val extends MatchingRoom>
           ? _value.choice2
           : choice2 // ignore: cast_nullable_to_non_nullable
               as String?,
+      password: freezed == password
+          ? _value.password
+          : password // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -206,7 +213,8 @@ abstract class _$$MatchingRoomImplCopyWith<$Res>
       DateTime? player2_time,
       String? theme,
       String? choice1,
-      String? choice2});
+      String? choice2,
+      String? password});
 }
 
 /// @nodoc
@@ -240,6 +248,7 @@ class __$$MatchingRoomImplCopyWithImpl<$Res>
     Object? theme = freezed,
     Object? choice1 = freezed,
     Object? choice2 = freezed,
+    Object? password = freezed,
   }) {
     return _then(_$MatchingRoomImpl(
       roomId: freezed == roomId
@@ -314,6 +323,10 @@ class __$$MatchingRoomImplCopyWithImpl<$Res>
           ? _value.choice2
           : choice2 // ignore: cast_nullable_to_non_nullable
               as String?,
+      password: freezed == password
+          ? _value.password
+          : password // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -339,7 +352,8 @@ class _$MatchingRoomImpl implements _MatchingRoom {
       this.player2_time,
       this.theme,
       this.choice1,
-      this.choice2});
+      this.choice2,
+      this.password});
 
   @override
   final String? roomId;
@@ -377,10 +391,12 @@ class _$MatchingRoomImpl implements _MatchingRoom {
   final String? choice1;
   @override
   final String? choice2;
+  @override
+  final String? password;
 
   @override
   String toString() {
-    return 'MatchingRoom(roomId: $roomId, player1Id: $player1Id, player2Id: $player2Id, isMatched: $isMatched, createdAt: $createdAt, result: $result, player1Choice: $player1Choice, player2Choice: $player2Choice, updatedAt: $updatedAt, change: $change, go: $go, player1_finish: $player1_finish, player2_finish: $player2_finish, player1_time: $player1_time, player2_time: $player2_time, theme: $theme, choice1: $choice1, choice2: $choice2)';
+    return 'MatchingRoom(roomId: $roomId, player1Id: $player1Id, player2Id: $player2Id, isMatched: $isMatched, createdAt: $createdAt, result: $result, player1Choice: $player1Choice, player2Choice: $player2Choice, updatedAt: $updatedAt, change: $change, go: $go, player1_finish: $player1_finish, player2_finish: $player2_finish, player1_time: $player1_time, player2_time: $player2_time, theme: $theme, choice1: $choice1, choice2: $choice2, password: $password)';
   }
 
   @override
@@ -416,30 +432,34 @@ class _$MatchingRoomImpl implements _MatchingRoom {
                 other.player2_time == player2_time) &&
             (identical(other.theme, theme) || other.theme == theme) &&
             (identical(other.choice1, choice1) || other.choice1 == choice1) &&
-            (identical(other.choice2, choice2) || other.choice2 == choice2));
+            (identical(other.choice2, choice2) || other.choice2 == choice2) &&
+            (identical(other.password, password) ||
+                other.password == password));
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      roomId,
-      player1Id,
-      player2Id,
-      isMatched,
-      createdAt,
-      result,
-      player1Choice,
-      player2Choice,
-      updatedAt,
-      change,
-      go,
-      player1_finish,
-      player2_finish,
-      player1_time,
-      player2_time,
-      theme,
-      choice1,
-      choice2);
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        roomId,
+        player1Id,
+        player2Id,
+        isMatched,
+        createdAt,
+        result,
+        player1Choice,
+        player2Choice,
+        updatedAt,
+        change,
+        go,
+        player1_finish,
+        player2_finish,
+        player1_time,
+        player2_time,
+        theme,
+        choice1,
+        choice2,
+        password
+      ]);
 
   /// Create a copy of MatchingRoom
   /// with the given fields replaced by the non-null parameter values.
@@ -469,7 +489,8 @@ abstract class _MatchingRoom implements MatchingRoom {
       final DateTime? player2_time,
       final String? theme,
       final String? choice1,
-      final String? choice2}) = _$MatchingRoomImpl;
+      final String? choice2,
+      final String? password}) = _$MatchingRoomImpl;
 
   @override
   String? get roomId;
@@ -507,6 +528,8 @@ abstract class _MatchingRoom implements MatchingRoom {
   String? get choice1;
   @override
   String? get choice2;
+  @override
+  String? get password;
 
   /// Create a copy of MatchingRoom
   /// with the given fields replaced by the non-null parameter values.

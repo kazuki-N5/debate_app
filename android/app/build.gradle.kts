@@ -1,3 +1,7 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -5,10 +9,23 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties") 
+
+if (keystorePropertiesFile.exists()) {
+    FileInputStream(keystorePropertiesFile).use { fis -> 
+        keystoreProperties.load(fis)
+    }
+}
+
+
+
+
 android {
-    namespace = "com.example.debata"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    namespace = "com.kazuk.debate"
+    compileSdk = flutter.compileSdkVersion    
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -21,25 +38,45 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.debata"
+        applicationId = "com.kazuk.debate"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
+        versionCode = 4
         versionName = flutter.versionName
     }
 
-    buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+   
+
+
+
+
+       signingConfigs {
+        create("release") { 
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+
+            val storeFileValue = keystoreProperties.getProperty("storeFile")
+            if (storeFileValue != null && storeFileValue.isNotEmpty()) {
+                storeFile = file(storeFileValue)
+            } else {
+                storeFile = null 
+            }
+
+            storePassword = keystoreProperties.getProperty("storePassword")
         }
     }
 
+    buildTypes {
+        getByName("release") { 
+            signingConfig = signingConfigs.getByName("release")             
+        }
+         
+    }
 
-    ndkVersion = "27.0.12077973"
+
+    
 
     
 
@@ -47,4 +84,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+
+dependencies {
+    implementation("com.revenuecat.purchases:purchases:8.15.1")
 }

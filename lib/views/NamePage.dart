@@ -101,7 +101,7 @@ class NamePage extends HookConsumerWidget {
                   ),
                 ),
                 child: const Text(
-                  '開始',
+                  '決定',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,

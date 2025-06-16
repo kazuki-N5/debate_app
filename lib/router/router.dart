@@ -1,4 +1,7 @@
 
+
+import 'package:debate_project/modes/history.dart';
+import 'package:debate_project/views/ChathistoryPage.dart';
 import 'package:debate_project/views/ChosePage.dart';
 import 'package:debate_project/views/FinishPage.dart';
 import 'package:debate_project/views/GamePage.dart';
@@ -7,7 +10,10 @@ import 'package:debate_project/views/HomePage.dart';
 import 'package:debate_project/views/LoginPage.dart';
 import 'package:debate_project/views/Matching.dart';
 import 'package:debate_project/views/NamePage.dart';
+import 'package:debate_project/views/NamePage_change.dart';
 import 'package:debate_project/views/SettingPage.dart';
+import 'package:debate_project/views/TransferPage.dart';
+import 'package:debate_project/views/WaittransferPage.dart';
 import 'package:go_router/go_router.dart';// Import HistoryRoom model
 import 'package:flutter/material.dart'; // Import Scaffold for error case
 
@@ -59,5 +65,28 @@ final GoRouter router = GoRouter(
       path: '/history', // Conventionally, paths are lowercase: /history
       builder: (context, state) => HistoryPage(),
     ),
+    GoRoute(
+      path: '/name2', // Conventionally, paths are lowercase: /history
+      builder: (context, state) => NamePageChange(),
+    ),
+      GoRoute(
+      path: '/chistory',
+      builder: (context, state) {
+        // extra として渡されたデータを受け取る
+        final record = state.extra as MatchRecordDisplay; // MatchRecordDisplay 型にキャスト
+        return ChatHistoryPage(record: record);
+      },      
+    ),
+
+    GoRoute(
+      path: '/transfer',
+      builder: (context, state) => TransferPage(),     
+    ),
+    GoRoute(
+      path: '/waittransfer', // ★ 新しいWaitTransferPageへのルート
+      builder: (context, state) => const WaittransferPage(),
+    ),
+     
+      
   ],
 );

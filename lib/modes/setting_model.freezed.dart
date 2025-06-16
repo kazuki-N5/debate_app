@@ -16,12 +16,9 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$SettingsModel {
-  double get soundVolume => throw _privateConstructorUsedError;
-  bool get isSoundOn => throw _privateConstructorUsedError;
   double get sfxVolume => throw _privateConstructorUsedError;
   bool get isSfxOn => throw _privateConstructorUsedError;
-  bool get isVibrationOn =>
-      throw _privateConstructorUsedError; // 課金状態など、必要に応じて追加
+  bool get isVibrationOn => throw _privateConstructorUsedError;
   bool get isPremiumUser => throw _privateConstructorUsedError;
 
   /// Create a copy of SettingsModel
@@ -38,12 +35,7 @@ abstract class $SettingsModelCopyWith<$Res> {
       _$SettingsModelCopyWithImpl<$Res, SettingsModel>;
   @useResult
   $Res call(
-      {double soundVolume,
-      bool isSoundOn,
-      double sfxVolume,
-      bool isSfxOn,
-      bool isVibrationOn,
-      bool isPremiumUser});
+      {double sfxVolume, bool isSfxOn, bool isVibrationOn, bool isPremiumUser});
 }
 
 /// @nodoc
@@ -61,22 +53,12 @@ class _$SettingsModelCopyWithImpl<$Res, $Val extends SettingsModel>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? soundVolume = null,
-    Object? isSoundOn = null,
     Object? sfxVolume = null,
     Object? isSfxOn = null,
     Object? isVibrationOn = null,
     Object? isPremiumUser = null,
   }) {
     return _then(_value.copyWith(
-      soundVolume: null == soundVolume
-          ? _value.soundVolume
-          : soundVolume // ignore: cast_nullable_to_non_nullable
-              as double,
-      isSoundOn: null == isSoundOn
-          ? _value.isSoundOn
-          : isSoundOn // ignore: cast_nullable_to_non_nullable
-              as bool,
       sfxVolume: null == sfxVolume
           ? _value.sfxVolume
           : sfxVolume // ignore: cast_nullable_to_non_nullable
@@ -106,12 +88,7 @@ abstract class _$$SettingsModelImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {double soundVolume,
-      bool isSoundOn,
-      double sfxVolume,
-      bool isSfxOn,
-      bool isVibrationOn,
-      bool isPremiumUser});
+      {double sfxVolume, bool isSfxOn, bool isVibrationOn, bool isPremiumUser});
 }
 
 /// @nodoc
@@ -127,22 +104,12 @@ class __$$SettingsModelImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? soundVolume = null,
-    Object? isSoundOn = null,
     Object? sfxVolume = null,
     Object? isSfxOn = null,
     Object? isVibrationOn = null,
     Object? isPremiumUser = null,
   }) {
     return _then(_$SettingsModelImpl(
-      soundVolume: null == soundVolume
-          ? _value.soundVolume
-          : soundVolume // ignore: cast_nullable_to_non_nullable
-              as double,
-      isSoundOn: null == isSoundOn
-          ? _value.isSoundOn
-          : isSoundOn // ignore: cast_nullable_to_non_nullable
-              as bool,
       sfxVolume: null == sfxVolume
           ? _value.sfxVolume
           : sfxVolume // ignore: cast_nullable_to_non_nullable
@@ -167,19 +134,11 @@ class __$$SettingsModelImplCopyWithImpl<$Res>
 
 class _$SettingsModelImpl implements _SettingsModel {
   const _$SettingsModelImpl(
-      {this.soundVolume = 0.8,
-      this.isSoundOn = true,
-      this.sfxVolume = 0.8,
+      {this.sfxVolume = 0.8,
       this.isSfxOn = true,
       this.isVibrationOn = true,
       this.isPremiumUser = false});
 
-  @override
-  @JsonKey()
-  final double soundVolume;
-  @override
-  @JsonKey()
-  final bool isSoundOn;
   @override
   @JsonKey()
   final double sfxVolume;
@@ -189,14 +148,13 @@ class _$SettingsModelImpl implements _SettingsModel {
   @override
   @JsonKey()
   final bool isVibrationOn;
-// 課金状態など、必要に応じて追加
   @override
   @JsonKey()
   final bool isPremiumUser;
 
   @override
   String toString() {
-    return 'SettingsModel(soundVolume: $soundVolume, isSoundOn: $isSoundOn, sfxVolume: $sfxVolume, isSfxOn: $isSfxOn, isVibrationOn: $isVibrationOn, isPremiumUser: $isPremiumUser)';
+    return 'SettingsModel(sfxVolume: $sfxVolume, isSfxOn: $isSfxOn, isVibrationOn: $isVibrationOn, isPremiumUser: $isPremiumUser)';
   }
 
   @override
@@ -204,10 +162,6 @@ class _$SettingsModelImpl implements _SettingsModel {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$SettingsModelImpl &&
-            (identical(other.soundVolume, soundVolume) ||
-                other.soundVolume == soundVolume) &&
-            (identical(other.isSoundOn, isSoundOn) ||
-                other.isSoundOn == isSoundOn) &&
             (identical(other.sfxVolume, sfxVolume) ||
                 other.sfxVolume == sfxVolume) &&
             (identical(other.isSfxOn, isSfxOn) || other.isSfxOn == isSfxOn) &&
@@ -218,8 +172,8 @@ class _$SettingsModelImpl implements _SettingsModel {
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, soundVolume, isSoundOn,
-      sfxVolume, isSfxOn, isVibrationOn, isPremiumUser);
+  int get hashCode => Object.hash(
+      runtimeType, sfxVolume, isSfxOn, isVibrationOn, isPremiumUser);
 
   /// Create a copy of SettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -232,23 +186,17 @@ class _$SettingsModelImpl implements _SettingsModel {
 
 abstract class _SettingsModel implements SettingsModel {
   const factory _SettingsModel(
-      {final double soundVolume,
-      final bool isSoundOn,
-      final double sfxVolume,
+      {final double sfxVolume,
       final bool isSfxOn,
       final bool isVibrationOn,
       final bool isPremiumUser}) = _$SettingsModelImpl;
 
   @override
-  double get soundVolume;
-  @override
-  bool get isSoundOn;
-  @override
   double get sfxVolume;
   @override
   bool get isSfxOn;
   @override
-  bool get isVibrationOn; // 課金状態など、必要に応じて追加
+  bool get isVibrationOn;
   @override
   bool get isPremiumUser;
 

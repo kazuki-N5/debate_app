@@ -23,5 +23,7 @@ class Chat with _$Chat {
       senderId: map['sender_id'].toString(),
     );
   }
+
+  
   // _Chatも大文字
 }

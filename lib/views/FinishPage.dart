@@ -1,32 +1,125 @@
 import 'dart:math';
+import 'package:debate_project/adsence/ad_banner_provider.dart';
+import 'package:debate_project/adsence/ad_mbanner_provider.dart';
+import 'package:debate_project/adsence/ad_provider.dart'; // adNotifierProvider がここにあると仮定
 import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/modes/users.dart';
+import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
+import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
+import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FinishPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final supabase = Supabase.instance.client;
     final ischange = useState<bool>(true);
     final save = useState<String>('');
-    final room = ref.watch(matchingRoomProvider);
+    final room = ref.read(matchingRoomProvider);
     final myuser = ref.watch(userProvider);
     final otheruser = ref.watch(otherUserProvider);
-    final user = supabase.auth.currentUser!.id;
+    final user = ref.read(currentUserIdProvider);
     final usernotifier = ref.watch(userProvider.notifier);
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
+    final chatsnotifier = ref.read(chatProvider.notifier);
+    final BannerAd? mediumRectangleAd = ref.watch(mediumRectangleAdProvider);
+    // isAdBlockingInteraction の状態を監視
+    final isAdBlockingInteraction = ref.watch(adNotifierProvider);
+
+    void _showErrorDialog(BuildContext context) {
+      const Color dialogBackgroundColor = Color(0xFF42A5F5);
+      const Color textColor = Colors.white;
+      const Color buttonTextColor =
+          Color(0xFF1565C0); // ホーム画面のボタン内テキストに近い青 (例: Colors.blue[800])
+      const Color buttonBackgroundColor = Colors.white;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            backgroundColor: dialogBackgroundColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.0), // 角丸を少し大きめに
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
+            contentPadding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 24.0),
+            title: const Text(
+              'ネットワークエラー',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 20.0,
+              ),
+            ),
+            content: const Text(
+              'データの取得に失敗しました。\nもう一度お試しください。',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 16.0,
+              ),
+            ),
+            actionsAlignment: MainAxisAlignment.center,
+            actionsPadding: const EdgeInsets.only(bottom: 20.0, top: 8.0),
+            actions: <Widget>[
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  backgroundColor: buttonBackgroundColor,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0, vertical: 12.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0), // ボタンも角丸に
+                  ),
+                ),
+                icon: Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
+                label: Text(
+                  'やり直す',
+                  style: TextStyle(
+                    color: buttonTextColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16.0,
+                  ),
+                ),
+                onPressed: () {
+                  router.go('/home');
+                  Navigator.of(dialogContext).pop(); // ダイアログを閉じる
+                  // 再試行コールバックを実行
+                },
+              ),
+            ],
+          );
+        },
+      ).then((_) {
+        // ダイアログが閉じた後に実行される (オプション)
+      });
+    }
 
     useEffect(() {
+      // 広告表示を通知 (例: 全画面広告など)
+      ref.read(adNotifierProvider.notifier).showAd();
+
+      Future.microtask(() {
+        // バナー広告のロードを開始
+        ref.read(bannerAdProvider.notifier).loadAd();
+        // ロード済みの広告を表示 (Medium Rectangle Ad はビルド内で watch しているのでここで特別な処理は不要)
+      });
+
+      // 部屋の情報をクリア
       roomnotifier.delete();
-      roomnotifier.finishstream();
+      // 部屋の状態ストリームの購読を終了
+      // メッセージストリームの購読を終了
+      chatsnotifier.unsubscribeFromMessages();
+
       return () {
+        // Widgetが破棄されるときに再度部屋の情報をクリア
         roomnotifier.delete();
       };
     }, const []);
@@ -43,19 +136,25 @@ class FinishPage extends HookConsumerWidget {
       }
     }
 
+    String formatName(String name) {
+      return "'$name'";
+    }
+
     String formatResult(MatchingRoom room, Users myuser, Users otheruser) {
       String result = room.result!.substring(1); // 最初の1文字を削除
 
       // 先頭の空白を削除
-      result = result.trimLeft(); // 最初の1文字を削除
+      result = result.trimLeft();
 
       if (room.player1Id == myuser.id) {
-        result =
-            result.replaceAll('A', myuser.name).replaceAll('B', otheruser.name);
+        result = result
+            .replaceAll('A', formatName(myuser.name!))
+            .replaceAll('B', formatName(otheruser.name!));
       } else {
         // player1がotheruserの場合
-        result =
-            result.replaceAll('A', otheruser.name).replaceAll('B', myuser.name);
+        result = result
+            .replaceAll('A', formatName(otheruser.name!))
+            .replaceAll('B', formatName(myuser.name!));
       }
 
       return result;
@@ -102,13 +201,14 @@ class FinishPage extends HookConsumerWidget {
             return save.value;
           }
         } else {
+          // 引き分けなどのケースがあればここに追記
           return '0';
         }
       }
       return save.value;
     }
 
-    final result = getResultText(room, user);
+    final result = getResultText(room, user!);
 
     return Scaffold(
       body: Container(
@@ -162,21 +262,22 @@ class FinishPage extends HookConsumerWidget {
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              // 数字を右側に配置
-                              Positioned(
-                                right: 20,
-                                top: 25,
-                                child: Text(
-                                  displayPoint(room, myuser, otheruser, user),
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: result == ('勝利')
-                                        ? Colors.red
-                                        : Colors.grey[700],
+                              // 数字を右側に配置 (room.passwordがnullの場合のみ表示)
+                              if (room.password == null) // ★ 追加した条件
+                                Positioned(
+                                  right: 20,
+                                  top: 25,
+                                  child: Text(
+                                    displayPoint(room, myuser, otheruser, user),
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: result == ('勝利')
+                                          ? Colors.red
+                                          : Colors.grey[700],
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
@@ -220,45 +321,72 @@ class FinishPage extends HookConsumerWidget {
                         ),
                       ),
                       SizedBox(height: 24),
-                      Container(
-                        width: double.infinity,
-                        height: 200,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(12.0),
+                      // --- Medium Rectangle Ad 表示エリア ---
+                      if (mediumRectangleAd != null)
+                        // 広告がロードされたら AdWidget で表示
+                        Container(
+                          alignment: Alignment.center,
+                          // ロードされた広告のサイズに合わせてコンテナのサイズを設定
+                          width: mediumRectangleAd.size.width.toDouble(),
+                          height: mediumRectangleAd.size.height.toDouble(),
+                          child: AdWidget(ad: mediumRectangleAd),
+                        )
+                      else
+                        // 広告がまだロードされていないか失敗した場合はプレースホルダーを表示
+                        Container(
+                          // AdSize.mediumRectangle の期待されるサイズを指定してレイアウトのずれを防ぐ
+                          width: AdSize.mediumRectangle.width.toDouble(),
+                          height: AdSize.mediumRectangle.height.toDouble(),
+                          color: Colors.grey[300], // 広告がない場合の背景色
+                          child: const Center(
+                              child: Text('Loading Ad...')), // 広告がない場合のテキスト
                         ),
-                        child: Text(
-                          'Advertisement Area',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
-                      Spacer(),
-                      ElevatedButton(
-                        onPressed: () {
-                          // Restart debate logic using ref if needed
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          minimumSize: Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      // --- Medium Rectangle Ad 表示エリア ここまで ---
+
+                      const Spacer(), // 残りのスペースを埋める
+
+                      IgnorePointer(
+                        // ★ ここから追加
+                        ignoring: isAdBlockingInteraction, // 広告ブロック中はタップを無視
+                        child: ElevatedButton(
+                          // onPressed は常に有効なハンドラを指定
+                          onPressed: () async {
+                            roomnotifier.findMatch('', '', '', '');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue, // 無効状態でもこの色が使われる
+                            minimumSize: Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'もう一度ディベート',
+                            style: TextStyle(
+                              color: Colors.white, // 無効状態でもこの色が使われる
+                              fontSize: 16,
+                            ),
                           ),
                         ),
-                        child: Text(
-                          'もう一度ディベート',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
+                      ), // ★ ここまで追加
                       SizedBox(height: 12),
+                      // ホームに戻る ボタン - isAdBlockingInteraction が true の場合は onPressed を null に
                       OutlinedButton(
-                        onPressed: () async {
-                          await usernotifier.fetchUser(user);
-                          router.go('/home');
-                        },
+                        onPressed: isAdBlockingInteraction
+                            ? null
+                            : () async {
+                                try {
+                                  final result =
+                                      await usernotifier.fetchUser(user);
+                                  if (result.win! >= 5) {
+                                    ref.read(reviewProvider.notifier).state =
+                                        true;
+                                  }
+                                  router.go('/home');
+                                } catch (e) {
+                                  _showErrorDialog(context);
+                                }
+                              },
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: Colors.blue),
                           minimumSize: Size(double.infinity, 50),
@@ -276,16 +404,6 @@ class FinishPage extends HookConsumerWidget {
                       ),
                     ],
                   ),
-                ),
-              ),
-              Container(
-                width: double.infinity,
-                height: 50,
-                alignment: Alignment.center,
-                color: Colors.grey[200],
-                child: Text(
-                  'Advertisement Area',
-                  style: TextStyle(color: Colors.grey),
                 ),
               ),
             ],

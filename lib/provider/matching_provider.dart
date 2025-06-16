@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'package:debate_project/modes/mathing.dart';
-import 'package:debate_project/provider/match_history_provider.dart';
+import 'package:debate_project/provider/app_config_provider.dart';
+import 'package:debate_project/provider/appstate_provider.dart';
+import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
+import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-final userId = supabase.auth.currentUser?.id;
 final matchingRoomProvider =
     StateNotifierProvider<MatchingRoomNotifier, MatchingRoom>((ref) {
   return MatchingRoomNotifier(ref);
@@ -18,177 +20,141 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
   final Ref ref;
   MatchingRoomNotifier(this.ref) : super(MatchingRoom());
 
-  final supabase = Supabase.instance.client;
+  SupabaseClient get supabase => ref.read(supabaseProvider);
+
   bool hasNavigatedToChose = false;
-  DateTime lastReceivedTime = DateTime.now();
-  Timer? heartbeat;
-  Timer? onlineTimer;
   StreamSubscription? _subscription;
-  RealtimeChannel? channel;
+  RealtimeChannel? _presenceChannel;
+  Timer? _offlineTimer;
 
-  Future<DateTime> getServerTime() async {
-    final response = await supabase.rpc('get_server_time');
-    return DateTime.parse(response);
-  }
+  void setupPresenceChannel(String roomId) {
+    final myUserId = ref.read(currentUserIdProvider);
+    if (myUserId == null) return;
 
-  void updateMyTime(String user) async {
-    final server = await getServerTime();
-    final serverTime = server.toIso8601String();
-    print('自分の時間$serverTime');
-    final which = user == state.player1Id ? 'player1_time' : 'player2_time';
-    print(which);
-    try {
-      await supabase.from('rooms').update({
-        which: serverTime,
-      }).eq('id', state.roomId!);
-    } catch (e) {
-      print('error');
-    }
-  }
+    if (_presenceChannel != null) return; // 既に接続済みの場合は何もしない
 
-  Future<void> checkTimeDifference(MatchingRoom room, user) async {
-    final serverTime = await getServerTime();
-    final which = user == state.player1Id ? 'player2_time' : 'player1_time';
-    final roomData = await supabase
-        .from('rooms')
-        .select(which)
-        .eq('id', room.roomId!) // roomIdはこの関数のスコープ内で利用可能な変数と仮定
-        .single();
-    final opponentTime =
-        roomData[which] != null ? DateTime.parse(roomData[which]) : null;
+    final channelName = 'presence-room-$roomId';
+    _presenceChannel = supabase.channel(channelName);
 
-    if (opponentTime == null) {
-      print('=============================================');
-      await Future.delayed(Duration(seconds: 10));
-      print('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
-      final currentOpponentTime =
-          user == state.player1Id ? state.player2_time : state.player1_time;
-      if (currentOpponentTime == null) {
-        win(state, user);
-        return;
-      } else {
-        final difference = serverTime.difference(currentOpponentTime);
-        if (difference.inSeconds >= 10) {
-          win(state, user);
+    final otherUserId =
+        (state.player1Id == myUserId) ? state.player2Id! : state.player1Id!;
+
+    _presenceChannel!.onPresenceJoin((payload) {
+      for (final presence in payload.newPresences) {
+        // trackで送信したペイロードからuser_idを取得
+        if (presence.payload['user_id'] == otherUserId) {
+          print('✅ Opponent ($otherUserId) joined/reconnected.');
+          // 相手が再接続したので、オフラインタイマーをキャンセル
+          if (_offlineTimer?.isActive ?? false) {
+            print('Cancelling offline timer.');
+            _offlineTimer!.cancel();
+            _offlineTimer = null;
+          }
         }
       }
-    } else {
-      final difference = serverTime.difference(opponentTime);
-      print('difference: $difference');
-      if (difference.inSeconds >= 10) {
-        win(state, user);
+    }).onPresenceLeave((payload) {
+      for (final presence in payload.leftPresences) {
+        if (presence.payload['user_id'] == otherUserId) {
+          // 既にタイマーが動いている場合や試合が終了している場合は何もしない
+          if ((_offlineTimer?.isActive ?? false) || state.result != null) {
+            return;
+          }
+
+          // 相手が切断したので、10秒の猶予タイマーを開始
+          print('Starting 10-second offline grace period timer.');
+          int countdown = 20; // カウントダウンの秒数
+          _offlineTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+            if (countdown > 0) {
+              print('----------${countdown}--------');
+              countdown--;
+            } else {
+              // カウントダウンが0になったのでタイマーを停止し、勝利処理を実行
+              print('⏰ 10 seconds passed. Opponent did not reconnect.');
+              timer.cancel(); // periodic timerを必ずキャンセルする
+
+              if (state.result == null) {
+                win(state, myUserId);
+              }
+              _offlineTimer = null;
+            }
+          });
+        }
       }
-    }
-  }
-
-  void pushonline(MatchingRoom room, String user) {
-    onlineTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      print('オンライン');
-      updateMyTime(user);
-      checkTimeDifference(room, user);
-    });
-  }
-
-  void checkOnline(MatchingRoom room, String user) {
-    final lastTime = lastReceivedTime;
-
-    final now = DateTime.now();
-    final difference = now.difference(lastTime);
-    print(difference.inSeconds);
-
-    if (difference.inSeconds >= 10) {
-      print('10秒以上経過しました');
-      win(room, user);
-    }
-  }
-
-  void initPresence(MatchingRoom room) {
-    print('ページ遷移した');
-
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser?.id;
-
-    delete();
-
-    lastReceivedTime = DateTime.now();
-
-    channel = supabase.channel(
-      room.roomId!,
-      opts: const RealtimeChannelConfig(),
-    );
-    channel
-        ?.onPresenceSync((_) {
-          print('sync');
-        })
-        .onPresenceLeave((payload) {})
-        .onBroadcast(
-          event: 'heartbeat',
-          callback: (payload) {
-            lastReceivedTime = DateTime.now();
-            print(lastReceivedTime);
-          },
-        )
-        .subscribe();
-
-    heartbeat = Timer.periodic(const Duration(seconds: 1), (_) {
-      checkOnline(room, user!);
-      channel?.sendBroadcastMessage(
-        event: 'heartbeat',
-        payload: {'message': 'ping'},
-      );
+    }).subscribe((status, [error]) async {
+      // 購読に成功したら、自分のプレゼンス情報を送信
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        print('Successfully subscribed to presence channel: $channelName');
+        await _presenceChannel!.track({'user_id': myUserId});
+      } else {
+        print(
+            'Failed to subscribe to presence channel: $status, Error: $error');
+      }
     });
   }
 
   void delete() {
-    if (onlineTimer != null) {
-      onlineTimer!.cancel();
-      onlineTimer = null;
-      print('Timer cancelled');
-    }
-    if (heartbeat != null) {
-      heartbeat!.cancel();
-      heartbeat = null;
-      print('Timer cancelled');
-    }
-    if (channel != null) {
+    _subscription?.cancel();
+    _offlineTimer?.cancel();
+    _offlineTimer = null;
+
+    if (_presenceChannel != null) {
       try {
-        // Presenceでトラッキングしている場合は明示的にleave
-        channel!.untrack();
-        print('Channel untracked');
-
-        // チャンネルの購読解除
-        channel!.unsubscribe();
-        print('Channel unsubscribed');
-
-        channel = null;
+        // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
+        supabase.removeChannel(_presenceChannel!);
+        print('Presence channel cleaned up.');
       } catch (e) {
-        print('Error during channel cleanup: $e');
+        print('Error during presence channel cleanup: $e');
       }
+      _presenceChannel = null;
     }
+    print('All notifier resources cleaned up.');
   }
 
-  Future<void> findMatch(String password,String theme,String choice1,String choice2) async {
+  Future<void> findMatch(
+      String password, String theme, String choice1, String choice2) async {
+    final userId = ref.read(currentUserIdProvider);
     hasNavigatedToChose = false;
     ref.read(goProvider.notifier).state = false;
-    state = MatchingRoom();
 
-    router.go('/wait');
+    if (userId == null) {
+      print('エラー: ユーザーが認証されていません。マッチングを開始できません。');
+      // ここでユーザーにエラーを通知するなどの処理を追加できます
+      return;
+    }
+
+    state = MatchingRoom();
+    final appstate = await ref.read(appStateProvider.notifier).loadVersion();
+    if (appstate == AppStatus.error) {
+      print('エラーが発生しました');
+      return;
+    } else if (appstate == AppStatus.forceUpdate) {
+      ref.read(forceboolProvider.notifier).state = true;
+      return;
+    } else if (appstate == AppStatus.maintenance) {
+      print('メンテナンス中');
+      ref.read(maintenanceboolProvider.notifier).state = true;
+      return;
+    } else if (appstate == AppStatus.optionalUpdate) {
+    } else if (appstate == AppStatus.normal) {
+    } else {
+      return;
+    }
+
+    _subscription?.cancel();
+    delete();
     print(userId);
     try {
       // データベース関数を呼び出してトランザクション処理を行う
       final result = await supabase.rpc('join_room', params: {
         'p_user_id': userId, // パラメータ名を SQL 関数に合わせる
-        'p_room_password':
-    password.isNotEmpty ? password : null, 
-'p_room_theme':
-    theme.isNotEmpty ? theme : null,
-'p_room_choice1':
-    choice1.isNotEmpty ? choice1 : null,
-'p_room_choice2':
-    choice2.isNotEmpty ? choice2 : null,
+        'p_room_password': password.isNotEmpty ? password : null,
+        'p_room_theme': theme.isNotEmpty ? theme : null,
+        'p_room_choice1': choice1.isNotEmpty ? choice1 : null,
+        'p_room_choice2': choice2.isNotEmpty ? choice2 : null,
       });
 
       if (result['success']) {
+        router.go('/wait');
         final roomData = result['room'];
         final roomId = roomData['id'];
 
@@ -213,18 +179,17 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
   }
 
   Future<void> waitForMatch(String roomId) async {
+    final userId = ref.read(currentUserIdProvider);
     print('待機中');
     print('5');
-    ref.invalidate(matchHistoryProvider);
+    ref.invalidate(matchRecordsProvider);
 
     _subscription = supabase
         .from('rooms')
         .stream(primaryKey: ['id'])
         .eq('id', roomId)
         .listen((List<Map<String, dynamic>> data) async {
-          print('更新');
           state = MatchingRoom.fromMap(data[0]);
-          print('更新の$state');
 
           if (data[0]['player2_id'] != null && !hasNavigatedToChose) {
             hasNavigatedToChose = true;
@@ -232,27 +197,22 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
                 state.player1Id == userId ? state.player2Id : state.player1Id;
             await ref
                 .read(otherUserProvider.notifier)
-                .fetchOtherUser(otherUserId!);
-            print(state.change);
+                .fetchOtherUserWithRetry(otherUserId!);
             ref.read(goProvider.notifier).state = true;
           }
         });
   }
 
   Future<void> cancelMatching(String roomId) async {
-   final response = await supabase.rpc('deleteroom', params: {
-    'p_room_id': roomId,
-    'p_user_id': userId,
-
-  });
-  if(response['success'] == true){
-    _subscription?.cancel();
-    router.go('/home');
-   }
-  }
-
-  void finishstream() {
-    _subscription?.cancel();
+    final userId = ref.read(currentUserIdProvider);
+    final response = await supabase.rpc('deleteroom', params: {
+      'p_room_id': roomId,
+      'p_user_id': userId,
+    });
+    if (response['success'] == true) {
+      _subscription?.cancel();
+      router.go('/home');
+    }
   }
 
   Future<void> updateChoice(String roomId, String player, bool choice) async {
@@ -317,5 +277,14 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
         print('error');
       }
     }
+  }
+
+  @override
+  void dispose() {
+    print('MatchingRoomNotifier disposed. Performing cleanup.');
+    // クリーンアップ処理を行う delete() メソッドを呼び出します。
+    delete();
+    // 親クラスの dispose も必ず呼び出します。
+    super.dispose();
   }
 }

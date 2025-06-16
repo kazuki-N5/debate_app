@@ -1,10 +1,12 @@
 import 'dart:async';
-import 'package:debate_project/main.dart';
+import 'package:debate_project/adsence/ad_mbanner_provider.dart';
+import 'package:debate_project/adsence/ad_provider.dart';
 import 'package:debate_project/modes/chat.dart';
 import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/provider/ai_supabase.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
+import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -24,9 +26,11 @@ class GamePage extends HookConsumerWidget {
     final room = ref.watch(matchingRoomProvider);
     final chats = ref.watch(chatProvider);
     final chatsnotifier = ref.read(chatProvider.notifier);
-    final chat_with_ai chatwithai = chat_with_ai();
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser?.id;
+    final chatwithai = ref.read(chatWithAiProvider);
+    final supabase = ref.read(supabaseProvider);
+    final user = ref.read(currentUserIdProvider);
+    final cantap = useState(false);
+    final roomnotifier = ref.read(matchingRoomProvider.notifier);
 
     Timer? timer;
     DateTime deadline;
@@ -42,47 +46,107 @@ class GamePage extends HookConsumerWidget {
       return DateTime.parse(response);
     }
 
+    Future<void> countTime() async {
+      deadline = room.updatedAt!.add(const Duration(seconds: 182));
+      DateTime? serverTime;
+
+      while (serverTime == null) {
+        try {
+          print('サーバー時刻の取得を試みます...');
+          serverTime = await getServerTime();
+          print('サーバー時刻の取得に成功しました。');
+        } catch (e) {
+          print('サーバー時刻の取得に失敗しました: $e。3秒後に再試行します。');
+          // 失敗したら3秒待ってから再試行
+          await Future.delayed(const Duration(seconds: 1));
+        }
+      }
+
+      final clientTime = DateTime.now();
+      final timeOffset = serverTime.difference(clientTime);
+
+      timer = Timer.periodic(Duration(seconds: 1), (timer) async {
+        final estimatedServerTime = DateTime.now().add(timeOffset);
+        final diff = deadline.difference(estimatedServerTime).inSeconds;
+        if (diff < 150) {
+          if (cantap.value == false) {            
+          cantap.value = true;
+          }
+        }
+        if (diff >= 0) {
+          countdown.value = diff;
+        } else if (diff <= 0) {
+          finish.value = true;
+
+          if (room.player1Id == user) {
+            await chatwithai.gemini(room.player1Id!, room.roomId!, room.theme!,
+                room.choice1!, room.choice2!, room.player1Choice!);
+          }
+        } else if (diff < -15) {
+          timer.cancel();
+          roomnotifier.win(room, user!);
+        } else if (diff < -20) {
+          router.go('/home');
+        }
+      });
+    }
+
     useEffect(() {
+      // ゲーム終了時 (room.result != null) の広告表示ロジック
       if (room.result != null) {
-        Future.microtask(() {
+        Future.microtask(() async {
+          // 非同期処理を行うためasync/awaitを使用
+
+          // 広告を表示しない場合、直接次の画面へ遷移
           router.go('/finish');
         });
       }
-      return null;
+      return null; // Clean-up は不要
     }, [room.result]);
 
     useEffect(() {
       if (room.player1_finish == true && room.player2_finish == true) {
+        timer?.cancel();
+        print('判定結果を出す');
+        finish.value = true;
         if (room.player1Id == user!) {
-          timer?.cancel();
-          print('判定結果を出す');
-          finish.value = true;
-          chatwithai.gemini(room.player1Id!, room.roomId!, room.theme!,
-              room.player1Choice!);
+          // 非同期処理は即時実行関数として実行
+          () async {
+            await chatwithai.gemini(room.player1Id!, room.roomId!, room.theme!,
+                room.choice1!, room.choice2!, room.player1Choice!);
+          }();
         }
       }
-      return;
+
+      // クリーンアップ関数を返す
+      return () {};
     }, [room.player1_finish, room.player2_finish]);
 
     useEffect(() {
-      deadline = room.updatedAt!.add(const Duration(seconds: 90));
-      chatsnotifier.subscribeToMessages(room.roomId!);
+      print('useEffect: Widget mounted.');
 
-      timer = Timer.periodic(Duration(seconds: 1), (timer) async {
-        final now = await getServerTime();
-        final diff = deadline.difference(now).inSeconds;
-        if (diff >= 0) {
-          countdown.value = diff;
-        } else {
-          finish.value = true;
-          timer.cancel();
+      // Future.microtask を使って、現在のイベントループの最後に処理をスケジュールします。
+      // これにより、ウィジェットのビルドと描画が完了してから少し遅れて実行されます。
+      Future.microtask(() {
+        print('Future.microtask: Triggering ad loads...');
 
-          if (room.player1Id == supabase.auth.currentUser?.id) {
-            await chatwithai.gemini(room.player1Id!, room.roomId!,
-                room.theme!, room.player1Choice!);
-          }
-        }
+        // ref.read() を使って Notifier のインスタンスを取得し、メソッドを呼び出します。
+        // read() は状態変化を監視しないため、useEffect や Future コールバック内でも安全です。
+        ref.read(adNotifierProvider.notifier).loadAd();
+        ref.read(mediumRectangleAdProvider.notifier).loadAd();
+
+        print('Future.microtask: Ad loads triggered.');
       });
+
+      // クリーンアップ関数は不要なので null を返します。
+      // もし何か購読などを設定した場合は、ここで購読解除処理などを記述します。
+      return null;
+    }, const []);
+
+    useEffect(() {
+      chatsnotifier.subscribeToMessages(room.roomId!);
+      countTime();
+      roomnotifier.setupPresenceChannel(room.roomId!);
 
       return () {
         timer?.cancel();
@@ -170,16 +234,26 @@ class GamePage extends HookConsumerWidget {
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              IconButton(
-                                icon: Icon(Icons.door_back_door,
-                                    color: Colors.white),
-                                iconSize: 29,
-                                onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => Dialog(),
-                                  );
-                                },
+                              Opacity(
+                                // cantap.value が true の場合は完全に不透明 (1.0)
+                                // cantap.value が false の場合は半透明 (例: 0.5)
+                                opacity:
+                                    cantap.value ? 1.0 : 0.5, // ここで透明度を調整できます
+                                child: IconButton(
+                                  icon: Icon(Icons.door_back_door,
+                                      color: Colors.white), // アイコンの色はそのまま
+                                  iconSize: 29,
+                                  onPressed: cantap
+                                          .value // onPressed が null のときにタッチ操作が無効になる
+                                      ? () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) =>
+                                                Dialog(), // 表示したいダイアログウィジェット
+                                          );
+                                        }
+                                      : null, // cantap.value が false の時は null にしてボタンを無効化
+                                ),
                               ),
                               // チェックアイコンをドアアイコンの真ん中に重ねて表示
                               if (room.player1_finish == true ||
@@ -187,12 +261,14 @@ class GamePage extends HookConsumerWidget {
                                 Positioned(
                                   top: 3,
                                   child: IconButton(
-                                    onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => Dialog(),
-                                      );
-                                    },
+                                    onPressed: cantap.value
+                                        ? () {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) => Dialog(),
+                                            );
+                                          }
+                                        : null,
                                     icon: FaIcon(
                                       FontAwesomeIcons.check,
                                       size: 19,
@@ -252,7 +328,8 @@ class GamePage extends HookConsumerWidget {
                                 horizontal: 8, vertical: 16),
                             itemBuilder: (context, index) {
                               final chat = chats[index];
-                              return _buildMessageBubble(chat, room);
+                              return _buildMessageBubble(
+                                  chat, room, supabase, user!);
                             },
                           ),
                         ),
@@ -332,36 +409,13 @@ class GamePage extends HookConsumerWidget {
               ],
             ),
           ),
-          if (finish.value)
-            Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: Colors.white.withOpacity(0.4),
-              child: Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      '審査中',
-                      style: TextStyle(
-                        color: Colors.black87,
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.none,
-                      ),
-                    ),
-                    AnimatedDotsWidget(), // アニメーションする「...」部分
-                  ],
-                ),
-              ),
-            )
         ],
       ),
     );
   }
 
-  Widget _buildMessageBubble(Chat chat, MatchingRoom matchingRoomState) {
-    final user = supabase.auth.currentUser?.id;
+  Widget _buildMessageBubble(Chat chat, MatchingRoom matchingRoomState,
+      SupabaseClient supabase, String user) {
     final isCurrentUser = chat.senderId == user;
 
     return Padding(
@@ -409,7 +463,7 @@ class Dialog extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final room = ref.watch(matchingRoomProvider);
     final roomnotifier = ref.watch(matchingRoomProvider.notifier);
-    final user = supabase.auth.currentUser?.id;
+    final user = ref.read(currentUserIdProvider);
     final isUserFinished = user == room.player1Id
         ? room.player1_finish
         : (user == room.player2Id ? room.player2_finish : false);

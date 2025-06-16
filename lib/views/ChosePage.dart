@@ -3,40 +3,35 @@ import 'dart:math';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
+import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:go_router/go_router.dart';
 //import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:transparent_image/transparent_image.dart';
 
 class ChosePage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final roomnotifier = ref.watch(matchingRoomProvider.notifier);
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser?.id;
+    final supabase = ref.read(supabaseProvider);
+    final user = ref.read(currentUserIdProvider);
     final room = ref.watch(matchingRoomProvider);
     final selectedChoice = useState<bool?>(null);
     final next = useState(false);
-    final userState = ref.read(userProvider);
-    final otherUserState = ref.read(otherUserProvider);
     final showerror = useState(false);
     final isfirst = useState(false);
     final secondsLeft = useState<int?>(null);
 
     useEffect(() {
-      roomnotifier.pushonline(room, user!);
+      //roomnotifier.pushonline(room, user!);
       return null;
-    }, [room.result]);
+    }, []);
 
     useEffect(() {
       if (room.result != null) {
-        print(room.roomId);
-        print(room.result);
-        print('結果が来たよ');
         Future.microtask(() {
           router.go('/finish');
         });
@@ -60,18 +55,38 @@ class ChosePage extends HookConsumerWidget {
       final remainingSeconds = seconds % 60;
       return '${minutes.toString()}:${remainingSeconds.toString().padLeft(2, '0')}';
     }
+    
 
     void resetTimer() async {
+      
+      timer?.cancel();
       DateTime deadline;
+      DateTime? serverTime;
 
+      while (serverTime == null) {
+
+        try {
+          print('サーバー時刻の取得を試みます...');
+          serverTime = await getServerTime();
+          print('サーバー時刻の取得に成功しました。');
+        } catch (e) {
+          print('サーバー時刻の取得に失敗しました: $e。3秒後に再試行します。');
+          // 失敗したら3秒待ってから再試行
+          await Future.delayed(const Duration(seconds: 3));
+        }
+      }
+
+
+      final clientTime = DateTime.now();
+      final timeOffset = serverTime.difference(clientTime);
       isTimerActive.value = true;
       selectedChoice.value = null;
-      deadline = room.updatedAt!.add(const Duration(seconds: 10));
+      deadline = room.updatedAt!.add(const Duration(seconds: 8));
       print('また始まってる');
 
       timer = Timer.periodic(Duration(seconds: 1), (timer) async {
-        final now = await getServerTime();
-        final diff = deadline.difference(now).inSeconds;
+        final estimatedServerTime = DateTime.now().add(timeOffset);
+        final diff = deadline.difference(estimatedServerTime).inSeconds;
         if (diff < 0) {
           timer.cancel();
           isTimerActive.value = false;
@@ -83,7 +98,9 @@ class ChosePage extends HookConsumerWidget {
             await roomnotifier.updateChoice(
                 room.roomId!, user!, selectedChoice.value!);
           }
-        } else {
+        }else if(diff <-5){
+          router.go('/home');
+        }else {
           secondsLeft.value = diff;
         }
       });
@@ -95,8 +112,6 @@ class ChosePage extends HookConsumerWidget {
     }
 
     useEffect(() {
-      resetTimer();
-
       return () {
         timer?.cancel();
       };
@@ -134,14 +149,7 @@ class ChosePage extends HookConsumerWidget {
     if (next.value) {
       return Scaffold(
         backgroundColor: Colors.blue, // または任意の背景色
-        body: MatchingAnimation(
-          user: userState,
-          otherUser: otherUserState,
-          onAnimationComplete: () {
-            // アニメーション完了後の画面遷移
-            context.go('/game');
-          },
-        ),
+        body: BattleTransitionScreen(),
       );
     }
 
@@ -321,67 +329,176 @@ Widget _buildChoiceButton({
   );
 }
 
-class MatchingAnimation extends StatefulWidget {
-  final Users user;
-  final Users otherUser;
-  final VoidCallback onAnimationComplete;
+class UserProfileCard extends StatelessWidget {
+  final Users userData; // 型を Users に変更
+  final CrossAxisAlignment? textAlignment;
 
-  MatchingAnimation({
-    required this.user,
-    required this.otherUser,
-    required this.onAnimationComplete,
-  });
+  const UserProfileCard({
+    Key? key,
+    required this.userData,
+    this.textAlignment,
+  }) : super(key: key);
 
   @override
-  _MatchingAnimationState createState() => _MatchingAnimationState();
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: textAlignment ?? CrossAxisAlignment.center,
+      children: [
+        CircleAvatar(
+          radius: 50,
+          backgroundColor: Colors.grey[300],
+          child:
+              (userData.avatar_url != null && userData.avatar_url!.isNotEmpty)
+                  ? ClipOval(
+                      child: FadeInImage.memoryNetwork(
+                        placeholder: kTransparentImage, // 透明なプレースホルダーを使用
+                        image: userData.avatar_url!, // プロパティ名を avatar_url に修正
+                        fit: BoxFit.cover,
+                        width: 100, // radius * 2
+                        height: 100, // radius * 2
+                        imageErrorBuilder: (context, error, stackTrace) {
+                          // 画像の読み込みエラー時はアイコンを表示
+                          return const Center(
+                            child: Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Colors.white,
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : const Center(
+                      // userData.avatar_urlがnullまたは空の場合もアイコンを表示
+                      child: Icon(
+                        Icons.person,
+                        size: 50,
+                        color: Colors.white,
+                      ),
+                    ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          // userData.nameがnullの場合、空文字を表示 (または適切なフォールバックテキスト)
+          // Users.fromMap で name: map['name'].toString() となっているので、
+          // map['name']がnullだと "null" という文字列になる可能性があります。
+          // もしそうなっていて、"null" と表示したくない場合は、
+          // (userData.name == "null" ? "ゲスト" : userData.name ?? '不明なユーザー') のような処理も検討できます。
+          // ここでは、UsersクラスのnameがString?で、適切にnullが渡される前提で userData.name ?? '' とします。
+          userData.name ?? 'プレイヤー', // nameがnullの場合のフォールバック
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+          textAlign: textAlignment == CrossAxisAlignment.start
+              ? TextAlign.left
+              : textAlignment == CrossAxisAlignment.end
+                  ? TextAlign.right
+                  : TextAlign.center,
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.emoji_events, color: Colors.amber[600], size: 24),
+            const SizedBox(width: 6),
+            Text(
+              userData.trophy.toString(),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
-class _MatchingAnimationState extends State<MatchingAnimation>
+class BattleTransitionScreen extends ConsumerStatefulWidget {
+  const BattleTransitionScreen({Key? key}) : super(key: key);
+
+  @override
+  ConsumerState<BattleTransitionScreen> createState() =>
+      _BattleTransitionScreenState();
+}
+
+class _BattleTransitionScreenState extends ConsumerState<BattleTransitionScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _leftSlideAnimation;
-  late Animation<double> _rightSlideAnimation;
+  late Animation<Offset> _userSlideAnimation;
+  late Animation<Offset> _otherUserSlideAnimation;
+  late Animation<double> _vsFadeAnimation;
   late Animation<double> _vsScaleAnimation;
 
   @override
   void initState() {
-    super.initState();
+    super.initState(); // 仮ルーターにコンテキストをセット
+
     _controller = AnimationController(
-      duration: Duration(seconds: 2),
+      duration: const Duration(milliseconds: 4000), // アニメーション全体の時間
       vsync: this,
     );
 
-    _leftSlideAnimation = Tween<double>(
-      begin: -1.0,
-      end: 0.0,
+    // 自分: 左から中央少し手前へ
+    _userSlideAnimation = Tween<Offset>(
+      begin: const Offset(-1.0, 0.0), // 画面外左
+      end: const Offset(-0.1, 0.0), // 画面中央より少し左
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Interval(0.0, 0.5, curve: Curves.easeOut),
+      curve:
+          const Interval(0.0, 0.6, curve: Curves.easeInOutCubic), // 全体の0%～60%
     ));
 
-    _rightSlideAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
+    // 相手: 右から中央少し手前へ
+    _otherUserSlideAnimation = Tween<Offset>(
+      begin: const Offset(1.0, 0.0), // 画面外右
+      end: const Offset(0.1, 0.0), // 画面中央より少し右
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Interval(0.0, 0.5, curve: Curves.easeOut),
+      curve:
+          const Interval(0.0, 0.6, curve: Curves.easeInOutCubic), // 全体の0%～60%
     ));
 
-    _vsScaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Interval(0.5, 0.8, curve: Curves.elasticOut),
-    ));
+    // VS: フェードイン
+    _vsFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.5, 0.7, curve: Curves.easeIn), // 全体の50%～80%で表示
+      ),
+    );
+
+    // VS: スケールアップ
+    _vsScaleAnimation = Tween<double>(begin: 0.5, end: 1.2).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.5, 0.9, curve: Curves.elasticOut), // 伸縮する感じ
+      ),
+    );
 
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        Future.delayed(Duration(seconds: 1), widget.onAnimationComplete);
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted) {
+            // 実際のプロジェクトのrouterインスタンスを使用してください
+            // 例: GoRouter.of(context).go('/game');
+            // 例: ref.read(routerProvider).go('/game');
+            router.go('/game');
+          }
+        });
       }
     });
 
-    _controller.forward();
+    // initStateの最後に呼び出すことで、ビルド後にアニメーションが開始される
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _controller.forward();
+      }
+    });
   }
 
   @override
@@ -392,116 +509,76 @@ class _MatchingAnimationState extends State<MatchingAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Stack(
-          children: [
-            // 左側のプロフィール
-            Positioned(
-              left:
-                  MediaQuery.of(context).size.width * _leftSlideAnimation.value,
-              top: MediaQuery.of(context).size.height * 0.3,
-              child: PlayerProfile(
-                name: widget.user.name,
-                trophy: widget.user.trophy,
-                isLeft: true,
+    final Users userState = ref.watch(userProvider);
+    final Users otherUserState = ref.watch(otherUserProvider);
+
+    return Scaffold(
+      backgroundColor: Colors.blue, // 背景色
+      body: Stack(
+        children: [
+          // 自分のプロフィール (左から)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SlideTransition(
+              position: _userSlideAnimation,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 30.0), // 画面端からのパディング
+                child: UserProfileCard(
+                    userData: userState,
+                    textAlignment: CrossAxisAlignment.start),
               ),
             ),
-            // 右側のプロフィール
-            Positioned(
-              right: MediaQuery.of(context).size.width *
-                  _rightSlideAnimation.value,
-              top: MediaQuery.of(context).size.height * 0.3,
-              child: PlayerProfile(
-                name: widget.otherUser.name,
-                trophy: widget.otherUser.trophy,
-                isLeft: false,
+          ),
+
+          // 相手のプロフィール (右から)
+          Align(
+            alignment: Alignment.centerRight,
+            child: SlideTransition(
+              position: _otherUserSlideAnimation,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 30.0), // 画面端からのパディング
+                child: UserProfileCard(
+                    userData: otherUserState,
+                    textAlignment: CrossAxisAlignment.end),
               ),
             ),
-            // VS表示
-            Center(
+          ),
+
+          // VS テキスト
+          Center(
+            child: FadeTransition(
+              opacity: _vsFadeAnimation,
               child: ScaleTransition(
                 scale: _vsScaleAnimation,
                 child: Text(
-                  'VS',
+                  "VS",
                   style: TextStyle(
-                    fontSize: 72,
+                    fontSize: 90,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: const Color.fromARGB(255, 15, 3, 3),
+                    fontFamily: 'Impact', // かっこいいフォント (システムにあれば)
                     shadows: [
                       Shadow(
-                        color: Colors.black26,
-                        blurRadius: 10,
-                        offset: Offset(5, 5),
+                        blurRadius: 10.0,
+                        color: Colors.black.withOpacity(0.5),
+                        offset: const Offset(5.0, 5.0),
+                      ),
+                      const Shadow(
+                        // 縁取りっぽく
+                        blurRadius: 0.0,
+                        color: Colors.white,
+                        offset: Offset(1.0, 1.0),
+                      ),
+                      const Shadow(
+                        blurRadius: 0.0,
+                        color: Colors.white,
+                        offset: Offset(-1.0, -1.0),
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class PlayerProfile extends StatelessWidget {
-  final String name;
-  final int trophy;
-  final bool isLeft;
-
-  PlayerProfile({
-    required this.name,
-    required this.trophy,
-    required this.isLeft,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          CircleAvatar(
-            radius: 40,
-            backgroundColor: Colors.grey[300],
-            child: Icon(Icons.person, size: 50),
-          ),
-          SizedBox(height: 10),
-          Text(
-            name,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 5),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.emoji_events, color: Colors.amber),
-              SizedBox(width: 5),
-              Text(
-                trophy.toString(),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
           ),
         ],
       ),

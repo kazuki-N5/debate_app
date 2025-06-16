@@ -23,6 +23,7 @@ class MatchingRoom with _$MatchingRoom {
     String? theme,
     String? choice1,
     String? choice2,
+    String? password,
   }) = _MatchingRoom;
 
   factory MatchingRoom.fromMap(Map<String, dynamic> map) {
@@ -52,6 +53,7 @@ class MatchingRoom with _$MatchingRoom {
       theme: map['current_theme']?.toString(),
       choice1: map['current_choice1']?.toString(),
       choice2: map['current_choice2']?.toString(),
+      password: map['password']?.toString(),
     );
   }
 }

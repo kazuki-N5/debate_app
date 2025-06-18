@@ -56,5 +56,7 @@
 	<string>カメラを使用する理由を記述</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>フォトライブラリを使用する理由を記述</string>
+　　<key>MinimumOSVersion</key>
+    <string>13.0</string>
 </dict>
 </plist>

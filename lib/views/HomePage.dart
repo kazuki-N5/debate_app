@@ -716,7 +716,7 @@ class HomePage extends HookConsumerWidget {
                             ref
                                 .read(soundServiceProvider)
                                 .playSfx(SfxAssets.normal);
-                            router.push('/History');
+                            router.push('/history');
                           },
                           enableFeedback: false,
                         ),

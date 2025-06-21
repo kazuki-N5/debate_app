@@ -1,5 +1,3 @@
-
-
 import 'package:debate_project/modes/history.dart';
 import 'package:debate_project/views/ChathistoryPage.dart';
 import 'package:debate_project/views/ChosePage.dart';
@@ -14,12 +12,10 @@ import 'package:debate_project/views/NamePage_change.dart';
 import 'package:debate_project/views/SettingPage.dart';
 import 'package:debate_project/views/TransferPage.dart';
 import 'package:debate_project/views/WaittransferPage.dart';
-import 'package:go_router/go_router.dart';// Import HistoryRoom model
-import 'package:flutter/material.dart'; // Import Scaffold for error case
-
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 final GoRouter router = GoRouter(
-  // Optional: Add error builder for better debugging
   errorBuilder: (context, state) => Scaffold(
     appBar: AppBar(title: Text("Routing Error")),
     body: Center(child: Text('Page not found: ${state.error}')),
@@ -27,66 +23,64 @@ final GoRouter router = GoRouter(
   routes: [
     GoRoute(
       path: '/',
-      builder: (context, state) => LoginPage(),
+      pageBuilder: (context, state) => NoTransitionPage(child: LoginPage(), key: state.pageKey),
     ),
+
+    // ★ MatchingPageのみアニメーションあり（builder をそのまま使う）
     GoRoute(
       path: '/wait',
       builder: (context, state) => MatchingPage(),
     ),
+
     GoRoute(
       path: '/home',
-      builder: (context, state) => HomePage(),
+      pageBuilder: (context, state) => NoTransitionPage(child: HomePage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/game',
-      // Potentially, GamePage might need parameters later (e.g., game ID)
-      builder: (context, state) => GamePage(),
+      pageBuilder: (context, state) => NoTransitionPage(child: GamePage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/chose',
-      // Potentially, ChosePage might need parameters later (e.g., theme ID)
-      builder: (context, state) => ChosePage(),
+      pageBuilder: (context, state) => NoTransitionPage(child: ChosePage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/finish',
-      // Potentially, FinishPage might need parameters later (e.g., results)
-      builder: (context, state) => FinishPage(),
+      pageBuilder: (context, state) => NoTransitionPage(child: FinishPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/name',
-      builder: (context, state) => NamePage(),
-    ),
-    
-    GoRoute(
-      path: '/setting', // Conventionally, paths are lowercase: /history
-      builder: (context, state) => SettingPage(),
+      pageBuilder: (context, state) => NoTransitionPage(child: NamePage(), key: state.pageKey),
     ),
     GoRoute(
-      path: '/history', // Conventionally, paths are lowercase: /history
-      builder: (context, state) => HistoryPage(),
+      path: '/setting',
+      pageBuilder: (context, state) => NoTransitionPage(child: SettingPage(), key: state.pageKey),
     ),
     GoRoute(
-      path: '/name2', // Conventionally, paths are lowercase: /history
-      builder: (context, state) => NamePageChange(),
+      path: '/history',
+      pageBuilder: (context, state) => NoTransitionPage(child: HistoryPage(), key: state.pageKey),
     ),
-      GoRoute(
+    GoRoute(
+      path: '/name2',
+      pageBuilder: (context, state) => NoTransitionPage(child: NamePageChange(), key: state.pageKey),
+    ),
+    GoRoute(
       path: '/chistory',
-      builder: (context, state) {
-        // extra として渡されたデータを受け取る
-        final record = state.extra as MatchRecordDisplay; // MatchRecordDisplay 型にキャスト
-        return ChatHistoryPage(record: record);
-      },      
+      pageBuilder: (context, state) {
+        final record = state.extra as MatchRecordDisplay;
+        return NoTransitionPage(
+          child: ChatHistoryPage(record: record),
+          key: state.pageKey,
+        );
+      },
     ),
-
     GoRoute(
       path: '/transfer',
-      builder: (context, state) => TransferPage(),     
+      pageBuilder: (context, state) => NoTransitionPage(child: TransferPage(), key: state.pageKey),
     ),
     GoRoute(
-      path: '/waittransfer', // ★ 新しいWaitTransferPageへのルート
-      builder: (context, state) => const WaittransferPage(),
+      path: '/waittransfer',
+      pageBuilder: (context, state) => NoTransitionPage(child: const WaittransferPage(), key: state.pageKey),
     ),
-     
-      
   ],
 );

@@ -214,163 +214,163 @@ class FinishPage extends HookConsumerWidget {
       body: Container(
         color: Colors.blue,
         child: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.all(16.0),
-                  padding: const EdgeInsets.all(24.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16.0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Header with centered title (settings button removed)
-                      Text(
-                        '結果発表',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+          child: Container(
+            margin: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // --- START: SCROLLABLE CONTENT AREA ---
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 24),
+                        // Header with centered title
+                        const Text(
+                          '結果発表',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 16),
-                      Center(
-                        child: Container(
-                          width: 200, // Stackに十分な幅を確保
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // 勝利/敗北を中央に配置
-                              Text(
-                                getResultText(room, user),
-                                style: TextStyle(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  color: result == ('勝利')
-                                      ? Colors.red
-                                      : Colors.grey[700],
+                        const SizedBox(height: 16),
+                        Center(
+                          child: SizedBox(
+                            width: 200, // Stackに十分な幅を確保
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                // 勝利/敗北を中央に配置
+                                Text(
+                                  result,
+                                  style: TextStyle(
+                                    fontSize: 40,
+                                    fontWeight: FontWeight.bold,
+                                    color: result == ('勝利')
+                                        ? Colors.red
+                                        : Colors.grey[700],
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
-                                textAlign: TextAlign.center,
-                              ),
-                              // 数字を右側に配置 (room.passwordがnullの場合のみ表示)
-                              if (room.password == null) // ★ 追加した条件
-                                Positioned(
-                                  right: 20,
-                                  top: 25,
-                                  child: Text(
-                                    displayPoint(room, myuser, otheruser, user),
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: result == ('勝利')
-                                          ? Colors.red
-                                          : Colors.grey[700],
+                                // 数字を右側に配置
+                                if (room.password == null)
+                                  Positioned(
+                                    right: 20,
+                                    top: 25,
+                                    child: Text(
+                                      displayPoint(
+                                          room, myuser, otheruser, user),
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: result == ('勝利')
+                                            ? Colors.red
+                                            : Colors.grey[700],
+                                      ),
                                     ),
                                   ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '勝敗の理由:',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue[800],
                                 ),
+                              ),
+                              const SizedBox(height: 8),
+                              // Text can now grow as needed inside the SingleChildScrollView
+                              Text(
+                                formatResult(room, myuser, otheruser),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                  height: 1.5,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                      ),
-                      SizedBox(height: 24),
-                      Container(
-                        width: double.infinity, // 親の幅いっぱいに広げる
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '勝敗の理由:',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue[800],
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            // 固定高さのコンテナ内にSingleChildScrollViewを配置
-                            Container(
-                              width: double.infinity, // 親の幅いっぱいに広げる
-                              height: 155, // 固定高さ
-                              child: SingleChildScrollView(
-                                child: Text(
-                                  formatResult(room, myuser, otheruser),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black87,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(height: 24),
-                      // --- Medium Rectangle Ad 表示エリア ---
-                      if (mediumRectangleAd != null)
-                        // 広告がロードされたら AdWidget で表示
-                        Container(
-                          alignment: Alignment.center,
-                          // ロードされた広告のサイズに合わせてコンテナのサイズを設定
-                          width: mediumRectangleAd.size.width.toDouble(),
-                          height: mediumRectangleAd.size.height.toDouble(),
-                          child: AdWidget(ad: mediumRectangleAd),
-                        )
-                      else
-                        // 広告がまだロードされていないか失敗した場合はプレースホルダーを表示
-                        Container(
-                          // AdSize.mediumRectangle の期待されるサイズを指定してレイアウトのずれを防ぐ
-                          width: AdSize.mediumRectangle.width.toDouble(),
-                          height: AdSize.mediumRectangle.height.toDouble(),
-                          color: Colors.grey[300], // 広告がない場合の背景色
-                          child: const Center(
-                              child: Text('Loading Ad...')), // 広告がない場合のテキスト
-                        ),
-                      // --- Medium Rectangle Ad 表示エリア ここまで ---
+                        const SizedBox(height: 24),
+                        // --- Medium Rectangle Ad 表示エリア ---
+                        if (mediumRectangleAd != null)
+                          Container(
+                            alignment: Alignment.center,
+                            width: mediumRectangleAd.size.width.toDouble(),
+                            height: mediumRectangleAd.size.height.toDouble(),
+                            child: AdWidget(ad: mediumRectangleAd),
+                          )
+                        else
+                          Container(
+                            width: AdSize.mediumRectangle.width.toDouble(),
+                            height: AdSize.mediumRectangle.height.toDouble(),
+                            color: Colors.grey[300],
+                            child: const Center(child: Text('Loading Ad...')),
+                          ),
+                        const SizedBox(
+                            height: 24), // Add padding at the end of scroll
+                      ],
+                    ),
+                  ),
+                ),
+                // --- END: SCROLLABLE CONTENT AREA ---
 
-                      const Spacer(), // 残りのスペースを埋める
-
+                // --- START: FIXED BUTTONS AREA ---
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       IgnorePointer(
-                        // ★ ここから追加
-                        ignoring: isAdBlockingInteraction, // 広告ブロック中はタップを無視
+                        ignoring: isAdBlockingInteraction,
                         child: ElevatedButton(
-                          // onPressed は常に有効なハンドラを指定
                           onPressed: () async {
                             roomnotifier.findMatch('', '', '', '');
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue, // 無効状態でもこの色が使われる
-                            minimumSize: Size(double.infinity, 50),
+                            backgroundColor: Colors.blue,
+                            minimumSize: const Size(double.infinity, 50),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: Text(
+                          child: const Text(
                             'もう一度ディベート',
                             style: TextStyle(
-                              color: Colors.white, // 無効状態でもこの色が使われる
+                              color: Colors.white,
                               fontSize: 16,
                             ),
                           ),
                         ),
-                      ), // ★ ここまで追加
-                      SizedBox(height: 12),
-                      // ホームに戻る ボタン - isAdBlockingInteraction が true の場合は onPressed を null に
+                      ),
+                      const SizedBox(height: 12),
                       OutlinedButton(
                         onPressed: isAdBlockingInteraction
                             ? null
@@ -388,13 +388,13 @@ class FinishPage extends HookConsumerWidget {
                                 }
                               },
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: Colors.blue),
-                          minimumSize: Size(double.infinity, 50),
+                          side: const BorderSide(color: Colors.blue),
+                          minimumSize: const Size(double.infinity, 50),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: Text(
+                        child: const Text(
                           'ホームに戻る',
                           style: TextStyle(
                             color: Colors.blue,
@@ -405,8 +405,9 @@ class FinishPage extends HookConsumerWidget {
                     ],
                   ),
                 ),
-              ),
-            ],
+                // --- END: FIXED BUTTONS AREA ---
+              ],
+            ),
           ),
         ),
       ),

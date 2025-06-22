@@ -86,15 +86,14 @@ class SettingPage extends HookConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('設定'),
-        backgroundColor: Colors.blue.shade700,
+        backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
       ),
-      backgroundColor: Colors.blue.shade700,
+      backgroundColor: Colors.blue,
       body: Stack(
         children: [
           ListView(
-            physics: const NeverScrollableScrollPhysics(),
             padding: EdgeInsets.fromLTRB(16.0, 0.0, 16.0,
                 bottomButtonAreaHeight + bottomPadding + adBannerHeight),
             children: [

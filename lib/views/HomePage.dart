@@ -592,345 +592,354 @@ class HomePage extends HookConsumerWidget {
     // --- メインのbuildメソッド ---
     return Scaffold(
       resizeToAvoidBottomInset: false,
-            body: Container(
+      body: Container(
         color: const Color(0xFF2196F3),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              // トップセクション (プロフィール、名前、トロフィー、アイコン)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(21, 25, 21, 21),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // プロフィール画像とユーザー情報
-                    Row(
+              // 背景レイヤー：ヘッダーとフッターを配置
+              Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // トップセクション (ヘッダー)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(21, 25, 21, 21),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // プロフィール画像
-                        InkWell(
-                          onTap: () {
-                            ref.read(userProvider.notifier).updateAvatar();
-                          },
-                          borderRadius: BorderRadius.circular(25),
-                          enableFeedback: false,
-                          child: Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300], // アイコンの背景色
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: ClipOval(
-                              child: user.avatar_url != null &&
-                                      user.avatar_url!.isNotEmpty
-                                  ? Image.network(
-                                      user.avatar_url!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                        print('画像読み込みエラー: $error');
-                                        return Icon(
-                                          Icons.person, // 人物を表すアイコン
+                        // プロフィール画像とユーザー情報
+                        Row(
+                          children: [
+                            // プロフィール画像
+                            InkWell(
+                              onTap: () {
+                                ref.read(userProvider.notifier).updateAvatar();
+                              },
+                              borderRadius: BorderRadius.circular(25),
+                              enableFeedback: false,
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300], // アイコンの背景色
+                                  shape: BoxShape.circle,
+                                  border:
+                                      Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: ClipOval(
+                                  child: user.avatar_url != null &&
+                                          user.avatar_url!.isNotEmpty
+                                      ? Image.network(
+                                          user.avatar_url!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            print('画像読み込みエラー: $error');
+                                            return Icon(
+                                              Icons.person, // 人物を表すアイコン
+                                              color: Colors.grey[600],
+                                              size: 30,
+                                            );
+                                          },
+                                        )
+                                      : Icon(
+                                          Icons.person, // アバターがない場合の初期アイコン
                                           color: Colors.grey[600],
                                           size: 30,
-                                        );
-                                      },
-                                    )
-                                  : Icon(
-                                      Icons.person, // アバターがない場合の初期アイコン
-                                      color: Colors.grey[600],
-                                      size: 30,
-                                    ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(width: 10),
-                        // 名前とトロフィー数
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                context.push('/name2');
-                              },
-                              child: Text(
-                                user.name!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                        ),
                                 ),
                               ),
                             ),
-                            Row(
+
+                            const SizedBox(width: 10),
+                            // 名前とトロフィー数
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Image(
-                                  image: AssetImage(
-                                      'assets/images/trofie.png'), // 画像パスを指定
-                                  width: a, // サイズ調整
-                                  height: a,
-                                ),
-                                const SizedBox(width: 1),
-                                Text(
-                                  user.trophy.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                GestureDetector(
+                                  onTap: () {
+                                    context.push('/name2');
+                                  },
+                                  child: Text(
+                                    user.name!,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
                                   ),
+                                ),
+                                Row(
+                                  children: [
+                                    Image(
+                                      image: AssetImage(
+                                          'assets/images/trofie.png'), // 画像パスを指定
+                                      width: a, // サイズ調整
+                                      height: a,
+                                    ),
+                                    const SizedBox(width: 1),
+                                    Text(
+                                      user.trophy.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                    // 設定アイコンと履歴アイコン
-                    Column(
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.settings,
-                            color: Colors.white70,
-                            size: 40,
-                          ),
-                          onPressed: () {
-                            ref
-                                .read(soundServiceProvider)
-                                .playSfx(SfxAssets.normal);
-                            context.push('/setting');
-                          },
-                          enableFeedback: false,
-                        ),
-                        const SizedBox(height: 7),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.history,
-                            color: Colors.white70,
-                            size: 40,
-                          ),
-                          onPressed: () {
-                            ref
-                                .read(soundServiceProvider)
-                                .playSfx(SfxAssets.normal);
-                            router.push('/history');
-                          },
-                          enableFeedback: false,
-                        ),
-                        const SizedBox(height: 0),
-                        GestureDetector(
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              barrierDismissible: true,
-                              barrierColor: Colors.transparent, // 背景を透明に
-                              builder: (BuildContext context) {
-                                return Dialog(
-                                  backgroundColor: Colors.blue,
-                                  shape: BeveledRectangleBorder(
-                                    // 角を四角に
-                                    borderRadius: BorderRadius.zero,
-                                    side: const BorderSide(
-                                        // constを追加
-                                        color: Colors.white,
-                                        width: 2), // 白い縁取り
-                                  ),
-                                  child: Container(
-                                    padding:
-                                        const EdgeInsets.all(20), // constを追加
-                                    child: const Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start, // 左寄せ
-                                      children: [
-                                        Text(
-                                          '<ルール>',
-                                          style: TextStyle(
+                        // 設定アイコンと履歴アイコン
+                        Column(
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.settings,
+                                color: Colors.white70,
+                                size: 40,
+                              ),
+                              onPressed: () {
+                                ref
+                                    .read(soundServiceProvider)
+                                    .playSfx(SfxAssets.normal);
+                                context.push('/setting');
+                              },
+                              enableFeedback: false,
+                            ),
+                            const SizedBox(height: 7),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.history,
+                                color: Colors.white70,
+                                size: 40,
+                              ),
+                              onPressed: () {
+                                ref
+                                    .read(soundServiceProvider)
+                                    .playSfx(SfxAssets.normal);
+                                router.push('/history');
+                              },
+                              enableFeedback: false,
+                            ),
+                            const SizedBox(height: 0),
+                            GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: true,
+                                  barrierColor: Colors.transparent, // 背景を透明に
+                                  builder: (BuildContext context) {
+                                    return Dialog(
+                                      backgroundColor: Colors.blue,
+                                      shape: BeveledRectangleBorder(
+                                        // 角を四角に
+                                        borderRadius: BorderRadius.zero,
+                                        side: const BorderSide(
+                                            // constを追加
                                             color: Colors.white,
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                            width: 2), // 白い縁取り
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(
+                                            20), // constを追加
+                                        child: const Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start, // 左寄せ
+                                          children: [
+                                            Text(
+                                              '<ルール>',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            SizedBox(height: 15),
+                                            Text(
+                                              "論破する\n20秒以上アプリを離れると負けになります。",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            SizedBox(height: 15),
+                                            Text(
+                                              '<判定基準>',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            SizedBox(height: 15),
+                                            Text(
+                                              '見る人がどっちに納得するかAIで判定',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        SizedBox(height: 15),
-                                        Text(
-                                          "論破する\n20秒以上アプリを離れると負けになります。",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        SizedBox(height: 15),
-                                        Text(
-                                          '<判定基準>',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        SizedBox(height: 15),
-                                        Text(
-                                          '見る人がどっちに納得するかAIで判定',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                      ),
+                                    );
+                                  },
                                 );
                               },
-                            );
-                          },
-                          child: Image.asset(
-                            'assets/images/rule.png',
-                            width: 70,
-                            height: 70,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        const SizedBox(
-                            height: 7), // 他のボタンとの間隔に合わせる (必要に応じて調整してください)
-                        GestureDetector(
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              barrierDismissible: true, // ダイアログ外タップで閉じるか
-                              builder: (BuildContext dialogContext) {
-                                // dialogContext を使うことで、元の context と区別する
-                                return const RankingDialog();
+                              child: Image.asset(
+                                'assets/images/rule.png',
+                                width: 70,
+                                height: 70,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            const SizedBox(
+                                height: 7), // 他のボタンとの間隔に合わせる (必要に応じて調整してください)
+                            GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: true, // ダイアログ外タップで閉じるか
+                                  builder: (BuildContext dialogContext) {
+                                    // dialogContext を使うことで、元の context と区別する
+                                    return const RankingDialog();
+                                  },
+                                );
                               },
-                            );
-                          },
-                          child: Image.asset(
-                            'assets/images/trofie.png', // ここに新しい画像のアセットパスを指定してください
-                            // 例として 'assets/images/rule.png' を再利用する場合はそのように変更
-                            width: 45,
-                            height: 45,
-                            fit: BoxFit.cover,
-                          ),
-                        )
+                              child: Image.asset(
+                                'assets/images/trofie.png', // ここに新しい画像のアセットパスを指定してください
+                                // 例として 'assets/images/rule.png' を再利用する場合はそのように変更
+                                width: 45,
+                                height: 45,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          ],
+                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
 
-              // 中央の拡張スペース
-              const Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 240,
-                      height: 240,
-                      child: CircleAvatar(
-                        backgroundColor: Colors.transparent,
-                        child: Image(
-                          image: AssetImage('assets/images/debateimage.png'),
+                  // フッター（ボタンと広告）
+                  Column(
+                    children: [
+                      // 下部のボタン
+                      Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          children: [
+                            // フレンドと対戦ボタン
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 16),
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  // 新しいカスタムダイアログを表示
+                                  showDialog(
+                                    context: context,
+                                    // ダイアログ外タップで閉じないようにする (任意)
+                                    barrierDismissible:
+                                        true, // キーボード外タップで閉じたいのでtrueのまま
+                                    builder: (BuildContext context) {
+                                      // FriendMatchDialogが必要とするプロバイダーがあればここで渡すこともできるが、
+                                      // 通常はFriendMatchDialog自身のビルドコンテキストからref経由で取得する
+                                      return const FriendMatchDialog();
+                                    },
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  enableFeedback: false,
+                                ),
+                                child: const Text(
+                                  'フレンドと対戦 / 部屋作成', // ボタンテキスト変更
+                                  style: TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // ゲーム開始ボタン
+                            SizedBox(
+                              // ContainerをSizedBoxに変更 (子にElevatedButtonしかないため)
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  ref
+                                      .read(soundServiceProvider)
+                                      .playSfx(SfxAssets.go);
+                                  vibration.vibrateShort();
+                                  ref
+                                      .read(matchingRoomProvider.notifier)
+                                      .findMatch('', '', '', '');
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  enableFeedback: false,
+                                ),
+                                child: const Text(
+                                  'ランダムマッチ', // ボタンテキストを修正 ('a' -> 'ランダムマッチ'など)
+                                  style: TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
+
+                      // --- バナー広告表示エリア ---
+                      if (bannerAd != null)
+                        Container(
+                          alignment: Alignment.center, // 広告を水平方向に中央揃え
+                          width: bannerAd.size.width.toDouble(),
+                          height: bannerAd.size.height.toDouble(),
+                          child: AdWidget(ad: bannerAd), // ロードされた広告ウィジェット
+                        )
+                      else
+                        // オプション: ロード中や失敗時にプレースホルダーを表示
+                        Container(
+                          height:
+                              AdSize.banner.height.toDouble(), // 広告の高さ分のスペースを確保
+                          color: Colors.blue, // プレースホルダーの背景色
+                        ),
+                      // --- バナー広告表示エリア 終了 ---
+                    ],
+                  ),
+                ],
               ),
 
-              // 下部のボタン (垂直に配置)
-              Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  children: [
-                    // フレンドと対戦ボタン
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // 新しいカスタムダイアログを表示
-                          showDialog(
-                            context: context,
-                            // ダイアログ外タップで閉じないようにする (任意)
-                            barrierDismissible: true, // キーボード外タップで閉じたいのでtrueのまま
-                            builder: (BuildContext context) {
-                              // FriendMatchDialogが必要とするプロバイダーがあればここで渡すこともできるが、
-                              // 通常はFriendMatchDialog自身のビルドコンテキストからref経由で取得する
-                              return const FriendMatchDialog();
-                            },
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          enableFeedback: false,
-                        ),
-                        child: const Text(
-                          'フレンドと対戦 / 部屋作成', // ボタンテキスト変更
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // ゲーム開始ボタン
-                    SizedBox(
-                      // ContainerをSizedBoxに変更 (子にElevatedButtonしかないため)
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          ref.read(soundServiceProvider).playSfx(SfxAssets.go);
-                          vibration.vibrateShort();
-                          ref
-                              .read(matchingRoomProvider.notifier)
-                              .findMatch('', '', '', '');
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          enableFeedback: false,
-                        ),
-                        child: const Text(
-                          'ランダムマッチ', // ボタンテキストを修正 ('a' -> 'ランダムマッチ'など)
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              // 前景レイヤー：画面の中央に画像を配置
+              Center(
+                child: SizedBox(
+                  width: 230,
+                  height: 230,
+                  child: Image(
+                    image: AssetImage('assets/images/debateimage.png'),
+                  ),
                 ),
               ),
-
-              // --- バナー広告表示エリア ---
-              // adがロードされている場合のみ表示
-              if (bannerAd != null)
-                Container(
-                  alignment: Alignment.center, // 広告を水平方向に中央揃え
-                  width: bannerAd.size.width.toDouble(),
-                  height: bannerAd.size.height.toDouble(),
-                  child: AdWidget(ad: bannerAd), // ロードされた広告ウィジェット
-                )
-              else
-                // オプション: ロード中や失敗時にプレースホルダーを表示
-                Container(
-                  height: AdSize.banner.height.toDouble(), // 広告の高さ分のスペースを確保
-                  color: Colors.blue, // プレースホルダーの背景色
-                ),
-              // --- バナー広告表示エリア 終了 ---
             ],
           ),
         ),
@@ -1211,7 +1220,7 @@ class FriendMatchDialog extends HookConsumerWidget {
     TextEditingController passwordController,
   ) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(10,0,10,10),
+      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1342,7 +1351,7 @@ class RankingDialog extends ConsumerWidget {
         rankingAsyncValue = ref.watch(nearbyRankingProvider);
       }
     }
- // 現在のユーザーIDを取得
+    // 現在のユーザーIDを取得
 
     return AlertDialog(
       backgroundColor: dialogBackground,

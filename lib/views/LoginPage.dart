@@ -125,8 +125,8 @@ class LoginPage extends HookConsumerWidget {
       backgroundColor: Colors.blue,
       body: Center(
         child: SizedBox(
-          width: 200,
-          height: 200,
+          width: 230,
+          height: 230,
           child: Image(
             image: AssetImage('assets/images/debateimage.png'),
           ),

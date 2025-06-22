@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
@@ -201,6 +202,11 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
             ref.read(goProvider.notifier).state = true;
           }
         });
+
+    if (state.player2Id != null) {
+      log('対戦相手もういる');
+      ref.read(goProvider.notifier).state = true;
+    }
   }
 
   Future<void> cancelMatching(String roomId) async {
@@ -215,16 +221,23 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     }
   }
 
-  Future<void> updateChoice(String roomId, String player, bool choice) async {
+  Future<void> updateChoice(
+      String roomId, String player, bool choice, int maxRetries) async {
     final which =
         player == state.player1Id ? 'player1_choice' : 'player2_choice';
-    try {
-      await supabase.from('rooms').update({
-        which: choice,
-      }).eq('id', roomId);
-    } catch (e) {
-      print('チョイスの接続不良です');
-    }
+    for (int i = 0; i < maxRetries; i++) {
+      try {
+        await supabase.from('rooms').update({
+          which: choice,
+        }).eq('id', roomId);
+        return;
+      } catch (e) {
+        if (i < maxRetries - 1) {
+          // 最後の試行でなければ、少し待ってからリトライ
+          await Future.delayed(const Duration(seconds: 1));
+        }
+      }
+    } // すべての試行が失敗した場合
   }
 
   Future<void> suggestfinish(String roomId, String player) async {
@@ -267,14 +280,18 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
 
   Future<void> win(MatchingRoom room, String player) async {
     final which = player == state.player1Id ? 'A' : 'B';
-
-    if (room.result == null) {
-      try {
-        await supabase.from('rooms').update({
-          'result': '$which オフラインになりました',
-        }).eq('id', room.roomId!);
-      } catch (e) {
-        print('error');
+    for (int i = 0; i < 3; i++) {
+      if (room.result == null) {
+        try {
+          await supabase.from('rooms').update({
+            'result': '$which オフラインになりました',
+          }).eq('id', room.roomId!);
+          return;
+        } catch (e) {
+          if (i < 2) {
+            await Future.delayed(const Duration(seconds: 1));
+          }
+        }
       }
     }
   }

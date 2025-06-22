@@ -55,27 +55,26 @@ class ChosePage extends HookConsumerWidget {
       final remainingSeconds = seconds % 60;
       return '${minutes.toString()}:${remainingSeconds.toString().padLeft(2, '0')}';
     }
-    
 
-    void resetTimer() async {
-      
-      timer?.cancel();
-      DateTime deadline;
-      DateTime? serverTime;
-
-      while (serverTime == null) {
-
+    Future<DateTime> getServerTimeWithRetry() async {
+      while (true) {
         try {
-          print('サーバー時刻の取得を試みます...');
-          serverTime = await getServerTime();
+          print('サーバー時刻の取得を試みます...-------------');
+          final now = await getServerTime();
           print('サーバー時刻の取得に成功しました。');
+          return now; // 成功したら時刻を返して関数を抜ける
         } catch (e) {
           print('サーバー時刻の取得に失敗しました: $e。3秒後に再試行します。');
-          // 失敗したら3秒待ってから再試行
           await Future.delayed(const Duration(seconds: 3));
         }
       }
+    }
 
+    void resetTimer() async {
+      timer?.cancel();
+      DateTime deadline;
+
+      final DateTime serverTime = await getServerTimeWithRetry();
 
       final clientTime = DateTime.now();
       final timeOffset = serverTime.difference(clientTime);
@@ -83,25 +82,35 @@ class ChosePage extends HookConsumerWidget {
       selectedChoice.value = null;
       deadline = room.updatedAt!.add(const Duration(seconds: 8));
       print('また始まってる');
+      bool hasChoiceBeenUpdated = false;
 
       timer = Timer.periodic(Duration(seconds: 1), (timer) async {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
-        if (diff < 0) {
-          timer.cancel();
-          isTimerActive.value = false;
-          if (selectedChoice.value == null) {
-            print(selectedChoice.value);
-            choice.value = Random().nextBool();
-            await roomnotifier.updateChoice(room.roomId!, user!, choice.value!);
-          } else {
-            await roomnotifier.updateChoice(
-                room.roomId!, user!, selectedChoice.value!);
-          }
-        }else if(diff <-5){
-          router.go('/home');
-        }else {
+        if (diff >= 0) {
           secondsLeft.value = diff;
+        }
+
+        if (diff < 0) {
+          isTimerActive.value = false;
+          
+          if (!hasChoiceBeenUpdated) {
+            
+          hasChoiceBeenUpdated = true;
+            if (selectedChoice.value == null) {
+              print(selectedChoice.value);
+              choice.value = Random().nextBool();
+              await roomnotifier.updateChoice(
+                  room.roomId!, user!, choice.value!, 3);
+            } else {
+              await roomnotifier.updateChoice(
+                  room.roomId!, user!, selectedChoice.value!, 3);
+            }
+          }
+        }
+        if (diff < -9) {
+          timer.cancel();
+          router.go('/home');
         }
       });
     }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:debate_project/adsence/ad_mbanner_provider.dart';
 import 'package:debate_project/adsence/ad_provider.dart';
 import 'package:debate_project/modes/chat.dart';
@@ -22,6 +23,12 @@ class GamePage extends HookConsumerWidget {
     final countdown = useState<int?>(null);
     final finish = useState(false);
     final textControler = useTextEditingController();
+    // --- ▼ここから追加▼ ---
+    // 点滅アニメーションのためのAnimationController
+    final animationController = useAnimationController(
+      duration: const Duration(milliseconds: 800), // 点滅の速度
+    );
+    // --- ▲ここまで追加▲ ---
     final scrollController = useScrollController();
     final room = ref.watch(matchingRoomProvider);
     final chats = ref.watch(chatProvider);
@@ -46,50 +53,84 @@ class GamePage extends HookConsumerWidget {
       return DateTime.parse(response);
     }
 
-    Future<void> countTime() async {
-      deadline = room.updatedAt!.add(const Duration(seconds: 182));
-      DateTime? serverTime;
-
-      while (serverTime == null) {
+    Future<DateTime> getServerTimeWithRetry() async {
+      while (true) {
         try {
-          print('サーバー時刻の取得を試みます...');
-          serverTime = await getServerTime();
+          print('サーバー時刻の取得を試みます...-------------');
+          final now = await getServerTime();
           print('サーバー時刻の取得に成功しました。');
+          return now; // 成功したら時刻を返して関数を抜ける
         } catch (e) {
           print('サーバー時刻の取得に失敗しました: $e。3秒後に再試行します。');
-          // 失敗したら3秒待ってから再試行
-          await Future.delayed(const Duration(seconds: 1));
+          await Future.delayed(const Duration(seconds: 3));
         }
       }
+    }
+
+    Future<void> countTime() async {
+      deadline = room.updatedAt!.add(const Duration(seconds: 182));
+      
+      
+      final DateTime serverTime = await getServerTimeWithRetry();
 
       final clientTime = DateTime.now();
       final timeOffset = serverTime.difference(clientTime);
-
+      bool gemini = false;
+      bool win = false;
       timer = Timer.periodic(Duration(seconds: 1), (timer) async {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
-        if (diff < 150) {
-          if (cantap.value == false) {            
-          cantap.value = true;
+
+        if (diff < 165) {
+          if (cantap.value == false) {
+            cantap.value = true;
           }
         }
         if (diff >= 0) {
           countdown.value = diff;
-        } else if (diff <= 0) {
+        }
+        if (diff <= 0) {
           finish.value = true;
-
-          if (room.player1Id == user) {
-            await chatwithai.gemini(room.player1Id!, room.roomId!, room.theme!,
-                room.choice1!, room.choice2!, room.player1Choice!);
+          if (!gemini) {
+            gemini = true;
+            log('gemiiniを呼び出します');
+            if (room.player1Id == user) {
+              await chatwithai.gemini(
+                  room.player1Id!,
+                  room.roomId!,
+                  room.theme!,
+                  room.choice1!,
+                  room.choice2!,
+                  room.player1Choice!);
+            }
+            
           }
-        } else if (diff < -15) {
+        }
+        if (diff < -10) {
+          if (!win) {
+            win = true;
+            roomnotifier.win(room, user!);
+          }
+          
+        }
+        if (diff < -15) {
           timer.cancel();
-          roomnotifier.win(room, user!);
-        } else if (diff < -20) {
           router.go('/home');
         }
       });
     }
+
+    // --- ▼ここから追加▼ ---
+    // finish.valueの状態を監視し、アニメーションを制御するuseEffect
+    useEffect(() {
+      if (finish.value) {
+        animationController.repeat(reverse: true); // trueになったらアニメーション開始
+      } else {
+        animationController.stop(); // falseになったら停止
+      }
+      return null;
+    }, [finish.value]);
+    // --- ▲ここまで追加▲ ---
 
     useEffect(() {
       // ゲーム終了時 (room.result != null) の広告表示ロジック
@@ -409,6 +450,29 @@ class GamePage extends HookConsumerWidget {
               ],
             ),
           ),
+          // --- ▼ここから追加▼ ---
+          // finish.valueがtrueの場合にオーバーレイを表示
+          if (finish.value)
+            Positioned.fill(
+              // 背景を薄白くし、下のウィジェットへのタップ操作をブロックする
+              child: Container(
+                color: Colors.white.withOpacity(0.4),
+                child: Center(
+                  // FadeTransitionを使って画像を点滅させる
+                  child: FadeTransition(
+                    opacity: animationController,
+                    child: Image.asset(
+                      // TODO: こちらにお持ちの画像ファイルのパスを記入してください
+                      // 例: 'assets/images/loading.png'
+                      'assets/images/robot.png',
+                      width: 140,
+                      height: 140,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          // --- ▲ここまで追加▲ ---
         ],
       ),
     );
@@ -542,45 +606,6 @@ class Dialog extends ConsumerWidget {
             )
           ],
         ),
-      ),
-    );
-  }
-}
-
-class AnimatedDotsWidget extends StatefulWidget {
-  @override
-  _AnimatedDotsWidgetState createState() => _AnimatedDotsWidgetState();
-}
-
-class _AnimatedDotsWidgetState extends State<AnimatedDotsWidget> {
-  int _dotsCount = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
-      setState(() {
-        _dotsCount = (_dotsCount + 1) % 4; // 0,1,2,3 の循環
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      '.' * _dotsCount,
-      style: const TextStyle(
-        color: Colors.black87,
-        fontSize: 40,
-        fontWeight: FontWeight.bold,
-        decoration: TextDecoration.none,
       ),
     );
   }

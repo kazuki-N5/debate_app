@@ -5,6 +5,7 @@ import 'package:debate_project/modes/userranking_model.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
+import 'package:debate_project/provider/button_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/sfx_provider.dart';
@@ -28,6 +29,7 @@ class HomePage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isMatching = ref.watch(isMatchingProvider);
     final user = ref.watch(userProvider);
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
     final vibration = ref.read(vibrationServiceProvider);
@@ -877,17 +879,24 @@ class HomePage extends HookConsumerWidget {
                               // ContainerをSizedBoxに変更 (子にElevatedButtonしかないため)
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: () async {
-                                  ref
-                                      .read(soundServiceProvider)
-                                      .playSfx(SfxAssets.go);
-                                  vibration.vibrateShort();
-                                  ref
-                                      .read(matchingRoomProvider.notifier)
-                                      .findMatch('', '', '', '');
-                                },
+                                onPressed: isMatching
+                                    ? null
+                                    : () async {
+                                        ref
+                                            .read(isMatchingProvider.notifier)
+                                            .state = true;
+                                        ref
+                                            .read(soundServiceProvider)
+                                            .playSfx(SfxAssets.go);
+                                        vibration.vibrateShort();
+                                        // findMatchの呼び出しは変更なし
+                                        ref
+                                            .read(matchingRoomProvider.notifier)
+                                            .findMatch('', '', '', '');
+                                      },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
+                                  disabledBackgroundColor: Colors.white,
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(
@@ -1057,7 +1066,7 @@ class FriendMatchDialog extends HookConsumerWidget {
             border: Border.all(color: Colors.white, width: 3),
           ),
           child: SizedBox(
-            height: 350, // 高さは必要に応じて調整
+            height: 380, // 高さは必要に応じて調整
             width: MediaQuery.of(context).size.width * 0.9,
             child: Column(
               children: [
@@ -1172,7 +1181,7 @@ class FriendMatchDialog extends HookConsumerWidget {
 
   // --- ページ1 (合言葉で参加) のUI ---
   Widget _buildSecretWordPage(TextEditingController controller) {
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 20.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1213,13 +1222,14 @@ class FriendMatchDialog extends HookConsumerWidget {
   }
 
 // --- ページ2 (部屋作成) のUI ---
+  // [修正点] SingleChildScrollView を削除し、Paddingでレイアウトを維持します
   Widget _buildThemePage(
     TextEditingController themeController,
     TextEditingController choice1Controller,
     TextEditingController choice2Controller,
     TextEditingController passwordController,
   ) {
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1303,14 +1313,6 @@ class FriendMatchDialog extends HookConsumerWidget {
     );
   }
 }
-
-// import 'package:debate_project/main.dart'; // 既に user_ranking.dart でインポート済み
-// import 'package:hooks_riverpod/hooks_riverpod.dart'; // 既に user_ranking.dart でインポート済み
-// import 'user_ranking.dart'; // UserRankingクラスとProviderをインポート
-
-// import 'package:debate_project/main.dart'; // supabase は user_ranking.dart から参照
-// import 'package:hooks_riverpod/hooks_riverpod.dart';
-// import 'user_ranking.dart'; // UserRankingクラスとProviderをインポート
 
 class RankingDialog extends ConsumerWidget {
   const RankingDialog({Key? key}) : super(key: key);

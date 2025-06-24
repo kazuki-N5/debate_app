@@ -1,4 +1,5 @@
 import 'package:debate_project/provider/matching_provider.dart'; // 適切なパスに修正してください
+import 'package:debate_project/router/router.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -131,12 +132,8 @@ class _MatchingPageState extends ConsumerState<MatchingPage> with WidgetsBinding
                         if (room.roomId != null) {
                            log('User pressed Cancel button for roomId: ${room.roomId}');
                           roomnotifier.cancelMatching(room.roomId!);
-                          // キャンセルしたら通常は前の画面に戻るなどします
-                          // context.pop();
                         } else {
-                           log('Cancel button pressed but roomId is null.');
-                           // roomIdがない場合は、マッチング開始処理自体に失敗した可能性
-                           // このボタンは非表示にするか、処理を変える方がUXが良いかもしれません。
+                          router.go('/home');
                         }
                       },
                       style: ElevatedButton.styleFrom(

@@ -5,14 +5,14 @@ import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-final chatProvider = StateNotifierProvider<ChatNotifier, List<Chat>>((ref) {
+final chatProvider = StateNotifierProvider.autoDispose<ChatNotifier, List<Chat>>((ref) {
   return ChatNotifier(ref);
 });
 
 class ChatNotifier extends StateNotifier<List<Chat>> {
   ChatNotifier(this._ref) : super([]);
   final Ref _ref;
-    SupabaseClient get supabase => _ref.read(supabaseProvider);
+  SupabaseClient get supabase => _ref.read(supabaseProvider);
   StreamSubscription? _messagesSubscription;
 
   Future<void> sendMesage(String roomId, String content) async {

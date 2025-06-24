@@ -27,7 +27,7 @@ class OtherUserNotifier extends StateNotifier<Users> {
     }
   }
 
-  Future<void> fetchOtherUserWithRetry(String id, {int maxRetries = 10}) async {
+  Future<void> fetchOtherUserWithRetry(String id, {int maxRetries = 3}) async {
     int retryCount = 0;
     try {
       while (retryCount < maxRetries) {

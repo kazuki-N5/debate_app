@@ -4,6 +4,7 @@ import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
+import 'package:debate_project/provider/setting_provider.dart';
 import 'package:debate_project/provider/user.dart'; // あなたのプロジェクトに合わせてください
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart'; // flutter_hooksをインポート
@@ -36,7 +37,7 @@ class LoginPage extends HookConsumerWidget {
 
     Future<void> attemptInit() async {
       ref.read(bannerAdProvider.notifier).loadAd();
-
+      await ref.read(settingsProvider.notifier).loadSettings();
       final usernotifier = ref.read(userProvider.notifier);
       try {
         final appstate =

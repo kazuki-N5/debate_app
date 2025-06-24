@@ -5,11 +5,14 @@ import 'package:debate_project/adsence/ad_provider.dart'; // adNotifierProvider 
 import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
+import 'package:debate_project/provider/button_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
+import 'package:debate_project/provider/sfx_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/user.dart';
+import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -19,9 +22,12 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 class FinishPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final vibration = ref.read(vibrationServiceProvider);
+    final isMatching = ref.watch(isMatchingProvider);
     final ischange = useState<bool>(true);
     final save = useState<String>('');
-    final room = ref.read(matchingRoomProvider);
+    final roomState = useState(ref.read(matchingRoomProvider));
+    final room = roomState.value;
     final myuser = ref.watch(userProvider);
     final otheruser = ref.watch(otherUserProvider);
     final user = ref.read(currentUserIdProvider);
@@ -31,6 +37,23 @@ class FinishPage extends HookConsumerWidget {
     final BannerAd? mediumRectangleAd = ref.watch(mediumRectangleAdProvider);
     // isAdBlockingInteraction の状態を監視
     final isAdBlockingInteraction = ref.watch(adNotifierProvider);
+     if (room.roomId == null || room.result == null) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                        const Text('結果の読み込みに失敗しました。'),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                            onPressed: () => router.go('/home'),
+                            child: const Text('ホームに戻る'),
+                        ),
+                    ],
+                ),
+            ),
+        );
+    }
 
     void _showErrorDialog(BuildContext context) {
       const Color dialogBackgroundColor = Color(0xFF42A5F5);
@@ -118,10 +141,7 @@ class FinishPage extends HookConsumerWidget {
       // メッセージストリームの購読を終了
       chatsnotifier.unsubscribeFromMessages();
 
-      return () {
-        // Widgetが破棄されるときに再度部屋の情報をクリア
-        roomnotifier.delete();
-      };
+      return () {};
     }, const []);
 
     String getResultText(MatchingRoom room, String userId) {
@@ -227,66 +247,71 @@ class FinishPage extends HookConsumerWidget {
                 ),
               ],
             ),
+            // メインのColumn構造を変更
             child: Column(
               children: [
-                // --- START: SCROLLABLE CONTENT AREA ---
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
+                // --- START: FIXED TOP AREA (スクロールしない上部エリア) ---
+                const SizedBox(height: 24),
+                // Header with centered title
+                const Text(
+                  '結果発表',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: SizedBox(
+                    width: 200, // Stackに十分な幅を確保
+                    child: Stack(
+                      alignment: Alignment.center,
                       children: [
-                        const SizedBox(height: 24),
-                        // Header with centered title
-                        const Text(
-                          '結果発表',
+                        // 勝利/敗北を中央に配置
+                        Text(
+                          result,
                           style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 18,
+                            fontSize: 40,
                             fontWeight: FontWeight.bold,
+                            color: result == ('勝利')
+                                ? Colors.red
+                                : Colors.grey[700],
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 16),
-                        Center(
-                          child: SizedBox(
-                            width: 200, // Stackに十分な幅を確保
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // 勝利/敗北を中央に配置
-                                Text(
-                                  result,
-                                  style: TextStyle(
-                                    fontSize: 40,
-                                    fontWeight: FontWeight.bold,
-                                    color: result == ('勝利')
-                                        ? Colors.red
-                                        : Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                // 数字を右側に配置
-                                if (room.password == null)
-                                  Positioned(
-                                    right: 20,
-                                    top: 25,
-                                    child: Text(
-                                      displayPoint(
-                                          room, myuser, otheruser, user),
-                                      style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: result == ('勝利')
-                                            ? Colors.red
-                                            : Colors.grey[700],
-                                      ),
-                                    ),
-                                  ),
-                              ],
+                        // 数字を右側に配置
+                        if (room.password == null)
+                          Positioned(
+                            right: 20,
+                            top: 25,
+                            child: Text(
+                              displayPoint(room, myuser, otheruser, user),
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: result == ('勝利')
+                                    ? Colors.red
+                                    : Colors.grey[700],
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // --- END: FIXED TOP AREA ---
+
+                // --- START: SCROLLABLE CONTENT AREA (スクロールする中央エリア) ---
+                Expanded(
+                  child: SingleChildScrollView(
+                    // 左右のパディングをこちらに移動
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      children: [
+                        // 勝敗の理由
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
@@ -306,7 +331,6 @@ class FinishPage extends HookConsumerWidget {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              // Text can now grow as needed inside the SingleChildScrollView
                               Text(
                                 formatResult(room, myuser, otheruser),
                                 style: const TextStyle(
@@ -342,7 +366,7 @@ class FinishPage extends HookConsumerWidget {
                 ),
                 // --- END: SCROLLABLE CONTENT AREA ---
 
-                // --- START: FIXED BUTTONS AREA ---
+                // --- START: FIXED BUTTONS AREA (スクロールしない下部エリア) ---
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                   child: Column(
@@ -351,11 +375,23 @@ class FinishPage extends HookConsumerWidget {
                       IgnorePointer(
                         ignoring: isAdBlockingInteraction,
                         child: ElevatedButton(
-                          onPressed: () async {
-                            roomnotifier.findMatch('', '', '', '');
-                          },
+                          onPressed: isMatching
+                              ? null
+                              : () async {
+                                  ref.read(isMatchingProvider.notifier).state =
+                                      true;
+                                  ref
+                                      .read(soundServiceProvider)
+                                      .playSfx(SfxAssets.go);
+                                  vibration.vibrateShort();
+                                  // findMatchの呼び出しは変更なし
+                                  ref
+                                      .read(matchingRoomProvider.notifier)
+                                      .findMatch('', '', '', '');
+                                },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
+                            disabledBackgroundColor: Colors.blue,
                             minimumSize: const Size(double.infinity, 50),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),

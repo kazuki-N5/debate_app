@@ -21,11 +21,11 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
 
   // コンストラクタ: 初期状態は変更されたSettingsModelに合わせる
   SettingsNotifier() : super(const SettingsModel()) {
-    _loadSettings();
+    loadSettings();
   }
 
   // 設定を非同期で読み込む (サウンド関連を削除)
-  Future<void> _loadSettings() async {
+  Future<void> loadSettings() async {
     try {
       _prefs = await SharedPreferences.getInstance();
 

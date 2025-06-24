@@ -24,6 +24,7 @@ class ChosePage extends HookConsumerWidget {
     final showerror = useState(false);
     final isfirst = useState(false);
     final secondsLeft = useState<int?>(null);
+    final timerRef = useRef<Timer?>(null);
 
     useEffect(() {
       //roomnotifier.pushonline(room, user!);
@@ -42,7 +43,6 @@ class ChosePage extends HookConsumerWidget {
 // タイマー状態
 
     final isTimerActive = useState<bool>(true);
-    Timer? timer;
     final choice = useState<bool?>(null);
 
     Future<DateTime> getServerTime() async {
@@ -71,7 +71,7 @@ class ChosePage extends HookConsumerWidget {
     }
 
     void resetTimer() async {
-      timer?.cancel();
+      timerRef.value?.cancel();
       DateTime deadline;
 
       final DateTime serverTime = await getServerTimeWithRetry();
@@ -83,20 +83,19 @@ class ChosePage extends HookConsumerWidget {
       deadline = room.updatedAt!.add(const Duration(seconds: 8));
       print('また始まってる');
       bool hasChoiceBeenUpdated = false;
-
-      timer = Timer.periodic(Duration(seconds: 1), (timer) async {
+       timerRef.value = Timer.periodic(Duration(seconds: 1), (timer) async {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
+        print(diff);
         if (diff >= 0) {
           secondsLeft.value = diff;
         }
 
         if (diff < 0) {
           isTimerActive.value = false;
-          
+
           if (!hasChoiceBeenUpdated) {
-            
-          hasChoiceBeenUpdated = true;
+            hasChoiceBeenUpdated = true;
             if (selectedChoice.value == null) {
               print(selectedChoice.value);
               choice.value = Random().nextBool();
@@ -110,6 +109,7 @@ class ChosePage extends HookConsumerWidget {
         }
         if (diff < -9) {
           timer.cancel();
+           timerRef.value = null;
           router.go('/home');
         }
       });
@@ -122,15 +122,17 @@ class ChosePage extends HookConsumerWidget {
 
     useEffect(() {
       return () {
-        timer?.cancel();
+        timerRef.value?.cancel();
       };
     }, []);
 
     useEffect(() {
       if (room.player1Choice != null && room.player2Choice != null) {
         if (room.player1Choice != room.player2Choice) {
+
           print(room);
           next.value = true;
+          timerRef.value?.cancel();
         }
       }
       return null;
@@ -139,7 +141,7 @@ class ChosePage extends HookConsumerWidget {
     useEffect(() {
       if (room.player1Choice != null && room.player2Choice != null) {
       } else {
-        print('こんにちわ');
+        
         resetTimer();
         if (isfirst.value == false) {
           isfirst.value = true;

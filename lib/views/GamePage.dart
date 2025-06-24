@@ -537,13 +537,12 @@ class Dialog extends ConsumerWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15.0),
       ),
+      contentPadding: EdgeInsets.zero,
       content: Container(
-        // childをcontentに変更
-        height: 200,
         width: 300,
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(30, 35, 30, 20),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             ElevatedButton(
               style: ElevatedButton.styleFrom(

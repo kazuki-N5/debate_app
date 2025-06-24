@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
+import 'package:debate_project/provider/button_provider.dart';
 import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -86,6 +87,13 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
       if (status == RealtimeSubscribeStatus.subscribed) {
         print('Successfully subscribed to presence channel: $channelName');
         await _presenceChannel!.track({'user_id': myUserId});
+        final presence = await _presenceChannel!.presenceState();
+        final bool userExists = presence.any(
+          (presenceState) => presenceState.presences.any(
+            (p) => p.payload['user_id'] == otherUserId,
+          ),
+        );
+        log('$userExists');
       } else {
         print(
             'Failed to subscribe to presence channel: $status, Error: $error');
@@ -124,20 +132,25 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     }
 
     state = MatchingRoom();
+    log('${state}');
     final appstate = await ref.read(appStateProvider.notifier).loadVersion();
     if (appstate == AppStatus.error) {
       print('エラーが発生しました');
+      ref.read(isMatchingProvider.notifier).state = false;
       return;
     } else if (appstate == AppStatus.forceUpdate) {
       ref.read(forceboolProvider.notifier).state = true;
+      ref.read(isMatchingProvider.notifier).state = false;
       return;
     } else if (appstate == AppStatus.maintenance) {
       print('メンテナンス中');
       ref.read(maintenanceboolProvider.notifier).state = true;
+      ref.read(isMatchingProvider.notifier).state = false;
       return;
     } else if (appstate == AppStatus.optionalUpdate) {
     } else if (appstate == AppStatus.normal) {
     } else {
+      ref.read(isMatchingProvider.notifier).state = false;
       return;
     }
 
@@ -155,44 +168,42 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
       });
 
       if (result['success']) {
-        router.go('/wait');
         final roomData = result['room'];
         final roomId = roomData['id'];
 
         state = MatchingRoom.fromMap(roomData);
 
-        if (result['action'] == 'joined') {
-          // 既存の部屋に参加した場合
-          print('部屋に参加しました');
-        } else {
-          // 新しい部屋を作成した場合
-          print('新しい部屋を作成しました');
-        }
+        router.go('/wait');
 
         await waitForMatch(roomId);
       } else {
         print('マッチングエラー: ${result['error']}');
+        ref.read(isMatchingProvider.notifier).state = false;
       }
     } catch (e) {
       print('インターネットに接続しましょう');
+      ref.read(isMatchingProvider.notifier).state = false;
       print(e);
     }
   }
 
   Future<void> waitForMatch(String roomId) async {
+    ref.read(isMatchingProvider.notifier).state = false;
     final userId = ref.read(currentUserIdProvider);
-    print('待機中');
-    print('5');
+    log('待機中');
     ref.invalidate(matchRecordsProvider);
 
-    _subscription = supabase
+    _subscription = await supabase
         .from('rooms')
         .stream(primaryKey: ['id'])
         .eq('id', roomId)
         .listen((List<Map<String, dynamic>> data) async {
           state = MatchingRoom.fromMap(data[0]);
+          log('${data.toString()}');
+          log('${state}');
 
           if (data[0]['player2_id'] != null && !hasNavigatedToChose) {
+            log('対戦相手発見');
             hasNavigatedToChose = true;
             final otherUserId =
                 state.player1Id == userId ? state.player2Id : state.player1Id;

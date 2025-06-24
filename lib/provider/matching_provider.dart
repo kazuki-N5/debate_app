@@ -214,9 +214,34 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
           }
         });
 
-    if (state.player2Id != null) {
-      log('対戦相手もういる');
-      ref.read(goProvider.notifier).state = true;
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (state.player2Id == null) {
+      try {
+        log('Performing initial fetch for room: $roomId');
+        final initialData = await supabase
+            .from('rooms')
+            .select()
+            .eq('id', roomId)
+            .single(); // single()は結果が1行でないとエラーを投げるので堅牢
+
+        log('Initial fetch data: ${initialData.toString()}');
+        // すでにplayer2がいる場合（レースコンディションでstreamが見逃したケース）
+        if (initialData['player2_id'] != null) {
+          hasNavigatedToChose = true;
+          final otherUserId =
+                state.player1Id == userId ? state.player2Id : state.player1Id;
+            await ref
+                .read(otherUserProvider.notifier)
+                .fetchOtherUserWithRetry(otherUserId!);
+            ref.read(goProvider.notifier).state = true;
+        }
+      } catch (e) {
+        log('Initial fetch failed: $e');
+        // フェッチに失敗した場合のエラーハンドリング
+        // (例: 待機中に相手がルームを削除した、ネットワークエラーなど)
+        ref.read(isMatchingProvider.notifier).state = false;
+      }
     }
   }
 

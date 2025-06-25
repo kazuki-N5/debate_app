@@ -80,7 +80,7 @@ class ChosePage extends HookConsumerWidget {
       final timeOffset = serverTime.difference(clientTime);
       isTimerActive.value = true;
       selectedChoice.value = null;
-      deadline = room.updatedAt!.add(const Duration(seconds: 8));
+      deadline = room.updatedAt!.add(const Duration(seconds: 10));
       print('また始まってる');
       bool hasChoiceBeenUpdated = false;
        timerRef.value = Timer.periodic(Duration(seconds: 1), (timer) async {

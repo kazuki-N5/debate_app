@@ -181,7 +181,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
         ref.read(isMatchingProvider.notifier).state = false;
       }
     } catch (e) {
-      print('インターネットに接続しましょう');
+      log('インターネットに接続しましょう');
       ref.read(isMatchingProvider.notifier).state = false;
       print(e);
     }
@@ -190,8 +190,8 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
   Future<void> waitForMatch(String roomId) async {
     ref.read(isMatchingProvider.notifier).state = false;
     final userId = ref.read(currentUserIdProvider);
-    log('待機中');
     ref.invalidate(matchRecordsProvider);
+    log('サブスク前のgoprovider ${ref.read(goProvider)}');
 
     _subscription = await supabase
         .from('rooms')
@@ -199,7 +199,6 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
         .eq('id', roomId)
         .listen((List<Map<String, dynamic>> data) async {
           state = MatchingRoom.fromMap(data[0]);
-          log('${data.toString()}');
           log('${state}');
 
           if (data[0]['player2_id'] != null && !hasNavigatedToChose) {
@@ -212,35 +211,43 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
                 .fetchOtherUserWithRetry(otherUserId!);
             ref.read(goProvider.notifier).state = true;
           }
+
+          (error) {
+            // エラーが発生した場合にこのブロックが呼ばれる
+            log('🚨 [ERROR] サブスクリプションでエラーが発生しました: $error');
+          };
+
         });
 
-    await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(const Duration(seconds: 4));
+    log('${state.player2Id}');
+    log('一旦サブスク後のgoprovider ${ref.read(goProvider)}');
 
-    if (state.player2Id == null) {
+    if (!hasNavigatedToChose) {
       try {
         log('Performing initial fetch for room: $roomId');
+        log('フェッチ前で２秒後goprovider ${ref.read(goProvider)}');
         final initialData = await supabase
             .from('rooms')
             .select()
             .eq('id', roomId)
             .single(); // single()は結果が1行でないとエラーを投げるので堅牢
+         state = MatchingRoom.fromMap(initialData);
+        log('${initialData['player2_id']}');
 
-        log('Initial fetch data: ${initialData.toString()}');
         // すでにplayer2がいる場合（レースコンディションでstreamが見逃したケース）
         if (initialData['player2_id'] != null) {
           hasNavigatedToChose = true;
           final otherUserId =
-                state.player1Id == userId ? state.player2Id : state.player1Id;
-            await ref
-                .read(otherUserProvider.notifier)
-                .fetchOtherUserWithRetry(otherUserId!);
-            ref.read(goProvider.notifier).state = true;
+              state.player1Id == userId ? state.player2Id : state.player1Id;
+          await ref
+              .read(otherUserProvider.notifier)
+              .fetchOtherUserWithRetry(otherUserId!);
+          ref.read(goProvider.notifier).state = true;
+          log('フェッチ後goprovider ${ref.read(goProvider)}');
         }
       } catch (e) {
-        log('Initial fetch failed: $e');
-        // フェッチに失敗した場合のエラーハンドリング
-        // (例: 待機中に相手がルームを削除した、ネットワークエラーなど)
-        ref.read(isMatchingProvider.notifier).state = false;
+        log('初期フェッチ中にエラーが発生: $e');
       }
     }
   }

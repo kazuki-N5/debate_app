@@ -596,11 +596,11 @@ class HomePage extends HookConsumerWidget {
       resizeToAvoidBottomInset: false,
       body: Container(
         color: const Color(0xFF2196F3),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // 背景レイヤー：ヘッダーとフッターを配置
-              Column(
+        child: Stack(
+          children: [
+            // 背景レイヤー：ヘッダーとフッターのみをSafeAreaで囲みます
+            SafeArea(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // トップセクション (ヘッダー)
@@ -905,7 +905,7 @@ class HomePage extends HookConsumerWidget {
                                   enableFeedback: false,
                                 ),
                                 child: const Text(
-                                  'ランダムマッチ', // ボタンテキストを修正 ('a' -> 'ランダムマッチ'など)
+                                  'ランダムマッチ１', // ボタンテキストを修正 ('a' -> 'ランダムマッチ'など)
                                   style: TextStyle(
                                     color: Colors.blue,
                                     fontWeight: FontWeight.bold,
@@ -938,19 +938,19 @@ class HomePage extends HookConsumerWidget {
                   ),
                 ],
               ),
+            ),
 
-              // 前景レイヤー：画面の中央に画像を配置
-              Center(
-                child: SizedBox(
-                  width: 230,
-                  height: 230,
-                  child: Image(
-                    image: AssetImage('assets/images/debateimage.png'),
-                  ),
+            // 前景レイヤー：画面の中央に画像を配置
+            Center(
+              child: SizedBox(
+                width: 230,
+                height: 230,
+                child: Image(
+                  image: AssetImage('assets/images/debateimage.png'),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

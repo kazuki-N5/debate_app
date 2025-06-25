@@ -905,7 +905,7 @@ class HomePage extends HookConsumerWidget {
                                   enableFeedback: false,
                                 ),
                                 child: const Text(
-                                  'ランダムマッチ１', // ボタンテキストを修正 ('a' -> 'ランダムマッチ'など)
+                                  'ランダムマッチ2', // ボタンテキストを修正 ('a' -> 'ランダムマッチ'など)
                                   style: TextStyle(
                                     color: Colors.blue,
                                     fontWeight: FontWeight.bold,

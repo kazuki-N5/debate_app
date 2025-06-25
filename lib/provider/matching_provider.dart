@@ -171,7 +171,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
         final roomData = result['room'];
         final roomId = roomData['id'];
 
-        state = MatchingRoom.fromMap(roomData);
+        //state = MatchingRoom.fromMap(roomData);
 
         router.go('/wait');
 

@@ -8,6 +8,7 @@ import 'package:debate_project/provider/setting_provider.dart';
 import 'package:debate_project/provider/user.dart'; // あなたのプロジェクトに合わせてください
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart'; // flutter_hooksをインポート
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher_string.dart'; // GoRouterをインポート
@@ -44,25 +45,29 @@ class LoginPage extends HookConsumerWidget {
             await ref.read(appStateProvider.notifier).loadVersion();
         print(appstate);
         if (appstate == AppStatus.error) {
+          FlutterNativeSplash.remove();
           showErrorDialogFlag.value = true;
           return;
         } else if (appstate == AppStatus.forceUpdate) {
+          FlutterNativeSplash.remove();
           showforceupdateDialogFlag.value = true;
           return;
         } else if (appstate == AppStatus.maintenance) {
+          FlutterNativeSplash.remove();
           showMainatenanceDialogFlag.value = true;
           return;
         } else if (appstate == AppStatus.optionalUpdate) {
           ref.read(optionalboolProvider.notifier).state = true;
         } else if (appstate == AppStatus.normal) {
         } else {
+          FlutterNativeSplash.remove();
           showErrorDialogFlag.value = true;
           return;
         }
 
         await usernotifier.signinandname();
       } catch (e) {
-        print('初期化エラー: $e');
+        FlutterNativeSplash.remove();
         if (context.mounted) {
           showErrorDialogFlag.value = true;
         }

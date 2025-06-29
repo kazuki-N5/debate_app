@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+9
+version: 1.0.0+10
 
 environment:
   sdk: ^3.5.3
@@ -64,6 +64,9 @@ dependencies:
   purchases_flutter: ^8.10.1
   change_app_package_name: ^1.5.0
   flutter_dotenv: ^5.2.1
+  fluttericon: ^2.0.0
+  flutter_native_splash: ^2.4.6
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:
@@ -79,6 +82,30 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   json_serializable: ^6.8.0
   envied_generator: ^1.1.0
+
+
+
+flutter_native_splash:
+  color: '#2196F3'
+  image: 'assets/images/opendebate.png'
+  color_dark: '#2196F3'
+  image_dark: 'assets/images/opendebate.png'
+  fullscreen: true
+  
+  android_12:
+    icon_background_color: '#2196F3'
+    image: 'assets/images/opendebate.png'
+    icon_background_color_dark: '#2196F3'
+    image_dark: 'assets/images/opendebate.png'  
+    fullscreen: true
+
+flutter_launcher_icons:
+  ios: true  
+  android: true
+  image_path: "assets/images/icons/ios.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: #2196F3
+  adaptive_icon_foreground: "assets/images/icons/ios.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -99,9 +126,13 @@ flutter:
     - assets/sfx/normal.mp3
     - assets/images/stars.png
     - assets/images/trofie.png
+    - assets/images/opendebate.png
     - .env
     - shorebird.yaml
     - assets/images/robot.png
+    - assets/images/icons/android_front.png
+    - assets/images/icons/ios.png
+
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -23,9 +23,6 @@ class SettingPage extends HookConsumerWidget {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('URLを開けませんでした: $urlString')),
-      );
     }
   }
 
@@ -37,9 +34,6 @@ class SettingPage extends HookConsumerWidget {
         );
       } else {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('このデバイスではレビューを利用できません。')),
-        );
       }
     } catch (e) {
       throw Exception('レビューリクエストに失敗しました: $e');
@@ -47,9 +41,6 @@ class SettingPage extends HookConsumerWidget {
   }
 
   void _handleSubscription(BuildContext context, WidgetRef ref) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('課金機能は準備中です。購入処理を開始します...')),
-    );
     // 例: プレミアム状態をtrueにする（テスト用）
     // ref.read(settingsProvider.notifier).setPremiumStatus(true);
   }
@@ -370,9 +361,6 @@ class BugReportDialogContent extends HookConsumerWidget {
       } catch (e) {
         // エラーが発生した場合も考慮します
         if (!isMounted()) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('エラーが発生しました: $e')),
-        );
       } finally {
         // mountedチェックは useIsMounted フックで行います
         if (isMounted()) {

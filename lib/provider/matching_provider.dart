@@ -171,7 +171,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
         final roomData = result['room'];
         final roomId = roomData['id'];
 
-        //state = MatchingRoom.fromMap(roomData);
+        state = MatchingRoom.fromMap(roomData);
 
         router.go('/wait');
 
@@ -193,15 +193,16 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     ref.invalidate(matchRecordsProvider);
     log('サブスク前のgoprovider ${ref.read(goProvider)}');
 
-    _subscription = await supabase
+    try{
+      _subscription = await supabase
         .from('rooms')
         .stream(primaryKey: ['id'])
         .eq('id', roomId)
         .listen((List<Map<String, dynamic>> data) async {
           state = MatchingRoom.fromMap(data[0]);
-          log('${state}');
 
-          if (data[0]['player2_id'] != null && !hasNavigatedToChose) {
+
+          if (state.player2Id != null && !hasNavigatedToChose) {
             log('対戦相手発見');
             hasNavigatedToChose = true;
             final otherUserId =
@@ -212,14 +213,14 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
             ref.read(goProvider.notifier).state = true;
           }
 
-          (error) {
-            // エラーが発生した場合にこのブロックが呼ばれる
-            log('🚨 [ERROR] サブスクリプションでエラーが発生しました: $error');
-          };
+          
 
         });
+    } catch (e) {
+      log('サブスク中にエラーが発生: $e');
+    }
 
-    await Future.delayed(const Duration(seconds: 4));
+    await Future.delayed(const Duration(seconds: 2));
     log('${state.player2Id}');
     log('一旦サブスク後のgoprovider ${ref.read(goProvider)}');
 
@@ -227,11 +228,13 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
       try {
         log('Performing initial fetch for room: $roomId');
         log('フェッチ前で２秒後goprovider ${ref.read(goProvider)}');
-        final initialData = await supabase
-            .from('rooms')
-            .select()
-            .eq('id', roomId)
-            .single(); // single()は結果が1行でないとエラーを投げるので堅牢
+        final initialData =  await supabase.rpc(
+        'get_room_data',
+        params: {
+          'p_room_id': roomId,
+        },
+      );
+        // single()は結果が1行でないとエラーを投げるので堅牢
          state = MatchingRoom.fromMap(initialData);
         log('${initialData['player2_id']}');
 

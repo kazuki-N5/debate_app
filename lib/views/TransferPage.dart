@@ -183,7 +183,7 @@ class TransferPage extends HookConsumerWidget {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                       content:
-                                          Text('エラーが発生しました: ${e.toString()}')),
+                                          Text('エラーが発生しました')),
                                 );
                               }
                               isLoading.value = false;

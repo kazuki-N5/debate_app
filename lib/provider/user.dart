@@ -2,18 +2,19 @@ import 'dart:io';
 
 import 'package:debate_project/modes/transfer_model.dart';
 import 'package:debate_project/modes/users.dart';
+import 'package:debate_project/provider/button_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-
 
 final userProvider = StateNotifierProvider<UserNotifier, Users>((ref) {
   return UserNotifier(ref);
@@ -26,9 +27,8 @@ class UserNotifier extends StateNotifier<Users> {
   final Ref _ref;
   SupabaseClient get supabase => _ref.read(supabaseProvider);
   Future<void> signinandname() async {
-    final user =  _ref.read(currentUserIdProvider);
+    final user = _ref.read(currentUserIdProvider);
     try {
-
       if (user != null) {
         await fetchUser(user);
         if (state.status == true) {
@@ -42,12 +42,12 @@ class UserNotifier extends StateNotifier<Users> {
           }
 
           if (nameIsNullOrWhitespace) {
-            print('namaekara');
+            FlutterNativeSplash.remove();
             router.go('/name');
 
             return;
           } else {
-            print('ユーザーが存在します');
+            FlutterNativeSplash.remove();
             router.go('/home');
 
             return;
@@ -56,7 +56,7 @@ class UserNotifier extends StateNotifier<Users> {
       } else {
         print('ユーザーが存在しません');
         await supabase.auth.signInAnonymously();
-        print('ユーザーが作成されました');
+        FlutterNativeSplash.remove();
 
         router.go('/name');
       }
@@ -103,6 +103,7 @@ class UserNotifier extends StateNotifier<Users> {
       throw e;
     }
   }
+
   final picker = ImagePicker();
   final uuid = Uuid();
 
@@ -110,6 +111,7 @@ class UserNotifier extends StateNotifier<Users> {
     final currentUser = state;
     // 現在のユーザーIDがない場合は処理しない
     if (currentUser.id.isEmpty) {
+      _ref.read(isMatchingProvider.notifier).state = false;
       print('ユーザーIDがありません。アバターを更新できません。');
       return;
     }
@@ -128,6 +130,7 @@ class UserNotifier extends StateNotifier<Users> {
 
       if (pickedFile == null) {
         print('画像選択がキャンセルされました。');
+        _ref.read(isMatchingProvider.notifier).state = false;
         return;
       }
 
@@ -161,6 +164,7 @@ class UserNotifier extends StateNotifier<Users> {
 
       if (croppedFile == null) {
         print('画像クロップがキャンセルされました。');
+        _ref.read(isMatchingProvider.notifier).state = false;
         return;
       }
 
@@ -177,6 +181,7 @@ class UserNotifier extends StateNotifier<Users> {
 
       if (compressedBytes == null || compressedBytes.isEmpty) {
         print('画像圧縮に失敗しました。');
+        _ref.read(isMatchingProvider.notifier).state = false;
         throw Exception('画像の圧縮に失敗しました。');
       }
 
@@ -272,6 +277,7 @@ class UserNotifier extends StateNotifier<Users> {
       // エラーハンドリング
       // state = AsyncValue.error(e, st); // AsyncValueの場合
     } finally {
+      _ref.read(isMatchingProvider.notifier).state = false;
       // ローディング解除処理 (UI側で行うか、AsyncValueならここで state = AsyncValue.data(state) など)
     }
   }
@@ -314,13 +320,9 @@ class UserNotifier extends StateNotifier<Users> {
       print('ユーザー情報の再取得に成功しました'); // 成功ログ（オプション）
 
       // 3. 更新と再取得の両方がエラーなく完了したら、ホーム画面に遷移
-      router.go('/home');
+      //router.go('/home');
     } catch (e) {
-      // データベース更新中、または fetchUser 実行中にエラーが発生した場合
-      print('処理中にエラーが発生しました: $e'); // より汎用的なメッセージ
-      // エラー発生時の処理 (例: ユーザーへのエラーメッセージ表示)
-      // 例: ScaffoldMessenger.of(context).showSnackBar(...); // BuildContext が必要
-      // ここでは遷移は行いません
+      print('処理中にエラーが発生しました: $e');
     }
   }
 

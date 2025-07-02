@@ -67,7 +67,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
           int countdown = 20; // カウントダウンの秒数
           _offlineTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
             if (countdown > 0) {
-              print('----------${countdown}--------');
+              log('----------${countdown}--------');
               countdown--;
             } else {
               // カウントダウンが0になったのでタイマーを停止し、勝利処理を実行
@@ -87,13 +87,6 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
       if (status == RealtimeSubscribeStatus.subscribed) {
         print('Successfully subscribed to presence channel: $channelName');
         await _presenceChannel!.track({'user_id': myUserId});
-        final presence = await _presenceChannel!.presenceState();
-        final bool userExists = presence.any(
-          (presenceState) => presenceState.presences.any(
-            (p) => p.payload['user_id'] == otherUserId,
-          ),
-        );
-        log('$userExists');
       } else {
         print(
             'Failed to subscribe to presence channel: $status, Error: $error');
@@ -193,29 +186,26 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     ref.invalidate(matchRecordsProvider);
     log('サブスク前のgoprovider ${ref.read(goProvider)}');
 
-    try{
+    try {
       _subscription = await supabase
-        .from('rooms')
-        .stream(primaryKey: ['id'])
-        .eq('id', roomId)
-        .listen((List<Map<String, dynamic>> data) async {
-          state = MatchingRoom.fromMap(data[0]);
+          .from('rooms')
+          .stream(primaryKey: ['id'])
+          .eq('id', roomId)
+          .listen((List<Map<String, dynamic>> data) async {
+            state = MatchingRoom.fromMap(data[0]);
+            log('サブスク完了${state.player2Id}');
 
-
-          if (state.player2Id != null && !hasNavigatedToChose) {
-            log('対戦相手発見');
-            hasNavigatedToChose = true;
-            final otherUserId =
-                state.player1Id == userId ? state.player2Id : state.player1Id;
-            await ref
-                .read(otherUserProvider.notifier)
-                .fetchOtherUserWithRetry(otherUserId!);
-            ref.read(goProvider.notifier).state = true;
-          }
-
-          
-
-        });
+            if (state.player2Id != null && !hasNavigatedToChose) {
+              log('対戦相手発見');
+              hasNavigatedToChose = true;
+              final otherUserId =
+                  state.player1Id == userId ? state.player2Id : state.player1Id;
+              await ref
+                  .read(otherUserProvider.notifier)
+                  .fetchOtherUserWithRetry(otherUserId!);
+              ref.read(goProvider.notifier).state = true;
+            }
+          });
     } catch (e) {
       log('サブスク中にエラーが発生: $e');
     }
@@ -228,14 +218,14 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
       try {
         log('Performing initial fetch for room: $roomId');
         log('フェッチ前で２秒後goprovider ${ref.read(goProvider)}');
-        final initialData =  await supabase.rpc(
-        'get_room_data',
-        params: {
-          'p_room_id': roomId,
-        },
-      );
+        final initialData = await supabase.rpc(
+          'get_room_data',
+          params: {
+            'p_room_id': roomId,
+          },
+        );
         // single()は結果が1行でないとエラーを投げるので堅牢
-         state = MatchingRoom.fromMap(initialData);
+        state = MatchingRoom.fromMap(initialData);
         log('${initialData['player2_id']}');
 
         // すでにplayer2がいる場合（レースコンディションでstreamが見逃したケース）

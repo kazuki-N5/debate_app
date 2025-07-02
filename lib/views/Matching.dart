@@ -31,7 +31,7 @@ class _MatchingPageState extends ConsumerState<MatchingPage> with WidgetsBinding
     log('AppLifecycleState changed: $state');
 
     // アプリがバックグラウンドになったとき (タスクキルなどの可能性)
-    if (state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
       log('App paused detected. Attempting to cancel matching.');
 
       // Riverpodのreadを使用して現在の状態とnotifierを取得

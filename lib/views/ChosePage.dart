@@ -27,11 +27,6 @@ class ChosePage extends HookConsumerWidget {
     final timerRef = useRef<Timer?>(null);
 
     useEffect(() {
-      //roomnotifier.pushonline(room, user!);
-      return null;
-    }, []);
-
-    useEffect(() {
       if (room.result != null) {
         Future.microtask(() {
           router.go('/finish');
@@ -83,7 +78,7 @@ class ChosePage extends HookConsumerWidget {
       deadline = room.updatedAt!.add(const Duration(seconds: 10));
       print('また始まってる');
       bool hasChoiceBeenUpdated = false;
-       timerRef.value = Timer.periodic(Duration(seconds: 1), (timer) async {
+      timerRef.value = Timer.periodic(Duration(seconds: 1), (timer) async {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
         print(diff);
@@ -109,7 +104,7 @@ class ChosePage extends HookConsumerWidget {
         }
         if (diff < -9) {
           timer.cancel();
-           timerRef.value = null;
+          timerRef.value = null;
           router.go('/home');
         }
       });
@@ -121,6 +116,7 @@ class ChosePage extends HookConsumerWidget {
     }
 
     useEffect(() {
+      roomnotifier.setupPresenceChannel(room.roomId!);
       return () {
         timerRef.value?.cancel();
       };
@@ -129,7 +125,6 @@ class ChosePage extends HookConsumerWidget {
     useEffect(() {
       if (room.player1Choice != null && room.player2Choice != null) {
         if (room.player1Choice != room.player2Choice) {
-
           print(room);
           next.value = true;
           timerRef.value?.cancel();
@@ -141,7 +136,6 @@ class ChosePage extends HookConsumerWidget {
     useEffect(() {
       if (room.player1Choice != null && room.player2Choice != null) {
       } else {
-        
         resetTimer();
         if (isfirst.value == false) {
           isfirst.value = true;
@@ -413,7 +407,14 @@ class UserProfileCard extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.emoji_events, color: Colors.amber[600], size: 24),
+            Image.asset(
+              'assets/images/trofie.png', // ← あなたの画像のパスに置き換えてください
+              width: 24, // アイコンのサイズ（widthとheightで指定）
+              height: 24,
+              // もし画像がモノクロで、Iconsのcolorのように色を付けたい場合は、以下を追加します
+              // color: Colors.amber[600],
+              // colorBlendMode: BlendMode.srcIn, // 画像の透過部分に色を適用する場合など
+            ),
             const SizedBox(width: 6),
             Text(
               userData.trophy.toString(),

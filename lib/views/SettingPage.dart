@@ -76,10 +76,12 @@ class SettingPage extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('設定'),
+        title: const Text('設定',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        elevation: 0,
         automaticallyImplyLeading: false,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       backgroundColor: Colors.blue,
       body: Stack(

@@ -76,7 +76,8 @@ class UserNotifier extends StateNotifier<Users> {
         state = Users.fromMap(response);
         if (state.status == false) {
           print('fetchUser: ユーザーステータスがfalseです。引き継ぎ待機ページに遷移します。');
-          // WaittransferPageに遷移。SharedPreferencesの値はWaittransferPage側で読み込まれます。
+          
+            FlutterNativeSplash.remove();
           router.go('/waittransfer'); // '/waittransfer' はWaittransferPageへのパス
           return state; // 遷移後はこの関数の処理を終了
         } else {
@@ -319,8 +320,7 @@ class UserNotifier extends StateNotifier<Users> {
 
       print('ユーザー情報の再取得に成功しました'); // 成功ログ（オプション）
 
-      // 3. 更新と再取得の両方がエラーなく完了したら、ホーム画面に遷移
-      //router.go('/home');
+      router.go('/home');
     } catch (e) {
       print('処理中にエラーが発生しました: $e');
     }

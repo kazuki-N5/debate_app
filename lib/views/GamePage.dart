@@ -23,6 +23,7 @@ class GamePage extends HookConsumerWidget {
     final countdown = useState<int?>(null);
     final finish = useState(false);
     final textControler = useTextEditingController();
+    final textFieldFocusNode = useFocusNode();
     // --- ▼ここから追加▼ ---
     // 点滅アニメーションのためのAnimationController
     final animationController = useAnimationController(
@@ -39,7 +40,8 @@ class GamePage extends HookConsumerWidget {
     final cantap = useState(false);
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
 
-    Timer? timer;
+    Timer? gametimer;
+    Timer? finishtimer;
     DateTime deadline;
 
     String formatTime(int seconds) {
@@ -69,15 +71,15 @@ class GamePage extends HookConsumerWidget {
 
     Future<void> countTime() async {
       deadline = room.updatedAt!.add(const Duration(seconds: 182));
-      
-      
+
       final DateTime serverTime = await getServerTimeWithRetry();
 
       final clientTime = DateTime.now();
       final timeOffset = serverTime.difference(clientTime);
       bool gemini = false;
+      bool gemini2 = false;
       bool win = false;
-      timer = Timer.periodic(Duration(seconds: 1), (timer) async {
+      gametimer = Timer.periodic(Duration(seconds: 1), (timer) async {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
 
@@ -91,6 +93,7 @@ class GamePage extends HookConsumerWidget {
         }
         if (diff <= 0) {
           finish.value = true;
+          textFieldFocusNode.unfocus();
           if (!gemini) {
             gemini = true;
             log('gemiiniを呼び出します');
@@ -103,17 +106,32 @@ class GamePage extends HookConsumerWidget {
                   room.choice2!,
                   room.player1Choice!);
             }
-            
           }
         }
-        if (diff < -10) {
+        if (diff < -7) {
+          if (!gemini2) {
+            if (room.result == null) {
+              gemini2 = true;
+              log('gemiini2を呼び出します');
+              if (room.player2Id == user) {
+                await chatwithai.gemini(
+                    room.player1Id!,
+                    room.roomId!,
+                    room.theme!,
+                    room.choice1!,
+                    room.choice2!,
+                    room.player1Choice!);
+              }
+            }
+          }
+        }
+        if (diff < -14) {
           if (!win) {
             win = true;
             roomnotifier.win(room, user!);
           }
-          
         }
-        if (diff < -15) {
+        if (diff < -20) {
           timer.cancel();
           router.go('/home');
         }
@@ -130,7 +148,6 @@ class GamePage extends HookConsumerWidget {
       }
       return null;
     }, [finish.value]);
-    // --- ▲ここまで追加▲ ---
 
     useEffect(() {
       // ゲーム終了時 (room.result != null) の広告表示ロジック
@@ -147,20 +164,58 @@ class GamePage extends HookConsumerWidget {
 
     useEffect(() {
       if (room.player1_finish == true && room.player2_finish == true) {
-        timer?.cancel();
+        gametimer?.cancel();
         print('判定結果を出す');
+        textFieldFocusNode.unfocus();
         finish.value = true;
-        if (room.player1Id == user!) {
-          // 非同期処理は即時実行関数として実行
-          () async {
-            await chatwithai.gemini(room.player1Id!, room.roomId!, room.theme!,
-                room.choice1!, room.choice2!, room.player1Choice!);
-          }();
-        }
+
+        int fiinishcount = 0;
+        finishtimer = Timer.periodic(Duration(seconds: 1), (timer) async {
+          fiinishcount++;
+          if (fiinishcount == 0) {
+            if (room.player1Id == user!) {
+              // 非同期処理は即時実行関数として実行
+              () async {
+                await chatwithai.gemini(
+                    room.player1Id!,
+                    room.roomId!,
+                    room.theme!,
+                    room.choice1!,
+                    room.choice2!,
+                    room.player1Choice!);
+              }();
+            }
+          }
+
+          if (fiinishcount == 7) {
+            if (room.result == null) {
+              if (room.player2Id == user) {
+                await chatwithai.gemini(
+                    room.player1Id!,
+                    room.roomId!,
+                    room.theme!,
+                    room.choice1!,
+                    room.choice2!,
+                    room.player1Choice!);
+              }
+            }
+          }
+
+          if (fiinishcount == 14) {
+            roomnotifier.win(room, user!);
+          }
+
+          if (finishtimer == 20) {
+            finishtimer?.cancel();
+            router.go('/finish');
+          }
+        });
       }
 
       // クリーンアップ関数を返す
-      return () {};
+      return () {
+        finishtimer?.cancel();
+      };
     }, [room.player1_finish, room.player2_finish]);
 
     useEffect(() {
@@ -187,10 +242,9 @@ class GamePage extends HookConsumerWidget {
     useEffect(() {
       chatsnotifier.subscribeToMessages(room.roomId!);
       countTime();
-      roomnotifier.setupPresenceChannel(room.roomId!);
 
       return () {
-        timer?.cancel();
+        gametimer?.cancel();
       };
     }, []);
 
@@ -342,6 +396,7 @@ class GamePage extends HookConsumerWidget {
                       room.theme!,
                       style: const TextStyle(
                         color: Colors.black,
+                        fontWeight: FontWeight.w600,
                         fontSize: 20,
                       ),
                       textAlign: TextAlign.center,
@@ -396,6 +451,7 @@ class GamePage extends HookConsumerWidget {
                                     borderRadius: BorderRadius.circular(25),
                                   ),
                                   child: TextField(
+                                    focusNode: textFieldFocusNode,
                                     controller: textControler,
                                     style: const TextStyle(color: Colors.black),
                                     decoration: InputDecoration(
@@ -462,7 +518,7 @@ class GamePage extends HookConsumerWidget {
                   child: FadeTransition(
                     opacity: animationController,
                     child: Image.asset(
-                      // TODO: こちらにお持ちの画像ファイルのパスを記入してください
+                      // TODO: こちらにお持ちの画像ファイルのパスを
                       // 例: 'assets/images/loading.png'
                       'assets/images/robot.png',
                       width: 140,

@@ -44,11 +44,6 @@ class HistoryPage extends HookConsumerWidget {
                   child: Text('ログインしてください。',
                       style: TextStyle(color: Colors.white)));
             }
-            if (records.isEmpty) {
-              return const Center(
-                  child: Text('対戦履歴がありません。',
-                      style: TextStyle(color: Colors.white)));
-            }
             return ListView.builder(
               padding: const EdgeInsets.only(
                   left: 10.0, right: 10.0, top: 10.0, bottom: 80.0),

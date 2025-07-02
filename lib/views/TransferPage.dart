@@ -54,11 +54,12 @@ class TransferPage extends HookConsumerWidget {
             FocusScope.of(context).unfocus();
           },
           child: Scaffold(
-            backgroundColor: Colors.blue.shade700, // 少し濃いめの青
+            backgroundColor: Colors.blue, // 少し濃いめの青
             appBar: AppBar(
               title:
-                  const Text('データ引き継ぎ', style: TextStyle(color: Colors.white)),
-              backgroundColor: Colors.blue.shade700,
+                  const Text('引き継ぎ',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              backgroundColor: Colors.blue,
               elevation: 0,
               iconTheme: const IconThemeData(color: Colors.white),
               automaticallyImplyLeading: false,

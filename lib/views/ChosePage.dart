@@ -102,7 +102,7 @@ class ChosePage extends HookConsumerWidget {
             }
           }
         }
-        if (diff < -9) {
+        if (diff < -11) {
           timer.cancel();
           timerRef.value = null;
           router.go('/home');

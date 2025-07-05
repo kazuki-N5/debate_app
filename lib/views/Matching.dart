@@ -1,4 +1,4 @@
-import 'package:debate_project/provider/matching_provider.dart'; // 適切なパスに修正してください
+import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/router/router.dart';
 
 import 'package:flutter/material.dart';
@@ -13,8 +13,8 @@ class MatchingPage extends ConsumerStatefulWidget {
 }
 
 // 対応するStateクラスを作成し、WidgetsBindingObserverをmixin
-class _MatchingPageState extends ConsumerState<MatchingPage> with WidgetsBindingObserver {
-
+class _MatchingPageState extends ConsumerState<MatchingPage>
+    with WidgetsBindingObserver {
   // initStateでオブザーバーを登録
   @override
   void initState() {
@@ -31,7 +31,7 @@ class _MatchingPageState extends ConsumerState<MatchingPage> with WidgetsBinding
     log('AppLifecycleState changed: $state');
 
     // アプリがバックグラウンドになったとき (タスクキルなどの可能性)
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+    if (state == AppLifecycleState.inactive) {
       log('App paused detected. Attempting to cancel matching.');
 
       // Riverpodのreadを使用して現在の状態とnotifierを取得
@@ -42,15 +42,15 @@ class _MatchingPageState extends ConsumerState<MatchingPage> with WidgetsBinding
       // roomIdが存在する場合にキャンセル処理を実行
       // この処理は、MatchingPageが表示されている最中にアプリがバックグラウンドに行った場合に発火します。
       if (currentRoomState.roomId != null) {
-         log('Cancelling matching for roomId: ${currentRoomState.roomId} due to app pause.');
+        log('Cancelling matching for roomId: ${currentRoomState.roomId} due to app pause.');
         roomNotifier.cancelMatching(currentRoomState.roomId!);
       } else {
-         log('roomId is null on app pause. No matching to cancel.');
+        log('roomId is null on app pause. No matching to cancel.');
       }
     }
+
     // 他のライフサイクル状態 (resumed, inactive, detached) も必要なら処理を追加
   }
-
 
   // disposeでオブザーバーの登録を解除
   // このdisposeは、MatchingPageから他のページに遷移したときに呼ばれます。
@@ -72,7 +72,6 @@ class _MatchingPageState extends ConsumerState<MatchingPage> with WidgetsBinding
 
   @override
   Widget build(BuildContext context) {
-    // ConsumerStatefulWidgetのbuildメソッドはwidgetではなく、thisからrefを取得
     final go = ref.watch(goProvider);
     // ボタン押下などで使うnotifierはreadで十分
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
@@ -85,10 +84,10 @@ class _MatchingPageState extends ConsumerState<MatchingPage> with WidgetsBinding
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // `mounted`をチェックして、ウィジェットがまだツリーにあるか確認するのが安全
         if (mounted) {
-           log('Navigating to /chose because go is true.');
-           context.go('/chose');
+          log('Navigating to /chose because go is true.');
+          context.go('/chose');
         } else {
-           log('Navigation skipped because widget is not mounted.');
+          log('Navigation skipped because widget is not mounted.');
         }
       });
     }
@@ -130,7 +129,7 @@ class _MatchingPageState extends ConsumerState<MatchingPage> with WidgetsBinding
                       onPressed: () {
                         // ボタン押下時のキャンセル処理
                         if (room.roomId != null) {
-                           log('User pressed Cancel button for roomId: ${room.roomId}');
+                          log('User pressed Cancel button for roomId: ${room.roomId}');
                           roomnotifier.cancelMatching(room.roomId!);
                         } else {
                           router.go('/home');
@@ -159,7 +158,7 @@ class _MatchingPageState extends ConsumerState<MatchingPage> with WidgetsBinding
                   ],
                 ),
               ),
-             // go == true の場合はマッチング待機UIを非表示にするだけ
+            // go == true の場合はマッチング待機UIを非表示にするだけ
           ],
         ),
       ),

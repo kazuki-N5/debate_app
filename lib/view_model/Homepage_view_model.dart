@@ -13,6 +13,7 @@ class FriendMatchDialog extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isMatching = useState<bool>(false);
     final vibration = ref.read(vibrationServiceProvider);
     // --- State管理のためのHooks ---
     final pageController = usePageController();
@@ -41,6 +42,12 @@ class FriendMatchDialog extends HookConsumerWidget {
         !isChoice2Empty.value &&
         !isPasswordEmpty.value;
     // isCurrentPageValid は不要になるので削除
+
+    void toggleBoolean() {
+      // 現在の isEnabled.value の値を反転させて、再代入します。
+      // これによりWidgetが再ビルドされ、UIが更新されます。
+      isMatching.value = !isMatching.value;
+    }
 
     // --- テキスト変更を監視するためのEffect Hook ---
     useEffect(() {
@@ -171,9 +178,10 @@ class FriendMatchDialog extends HookConsumerWidget {
                     // --- ここからボタンの条件分岐 ---
                     if (currentPage.value == 0) // ページ1 (参加) の場合
                       ElevatedButton(
-                        onPressed: !isPage1Valid
+                        onPressed: !isPage1Valid && isMatching.value
                             ? null // ページ1が無効ならnull
-                            : () {
+                            : () async {
+                                toggleBoolean();
                                 ref
                                     .read(soundServiceProvider)
                                     .playSfx(SfxAssets.go);
@@ -183,10 +191,11 @@ class FriendMatchDialog extends HookConsumerWidget {
                                 print('合言葉で参加開始: $secretWord');
 
                                 // ページ1の合言葉は secretWordController.text を使う
-                                ref
+                                await ref
                                     .read(matchingRoomProvider.notifier)
                                     .findMatch(
                                         secretWordController.text, '', '', '');
+                                toggleBoolean();
                                 Navigator.of(context).pop();
                               },
                         style: buttonStyle,
@@ -194,14 +203,13 @@ class FriendMatchDialog extends HookConsumerWidget {
                       )
                     else if (currentPage.value == 1) // ページ2 (作成) の場合
                       ElevatedButton(
-                        onPressed: !isPage2Valid
+                        onPressed: !isPage2Valid && isMatching.value
                             ? null // ページ2が無効ならnull
-                            : () {
+                            : () async {
+                                toggleBoolean();
                                 ref
                                     .read(soundServiceProvider)
                                     .playSfx(SfxAssets.go);
-                                final notifier =
-                                    ref.read(matchingRoomProvider.notifier);
                                 final theme = themeController.text;
                                 final choice1 = choice1Controller.text;
                                 final choice2 = choice2Controller.text;
@@ -211,8 +219,9 @@ class FriendMatchDialog extends HookConsumerWidget {
                                     '部屋を作成して開始: テーマ=$theme, 選択肢=$choice1 vs $choice2, 合言葉=$password');
                                 vibration.vibrateShort();
                                 // ページ2の引数でメソッドを呼び出す
-                                notifier.findMatch(
+                                await ref.read(matchingRoomProvider.notifier).findMatch(
                                     password, theme, choice1, choice2);
+                                toggleBoolean();
                                 Navigator.of(context).pop();
                               },
                         style: buttonStyle,
@@ -790,7 +799,6 @@ class SubmitThemeDialog extends HookConsumerWidget {
           'sender_id': ref.read(currentUserIdProvider),
         });
 
-
         // 成功時のフィードバック
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -799,9 +807,7 @@ class SubmitThemeDialog extends HookConsumerWidget {
           ),
         );
         Navigator.of(context).pop();
-      } catch (e) {
-        
-      }
+      } catch (e) {}
     }
 
     // --- UI定義 ---
@@ -874,8 +880,7 @@ class SubmitThemeDialog extends HookConsumerWidget {
                   child: ElevatedButton(
                     onPressed: !isFormValid
                         ? null
-                        : () async{
-
+                        : () async {
                             await submitTheme();
                           },
                     style: buttonStyle,

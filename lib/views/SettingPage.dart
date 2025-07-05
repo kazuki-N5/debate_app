@@ -31,6 +31,7 @@ class SettingPage extends HookConsumerWidget {
       final InAppReview inAppReview = InAppReview.instance;
       if (await inAppReview.isAvailable()) {
         await inAppReview.openStoreListing(
+          appStoreId: '6747020633',
         );
       } else {
         if (!context.mounted) return;

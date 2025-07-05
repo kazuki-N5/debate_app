@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
-import 'package:debate_project/provider/button_provider.dart';
 import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -129,21 +128,17 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     final appstate = await ref.read(appStateProvider.notifier).loadVersion();
     if (appstate == AppStatus.error) {
       print('エラーが発生しました');
-      ref.read(isMatchingProvider.notifier).state = false;
       return;
     } else if (appstate == AppStatus.forceUpdate) {
       ref.read(forceboolProvider.notifier).state = true;
-      ref.read(isMatchingProvider.notifier).state = false;
       return;
     } else if (appstate == AppStatus.maintenance) {
       print('メンテナンス中');
       ref.read(maintenanceboolProvider.notifier).state = true;
-      ref.read(isMatchingProvider.notifier).state = false;
       return;
     } else if (appstate == AppStatus.optionalUpdate) {
     } else if (appstate == AppStatus.normal) {
     } else {
-      ref.read(isMatchingProvider.notifier).state = false;
       return;
     }
 
@@ -171,17 +166,14 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
         await waitForMatch(roomId);
       } else {
         print('マッチングエラー: ${result['error']}');
-        ref.read(isMatchingProvider.notifier).state = false;
       }
     } catch (e) {
       log('インターネットに接続しましょう');
-      ref.read(isMatchingProvider.notifier).state = false;
       print(e);
     }
   }
 
   Future<void> waitForMatch(String roomId) async {
-    ref.read(isMatchingProvider.notifier).state = false;
     final userId = ref.read(currentUserIdProvider);
     ref.invalidate(matchRecordsProvider);
     log('サブスク前のgoprovider ${ref.read(goProvider)}');

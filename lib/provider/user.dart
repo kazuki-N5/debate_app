@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:debate_project/modes/transfer_model.dart';
 import 'package:debate_project/modes/users.dart';
-import 'package:debate_project/provider/button_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:flutter/material.dart';
@@ -112,7 +111,6 @@ class UserNotifier extends StateNotifier<Users> {
     final currentUser = state;
     // 現在のユーザーIDがない場合は処理しない
     if (currentUser.id.isEmpty) {
-      _ref.read(isMatchingProvider.notifier).state = false;
       print('ユーザーIDがありません。アバターを更新できません。');
       return;
     }
@@ -131,7 +129,6 @@ class UserNotifier extends StateNotifier<Users> {
 
       if (pickedFile == null) {
         print('画像選択がキャンセルされました。');
-        _ref.read(isMatchingProvider.notifier).state = false;
         return;
       }
 
@@ -165,7 +162,6 @@ class UserNotifier extends StateNotifier<Users> {
 
       if (croppedFile == null) {
         print('画像クロップがキャンセルされました。');
-        _ref.read(isMatchingProvider.notifier).state = false;
         return;
       }
 
@@ -182,7 +178,6 @@ class UserNotifier extends StateNotifier<Users> {
 
       if (compressedBytes == null || compressedBytes.isEmpty) {
         print('画像圧縮に失敗しました。');
-        _ref.read(isMatchingProvider.notifier).state = false;
         throw Exception('画像の圧縮に失敗しました。');
       }
 
@@ -278,7 +273,6 @@ class UserNotifier extends StateNotifier<Users> {
       // エラーハンドリング
       // state = AsyncValue.error(e, st); // AsyncValueの場合
     } finally {
-      _ref.read(isMatchingProvider.notifier).state = false;
       // ローディング解除処理 (UI側で行うか、AsyncValueならここで state = AsyncValue.data(state) など)
     }
   }

@@ -1,10 +1,7 @@
-import 'dart:io';
-
 import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
-import 'package:debate_project/provider/button_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/sfx_provider.dart';
@@ -12,23 +9,24 @@ import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Homepage_view_model.dart';
+import 'package:debate_project/view_model/start_error_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart'; // Hooksを継続して使用
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart'; // hooks_riverpodを継続して使用
+import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // 広告関連のインポートを追加
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:showcaseview/showcaseview.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 class HomePage extends HookConsumerWidget {
   const HomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isMatching = ref.watch(isMatchingProvider);
+    final isMatching = useState<bool>(false);
     final user = ref.watch(userProvider);
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
     final vibration = ref.read(vibrationServiceProvider);
@@ -37,332 +35,15 @@ class HomePage extends HookConsumerWidget {
     final update = ref.read(appConfigProvider);
     final updatenotifier = ref.read(appStateProvider.notifier);
     final review = ref.watch(reviewProvider);
-    const String androidStoreUrl =
-        'https://play.google.com/store/apps/details?id=YOUR_ANDROID_PACKAGE_NAME';
-    const String iosStoreUrl = 'https://apps.apple.com/app/idYOUR_IOS_APP_ID';
+    final startnotifier = ref.read(startProvider.notifier);
+
     final forceupdate = ref.watch(forceboolProvider);
     final maintenance = ref.watch(maintenanceboolProvider);
-    Future<void> launchStoreUrl() async {
-      final url = Platform.isIOS ? iosStoreUrl : androidStoreUrl;
-      if (await canLaunchUrlString(url)) {
-        await launchUrlString(url, mode: LaunchMode.externalApplication);
-      } else {
-        print('Could not launch $url');
-      }
-    }
 
-    void _showUpdateDialog(BuildContext context, VoidCallback onUpdate) {
-      const Color dialogBackgroundColor = Color(0xFF42A5F5);
-      const Color textColor = Colors.white;
-      const Color buttonTextColor = Color(0xFF1565C0);
-      const Color buttonBackgroundColor = Colors.white;
-
-      // チェックボックスの初期状態
-      bool doNotShowAgain = false;
-
-      showDialog<bool>(
-        // showDialog の型引数を bool にして、チェックボックスの状態を返すようにする
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext dialogContext) {
-          // StatefulBuilder を使ってダイアログ内のチェックボックスの状態を管理
-          return StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return AlertDialog(
-                backgroundColor: dialogBackgroundColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.0),
-                ),
-                titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
-                contentPadding: const EdgeInsets.fromLTRB(
-                    24.0, 12.0, 24.0, 12.0), // チェックボックスのために少し調整
-                title: const Text(
-                  'アップデートができます',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20.0,
-                  ),
-                ),
-                content: Column(
-                  mainAxisSize:
-                      MainAxisSize.min, // Column が AlertDialog の高さを不必要に広げないように
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      update!.changelog!.replaceAll(r'\n', '\n'),
-                      textAlign: TextAlign.left,
-                      style: const TextStyle(
-                        color: textColor,
-                        fontSize: 16.0,
-                      ),
-                    ),
-                    const SizedBox(height: 20.0), // テキストとチェックボックスの間のスペース
-                    GestureDetector(
-                      // 行全体をタップ可能にする
-                      onTap: () {
-                        setState(() {
-                          doNotShowAgain = !doNotShowAgain;
-                        });
-                      },
-                      child: Row(
-                        children: <Widget>[
-                          SizedBox(
-                            // チェックボックスのタップ領域を広げるためと、見た目の調整
-                            width: 24, // チェックボックスのデフォルトサイズに近い値
-                            height: 24,
-                            child: Checkbox(
-                              value: doNotShowAgain,
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  doNotShowAgain = value ?? false;
-                                });
-                              },
-                              checkColor: buttonTextColor, // チェックマークの色
-                              activeColor:
-                                  buttonBackgroundColor, // チェックボックスの背景色 (アクティブ時)
-                              side: MaterialStateBorderSide.resolveWith(
-                                (states) => const BorderSide(
-                                    color: textColor, width: 2), // ボーダーの色と太さ
-                              ),
-                              visualDensity:
-                                  VisualDensity.compact, // 少しコンパクトにする
-                            ),
-                          ),
-                          const SizedBox(width: 8.0), // チェックボックスとテキストの間のスペース
-                          const Expanded(
-                            // テキストが長い場合にも対応
-                            child: Text(
-                              '次回のアップデートまで表示しない',
-                              style: TextStyle(
-                                color: textColor,
-                                fontSize: 14.0,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                actionsAlignment: MainAxisAlignment.center,
-                actionsPadding: const EdgeInsets.only(
-                    bottom: 24.0,
-                    left: 24.0,
-                    right: 24.0,
-                    top: 16.0), // content とボタンの間に少しパディング(top)
-                actions: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: TextButton(
-                          style: TextButton.styleFrom(
-                            backgroundColor: buttonBackgroundColor,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20.0, vertical: 12.0),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                            ),
-                            minimumSize: const Size(100, 44),
-                          ),
-                          child: const Text(
-                            'しない',
-                            style: TextStyle(
-                              color: buttonTextColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16.0,
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.of(dialogContext).pop(doNotShowAgain);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16.0),
-                      Expanded(
-                        child: TextButton(
-                          style: TextButton.styleFrom(
-                            backgroundColor: buttonBackgroundColor,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20.0, vertical: 12.0),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                            ),
-                            minimumSize: const Size(100, 44),
-                          ),
-                          child: const Text(
-                            'する',
-                            style: TextStyle(
-                              color: buttonTextColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16.0,
-                            ),
-                          ),
-                          onPressed: () {
-                            onUpdate(); // 元のアップデート処理を実行
-
-                            Navigator.of(dialogContext).pop(doNotShowAgain);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      ).then((bool? checkboxResult) async {
-        ref.read(optionalboolProvider.notifier).state = false;
-        if (checkboxResult == true) {
-          print('saveされました');
-          await updatenotifier.saveVersion(update!.latestVersion!);
-        }
-      });
-    }
-
-    void _showMaintenanceDialog(
-        BuildContext context, VoidCallback onRetry, String message) {
-      const Color dialogBackgroundColor = Color(0xFF42A5F5);
-      const Color textColor = Colors.white;
-      const Color buttonTextColor =
-          Color(0xFF1565C0); // ホーム画面のボタン内テキストに近い青 (例: Colors.blue[800])
-      const Color buttonBackgroundColor = Colors.white;
-
-      showDialog(
-        context: context,
-        barrierDismissible: false, // メンテナンス中は基本的に閉じさせない方が良い場合も
-        builder: (BuildContext dialogContext) {
-          return AlertDialog(
-            backgroundColor: dialogBackgroundColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.0), // 角丸を少し大きめに
-            ),
-            titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
-            contentPadding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 24.0),
-            title: const Text(
-              'メンテナンス中です', // タイトル変更
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 20.0,
-              ),
-            ),
-            content: Text(
-              message, // コンテンツメッセージ変更
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 16.0,
-              ),
-            ),
-            actionsAlignment: MainAxisAlignment.center,
-            actionsPadding: const EdgeInsets.only(bottom: 20.0, top: 8.0),
-            actions: <Widget>[
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  backgroundColor: buttonBackgroundColor,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0, vertical: 12.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0), // ボタンも角丸に
-                  ),
-                ),
-                icon: Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
-                label: Text(
-                  '再試行', // ボタンラベルは「再試行」とする (元の「やり直す」でも可)
-                  style: TextStyle(
-                    color: buttonTextColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.0,
-                  ),
-                ),
-                onPressed: () {
-                  onRetry();
-                  Navigator.of(dialogContext).pop(); // 再試行コールバックを実行
-                },
-              ),
-            ],
-          );
-        },
-      ).then((_) {
-        ref.read(maintenanceboolProvider.notifier).state = false;
-      });
-    }
-
-    void _showforceUpdateDialog(
-        BuildContext context, VoidCallback launchStoreUrl) {
-      const Color dialogBackgroundColor = Color(0xFF42A5F5); // 元の青
-      const Color textColor = Colors.white;
-      const Color buttonTextColor = Color(0xFF1565C0); // 元のボタン内テキストの青
-      const Color buttonBackgroundColor = Colors.white;
-
-      showDialog(
-        context: context,
-        barrierDismissible: false, // アップデートは必須なので閉じさせない
-        builder: (BuildContext dialogContext) {
-          return AlertDialog(
-            backgroundColor: dialogBackgroundColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.0),
-            ),
-            titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
-            contentPadding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 24.0),
-            title: const Text(
-              'アップデートが必要です', // タイトル変更
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 20.0,
-              ),
-            ),
-            content: const Text(
-              '最新バージョンが利用可能です。\nストアでアプリを更新してください。', // 内容変更
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 16.0,
-              ),
-            ),
-            actionsAlignment: MainAxisAlignment.center,
-            actionsPadding: const EdgeInsets.only(bottom: 20.0, top: 8.0),
-            actions: <Widget>[
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  backgroundColor: buttonBackgroundColor,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0, vertical: 12.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                ),
-                icon: Icon(Icons.arrow_forward, // 右矢印アイコンに変更
-                    color: buttonTextColor,
-                    size: 22.0),
-                label: Text(
-                  'ストアを開く', // ボタンテキスト変更
-                  style: TextStyle(
-                    color: buttonTextColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.0,
-                  ),
-                ),
-                onPressed: () {
-                  // ダイアログを閉じる必要があれば閉じる。
-                  // 強制アップデートの場合、ストアに飛ぶまで閉じない方が良いかもしれないが、
-                  // ストア遷移後に戻ってきた時のために閉じておくのが一般的。
-                  launchStoreUrl(); // ストアURLを開く関数を実行
-                },
-              ),
-            ],
-          );
-        },
-      ).then((_) {
-        // ダイアログが閉じた後に実行される (オプション)
-      });
+    void toggleBoolean() {
+      // 現在の isEnabled.value の値を反転させて、再代入します。
+      // これによりWidgetが再ビルドされ、UIが更新されます。
+      isMatching.value = !isMatching.value;
     }
 
     void showAppReviewDialog(BuildContext context) async {
@@ -482,18 +163,14 @@ class HomePage extends HookConsumerWidget {
                             ],
                           ),
                           onPressed: () async {
-                            Navigator.of(dialogContext).pop(); // 先にダイアログを閉じる
-                            // --- レビュー依頼の処理 ---
-                            // 例: in_app_review パッケージを使用する場合
-                            // if (await inAppReview.isAvailable()) {
-                            //   inAppReview.requestReview();
-                            // } else {
-                            //   // App StoreやGoogle PlayのURLに直接遷移するなどのフォールバック処理
-                            //   // inAppReview.openStoreListing(appStoreId: 'YOUR_APP_STORE_ID', microsoftStoreId: '...');
-                            //   print('レビュー機能が利用できません。ストアに直接誘導します。');
-                            // }
-                            print('「応援する」ボタンが押されました。レビューページへ誘導します。');
-                            // TODO: 実際のレビュー誘導処理をここに記述してください
+                            Navigator.of(dialogContext).pop();
+
+                            final InAppReview inAppReview =
+                                InAppReview.instance;
+
+                            if (await inAppReview.isAvailable()) {
+                              inAppReview.requestReview();
+                            }
                           },
                         ),
                       ],
@@ -532,9 +209,9 @@ class HomePage extends HookConsumerWidget {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               // コールバックが呼ばれる時点でも再度ウィジェットの存在を確認 (安全のため)
               if (context.mounted) {
-                _showUpdateDialog(context, () {
-                  launchStoreUrl();
-                });
+                startnotifier.showUpdateDialog(
+                  context,
+                );
               }
             });
           }
@@ -551,18 +228,16 @@ class HomePage extends HookConsumerWidget {
         if (forceupdate) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
-              _showforceUpdateDialog(context, () {
-                launchStoreUrl();
-              });
+              startnotifier.showforceUpdateDialog(context);
             }
           });
         } else if (maintenance) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
             if (context.mounted) {
-              _showMaintenanceDialog(context, () {
+              startnotifier.showMaintenanceDialog(context, () {
                 router.go('/');
               },
-                  ref.read(appConfigProvider)?.maintenanceMessage ??
+                 ref.read(appConfigProvider)?.maintenanceMessage ??
                       'メンテナンス中です');
             }
           });
@@ -612,15 +287,11 @@ class HomePage extends HookConsumerWidget {
     double a = 25;
 
     // --- メインのbuildメソッド ---
-    return ShowCaseWidget(
-      
-      onFinish: () async {
+    return ShowCaseWidget(onFinish: () async {
       final prefs = await SharedPreferences.getInstance();
       // チュートリアルが完了したことを保存し、次回以降は表示しないようにする
-      await prefs.setBool('hasSeenProfileIconTutorial', false);
-    },
-    
-     builder: (context) {
+      await prefs.setBool('hasSeenProfileIconTutorial', true);
+    }, builder: (context) {
       // ← このように関数を直接指定する
       return Scaffold(
         resizeToAvoidBottomInset: false,
@@ -652,15 +323,14 @@ class HomePage extends HookConsumerWidget {
                                 targetBorderRadius: BorderRadius.circular(50),
                                 overlayOpacity: 0.5,
                                 child: InkWell(
-                                  onTap: isMatching
+                                  onTap: isMatching.value
                                       ? () {}
-                                      : () {
-                                          ref
-                                              .read(isMatchingProvider.notifier)
-                                              .state = true;
-                                          ref
+                                      : () async {
+                                          toggleBoolean();
+                                          await ref
                                               .read(userProvider.notifier)
                                               .updateAvatar();
+                                          toggleBoolean();
                                         },
                                   borderRadius: BorderRadius.circular(25),
                                   enableFeedback: false,
@@ -950,7 +620,7 @@ class HomePage extends HookConsumerWidget {
                                 // ContainerをSizedBoxに変更 (子にElevatedButtonしかないため)
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: isMatching
+                                  onPressed: isMatching.value
                                       ? () {
                                           ref
                                               .read(soundServiceProvider)
@@ -958,18 +628,17 @@ class HomePage extends HookConsumerWidget {
                                           vibration.vibrateShort();
                                         }
                                       : () async {
-                                          ref
-                                              .read(isMatchingProvider.notifier)
-                                              .state = true;
+                                          toggleBoolean();
                                           ref
                                               .read(soundServiceProvider)
                                               .playSfx(SfxAssets.go);
                                           vibration.vibrateShort();
                                           // findMatchの呼び出しは変更なし
-                                          ref
+                                          await ref
                                               .read(
                                                   matchingRoomProvider.notifier)
                                               .findMatch('', '', '', '');
+                                          toggleBoolean();
                                         },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.white,
@@ -982,7 +651,7 @@ class HomePage extends HookConsumerWidget {
                                     enableFeedback: false,
                                   ),
                                   child: const Text(
-                                    'ランダムマッチ2', // ボタンテキストを修正 ('a' -> 'ランダムマッチ'など)
+                                    'ランダムマッチ', // ボタンテキストを修正 ('a' -> 'ランダムマッチ'など)
                                     style: TextStyle(
                                       color: Colors.blue,
                                       fontWeight: FontWeight.bold,

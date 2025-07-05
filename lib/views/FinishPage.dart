@@ -1,11 +1,11 @@
-import 'dart:math';
+import 'dart:math' hide log;
+
 import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:debate_project/adsence/ad_mbanner_provider.dart';
 import 'package:debate_project/adsence/ad_provider.dart'; // adNotifierProvider がここにあると仮定
 import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
-import 'package:debate_project/provider/button_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
@@ -15,15 +15,20 @@ import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:path_provider/path_provider.dart';
 
 class FinishPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vibration = ref.read(vibrationServiceProvider);
-    final isMatching = ref.watch(isMatchingProvider);
+    final isMatching = useState<bool>(false);
     final ischange = useState<bool>(true);
     final save = useState<String>('');
     final roomState = useState(ref.read(matchingRoomProvider));
@@ -37,22 +42,29 @@ class FinishPage extends HookConsumerWidget {
     final BannerAd? mediumRectangleAd = ref.watch(mediumRectangleAdProvider);
     // isAdBlockingInteraction の状態を監視
     final isAdBlockingInteraction = ref.watch(adNotifierProvider);
-     if (room.roomId == null || room.result == null) {
-        return Scaffold(
-            body: Center(
-                child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                        const Text('結果の読み込みに失敗しました。'),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                            onPressed: () => router.go('/home'),
-                            child: const Text('ホームに戻る'),
-                        ),
-                    ],
-                ),
-            ),
-        );
+
+    void toggleBoolean() {
+      // 現在の isEnabled.value の値を反転させて、再代入します。
+      // これによりWidgetが再ビルドされ、UIが更新されます。
+      isMatching.value = !isMatching.value;
+    }
+
+    if (room.roomId == null || room.result == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('結果の読み込みに失敗しました。'),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => router.go('/home'),
+                child: const Text('ホームに戻る'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     void _showErrorDialog(BuildContext context) {
@@ -111,9 +123,17 @@ class FinishPage extends HookConsumerWidget {
                     fontSize: 16.0,
                   ),
                 ),
-                onPressed: () {
-                  router.go('/home');
-                  Navigator.of(dialogContext).pop(); // ダイアログを閉じる
+                onPressed: () async {
+                  Navigator.of(dialogContext).pop();
+                  try {
+                    final result = await usernotifier.fetchUser(user!);
+                    if (result.win! >= 5) {
+                      ref.read(reviewProvider.notifier).state = true;
+                    }
+                    router.go('/home');
+                  } catch (e) {
+                    _showErrorDialog(context);
+                  }
                   // 再試行コールバックを実行
                 },
               ),
@@ -228,7 +248,88 @@ class FinishPage extends HookConsumerWidget {
       return save.value;
     }
 
-    final result = getResultText(room, user!);
+    final pointText = displayPoint(room, myuser, otheruser, user!);
+    final reasonText = formatResult(room, myuser, otheruser);
+    final resultText = getResultText(room, user);
+
+    void showSharePreviewDialog() {
+      final GlobalKey globalKey = GlobalKey();
+
+      // 画像をキャプチャして共有する非同期関数（ダイアログ内で定義）
+      Future<void> captureAndShare() async {
+        try {
+          // ローディングインジケーターなどを表示しても良い
+          final boundary = globalKey.currentContext!.findRenderObject()
+              as RenderRepaintBoundary;
+          final image = await boundary.toImage(pixelRatio: 3.0);
+          final byteData =
+              await image.toByteData(format: ui.ImageByteFormat.png);
+          if (byteData == null) return;
+          final pngBytes = byteData.buffer.asUint8List();
+
+          final tempDir = await getTemporaryDirectory();
+          final file = await File('${tempDir.path}/debate_result.png').create();
+          await file.writeAsBytes(pngBytes);
+
+          Navigator.of(context).pop(); // ダイアログを閉じる
+
+          final shareText = 'ディベートで「$resultText」しました！\nみんなも遊んでみよう！\n#ディベートアプリ';
+
+          await Share.shareXFiles(
+            [XFile(file.path)],
+            text: '$shareText\njjfjfj',
+            subject: 'ディベート結果',
+          );
+        } catch (e) {
+          Navigator.of(context).pop(); // エラー時もダイアログを閉じる
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('画像のシェアに失敗しました。')),
+          );
+        }
+      }
+
+      showDialog(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            contentPadding: EdgeInsets.zero,
+            backgroundColor: Colors.transparent,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // --- ここからが画像化されるウィジェット ---
+                RepaintBoundary(
+                  key: globalKey,
+                  child: _ShareableResultCard(
+                    result: resultText,
+                    points: room.password == null ? pointText : null,
+                    reason: reasonText,
+                  ),
+                ),
+                // --- ここまで ---
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[300],
+                      ),
+                      child: const Text('キャンセル'),
+                    ),
+                    ElevatedButton(
+                      onPressed: captureAndShare,
+                      child: const Text('シェアする'),
+                    ),
+                  ],
+                )
+              ],
+            ),
+          );
+        },
+      );
+    }
 
     return Scaffold(
       body: Container(
@@ -247,7 +348,6 @@ class FinishPage extends HookConsumerWidget {
                 ),
               ],
             ),
-            // メインのColumn構造を変更
             child: Column(
               children: [
                 // --- START: FIXED TOP AREA (スクロールしない上部エリア) ---
@@ -271,11 +371,11 @@ class FinishPage extends HookConsumerWidget {
                       children: [
                         // 勝利/敗北を中央に配置
                         Text(
-                          result,
+                          resultText,
                           style: TextStyle(
                             fontSize: 40,
                             fontWeight: FontWeight.bold,
-                            color: result == ('勝利')
+                            color: resultText == ('勝利')
                                 ? Colors.red
                                 : Colors.grey[700],
                           ),
@@ -291,7 +391,7 @@ class FinishPage extends HookConsumerWidget {
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: result == ('勝利')
+                                color: resultText == ('勝利')
                                     ? Colors.red
                                     : Colors.grey[700],
                               ),
@@ -364,8 +464,6 @@ class FinishPage extends HookConsumerWidget {
                     ),
                   ),
                 ),
-                // --- END: SCROLLABLE CONTENT AREA ---
-
                 // --- START: FIXED BUTTONS AREA (スクロールしない下部エリア) ---
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
@@ -375,19 +473,19 @@ class FinishPage extends HookConsumerWidget {
                       IgnorePointer(
                         ignoring: isAdBlockingInteraction,
                         child: ElevatedButton(
-                          onPressed: isMatching
+                          onPressed: isMatching.value || isAdBlockingInteraction
                               ? null
                               : () async {
-                                  ref.read(isMatchingProvider.notifier).state =
-                                      true;
+                                  toggleBoolean();
                                   ref
                                       .read(soundServiceProvider)
                                       .playSfx(SfxAssets.go);
                                   vibration.vibrateShort();
                                   // findMatchの呼び出しは変更なし
-                                  ref
+                                  await ref
                                       .read(matchingRoomProvider.notifier)
                                       .findMatch('', '', '', '');
+                                  toggleBoolean();
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
@@ -407,36 +505,69 @@ class FinishPage extends HookConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      OutlinedButton(
-                        onPressed: isAdBlockingInteraction
-                            ? null
-                            : () async {
-                                try {
-                                  final result =
-                                      await usernotifier.fetchUser(user);
-                                  if (result.win! >= 5) {
-                                    ref.read(reviewProvider.notifier).state =
-                                        true;
-                                  }
-                                  router.go('/home');
-                                } catch (e) {
-                                  _showErrorDialog(context);
-                                }
-                              },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.blue),
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      Row(
+                        children: [
+                          // 左側の「ホームに戻る」ボタン
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: isAdBlockingInteraction
+                                  ? null
+                                  : () async {
+                                      try {
+                                        final result =
+                                            await usernotifier.fetchUser(user);
+                                        if (result.win! >= 5) {
+                                          ref
+                                              .read(reviewProvider.notifier)
+                                              .state = true;
+                                        }
+                                        router.go('/home');
+                                      } catch (e) {
+                                        _showErrorDialog(context);
+                                      }
+                                    },
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.blue),
+                                minimumSize: const Size(0, 50), // 高さを50に設定
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text(
+                                'ホームに戻る',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                        child: const Text(
-                          'ホームに戻る',
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontSize: 16,
+                          const SizedBox(width: 12), // ボタン間のスペース
+                          // 右側のシェアボタン（正方形）
+                          SizedBox(
+                            width: 50,
+                            height: 50,
+                            child: OutlinedButton(
+                              // TODO: シェア機能のロジックをここに実装します
+                              onPressed: isAdBlockingInteraction
+                                  ? null
+                                  : () async {
+                                      showSharePreviewDialog();
+                                    },
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.blue),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: EdgeInsets.zero, // アイコンを中央に配置
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt_outlined, // カメラアイコン
+                                color: Colors.blue,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
@@ -446,6 +577,95 @@ class FinishPage extends HookConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ShareableResultCard extends StatelessWidget {
+  const _ShareableResultCard({
+    Key? key,
+    required this.result,
+    this.points,
+    required this.reason,
+  }) : super(key: key);
+
+  final String result;
+  final String? points;
+  final String reason;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.0),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '結果発表',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 0),
+          Center(
+            child: SizedBox(
+              width: 200,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Text(
+                    result,
+                    style: TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      color: result == ('勝利') ? Colors.red : Colors.grey[700],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '勝敗の理由:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[800],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  reason,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

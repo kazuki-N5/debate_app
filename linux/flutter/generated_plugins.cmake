@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_linux
   file_selector_linux
   gtk
+  scroll_screenshot
   url_launcher_linux
 )
 

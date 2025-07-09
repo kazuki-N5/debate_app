@@ -13,7 +13,7 @@ class start_errornotifier extends StateNotifier {
   final Ref ref;
 
   Future<void> launchStoreUrl() async {
-    StoreRedirect.redirect(iOSAppId: "1173389241");
+    StoreRedirect.redirect(iOSAppId: "6747020633");
   }
 
   void showUpdateDialog(BuildContext context) {

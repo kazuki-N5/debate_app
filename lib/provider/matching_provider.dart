@@ -24,6 +24,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
   SupabaseClient get supabase => ref.read(supabaseProvider);
 
   bool hasNavigatedToChose = false;
+  bool isdisposed = false;
   StreamSubscription? _subscription;
   RealtimeChannel? _presenceChannel;
   Timer? _offlineTimer;
@@ -97,7 +98,6 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     _subscription?.cancel();
     _offlineTimer?.cancel();
     _offlineTimer = null;
-
     if (_presenceChannel != null) {
       try {
         // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
@@ -115,6 +115,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
       String password, String theme, String choice1, String choice2) async {
     final userId = ref.read(currentUserIdProvider);
     hasNavigatedToChose = false;
+    isdisposed = false;
     ref.read(goProvider.notifier).state = false;
 
     if (userId == null) {
@@ -177,7 +178,8 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     final userId = ref.read(currentUserIdProvider);
     ref.invalidate(matchRecordsProvider);
     log('サブスク前のgoprovider ${ref.read(goProvider)}');
-
+    log('${isdisposed}-------');
+    if (isdisposed) return;
     try {
       _subscription = await supabase
           .from('rooms')
@@ -199,14 +201,15 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
             }
           });
     } catch (e) {
-      log('サブスク中にエラーが発生: $e');
+      cancelMatching(roomId);
+      router.go('/home');
     }
-
     await Future.delayed(const Duration(seconds: 2));
     log('${state.player2Id}');
     log('一旦サブスク後のgoprovider ${ref.read(goProvider)}');
 
     if (!hasNavigatedToChose) {
+      if (isdisposed) return;
       try {
         log('Performing initial fetch for room: $roomId');
         log('フェッチ前で２秒後goprovider ${ref.read(goProvider)}');
@@ -219,9 +222,43 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
         // single()は結果が1行でないとエラーを投げるので堅牢
         state = MatchingRoom.fromMap(initialData);
         log('${initialData['player2_id']}');
-
+        if (isdisposed) return;
         // すでにplayer2がいる場合（レースコンディションでstreamが見逃したケース）
-        if (initialData['player2_id'] != null) {
+        if (initialData['player2_id'] != null && !hasNavigatedToChose) {
+          hasNavigatedToChose = true;
+          final otherUserId =
+              state.player1Id == userId ? state.player2Id : state.player1Id;
+          await ref
+              .read(otherUserProvider.notifier)
+              .fetchOtherUserWithRetry(otherUserId!);
+          ref.read(goProvider.notifier).state = true;
+          log('フェッチ後goprovider ${ref.read(goProvider)}');
+        }
+      } catch (e) {
+        log('初期フェッチ中にエラーが発生: $e');
+      }
+    }
+
+    await Future.delayed(const Duration(seconds: 2));
+
+    log('${isdisposed}-------');
+    if (!hasNavigatedToChose) {
+      if (isdisposed) return;
+      try {
+        log('Performing initial fetch for room: $roomId');
+        log('フェッチ前で２秒後goprovider ${ref.read(goProvider)}');
+        final initialData = await supabase.rpc(
+          'get_room_data',
+          params: {
+            'p_room_id': roomId,
+          },
+        );
+        // single()は結果が1行でないとエラーを投げるので堅牢
+        state = MatchingRoom.fromMap(initialData);
+        log('${initialData['player2_id']}');
+        if (isdisposed) return;
+        // すでにplayer2がいる場合（レースコンディションでstreamが見逃したケース）
+        if (initialData['player2_id'] != null && !hasNavigatedToChose) {
           hasNavigatedToChose = true;
           final otherUserId =
               state.player1Id == userId ? state.player2Id : state.player1Id;
@@ -244,6 +281,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
       'p_user_id': userId,
     });
     if (response['success'] == true) {
+      isdisposed = true;
       _subscription?.cancel();
       router.go('/home');
     }

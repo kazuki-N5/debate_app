@@ -75,7 +75,7 @@ class ChosePage extends HookConsumerWidget {
       final timeOffset = serverTime.difference(clientTime);
       isTimerActive.value = true;
       selectedChoice.value = null;
-      deadline = room.updatedAt!.add(const Duration(seconds: 10));
+      deadline = room.updatedAt!.add(const Duration(seconds: 9));
       print('また始まってる');
       bool hasChoiceBeenUpdated = false;
       timerRef.value = Timer.periodic(Duration(seconds: 1), (timer) async {
@@ -102,7 +102,7 @@ class ChosePage extends HookConsumerWidget {
             }
           }
         }
-        if (diff < -11) {
+        if (diff < -12) {
           timer.cancel();
           timerRef.value = null;
           router.go('/home');

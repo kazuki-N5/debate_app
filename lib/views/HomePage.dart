@@ -50,8 +50,8 @@ class HomePage extends HookConsumerWidget {
       // final InAppReview inAppReview = InAppReview.instance; // レビュー機能を使う場合
 
       return showDialog<void>(
-        context: context,
-        barrierDismissible: true, // ダイアログ外タップで閉じることを許可
+        context: context, // ダイアログ外タップで閉じることを許可
+         barrierDismissible: false,
         builder: (BuildContext dialogContext) {
           return Dialog(
             shape: RoundedRectangleBorder(
@@ -171,6 +171,10 @@ class HomePage extends HookConsumerWidget {
                             if (await inAppReview.isAvailable()) {
                               inAppReview.requestReview();
                             }
+
+                            final SharedPreferences prefs =
+                                await SharedPreferences.getInstance();
+                            await prefs.setBool('isreview', true);
                           },
                         ),
                       ],

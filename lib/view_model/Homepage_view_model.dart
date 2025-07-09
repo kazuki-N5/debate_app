@@ -178,7 +178,7 @@ class FriendMatchDialog extends HookConsumerWidget {
                     // --- ここからボタンの条件分岐 ---
                     if (currentPage.value == 0) // ページ1 (参加) の場合
                       ElevatedButton(
-                        onPressed: !isPage1Valid && isMatching.value
+                        onPressed: (!isPage1Valid || isMatching.value)
                             ? null // ページ1が無効ならnull
                             : () async {
                                 toggleBoolean();
@@ -203,7 +203,7 @@ class FriendMatchDialog extends HookConsumerWidget {
                       )
                     else if (currentPage.value == 1) // ページ2 (作成) の場合
                       ElevatedButton(
-                        onPressed: !isPage2Valid && isMatching.value
+                        onPressed: !isPage2Valid || isMatching.value
                             ? null // ページ2が無効ならnull
                             : () async {
                                 toggleBoolean();

@@ -51,7 +51,7 @@ class HomePage extends HookConsumerWidget {
 
       return showDialog<void>(
         context: context, // ダイアログ外タップで閉じることを許可
-         barrierDismissible: false,
+        barrierDismissible: false,
         builder: (BuildContext dialogContext) {
           return Dialog(
             shape: RoundedRectangleBorder(
@@ -241,7 +241,7 @@ class HomePage extends HookConsumerWidget {
               startnotifier.showMaintenanceDialog(context, () {
                 router.go('/');
               },
-                 ref.read(appConfigProvider)?.maintenanceMessage ??
+                  ref.read(appConfigProvider)?.maintenanceMessage ??
                       'メンテナンス中です');
             }
           });
@@ -544,7 +544,7 @@ class HomePage extends HookConsumerWidget {
                               IconButton(
                                 icon: const Icon(
                                   Icons.add_circle_outline,
-                                  color: Colors.white70,
+                                  color: Color.fromRGBO(255, 255, 255, 0.702),
                                   size: 40,
                                 ),
                                 onPressed: () {
@@ -565,6 +565,21 @@ class HomePage extends HookConsumerWidget {
                                   );
                                 },
                                 enableFeedback: false, // 触覚フィードバックの無効化もそのまま
+                              ),
+                              const SizedBox(
+                                  height: 7), // 他のボタンとの間隔に合わせる (必要に応じて調整してください)
+                              GestureDetector(
+                                onTap: () {
+                                  // dialogContext を使うことで、元の context と区別する
+                                  router.push('/pay');
+                                },
+                                child: Image.asset(
+                                  'assets/images/adbrock.png', // ここに新しい画像のアセットパスを指定してください
+                                  // 例として 'assets/images/rule.png' を再利用する場合はそのように変更
+                                  width: 40,
+                                  height: 40,
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ],
                           ),

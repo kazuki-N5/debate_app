@@ -14,6 +14,7 @@ import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -256,9 +257,11 @@ class FinishPage extends HookConsumerWidget {
       final GlobalKey globalKey = GlobalKey();
 
       // 画像をキャプチャして共有する非同期関数（ダイアログ内で定義）
-      Future<void> captureAndShare() async {
+      Future<void> captureAndShare(BuildContext buttonContext) async {
         try {
-          // ローディングインジケーターなどを表示しても良い
+          final box = buttonContext.findRenderObject() as RenderBox?;
+          final rect =
+              box != null ? box.localToGlobal(Offset.zero) & box.size : null;
           final boundary = globalKey.currentContext!.findRenderObject()
               as RenderRepaintBoundary;
           final image = await boundary.toImage(pixelRatio: 3.0);
@@ -270,8 +273,7 @@ class FinishPage extends HookConsumerWidget {
           final tempDir = await getTemporaryDirectory();
           final file = await File('${tempDir.path}/debate_result.png').create();
           await file.writeAsBytes(pngBytes);
-
-          Navigator.of(context).pop(); // ダイアログを閉じる
+          // ダイアログを閉じる
 
           final shareText = 'ディベートで「$resultText」しました！\nみんなも遊んでみよう！\n#ディベートアプリ';
 
@@ -279,7 +281,10 @@ class FinishPage extends HookConsumerWidget {
             [XFile(file.path)],
             text: '$shareText\njjfjfj',
             subject: 'ディベート結果',
+            sharePositionOrigin: rect,
           );
+
+          Navigator.of(context).pop();
         } catch (e) {
           Navigator.of(context).pop(); // エラー時もダイアログを閉じる
           ScaffoldMessenger.of(context).showSnackBar(
@@ -307,20 +312,30 @@ class FinishPage extends HookConsumerWidget {
                   ),
                 ),
                 // --- ここまで ---
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    ElevatedButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[300],
-                      ),
-                      child: const Text('キャンセル'),
-                    ),
-                    ElevatedButton(
-                      onPressed: captureAndShare,
-                      child: const Text('シェアする'),
+                    Builder(
+                      // ★★★ Builderでラップ ★★★
+                      builder: (buttonContext) {
+                        return SizedBox(
+                          height: 48.0, // 高さを指定
+                    width: 48.0,
+                          child: FloatingActionButton(
+                            shape: const CircleBorder(),
+                            backgroundColor: Colors.white,
+                            // ★★★ 取得したContextを渡して関数を呼び出す ★★★
+                            onPressed: () => captureAndShare(buttonContext),
+                            // 共有でよく見るアイコン（Icons.share）を指定します。
+                            // iOS風にしたい場合は `Icon(CupertinoIcons.share)` なども利用できます。
+                            child: const Icon(
+                              CupertinoIcons.share,
+                              color: Colors.black,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 )

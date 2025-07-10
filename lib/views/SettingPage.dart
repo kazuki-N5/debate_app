@@ -42,8 +42,7 @@ class SettingPage extends HookConsumerWidget {
   }
 
   void _handleSubscription(BuildContext context, WidgetRef ref) {
-    // 例: プレミアム状態をtrueにする（テスト用）
-    // ref.read(settingsProvider.notifier).setPremiumStatus(true);
+    router.push('/pay');
   }
 
   void _restorePurchases(BuildContext context, WidgetRef ref) {}
@@ -147,7 +146,7 @@ class SettingPage extends HookConsumerWidget {
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.star),
-                    label: const Text('広告を消す + AIお助け'),
+                    label: const Text('広告を消す'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber,
                       foregroundColor: Colors.black,

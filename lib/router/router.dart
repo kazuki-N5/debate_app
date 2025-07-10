@@ -9,6 +9,7 @@ import 'package:debate_project/views/LoginPage.dart';
 import 'package:debate_project/views/Matching.dart';
 import 'package:debate_project/views/NamePage.dart';
 import 'package:debate_project/views/NamePage_change.dart';
+import 'package:debate_project/views/PayPage.dart';
 import 'package:debate_project/views/SettingPage.dart';
 import 'package:debate_project/views/TransferPage.dart';
 import 'package:debate_project/views/WaittransferPage.dart';
@@ -81,6 +82,10 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/waittransfer',
       pageBuilder: (context, state) => NoTransitionPage(child: const WaittransferPage(), key: state.pageKey),
+    ),
+    GoRoute(
+      path: '/pay',
+      pageBuilder: (context, state) => NoTransitionPage(child: const PayPage(), key: state.pageKey),
     ),
   ],
 );

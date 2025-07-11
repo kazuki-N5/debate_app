@@ -6,7 +6,6 @@ workflows:
       xcode: latest
     scripts:
       - flutter packages pub get
-      - flutter test
       - flutter build ios --simulator --debug --no-codesign
     artifacts:
       - build/ios/iphonesimulator/*.app

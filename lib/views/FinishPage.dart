@@ -14,6 +14,7 @@ import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
+import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -43,6 +44,8 @@ class FinishPage extends HookConsumerWidget {
     final BannerAd? mediumRectangleAd = ref.watch(mediumRectangleAdProvider);
     // isAdBlockingInteraction の状態を監視
     final isAdBlockingInteraction = ref.watch(adNotifierProvider);
+    final isSubscribe = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
+    ;
 
     void toggleBoolean() {
       // 現在の isEnabled.value の値を反転させて、再代入します。
@@ -148,11 +151,16 @@ class FinishPage extends HookConsumerWidget {
 
     useEffect(() {
       // 広告表示を通知 (例: 全画面広告など)
+      if (isSubscribe == false) {
+        
       ref.read(adNotifierProvider.notifier).showAd();
+      }
 
       Future.microtask(() {
-        // バナー広告のロードを開始
-        ref.read(bannerAdProvider.notifier).loadAd();
+        if (isSubscribe == false) {
+          // 広告をロード
+          ref.read(bannerAdProvider.notifier).loadAd();
+        }
         // ロード済みの広告を表示 (Medium Rectangle Ad はビルド内で watch しているのでここで特別な処理は不要)
       });
 
@@ -321,7 +329,7 @@ class FinishPage extends HookConsumerWidget {
                       builder: (buttonContext) {
                         return SizedBox(
                           height: 48.0, // 高さを指定
-                    width: 48.0,
+                          width: 48.0,
                           child: FloatingActionButton(
                             shape: const CircleBorder(),
                             backgroundColor: Colors.white,

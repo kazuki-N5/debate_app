@@ -9,6 +9,7 @@ import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
+import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -39,7 +40,7 @@ class GamePage extends HookConsumerWidget {
     final user = ref.read(currentUserIdProvider);
     final cantap = useState(false);
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
-
+    final isSubscribed = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
     Timer? gametimer;
     Timer? finishtimer;
     DateTime deadline;
@@ -228,8 +229,11 @@ class GamePage extends HookConsumerWidget {
 
         // ref.read() を使って Notifier のインスタンスを取得し、メソッドを呼び出します。
         // read() は状態変化を監視しないため、useEffect や Future コールバック内でも安全です。
+        if(isSubscribed == false){
+          
         ref.read(adNotifierProvider.notifier).loadAd();
         ref.read(mediumRectangleAdProvider.notifier).loadAd();
+        }
 
         print('Future.microtask: Ad loads triggered.');
       });

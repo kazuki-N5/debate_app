@@ -1,3 +1,4 @@
+import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -34,19 +35,21 @@ class PayPage extends ConsumerWidget {
 
   // --- ここにあなたのURLを貼り付けてください ---
   // 利用規約のURL
-  static final Uri _termsOfServiceUrl =
-      Uri.parse('https://humorous-abacus-317.notion.site/22c969f0105080c8997dd39de4574d51?pvs=143'); // <- あなたの利用規約URL
+  static final Uri _termsOfServiceUrl = Uri.parse(
+      'https://humorous-abacus-317.notion.site/22c969f0105080c8997dd39de4574d51?pvs=143'); // <- あなたの利用規約URL
 
   // プライバシーポリシーのURL
-  static final Uri _privacyPolicyUrl =
-      Uri.parse('https://humorous-abacus-317.notion.site/22c969f01050804097efe13b39f04faa?pvs=143'); // <- あなたのプライバシーポリシーURL
+  static final Uri _privacyPolicyUrl = Uri.parse(
+      'https://humorous-abacus-317.notion.site/22c969f01050804097efe13b39f04faa?pvs=143'); // <- あなたのプライバシーポリシーURL
   // -----------------------------------------
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final viewModel = ref.read(subscriptionViewModelProvider);
     final textTheme = Theme.of(context).textTheme;
-
+    final inappNotifier = ref.read(inAppPurchaseManagerProvider.notifier);
+    final inapp = ref.watch(inAppPurchaseManagerProvider);
+    final isSubscribed = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
     return Scaffold(
       backgroundColor: Colors.blue,
       appBar: AppBar(
@@ -123,7 +126,8 @@ class PayPage extends ConsumerWidget {
                         style: ElevatedButton.styleFrom(
                           foregroundColor: Colors.blue,
                           backgroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 16, horizontal: 24),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30.0),
                           ),
@@ -132,10 +136,15 @@ class PayPage extends ConsumerWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        onPressed: () {
-                          // viewModelの購入処理を呼び出す
-                          viewModel.subscribe();
-                        },
+                        onPressed: isSubscribed
+                            ? null // isSubscribed が true なら null (ボタン無効)
+                            : () async {
+                                // isSubscribed が false なら非同期処理を実行
+                                final offering = inapp.offerings;
+                                final delete_ads =
+                                    offering?.current?.getPackage('delete_ads');
+                                await inappNotifier.purchase(delete_ads!);
+                              },
                         child: const Text('登録して広告を非表示にする'),
                       ),
                       const SizedBox(height: 20),
@@ -162,7 +171,8 @@ class PayPage extends ConsumerWidget {
                                   decorationColor: Colors.white),
                             ),
                           ),
-                          const Text('|', style: TextStyle(color: Colors.white)),
+                          const Text('|',
+                              style: TextStyle(color: Colors.white)),
                           TextButton(
                             onPressed: () =>
                                 viewModel.launchURL(_privacyPolicyUrl),

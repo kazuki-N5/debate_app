@@ -1,9 +1,9 @@
-import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/provider/setting_provider.dart';
 import 'package:debate_project/provider/user.dart'; // あなたのプロジェクトに合わせてください
+import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:debate_project/view_model/start_error_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart'; // flutter_hooksをインポート
@@ -19,9 +19,10 @@ class LoginPage extends HookConsumerWidget {
     final showMainatenanceDialogFlag = useState<bool>(false);
     final showforceupdateDialogFlag = useState<bool>(false);
     final startnotifier = ref.read(startProvider.notifier);
+    final inapppurchase = ref.read(inAppPurchaseManagerProvider.notifier);
 
     Future<void> attemptInit() async {
-      ref.read(bannerAdProvider.notifier).loadAd();
+      await inapppurchase.initInAppPurchase();
       await ref.read(settingsProvider.notifier).loadSettings();
       final usernotifier = ref.read(userProvider.notifier);
       try {

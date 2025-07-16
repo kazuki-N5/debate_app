@@ -19,7 +19,6 @@ mixin _$SettingsModel {
   double get sfxVolume => throw _privateConstructorUsedError;
   bool get isSfxOn => throw _privateConstructorUsedError;
   bool get isVibrationOn => throw _privateConstructorUsedError;
-  bool get isPremiumUser => throw _privateConstructorUsedError;
 
   /// Create a copy of SettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -34,8 +33,7 @@ abstract class $SettingsModelCopyWith<$Res> {
           SettingsModel value, $Res Function(SettingsModel) then) =
       _$SettingsModelCopyWithImpl<$Res, SettingsModel>;
   @useResult
-  $Res call(
-      {double sfxVolume, bool isSfxOn, bool isVibrationOn, bool isPremiumUser});
+  $Res call({double sfxVolume, bool isSfxOn, bool isVibrationOn});
 }
 
 /// @nodoc
@@ -56,7 +54,6 @@ class _$SettingsModelCopyWithImpl<$Res, $Val extends SettingsModel>
     Object? sfxVolume = null,
     Object? isSfxOn = null,
     Object? isVibrationOn = null,
-    Object? isPremiumUser = null,
   }) {
     return _then(_value.copyWith(
       sfxVolume: null == sfxVolume
@@ -71,10 +68,6 @@ class _$SettingsModelCopyWithImpl<$Res, $Val extends SettingsModel>
           ? _value.isVibrationOn
           : isVibrationOn // ignore: cast_nullable_to_non_nullable
               as bool,
-      isPremiumUser: null == isPremiumUser
-          ? _value.isPremiumUser
-          : isPremiumUser // ignore: cast_nullable_to_non_nullable
-              as bool,
     ) as $Val);
   }
 }
@@ -87,8 +80,7 @@ abstract class _$$SettingsModelImplCopyWith<$Res>
       __$$SettingsModelImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call(
-      {double sfxVolume, bool isSfxOn, bool isVibrationOn, bool isPremiumUser});
+  $Res call({double sfxVolume, bool isSfxOn, bool isVibrationOn});
 }
 
 /// @nodoc
@@ -107,7 +99,6 @@ class __$$SettingsModelImplCopyWithImpl<$Res>
     Object? sfxVolume = null,
     Object? isSfxOn = null,
     Object? isVibrationOn = null,
-    Object? isPremiumUser = null,
   }) {
     return _then(_$SettingsModelImpl(
       sfxVolume: null == sfxVolume
@@ -122,10 +113,6 @@ class __$$SettingsModelImplCopyWithImpl<$Res>
           ? _value.isVibrationOn
           : isVibrationOn // ignore: cast_nullable_to_non_nullable
               as bool,
-      isPremiumUser: null == isPremiumUser
-          ? _value.isPremiumUser
-          : isPremiumUser // ignore: cast_nullable_to_non_nullable
-              as bool,
     ));
   }
 }
@@ -134,10 +121,7 @@ class __$$SettingsModelImplCopyWithImpl<$Res>
 
 class _$SettingsModelImpl implements _SettingsModel {
   const _$SettingsModelImpl(
-      {this.sfxVolume = 0.8,
-      this.isSfxOn = true,
-      this.isVibrationOn = true,
-      this.isPremiumUser = false});
+      {this.sfxVolume = 0.8, this.isSfxOn = true, this.isVibrationOn = true});
 
   @override
   @JsonKey()
@@ -148,13 +132,10 @@ class _$SettingsModelImpl implements _SettingsModel {
   @override
   @JsonKey()
   final bool isVibrationOn;
-  @override
-  @JsonKey()
-  final bool isPremiumUser;
 
   @override
   String toString() {
-    return 'SettingsModel(sfxVolume: $sfxVolume, isSfxOn: $isSfxOn, isVibrationOn: $isVibrationOn, isPremiumUser: $isPremiumUser)';
+    return 'SettingsModel(sfxVolume: $sfxVolume, isSfxOn: $isSfxOn, isVibrationOn: $isVibrationOn)';
   }
 
   @override
@@ -166,14 +147,12 @@ class _$SettingsModelImpl implements _SettingsModel {
                 other.sfxVolume == sfxVolume) &&
             (identical(other.isSfxOn, isSfxOn) || other.isSfxOn == isSfxOn) &&
             (identical(other.isVibrationOn, isVibrationOn) ||
-                other.isVibrationOn == isVibrationOn) &&
-            (identical(other.isPremiumUser, isPremiumUser) ||
-                other.isPremiumUser == isPremiumUser));
+                other.isVibrationOn == isVibrationOn));
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType, sfxVolume, isSfxOn, isVibrationOn, isPremiumUser);
+  int get hashCode =>
+      Object.hash(runtimeType, sfxVolume, isSfxOn, isVibrationOn);
 
   /// Create a copy of SettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -188,8 +167,7 @@ abstract class _SettingsModel implements SettingsModel {
   const factory _SettingsModel(
       {final double sfxVolume,
       final bool isSfxOn,
-      final bool isVibrationOn,
-      final bool isPremiumUser}) = _$SettingsModelImpl;
+      final bool isVibrationOn}) = _$SettingsModelImpl;
 
   @override
   double get sfxVolume;
@@ -197,8 +175,6 @@ abstract class _SettingsModel implements SettingsModel {
   bool get isSfxOn;
   @override
   bool get isVibrationOn;
-  @override
-  bool get isPremiumUser;
 
   /// Create a copy of SettingsModel
   /// with the given fields replaced by the non-null parameter values.

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:debate_project/provider/setting_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart'; 
 import 'package:debate_project/router/router.dart';
+import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -45,7 +46,7 @@ class SettingPage extends HookConsumerWidget {
     router.push('/pay');
   }
 
-  void _restorePurchases(BuildContext context, WidgetRef ref) {}
+ 
   // --- ヘルパー関数の終わり ---
 
   void _reportBug(BuildContext context) {
@@ -62,7 +63,8 @@ class SettingPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final settingsNotifier = ref.read(settingsProvider.notifier);
-
+    final isSubscribed = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
+    final inappNotifier = ref.read(inAppPurchaseManagerProvider.notifier);
     // 効果音スライダーがアクティブかどうか (isSfxOn に基づく)
     final isSfxSliderActive = settings.isSfxOn;
 
@@ -141,7 +143,7 @@ class SettingPage extends HookConsumerWidget {
 
               // --- 「プレミアム機能」セクション (変更なし) ---
               _buildSectionTitle('プレミアム機能'),
-              if (!settings.isPremiumUser)
+              if (isSubscribed == false)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: ElevatedButton.icon(
@@ -156,7 +158,7 @@ class SettingPage extends HookConsumerWidget {
                     onPressed: () => _handleSubscription(context, ref),
                   ),
                 ),
-              if (settings.isPremiumUser)
+              if (isSubscribed)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16.0),
                   child: Center(
@@ -172,7 +174,7 @@ class SettingPage extends HookConsumerWidget {
               _buildListTile(
                 icon: Icons.restore,
                 title: '購入情報を復元',
-                onTap: () => _restorePurchases(context, ref),
+                onTap: () async => await inappNotifier.restorePurchases(),
               ),
               const SizedBox(height: 30), // 下部のスペース確保
             ],

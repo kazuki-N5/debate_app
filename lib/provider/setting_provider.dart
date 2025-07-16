@@ -9,7 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 const String _keySfxVolume = 'sfxVolume';
 const String _keyIsSfxOn = 'isSfxOn';
 const String _keyIsVibrationOn = 'isVibrationOn';
-const String _keyIsPremiumUser = 'isPremiumUser';
 
 // StateNotifierProviderの定義 (変更なし)
 final settingsProvider = StateNotifierProvider<SettingsNotifier, SettingsModel>((ref) {
@@ -36,7 +35,6 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
         sfxVolume: _prefs?.getDouble(_keySfxVolume) ?? state.sfxVolume,
         isSfxOn: _prefs?.getBool(_keyIsSfxOn) ?? state.isSfxOn,
         isVibrationOn: _prefs?.getBool(_keyIsVibrationOn) ?? state.isVibrationOn,
-        isPremiumUser: _prefs?.getBool(_keyIsPremiumUser) ?? state.isPremiumUser,
       );
       // 読み込んだ値で状態を更新
       // `mounted` プロパティは StateNotifier にはないためチェック不要
@@ -80,7 +78,6 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
     await _prefs?.setDouble(_keySfxVolume, newState.sfxVolume);
     await _prefs?.setBool(_keyIsSfxOn, newState.isSfxOn);
     await _prefs?.setBool(_keyIsVibrationOn, newState.isVibrationOn);
-    await _prefs?.setBool(_keyIsPremiumUser, newState.isPremiumUser);
   }
 
   // サウンド関連の更新メソッドを削除
@@ -114,13 +111,4 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
     }
   }
 
-  // 課金状態を更新するメソッド
-  Future<void> setPremiumStatus(bool isPremium) async {
-    final newState = state.copyWith(isPremiumUser: isPremium);
-    if (mounted) {
-      state = newState;
-      await _saveSettings(newState);
-    }
-    // 必要に応じて、広告非表示などの関連ロジックをトリガー
-  }
 }

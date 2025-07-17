@@ -14,11 +14,10 @@ final inAppPurchaseManagerProvider = // Providerの名前を変更
     ChangeNotifierProvider((ref) => InAppPurchaseManager(ref));
 
 class InAppPurchaseManager with ChangeNotifier {
-   final Ref _ref;
-  InAppPurchaseManager(this._ref); 
+  final Ref _ref;
+  InAppPurchaseManager(this._ref);
   bool isSubscribed = false;
   Offerings? offerings; // 初期値はnullの可能性があるので?をつける
-
 
   // ★変更点1: init処理をシンプルにする
   Future<void> initInAppPurchase() async {
@@ -58,8 +57,7 @@ class InAppPurchaseManager with ChangeNotifier {
       final customerInfo = await Purchases.getCustomerInfo();
       await updatePurchaseStatus(customerInfo);
       if (isSubscribed == false) {
-         
-      _ref.read(bannerAdProvider.notifier).loadAd();
+        _ref.read(bannerAdProvider.notifier).loadAd();
       }
     } catch (e) {
       print("initInAppPurchase error caught! ${e.toString()}");

@@ -142,7 +142,7 @@ class PayPage extends ConsumerWidget {
                                 // isSubscribed が false なら非同期処理を実行
                                 final offering = inapp.offerings;
                                 final delete_ads =
-                                    offering?.current?.getPackage('delete_ads');
+                                    offering?.current?.getPackage('monthly_1month_500');
                                 await inappNotifier.purchase(delete_ads!);
                               },
                         child: const Text('登録して広告を非表示にする'),

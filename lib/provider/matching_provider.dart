@@ -25,7 +25,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
 
   bool hasNavigatedToChose = false;
   bool isdisposed = false;
-  StreamSubscription? _subscription;
+  RealtimeChannel? _subscription;
   RealtimeChannel? _presenceChannel;
   Timer? _offlineTimer;
 
@@ -95,10 +95,19 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
   }
 
   void delete() {
-    _subscription?.cancel();
     _offlineTimer?.cancel();
     _offlineTimer = null;
     if (_presenceChannel != null) {
+      try {
+        // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
+        supabase.removeChannel(_presenceChannel!);
+        print('Presence channel cleaned up.');
+      } catch (e) {
+        print('Error during presence channel cleanup: $e');
+      }
+      _presenceChannel = null;
+    }
+    if (_subscription != null) {
       try {
         // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
         supabase.removeChannel(_presenceChannel!);
@@ -143,7 +152,17 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
       return;
     }
 
-    _subscription?.cancel();
+    if (_presenceChannel != null) {
+      try {
+        // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
+        supabase.removeChannel(_presenceChannel!);
+        print('Presence channel cleaned up.');
+      } catch (e) {
+        print('Error during presence channel cleanup: $e');
+      }
+      _presenceChannel = null;
+    }
+
     delete();
     print(userId);
     try {
@@ -182,24 +201,37 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     if (isdisposed) return;
     try {
       _subscription = await supabase
-          .from('rooms')
-          .stream(primaryKey: ['id'])
-          .eq('id', roomId)
-          .listen((List<Map<String, dynamic>> data) async {
-            state = MatchingRoom.fromMap(data[0]);
-            log('サブスク完了${state.player2Id}');
+          .channel('room-updates:$roomId')
+          .onPostgresChanges(
+              event: PostgresChangeEvent
+                  .all, // or .update if you only care about updates
+              schema: 'public',
+              table: 'rooms',
+              // filterでidがroomIdと一致する行のみを対象にする
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'id',
+                value: roomId,
+              ),
+              callback: (payload) async {
+                final newData = payload.newRecord;
+                state = MatchingRoom.fromMap(newData);
+                log('サブスク完了${state.player2Id}');
 
-            if (state.player2Id != null && !hasNavigatedToChose) {
-              log('対戦相手発見');
-              hasNavigatedToChose = true;
-              final otherUserId =
-                  state.player1Id == userId ? state.player2Id : state.player1Id;
-              await ref
-                  .read(otherUserProvider.notifier)
-                  .fetchOtherUserWithRetry(otherUserId!);
-              ref.read(goProvider.notifier).state = true;
-            }
-          });
+                if (state.player2Id != null && !hasNavigatedToChose) {
+                  log('対戦相手発見');
+                  hasNavigatedToChose = true;
+                  final otherUserId = state.player1Id == userId
+                      ? state.player2Id
+                      : state.player1Id;
+                  await ref
+                      .read(otherUserProvider.notifier)
+                      .fetchOtherUserWithRetry(otherUserId!);
+                  ref.read(goProvider.notifier).state = true;
+                }
+              })
+          .subscribe();
+      log('サブスクは完了しました！');
     } catch (e) {
       cancelMatching(roomId);
       router.go('/home');
@@ -239,39 +271,9 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
       }
     }
 
-    await Future.delayed(const Duration(seconds: 2));
 
-    log('${isdisposed}-------');
-    if (!hasNavigatedToChose) {
-      if (isdisposed) return;
-      try {
-        log('Performing initial fetch for room: $roomId');
-        log('フェッチ前で２秒後goprovider ${ref.read(goProvider)}');
-        final initialData = await supabase.rpc(
-          'get_room_data',
-          params: {
-            'p_room_id': roomId,
-          },
-        );
-        // single()は結果が1行でないとエラーを投げるので堅牢
-        state = MatchingRoom.fromMap(initialData);
-        log('${initialData['player2_id']}');
-        if (isdisposed) return;
-        // すでにplayer2がいる場合（レースコンディションでstreamが見逃したケース）
-        if (initialData['player2_id'] != null && !hasNavigatedToChose) {
-          hasNavigatedToChose = true;
-          final otherUserId =
-              state.player1Id == userId ? state.player2Id : state.player1Id;
-          await ref
-              .read(otherUserProvider.notifier)
-              .fetchOtherUserWithRetry(otherUserId!);
-          ref.read(goProvider.notifier).state = true;
-          log('フェッチ後goprovider ${ref.read(goProvider)}');
-        }
-      } catch (e) {
-        log('初期フェッチ中にエラーが発生: $e');
-      }
-    }
+    
+    
   }
 
   Future<void> cancelMatching(String roomId) async {
@@ -282,7 +284,16 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     });
     if (response['success'] == true) {
       isdisposed = true;
-      _subscription?.cancel();
+      if (_presenceChannel != null) {
+        try {
+          // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
+          supabase.removeChannel(_presenceChannel!);
+          print('Presence channel cleaned up.');
+        } catch (e) {
+          print('Error during presence channel cleanup: $e');
+        }
+        _presenceChannel = null;
+      }
       router.go('/home');
     }
   }

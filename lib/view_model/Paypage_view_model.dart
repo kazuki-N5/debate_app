@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,15 +24,16 @@ class InAppPurchaseManager with ChangeNotifier {
   Future<void> initInAppPurchase() async {
     try {
       // デバッグログは開発中に便利
-      await Purchases.setDebugLogsEnabled(true);
+      //await Purchases.setDebugLogsEnabled(true);
 
       // プラットフォームごとの設定
       late PurchasesConfiguration configuration;
       if (Platform.isAndroid) {
         configuration = PurchasesConfiguration('Android用のRevenuecat APIキー');
       } else if (Platform.isIOS) {
+        await dotenv.load(fileName: '.env');
         configuration =
-            PurchasesConfiguration('appl_azeNdKhlZTYAcuOyaibFRdjAydI');
+            await PurchasesConfiguration(dotenv.get('REVENUECAT_APPLE'));
       }
 
       // ★重要：logInを使わずにconfigureするだけにする

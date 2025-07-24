@@ -18,7 +18,7 @@ class SettingPage extends HookConsumerWidget {
   const SettingPage({super.key});
 
   // --- 既存のヘルパー関数 (_launchURL, _requestReview など) は変更なし ---
-  static const String _xProfileUrl = 'https://twitter.com/YOUR_X_USERNAME';
+  static const String _xProfileUrl = 'https://x.com/resubadebate';
 
   Future<void> _launchURL(BuildContext context, String urlString) async {
     final Uri url = Uri.parse(urlString);

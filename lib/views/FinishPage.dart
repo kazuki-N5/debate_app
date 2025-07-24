@@ -476,10 +476,6 @@ class FinishPage extends HookConsumerWidget {
                           )
                         else
                           Container(
-                            width: AdSize.mediumRectangle.width.toDouble(),
-                            height: AdSize.mediumRectangle.height.toDouble(),
-                            color: Colors.grey[300],
-                            child: const Center(child: Text('Loading Ad...')),
                           ),
                         const SizedBox(
                             height: 24), // Add padding at the end of scroll

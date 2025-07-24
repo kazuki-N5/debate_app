@@ -8,6 +8,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
+final friendmatchProvider = StateProvider<bool>((ref) => false);
+
 class FriendMatchDialog extends HookConsumerWidget {
   const FriendMatchDialog({Key? key}) : super(key: key);
 
@@ -42,6 +44,9 @@ class FriendMatchDialog extends HookConsumerWidget {
         !isChoice2Empty.value &&
         !isPasswordEmpty.value;
     // isCurrentPageValid は不要になるので削除
+    final friendmatch = ref.watch(friendmatchProvider);
+    final friendmatchnotifier =
+        ref.watch(friendmatchProvider.notifier);
 
     void toggleBoolean() {
       // 現在の isEnabled.value の値を反転させて、再代入します。
@@ -178,10 +183,11 @@ class FriendMatchDialog extends HookConsumerWidget {
                     // --- ここからボタンの条件分岐 ---
                     if (currentPage.value == 0) // ページ1 (参加) の場合
                       ElevatedButton(
-                        onPressed: (!isPage1Valid || isMatching.value)
+                        onPressed: (!isPage1Valid || isMatching.value || friendmatch)
                             ? null // ページ1が無効ならnull
                             : () async {
                                 toggleBoolean();
+                                friendmatchnotifier.state = true; 
                                 ref
                                     .read(soundServiceProvider)
                                     .playSfx(SfxAssets.go);
@@ -196,6 +202,7 @@ class FriendMatchDialog extends HookConsumerWidget {
                                     .findMatch(
                                         secretWordController.text, '', '', '');
                                 toggleBoolean();
+                                friendmatchnotifier.state = false; 
                                 Navigator.of(context).pop();
                               },
                         style: buttonStyle,
@@ -203,10 +210,11 @@ class FriendMatchDialog extends HookConsumerWidget {
                       )
                     else if (currentPage.value == 1) // ページ2 (作成) の場合
                       ElevatedButton(
-                        onPressed: !isPage2Valid || isMatching.value
+                        onPressed: !isPage2Valid || isMatching.value || friendmatch
                             ? null // ページ2が無効ならnull
                             : () async {
                                 toggleBoolean();
+                                friendmatchnotifier.state = true; 
                                 ref
                                     .read(soundServiceProvider)
                                     .playSfx(SfxAssets.go);
@@ -219,9 +227,12 @@ class FriendMatchDialog extends HookConsumerWidget {
                                     '部屋を作成して開始: テーマ=$theme, 選択肢=$choice1 vs $choice2, 合言葉=$password');
                                 vibration.vibrateShort();
                                 // ページ2の引数でメソッドを呼び出す
-                                await ref.read(matchingRoomProvider.notifier).findMatch(
-                                    password, theme, choice1, choice2);
+                                await ref
+                                    .read(matchingRoomProvider.notifier)
+                                    .findMatch(
+                                        password, theme, choice1, choice2);
                                 toggleBoolean();
+                                friendmatchnotifier.state = false;
                                 Navigator.of(context).pop();
                               },
                         style: buttonStyle,

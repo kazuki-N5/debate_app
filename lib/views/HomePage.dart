@@ -39,6 +39,10 @@ class HomePage extends HookConsumerWidget {
 
     final forceupdate = ref.watch(forceboolProvider);
     final maintenance = ref.watch(maintenanceboolProvider);
+    
+    final friendmatch = ref.watch(friendmatchProvider);
+    final friendmatchnotifier =
+        ref.watch(friendmatchProvider.notifier);
 
     void toggleBoolean() {
       // 現在の isEnabled.value の値を反転させて、再代入します。
@@ -639,7 +643,7 @@ class HomePage extends HookConsumerWidget {
                                 // ContainerをSizedBoxに変更 (子にElevatedButtonしかないため)
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: isMatching.value
+                                  onPressed: isMatching.value || friendmatch
                                       ? () {
                                           ref
                                               .read(soundServiceProvider)
@@ -648,6 +652,7 @@ class HomePage extends HookConsumerWidget {
                                         }
                                       : () async {
                                           toggleBoolean();
+                                          friendmatchnotifier.state = true; 
                                           ref
                                               .read(soundServiceProvider)
                                               .playSfx(SfxAssets.go);
@@ -658,6 +663,7 @@ class HomePage extends HookConsumerWidget {
                                                   matchingRoomProvider.notifier)
                                               .findMatch('', '', '', '');
                                           toggleBoolean();
+                                          friendmatchnotifier.state = false;
                                         },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.white,

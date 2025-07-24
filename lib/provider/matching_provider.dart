@@ -4,6 +4,7 @@ import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/provider/history_provider.dart';
+import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
@@ -164,6 +165,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     }
 
     delete();
+    ref.read(chatProvider.notifier).unsubscribeFromMessages();
     print(userId);
     try {
       // データベース関数を呼び出してトランザクション処理を行う
@@ -236,6 +238,18 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
       cancelMatching(roomId);
       router.go('/home');
     }
+
+    if (state.player2Id != null && !hasNavigatedToChose) {
+      log('対戦相手発見');
+      hasNavigatedToChose = true;
+      final otherUserId =
+          state.player1Id == userId ? state.player2Id : state.player1Id;
+      await ref
+          .read(otherUserProvider.notifier)
+          .fetchOtherUserWithRetry(otherUserId!);
+      ref.read(goProvider.notifier).state = true;
+    }
+    
     await Future.delayed(const Duration(seconds: 2));
     log('${state.player2Id}');
     log('一旦サブスク後のgoprovider ${ref.read(goProvider)}');
@@ -270,10 +284,6 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
         log('初期フェッチ中にエラーが発生: $e');
       }
     }
-
-
-    
-    
   }
 
   Future<void> cancelMatching(String roomId) async {

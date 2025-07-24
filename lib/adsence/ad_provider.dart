@@ -12,7 +12,7 @@ final adNotifierProvider = StateNotifierProvider<AdNotifier, bool>((ref) {
 });
 
 class AdNotifier extends StateNotifier<bool> {
-  AdNotifier() : super(true); // 初期状態は広告なし
+  AdNotifier() : super(false); // 初期状態は広告なし
 
   static const String _adCountKey = 'ad_display_count';
   // 内部で広告インスタンスを保持。Stateは外部に公開する参照

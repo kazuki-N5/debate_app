@@ -281,13 +281,14 @@ class FinishPage extends HookConsumerWidget {
           final tempDir = await getTemporaryDirectory();
           final file = await File('${tempDir.path}/debate_result.png').create();
           await file.writeAsBytes(pngBytes);
+           const appStoreUrl = 'https://itunes.apple.com/jp/app/id6747020633?mt=8';
           // ダイアログを閉じる
 
-          final shareText = 'ディベートで「$resultText」しました！\nみんなも遊んでみよう！\n#ディベートアプリ';
+          final shareText = 'ディベートで「$resultText」しました！\nみんなも遊んでみよう！\n#ディベートアプリ\n$appStoreUrl';
 
           await Share.shareXFiles(
             [XFile(file.path)],
-            text: '$shareText\njjfjfj',
+            text: '$shareText',
             subject: 'ディベート結果',
             sharePositionOrigin: rect,
           );

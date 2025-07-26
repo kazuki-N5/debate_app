@@ -8,6 +8,8 @@ import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
+import 'package:debate_project/view_model/Homepage_view_model.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -18,7 +20,8 @@ final matchingRoomProvider =
 
 final goProvider = StateProvider<bool>((ref) => false);
 
-class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
+class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
+    with WidgetsBindingObserver {
   final Ref ref;
   MatchingRoomNotifier(this.ref) : super(MatchingRoom());
 
@@ -29,6 +32,45 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
   RealtimeChannel? _subscription;
   RealtimeChannel? _presenceChannel;
   Timer? _offlineTimer;
+
+//アプリのライフサイクルでホームに戻ったときと戻ったときの丁稚　キャンセルマッチを実装
+  @override
+  Future<void> didChangeAppLifecycleState(AppLifecycleState appState) async {
+    super.didChangeAppLifecycleState(appState);
+    log(appState.toString());
+
+    if (appState == AppLifecycleState.inactive) {
+      log('inactive');
+
+      log(state.player2Id.toString());
+
+      if (state.player2Id == null) {
+        log('Cancelling matching for roomIddue to app pause.');
+        cancelMatching(state.roomId!);
+      } else {
+        log('roomId is null on app pause. No matching to cancel.');
+      }
+    }
+
+    if (appState == AppLifecycleState.resumed) {
+      log('App resumed. Checking for room updates.');
+      if (state.roomId != null) {
+        try {
+          final roomdata = await supabase
+              .from('rooms')
+              .select()
+              .eq('id', state.roomId!)
+              .single();
+
+          if (!isdisposed) {
+            state = MatchingRoom.fromMap(roomdata);
+          }
+        } catch (e) {
+          log(e.toString());
+        }
+      }
+    }
+  }
 
   void setupPresenceChannel(String roomId) {
     final myUserId = ref.read(currentUserIdProvider);
@@ -111,12 +153,39 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     if (_subscription != null) {
       try {
         // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
+        supabase.removeChannel(_subscription!);
+        print('Presence channel cleaned up.');
+      } catch (e) {
+        print('Error during presence channel cleanup: $e');
+      }
+      _subscription = null;
+    }
+    WidgetsBinding.instance.removeObserver(this);
+    print('All notifier resources cleaned up.');
+  }
+
+  void pdelete() {
+    _offlineTimer?.cancel();
+    _offlineTimer = null;
+    if (_presenceChannel != null) {
+      try {
+        // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
         supabase.removeChannel(_presenceChannel!);
         print('Presence channel cleaned up.');
       } catch (e) {
         print('Error during presence channel cleanup: $e');
       }
       _presenceChannel = null;
+    }
+    if (_subscription != null) {
+      try {
+        // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
+        supabase.removeChannel(_subscription!);
+        print('Presence channel cleaned up.');
+      } catch (e) {
+        print('Error during presence channel cleanup: $e');
+      }
+      _subscription = null;
     }
     print('All notifier resources cleaned up.');
   }
@@ -130,7 +199,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
 
     if (userId == null) {
       print('エラー: ユーザーが認証されていません。マッチングを開始できません。');
-      // ここでユーザーにエラーを通知するなどの処理を追加できます
+      ref.read(friendmatchProvider.notifier).state = false;
       return;
     }
 
@@ -139,29 +208,22 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
     final appstate = await ref.read(appStateProvider.notifier).loadVersion();
     if (appstate == AppStatus.error) {
       print('エラーが発生しました');
+      ref.read(friendmatchProvider.notifier).state = false;
       return;
     } else if (appstate == AppStatus.forceUpdate) {
       ref.read(forceboolProvider.notifier).state = true;
+      ref.read(friendmatchProvider.notifier).state = false;
       return;
     } else if (appstate == AppStatus.maintenance) {
       print('メンテナンス中');
       ref.read(maintenanceboolProvider.notifier).state = true;
+      ref.read(friendmatchProvider.notifier).state = false;
       return;
     } else if (appstate == AppStatus.optionalUpdate) {
     } else if (appstate == AppStatus.normal) {
     } else {
+      ref.read(friendmatchProvider.notifier).state = false;
       return;
-    }
-
-    if (_presenceChannel != null) {
-      try {
-        // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
-        supabase.removeChannel(_presenceChannel!);
-        print('Presence channel cleaned up.');
-      } catch (e) {
-        print('Error during presence channel cleanup: $e');
-      }
-      _presenceChannel = null;
     }
 
     delete();
@@ -184,13 +246,18 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
         state = MatchingRoom.fromMap(roomData);
 
         router.go('/wait');
+        WidgetsBinding.instance.addObserver(this);
+
+        ref.read(friendmatchProvider.notifier).state = false;
 
         await waitForMatch(roomId);
       } else {
         print('マッチングエラー: ${result['error']}');
+        ref.read(friendmatchProvider.notifier).state = false;
       }
     } catch (e) {
       log('インターネットに接続しましょう');
+      ref.read(friendmatchProvider.notifier).state = false;
       print(e);
     }
   }
@@ -236,6 +303,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
       log('サブスクは完了しました！');
     } catch (e) {
       cancelMatching(roomId);
+      ref.read(friendmatchProvider.notifier).state = false;
       router.go('/home');
     }
 
@@ -249,7 +317,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom> {
           .fetchOtherUserWithRetry(otherUserId!);
       ref.read(goProvider.notifier).state = true;
     }
-    
+
     await Future.delayed(const Duration(seconds: 2));
     log('${state.player2Id}');
     log('一旦サブスク後のgoprovider ${ref.read(goProvider)}');

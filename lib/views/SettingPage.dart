@@ -6,6 +6,7 @@ import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -120,9 +121,10 @@ class SettingPage extends HookConsumerWidget {
               // --- 「サポート＆その他」セクション (変更なし) ---
               _buildSectionTitle('サポート＆その他'),
               _buildListTile(
-                icon: Icons.share,
-                title: 'Xでシェア / フォロー',
+                icon: FontAwesomeIcons.xTwitter,
+                title: '公式X',
                 onTap: () => _launchURL(context, _xProfileUrl),
+                iconSize: 20,
               ),
               _buildListTile(
                 icon: Icons.rate_review,
@@ -283,11 +285,13 @@ class SettingPage extends HookConsumerWidget {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    double? iconSize, // ▼▼▼【変更点 1/2】オプショナルなiconSize引数を追加 ▼▼▼
   }) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
       child: ListTile(
-        leading: Icon(icon, color: Colors.blue.shade800),
+        // Iconウィジェットにsizeプロパティを渡す
+        leading: Icon(icon, color: Colors.blue.shade800, size: iconSize),
         title: Text(title, style: const TextStyle(fontSize: 16)),
         trailing: Icon(Icons.chevron_right, color: Colors.grey.shade600),
         onTap: onTap,

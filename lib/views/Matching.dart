@@ -13,63 +13,7 @@ class MatchingPage extends ConsumerStatefulWidget {
 }
 
 // 対応するStateクラスを作成し、WidgetsBindingObserverをmixin
-class _MatchingPageState extends ConsumerState<MatchingPage>
-    with WidgetsBindingObserver {
-  // initStateでオブザーバーを登録
-  @override
-  void initState() {
-    super.initState();
-    log('MatchingPage initState called.');
-    // アプリのライフサイクル変更を監視するためのオブザーバーを追加
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  // didChangeAppLifecycleStateメソッドを実装
-  // アプリのライフサイクル状態が変更されたときに呼ばれる
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    log('AppLifecycleState changed: $state');
-
-    // アプリがバックグラウンドになったとき (タスクキルなどの可能性)
-    if (state == AppLifecycleState.inactive) {
-      log('App paused detected. Attempting to cancel matching.');
-
-      // Riverpodのreadを使用して現在の状態とnotifierを取得
-      // 注意: didChangeAppLifecycleState内ではbuildコンテキストがないため、ref.readを使用
-      final roomNotifier = ref.read(matchingRoomProvider.notifier);
-      final currentRoomState = ref.read(matchingRoomProvider);
-
-      // roomIdが存在する場合にキャンセル処理を実行
-      // この処理は、MatchingPageが表示されている最中にアプリがバックグラウンドに行った場合に発火します。
-      if (currentRoomState.roomId != null) {
-        log('Cancelling matching for roomId: ${currentRoomState.roomId} due to app pause.');
-        roomNotifier.cancelMatching(currentRoomState.roomId!);
-      } else {
-        log('roomId is null on app pause. No matching to cancel.');
-      }
-    }
-
-    // 他のライフサイクル状態 (resumed, inactive, detached) も必要なら処理を追加
-  }
-
-  // disposeでオブザーバーの登録を解除
-  // このdisposeは、MatchingPageから他のページに遷移したときに呼ばれます。
-  @override
-  void dispose() {
-    log('MatchingPage dispose called.');
-
-    // アプリのライフサイクル監視を停止
-    WidgetsBinding.instance.removeObserver(this);
-
-    // 注意: ここでは MatchingPage から離れること自体でキャンセル処理は行いません。
-    // アプリ全体のライフサイクル変更（pausedなど）でキャンセルするようにしました。
-
-    // アニメーションコントローラーなどのリソースを解放
-    // _controller.dispose(); // BlinkingMatchingIndicator にdisposeが移動したので不要
-
-    super.dispose(); // 必ず最後に呼び出す
-  }
-
+class _MatchingPageState extends ConsumerState<MatchingPage> {
   @override
   Widget build(BuildContext context) {
     final go = ref.watch(goProvider);

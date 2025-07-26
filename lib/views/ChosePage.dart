@@ -1,5 +1,7 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:developer';
+import 'dart:math' hide log;
+
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
@@ -125,7 +127,7 @@ class ChosePage extends HookConsumerWidget {
     useEffect(() {
       if (room.player1Choice != null && room.player2Choice != null) {
         if (room.player1Choice != room.player2Choice) {
-          print(room);
+          log(room.toString());
           next.value = true;
           timerRef.value?.cancel();
         }

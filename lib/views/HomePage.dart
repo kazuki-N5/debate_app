@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/app_config_service.dart';
@@ -39,10 +41,9 @@ class HomePage extends HookConsumerWidget {
 
     final forceupdate = ref.watch(forceboolProvider);
     final maintenance = ref.watch(maintenanceboolProvider);
-    
+
     final friendmatch = ref.watch(friendmatchProvider);
-    final friendmatchnotifier =
-        ref.watch(friendmatchProvider.notifier);
+    final friendmatchnotifier = ref.watch(friendmatchProvider.notifier);
 
     void toggleBoolean() {
       // 現在の isEnabled.value の値を反転させて、再代入します。
@@ -645,6 +646,8 @@ class HomePage extends HookConsumerWidget {
                                 child: ElevatedButton(
                                   onPressed: isMatching.value || friendmatch
                                       ? () {
+                                          log("isMatching.value: ${isMatching.value.toString()}");
+                                          log("friendmatch: ${friendmatch.toString()}");
                                           ref
                                               .read(soundServiceProvider)
                                               .playSfx(SfxAssets.go);
@@ -652,7 +655,7 @@ class HomePage extends HookConsumerWidget {
                                         }
                                       : () async {
                                           toggleBoolean();
-                                          friendmatchnotifier.state = true; 
+                                          friendmatchnotifier.state = true;
                                           ref
                                               .read(soundServiceProvider)
                                               .playSfx(SfxAssets.go);

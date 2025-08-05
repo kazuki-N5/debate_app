@@ -7,6 +7,8 @@ class MatchRecordDisplay {
   final String theme;
   final String userChoice;
   final String reason;
+  final bool? cancel; // ADDED: Cancel status
+  final String? opponentid;
 
   MatchRecordDisplay({
     required this.roomid,
@@ -17,5 +19,7 @@ class MatchRecordDisplay {
     required this.theme,
     required this.userChoice,
     required this.reason,
+    this.cancel, // ADDED: Update constructor
+   this.opponentid, // ADDED: Update constructor
   });
 }

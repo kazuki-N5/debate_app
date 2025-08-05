@@ -29,6 +29,8 @@ mixin _$MatchingRoom {
   bool? get go => throw _privateConstructorUsedError;
   bool? get player1_finish => throw _privateConstructorUsedError;
   bool? get player2_finish => throw _privateConstructorUsedError;
+  bool? get player1_go => throw _privateConstructorUsedError;
+  bool? get player2_go => throw _privateConstructorUsedError;
   DateTime? get player1_time => throw _privateConstructorUsedError;
   DateTime? get player2_time => throw _privateConstructorUsedError;
   String? get theme => throw _privateConstructorUsedError;
@@ -63,6 +65,8 @@ abstract class $MatchingRoomCopyWith<$Res> {
       bool? go,
       bool? player1_finish,
       bool? player2_finish,
+      bool? player1_go,
+      bool? player2_go,
       DateTime? player1_time,
       DateTime? player2_time,
       String? theme,
@@ -99,6 +103,8 @@ class _$MatchingRoomCopyWithImpl<$Res, $Val extends MatchingRoom>
     Object? go = freezed,
     Object? player1_finish = freezed,
     Object? player2_finish = freezed,
+    Object? player1_go = freezed,
+    Object? player2_go = freezed,
     Object? player1_time = freezed,
     Object? player2_time = freezed,
     Object? theme = freezed,
@@ -159,6 +165,14 @@ class _$MatchingRoomCopyWithImpl<$Res, $Val extends MatchingRoom>
           ? _value.player2_finish
           : player2_finish // ignore: cast_nullable_to_non_nullable
               as bool?,
+      player1_go: freezed == player1_go
+          ? _value.player1_go
+          : player1_go // ignore: cast_nullable_to_non_nullable
+              as bool?,
+      player2_go: freezed == player2_go
+          ? _value.player2_go
+          : player2_go // ignore: cast_nullable_to_non_nullable
+              as bool?,
       player1_time: freezed == player1_time
           ? _value.player1_time
           : player1_time // ignore: cast_nullable_to_non_nullable
@@ -209,6 +223,8 @@ abstract class _$$MatchingRoomImplCopyWith<$Res>
       bool? go,
       bool? player1_finish,
       bool? player2_finish,
+      bool? player1_go,
+      bool? player2_go,
       DateTime? player1_time,
       DateTime? player2_time,
       String? theme,
@@ -243,6 +259,8 @@ class __$$MatchingRoomImplCopyWithImpl<$Res>
     Object? go = freezed,
     Object? player1_finish = freezed,
     Object? player2_finish = freezed,
+    Object? player1_go = freezed,
+    Object? player2_go = freezed,
     Object? player1_time = freezed,
     Object? player2_time = freezed,
     Object? theme = freezed,
@@ -303,6 +321,14 @@ class __$$MatchingRoomImplCopyWithImpl<$Res>
           ? _value.player2_finish
           : player2_finish // ignore: cast_nullable_to_non_nullable
               as bool?,
+      player1_go: freezed == player1_go
+          ? _value.player1_go
+          : player1_go // ignore: cast_nullable_to_non_nullable
+              as bool?,
+      player2_go: freezed == player2_go
+          ? _value.player2_go
+          : player2_go // ignore: cast_nullable_to_non_nullable
+              as bool?,
       player1_time: freezed == player1_time
           ? _value.player1_time
           : player1_time // ignore: cast_nullable_to_non_nullable
@@ -348,6 +374,8 @@ class _$MatchingRoomImpl implements _MatchingRoom {
       this.go,
       this.player1_finish,
       this.player2_finish,
+      this.player1_go,
+      this.player2_go,
       this.player1_time,
       this.player2_time,
       this.theme,
@@ -382,6 +410,10 @@ class _$MatchingRoomImpl implements _MatchingRoom {
   @override
   final bool? player2_finish;
   @override
+  final bool? player1_go;
+  @override
+  final bool? player2_go;
+  @override
   final DateTime? player1_time;
   @override
   final DateTime? player2_time;
@@ -396,7 +428,7 @@ class _$MatchingRoomImpl implements _MatchingRoom {
 
   @override
   String toString() {
-    return 'MatchingRoom(roomId: $roomId, player1Id: $player1Id, player2Id: $player2Id, isMatched: $isMatched, createdAt: $createdAt, result: $result, player1Choice: $player1Choice, player2Choice: $player2Choice, updatedAt: $updatedAt, change: $change, go: $go, player1_finish: $player1_finish, player2_finish: $player2_finish, player1_time: $player1_time, player2_time: $player2_time, theme: $theme, choice1: $choice1, choice2: $choice2, password: $password)';
+    return 'MatchingRoom(roomId: $roomId, player1Id: $player1Id, player2Id: $player2Id, isMatched: $isMatched, createdAt: $createdAt, result: $result, player1Choice: $player1Choice, player2Choice: $player2Choice, updatedAt: $updatedAt, change: $change, go: $go, player1_finish: $player1_finish, player2_finish: $player2_finish, player1_go: $player1_go, player2_go: $player2_go, player1_time: $player1_time, player2_time: $player2_time, theme: $theme, choice1: $choice1, choice2: $choice2, password: $password)';
   }
 
   @override
@@ -426,6 +458,10 @@ class _$MatchingRoomImpl implements _MatchingRoom {
                 other.player1_finish == player1_finish) &&
             (identical(other.player2_finish, player2_finish) ||
                 other.player2_finish == player2_finish) &&
+            (identical(other.player1_go, player1_go) ||
+                other.player1_go == player1_go) &&
+            (identical(other.player2_go, player2_go) ||
+                other.player2_go == player2_go) &&
             (identical(other.player1_time, player1_time) ||
                 other.player1_time == player1_time) &&
             (identical(other.player2_time, player2_time) ||
@@ -453,6 +489,8 @@ class _$MatchingRoomImpl implements _MatchingRoom {
         go,
         player1_finish,
         player2_finish,
+        player1_go,
+        player2_go,
         player1_time,
         player2_time,
         theme,
@@ -485,6 +523,8 @@ abstract class _MatchingRoom implements MatchingRoom {
       final bool? go,
       final bool? player1_finish,
       final bool? player2_finish,
+      final bool? player1_go,
+      final bool? player2_go,
       final DateTime? player1_time,
       final DateTime? player2_time,
       final String? theme,
@@ -518,6 +558,10 @@ abstract class _MatchingRoom implements MatchingRoom {
   bool? get player1_finish;
   @override
   bool? get player2_finish;
+  @override
+  bool? get player1_go;
+  @override
+  bool? get player2_go;
   @override
   DateTime? get player1_time;
   @override

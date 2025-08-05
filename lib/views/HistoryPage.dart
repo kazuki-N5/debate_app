@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:debate_project/modes/history.dart';
 import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -5,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:popover/popover.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HistoryPage extends HookConsumerWidget {
   const HistoryPage({Key? key}) : super(key: key);
@@ -58,15 +62,14 @@ class HistoryPage extends HookConsumerWidget {
             // プロバイダがローディング状態の時もローカルローディング状態をfalseにする
             // (プロバイダ自身のローディング状態が優先されるため)
             if (isLoadingRetry.value) isLoadingRetry.value = false;
-            return const Center(
-                child: CircularProgressIndicator(color: Colors.white));
+            return Center(child: Container());
           }, error: (error, stack) {
             print('Error in HistoryPage UI: $error');
             print(stack);
             // --- MODIFIED: Error UI with Refresh Button ---
             if (isLoadingRetry.value) {
-              return const Center(
-                  child: CircularProgressIndicator(color: Colors.white));
+              return Center(
+                  child: Container());
             }
 
             return Center(
@@ -125,15 +128,20 @@ class _MatchHistoryItem extends HookWidget {
   Widget build(BuildContext context) {
     final isReasonExpanded = useState(false);
 
+    // --- Record Data ---
     final String resultStatus = record.resultString;
     final int trophyChange = record.trophyChange;
     final String opponentName = record.opponentName;
-    final String? opponentAvatarUrl =
-        record.opponentAvatarUrl; // <-- GET AVATAR URL
+    final String? opponentAvatarUrl = record.opponentAvatarUrl;
     final String theme = record.theme;
     final String userChoice = record.userChoice;
     final String reason = record.reason;
+    final bool isCancelled = record.cancel!;
+    final String? opponentid = record.opponentid;
+    final String roomid = record.roomid;
+    final supabase = Supabase.instance.client;
 
+    // --- UI Constants ---
     final Color cardBackgroundColor = Colors.grey[200] ?? Colors.grey;
     final Color resultColor =
         resultStatus == '勝利' ? Colors.red[700]! : Colors.grey[700]!;
@@ -141,33 +149,126 @@ class _MatchHistoryItem extends HookWidget {
         (trophyChange > 0 ? '+' : '') + trophyChange.toString();
     const double collapsedGrayBoxHeight = 90.0;
     final BorderRadius grayBoxBorderRadius = BorderRadius.circular(8.0);
-    const double avatarRadius = 18.0; // Define avatar size
+    const double avatarRadius = 18.0;
+    Widget _buildReportButton(BuildContext popoverContext) {
+      return GestureDetector(
+        onTap: () async {
+          Navigator.of(popoverContext).pop();
+          log(opponentid.toString());
+          log(roomid.toString());
 
-    // --- Helper Widget for Avatar ---
-    Widget _buildOpponentAvatar() {
+          try {
+            // 2. Supabaseのprohibitedテーブルにデータを挿入
+            await supabase.from('prohibited').insert({
+              'user_id': opponentid,
+              'room_id': roomid,
+            });
+
+            // 成功した場合の処理
+            // 非同期処理をまたぐため、contextがまだ有効かチェックするのが安全です
+            if (!context.mounted) return;
+
+            // ポップオーバーを閉じる
+
+            // 成功したことを知らせるスナックバーを表示
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('ユーザーを報告しました。'),// 成功を分かりやすくするために色付け
+                duration: Duration(seconds: 2),
+              ),
+            );
+          } catch (e) {
+            // 3. 失敗した場合の処理
+            if (!context.mounted) return;
+
+
+            // エラーが発生したことを知らせるスナックバーを表示
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('報告に失敗しました。'),// エラーを分かりやすくするために色付け
+                duration: Duration(seconds: 2),
+              ),
+            );
+
+            // デバッグ用にエラー内容をコンソールに出力
+            debugPrint('Supabaseへの挿入エラー: $e');
+          }
+        },
+        child: Container(
+          margin: const EdgeInsets.all(8.0), // 吹き出しの内側の余白
+          decoration: BoxDecoration(
+            color: Colors.red,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: const Center(
+            child: Text(
+              '報告',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget _buildAvatarImage() {
       if (opponentAvatarUrl != null && opponentAvatarUrl.isNotEmpty) {
-        // Display network image if URL exists
         return CircleAvatar(
           radius: avatarRadius,
-          backgroundColor: Colors.grey[400], // Background while loading/error
+          backgroundColor: Colors.grey[400],
           backgroundImage: NetworkImage(opponentAvatarUrl),
         );
       } else {
-        // Display default icon if URL is null or empty
         return CircleAvatar(
           radius: avatarRadius,
-          backgroundColor: Colors.blueGrey[300], // Placeholder background
+          backgroundColor: Colors.blueGrey[300],
           child: Icon(
             Icons.person,
-            size: avatarRadius * 1.2, // Adjust icon size relative to radius
+            size: avatarRadius * 1.2,
             color: Colors.white,
           ),
         );
       }
     }
-    // --- End Helper Widget ---
+
+    // 報告ボタンのウィジェット
+
+    // --- Helper Widget for Avatar ---
+    Widget _buildOpponentAvatar() {
+      // InkWellでラップするために、BuildContextを渡せるようにBuilderでラップ
+      return Builder(
+        builder: (avatarContext) {
+          return InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              // --- POPOVER表示処理 ---
+              showPopover(
+                context: avatarContext, // タップされたアイコンのcontextを使用
+                bodyBuilder: (popoverContext) =>
+                    _buildReportButton(popoverContext),
+                direction: PopoverDirection.bottom, // アイコンの上側に表示
+                backgroundColor: Colors.white,
+                barrierColor: Colors.transparent,
+                width: 100, // 吹き出しの幅
+                height: 50, // 吹き出しの高さ
+                arrowHeight: 10, // 吹き出しの矢印の高さ
+                arrowWidth: 20, // 吹き出しの矢印の幅
+                transitionDuration: const Duration(milliseconds: 100),
+              );
+              // --- END POPOVER ---
+            },
+            child: _buildAvatarImage(),
+          );
+        },
+      );
+    }
+
+    // アバターの画像部分を分離
 
     return Padding(
+      // (以下、変更なし)
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16.0),
@@ -179,10 +280,8 @@ class _MatchHistoryItem extends HookWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Upper row: Result, Trophy, Opponent, Chat Button
                 Row(
                   children: [
-                    // Result Status
                     Text(
                       resultStatus,
                       style: TextStyle(
@@ -192,7 +291,6 @@ class _MatchHistoryItem extends HookWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Trophy Change
                     Text(
                       trophyChangeString,
                       style: TextStyle(
@@ -201,37 +299,39 @@ class _MatchHistoryItem extends HookWidget {
                         color: resultColor,
                       ),
                     ),
-                    const SizedBox(width: 12), // Space before avatar
-                    // --- MODIFIED: Opponent Avatar and Name ---
-                    _buildOpponentAvatar(), // Display the avatar
-                    const SizedBox(width: 6), // Space between avatar and name
+                    const SizedBox(width: 12),
+                    // --- MODIFIED: Tappable Avatar with Popover ---
+                    _buildOpponentAvatar(),
+                    // --- END MODIFIED ---
+                    const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        opponentName, // Display only the name here
+                        opponentName,
                         style: const TextStyle(
                             fontSize: 16, color: Colors.black87),
                         overflow: TextOverflow.ellipsis,
-                        maxLines: 1, // Ensure name doesn't wrap excessively
+                        maxLines: 1,
                       ),
                     ),
-                    // --- END MODIFIED ---
-                    const SizedBox(width: 8), // Space before chat button
-                    // Chat Button
-                    InkWell(
-                      onTap: () {
-                        context.push('/chistory', extra: record);
-                      },
-                      splashFactory: NoSplash.splashFactory,
-                      highlightColor: Colors.transparent,
-                      child: const Text(
-                        'チャットを見る',
-                        style: TextStyle(fontSize: 14, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    if (!isCancelled)
+                      InkWell(
+                        onTap: () {
+                          context.push('/chistory', extra: record);
+                        },
+                        splashFactory: NoSplash.splashFactory,
+                        highlightColor: Colors.transparent,
+                        child: Text(
+                          'レスバを見る',
+                          style: TextStyle(
+                              fontSize: 14,
+                              color: const Color.fromARGB(255, 114, 114, 114),
+                              fontWeight: FontWeight.bold),
+                        ),
                       ),
-                    )
                   ],
                 ),
                 const SizedBox(height: 8),
-                // Expandable Gray Box Area
                 InkWell(
                   onTap: () {
                     isReasonExpanded.value = !isReasonExpanded.value;
@@ -242,9 +342,10 @@ class _MatchHistoryItem extends HookWidget {
                       color: Colors.grey[350],
                       borderRadius: grayBoxBorderRadius,
                     ),
-                    constraints: isReasonExpanded.value
+                    constraints: isReasonExpanded.value || isCancelled
                         ? null
-                        : BoxConstraints(maxHeight: collapsedGrayBoxHeight),
+                        : const BoxConstraints(
+                            maxHeight: collapsedGrayBoxHeight),
                     clipBehavior: Clip.hardEdge,
                     child: ClipRRect(
                       borderRadius: grayBoxBorderRadius,
@@ -262,30 +363,34 @@ class _MatchHistoryItem extends HookWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
-                                  'テーマ:',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  theme,
-                                  style: const TextStyle(color: Colors.black87),
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'あなたの選択:',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  userChoice,
-                                  style: const TextStyle(color: Colors.black87),
-                                ),
-                                const SizedBox(height: 8),
+                                if (!isCancelled) ...[
+                                  const Text(
+                                    'テーマ:',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    theme,
+                                    style:
+                                        const TextStyle(color: Colors.black87),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'あなたの選択:',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    userChoice,
+                                    style:
+                                        const TextStyle(color: Colors.black87),
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
                                 const Text(
                                   '理由:',
                                   style: TextStyle(

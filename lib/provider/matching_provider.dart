@@ -9,6 +9,7 @@ import 'package:debate_project/provider/other_user.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Homepage_view_model.dart';
+import 'package:debate_project/views/Matching.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -28,6 +29,9 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
   SupabaseClient get supabase => ref.read(supabaseProvider);
 
   bool hasNavigatedToChose = false;
+  bool hasgotomatching = false;
+  bool hasgotochose = false;
+  bool hassplash = false;
   bool isdisposed = false;
   RealtimeChannel? _subscription;
   RealtimeChannel? _presenceChannel;
@@ -36,6 +40,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
 //アプリのライフサイクルでホームに戻ったときと戻ったときの丁稚　キャンセルマッチを実装
   @override
   Future<void> didChangeAppLifecycleState(AppLifecycleState appState) async {
+    final userId = ref.read(currentUserIdProvider);
     super.didChangeAppLifecycleState(appState);
     log(appState.toString());
 
@@ -64,6 +69,30 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
 
           if (!isdisposed) {
             state = MatchingRoom.fromMap(roomdata);
+          }
+
+          if (state.player2Id != null && !hasNavigatedToChose) {
+            log('対戦相手発見');
+            hasNavigatedToChose = true;
+            final otherUserId =
+                state.player1Id == userId ? state.player2Id : state.player1Id;
+            await ref
+                .read(otherUserProvider.notifier)
+                .fetchOtherUserWithRetry(otherUserId!);
+            ref.read(goProvider.notifier).state = true;
+          }
+
+          if (state.player1_go == true &&
+              state.player2_go == true &&
+              !!hasgotomatching) {
+            ref.read(gochoseProvider.notifier).state = true;
+            hasgotomatching = true;
+          }
+
+          if ((state.player1_go == false || state.player2_go == false) &&
+              !hassplash) {
+            hassplash = true;
+            ref.read(splashProvider.notifier).state = true;
           }
         } catch (e) {
           log(e.toString());
@@ -137,7 +166,17 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     });
   }
 
-  void delete() {
+  Future delete() async {
+    hasNavigatedToChose = false;
+    hasgotomatching = false;
+    hasgotochose = false;
+    ref.read(gochoseProvider.notifier).state = false;
+    ref.read(splashProvider.notifier).state = false;
+    isdisposed = false;
+    hassplash = false;
+
+    ref.read(chatProvider.notifier).unsubscribeFromMessages();
+    ref.read(goProvider.notifier).state = false;
     _offlineTimer?.cancel();
     _offlineTimer = null;
     if (_presenceChannel != null) {
@@ -153,7 +192,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     if (_subscription != null) {
       try {
         // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
-        supabase.removeChannel(_subscription!);
+        await supabase.removeChannel(_subscription!);
         print('Presence channel cleaned up.');
       } catch (e) {
         print('Error during presence channel cleanup: $e');
@@ -164,38 +203,9 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     print('All notifier resources cleaned up.');
   }
 
-  void pdelete() {
-    _offlineTimer?.cancel();
-    _offlineTimer = null;
-    if (_presenceChannel != null) {
-      try {
-        // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
-        supabase.removeChannel(_presenceChannel!);
-        print('Presence channel cleaned up.');
-      } catch (e) {
-        print('Error during presence channel cleanup: $e');
-      }
-      _presenceChannel = null;
-    }
-    if (_subscription != null) {
-      try {
-        // removeChannelを呼ぶと、untrackとunsubscribeが内部的に実行されます。
-        supabase.removeChannel(_subscription!);
-        print('Presence channel cleaned up.');
-      } catch (e) {
-        print('Error during presence channel cleanup: $e');
-      }
-      _subscription = null;
-    }
-    print('All notifier resources cleaned up.');
-  }
-
   Future<void> findMatch(
       String password, String theme, String choice1, String choice2) async {
     final userId = ref.read(currentUserIdProvider);
-    hasNavigatedToChose = false;
-    isdisposed = false;
-    ref.read(goProvider.notifier).state = false;
 
     if (userId == null) {
       print('エラー: ユーザーが認証されていません。マッチングを開始できません。');
@@ -226,8 +236,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
       return;
     }
 
-    delete();
-    ref.read(chatProvider.notifier).unsubscribeFromMessages();
+    await delete();
     print(userId);
     try {
       // データベース関数を呼び出してトランザクション処理を行う
@@ -285,7 +294,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
               callback: (payload) async {
                 final newData = payload.newRecord;
                 state = MatchingRoom.fromMap(newData);
-                log('サブスク完了${state.player2Id}');
+                log('${state.toString()}');
 
                 if (state.player2Id != null && !hasNavigatedToChose) {
                   log('対戦相手発見');
@@ -298,6 +307,21 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
                       .fetchOtherUserWithRetry(otherUserId!);
                   ref.read(goProvider.notifier).state = true;
                 }
+
+                if (state.player1_go == true &&
+                    state.player2_go == true &&
+                    !hasgotomatching) {
+                  ref.read(gochoseProvider.notifier).state = true;
+                  hasgotomatching = true;
+                  log('次に進むのを許可はしました');
+                }
+
+                if ((state.player1_go == false || state.player2_go == false) &&
+                    !hassplash) {
+                  hassplash = true;
+                  ref.read(splashProvider.notifier).state = true;
+                  log('スプラッシュ画面を許可はしました');
+                }
               })
           .subscribe();
       log('サブスクは完了しました！');
@@ -306,7 +330,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
       ref.read(friendmatchProvider.notifier).state = false;
       router.go('/home');
     }
-
+    //初期データで動かせないからこれで回収してます
     if (state.player2Id != null && !hasNavigatedToChose) {
       log('対戦相手発見');
       hasNavigatedToChose = true;
@@ -316,6 +340,21 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
           .read(otherUserProvider.notifier)
           .fetchOtherUserWithRetry(otherUserId!);
       ref.read(goProvider.notifier).state = true;
+    }
+
+    if (state.player1_go == true &&
+        state.player2_go == true &&
+        !hasgotomatching) {
+      ref.read(gochoseProvider.notifier).state = true;
+      hasgotomatching = true;
+      log('次に進むのを許可はしました');
+    }
+
+    if ((state.player1_go == false || state.player2_go == false) &&
+        !hassplash) {
+      hassplash = true;
+      ref.read(splashProvider.notifier).state = true;
+      log('スプラッシュ画面を許可はしました');
     }
 
     await Future.delayed(const Duration(seconds: 2));
@@ -352,6 +391,18 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
         log('初期フェッチ中にエラーが発生: $e');
       }
     }
+
+    if (state.player1_go == true &&
+        state.player2_go == true &&
+        !hasgotomatching) {
+      ref.read(gochoseProvider.notifier).state = true;
+      hasgotomatching = true;
+    }
+    if ((state.player1_go == false || state.player2_go == false) &&
+        !hassplash) {
+      hassplash = true;
+      ref.read(splashProvider.notifier).state = true;
+    }
   }
 
   Future<void> cancelMatching(String roomId) async {
@@ -373,6 +424,18 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
         _presenceChannel = null;
       }
       router.go('/home');
+    }
+  }
+
+  Future<void> updategochose(String roomId, String player) async {
+    final which = player == state.player1Id ? 'player1_go' : 'player2_go';
+    try {
+      await supabase.from('rooms').update({
+        which: true,
+      }).eq('id', roomId);
+      log('次に進むように変更が完了しました');
+    } catch (e) {
+      log(e.toString());
     }
   }
 

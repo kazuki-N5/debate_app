@@ -59,7 +59,7 @@ class ChatHistoryPage extends ConsumerWidget {
             backgroundColor: Colors.blue,
             title: Text(
               // Textウィジェットのstyleプロパティとして指定
-              '${record.opponentName} とのチャット',
+              '${record.opponentName} とのレスバ',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w300,
@@ -107,12 +107,10 @@ class ChatHistoryPage extends ConsumerWidget {
                     future: _fetchMessages(record.roomid),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                        return Center(child: Container());
                       } else if (snapshot.hasError) {
                         return Center(child: Text('メッセージの読み込みに失敗しました。'));
-                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return const Center(child: Text('メッセージがありません。'));
-                      } else {
+                      }else {
                         final messages = snapshot.data!;
                         return ListView.builder(
                           padding: const EdgeInsets.symmetric(

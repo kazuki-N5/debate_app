@@ -18,6 +18,8 @@ class MatchingRoom with _$MatchingRoom {
     bool? go,
     bool? player1_finish,
     bool? player2_finish,
+    bool? player1_go,
+    bool? player2_go,
     DateTime? player1_time,
     DateTime? player2_time,
     String? theme,
@@ -44,6 +46,8 @@ class MatchingRoom with _$MatchingRoom {
       change: map['change'],
       player1_finish: map['player1_finish'],
       player2_finish: map['player2_finish'],
+      player1_go: map['player1_go'],
+      player2_go: map['player2_go'],
       player1_time: map['player1_time'] != null 
           ? DateTime.parse(map['player1_time']) 
           : null,

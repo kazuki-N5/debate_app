@@ -422,13 +422,10 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
             timerRef.value = null;
             try {
               // .rpc() を使ってデータベース関数を呼び出す
-              await supabase.rpc(
-                'handle_cancellation', // 作成したSQL関数名
-                params: {
-                  'p_user_id': userId, // SQL関数の引数名 'p_user_id' に値を渡す
-                  'p_room_id': room.roomId, // SQL関数の引数名 'p_room_id' に値を渡す
-                },
-              );
+               await roomnotifier.updategochose(
+                                room.roomId!,
+                                userId!,
+                              );
 
               // 成功した場合の処理
               print('キャンセル処理が正常に完了しました。');

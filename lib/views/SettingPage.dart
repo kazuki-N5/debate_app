@@ -133,7 +133,7 @@ class SettingPage extends HookConsumerWidget {
               ),
               _buildListTile(
                 icon: Icons.bug_report,
-                title: 'バグ報告',
+                title: 'バグ報告&機能提案',
                 onTap: () => _reportBug(context),
               ),
               _buildListTile(
@@ -389,7 +389,7 @@ class BugReportDialogContent extends HookConsumerWidget {
           borderRadius: BorderRadius.circular(20.0),
         ),
         title: const Text(
-          'バグを報告',
+          'バグを報告&機能提案',
           style: TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
@@ -402,7 +402,7 @@ class BugReportDialogContent extends HookConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '発生したバグの内容と、再現手順を詳しく教えてください。',
+                '発生したバグの内容と、再現手順を詳しく教えてください。\n欲しい機能を教えて下さい。',
                 style: TextStyle(
                   color: Colors.black.withOpacity(0.8),
                   fontSize: 15,

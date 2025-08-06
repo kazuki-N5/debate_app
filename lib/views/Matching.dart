@@ -406,7 +406,8 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
 
         log('タイマーを開始します。');
 
-        timerRef.value = Timer.periodic(const Duration(seconds: 1), (timer) {
+        timerRef.value =
+            Timer.periodic(const Duration(seconds: 1), (timer) async {
           final estimatedServerTime = DateTime.now().add(timeOffset);
           final diff = deadline.difference(estimatedServerTime).inSeconds;
 
@@ -419,7 +420,22 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
           if (diff <= -0.6) {
             timer.cancel();
             timerRef.value = null;
-            router.go('/chose');
+            try {
+              // .rpc() を使ってデータベース関数を呼び出す
+              await supabase.rpc(
+                'handle_cancellation', // 作成したSQL関数名
+                params: {
+                  'p_user_id': userId, // SQL関数の引数名 'p_user_id' に値を渡す
+                  'p_room_id': room.roomId, // SQL関数の引数名 'p_room_id' に値を渡す
+                },
+              );
+
+              // 成功した場合の処理
+              print('キャンセル処理が正常に完了しました。');
+            } catch (error) {
+              // エラー処理
+              router.go('/home');
+            }
           }
         });
       }

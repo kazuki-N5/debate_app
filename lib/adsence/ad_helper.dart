@@ -1,7 +1,7 @@
 
 import 'dart:io';
 
-class AdHelper {
+/*class AdHelper {
 
   // テスト用バナー広告ユニットID
   // AdMobのテストIDはAndroid/iOS共通です
@@ -44,9 +44,9 @@ class AdHelper {
       throw new UnsupportedError('Unsupported platform');
     }
   }
-}
+}*/
 
-/*class AdHelper {
+class AdHelper {
 
   static String get bannerAdUnitId {
     if (Platform.isAndroid) {
@@ -76,4 +76,4 @@ class AdHelper {
       throw new UnsupportedError('Unsupported platform');
     }
   }
-}*/
+}

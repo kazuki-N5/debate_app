@@ -41,8 +41,6 @@ class GamePage extends HookConsumerWidget {
     final cantap = useState(false);
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
     final isSubscribed = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
-    Timer? gametimer;
-    Timer? finishtimer;
     DateTime deadline;
 
     String formatTime(int seconds) {
@@ -70,6 +68,13 @@ class GamePage extends HookConsumerWidget {
       }
     }
 
+    bool gemini = false;
+    bool gemini2 = false;
+    bool win = false;
+
+    final gametimer = useState<Timer?>(null);
+    final finishtimer = useState<Timer?>(null);
+
     Future<void> countTime() async {
       deadline = room.updatedAt!.add(const Duration(seconds: 182));
 
@@ -77,12 +82,11 @@ class GamePage extends HookConsumerWidget {
 
       final clientTime = DateTime.now();
       final timeOffset = serverTime.difference(clientTime);
-      bool gemini = false;
-      bool gemini2 = false;
-      bool win = false;
-      gametimer = Timer.periodic(Duration(seconds: 1), (timer) async {
+
+      gametimer.value = Timer.periodic(Duration(seconds: 1), (timer) async {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
+        log(diff.toString());
 
         if (diff < 165) {
           if (cantap.value == false) {
@@ -133,10 +137,85 @@ class GamePage extends HookConsumerWidget {
           }
         }
         if (diff < -20) {
-          timer.cancel();
+          gametimer.value?.cancel();
           router.go('/home');
         }
       });
+    }
+
+    bool geminia = false;
+    bool gemini2a = false;
+    bool wina = false;
+
+    Future<void> finishgeme() async {
+      if (room.player1_finish == true && room.player2_finish == true) {
+        gametimer.value?.cancel();
+        print('判定結果を出す');
+        textFieldFocusNode.unfocus();
+        finish.value = true;
+
+        deadline = room.updatedAt!;
+
+        final DateTime serverTime = await getServerTimeWithRetry();
+
+        final clientTime = DateTime.now();
+        final timeOffset = serverTime.difference(clientTime);
+
+        finishtimer.value = Timer.periodic(Duration(seconds: 1), (timer) async {
+          final estimatedServerTime = DateTime.now().add(timeOffset);
+          final fiinishcount =
+              deadline.difference(estimatedServerTime).inSeconds.abs();
+          log(fiinishcount.toString());
+          if (fiinishcount >= 1) {
+            if (room.player1Id == user) {
+              () async {
+                if (!geminia) {
+                  
+              log('geminiを呼び出します試合中断');
+                  geminia = true;
+                  await chatwithai.gemini(
+                      room.player1Id!,
+                      room.roomId!,
+                      room.theme!,
+                      room.choice1!,
+                      room.choice2!,
+                      room.player1Choice!);
+                }
+              }();
+            }
+          }
+
+          if (fiinishcount >= 8) {
+            if (room.player2Id == user) {
+              if (!gemini2a) {
+                gemini2a = true;
+                log('gemini2を呼び出します試合中断');
+                // player2のAIにメッセージを送信
+                await chatwithai.gemini(
+                    room.player1Id!,
+                    room.roomId!,
+                    room.theme!,
+                    room.choice1!,
+                    room.choice2!,
+                    room.player1Choice!);
+              }
+            }
+          }
+
+          if (fiinishcount >= 15) {
+            if (!wina) {
+              wina = true;
+              log('勝利を確定します');
+              roomnotifier.win(room, user!);
+            }
+          }
+
+          if (fiinishcount >= 21) {
+            finishtimer.value?.cancel();
+            router.go('/home');
+          }
+        });
+      }
     }
 
     // --- ▼ここから追加▼ ---
@@ -164,58 +243,9 @@ class GamePage extends HookConsumerWidget {
     }, [room.result]);
 
     useEffect(() {
-      if (room.player1_finish == true && room.player2_finish == true) {
-        gametimer?.cancel();
-        print('判定結果を出す');
-        textFieldFocusNode.unfocus();
-        finish.value = true;
-
-        int fiinishcount = 0;
-        finishtimer = Timer.periodic(Duration(seconds: 1), (timer) async {
-          fiinishcount++;
-          if (fiinishcount == 0) {
-            if (room.player1Id == user!) {
-              // 非同期処理は即時実行関数として実行
-              () async {
-                await chatwithai.gemini(
-                    room.player1Id!,
-                    room.roomId!,
-                    room.theme!,
-                    room.choice1!,
-                    room.choice2!,
-                    room.player1Choice!);
-              }();
-            }
-          }
-
-          if (fiinishcount == 7) {
-            if (room.result == null) {
-              if (room.player2Id == user) {
-                await chatwithai.gemini(
-                    room.player1Id!,
-                    room.roomId!,
-                    room.theme!,
-                    room.choice1!,
-                    room.choice2!,
-                    room.player1Choice!);
-              }
-            }
-          }
-
-          if (fiinishcount == 14) {
-            roomnotifier.win(room, user!);
-          }
-
-          if (finishtimer == 20) {
-            finishtimer?.cancel();
-            router.go('/finish');
-          }
-        });
-      }
-
-      // クリーンアップ関数を返す
+      finishgeme();
       return () {
-        finishtimer?.cancel();
+        finishtimer.value?.cancel();
       };
     }, [room.player1_finish, room.player2_finish]);
 
@@ -229,10 +259,9 @@ class GamePage extends HookConsumerWidget {
 
         // ref.read() を使って Notifier のインスタンスを取得し、メソッドを呼び出します。
         // read() は状態変化を監視しないため、useEffect や Future コールバック内でも安全です。
-        if(isSubscribed == false){
-          
-        ref.read(adNotifierProvider.notifier).loadAd();
-        ref.read(mediumRectangleAdProvider.notifier).loadAd();
+        if (isSubscribed == false) {
+          ref.read(adNotifierProvider.notifier).loadAd();
+          ref.read(mediumRectangleAdProvider.notifier).loadAd();
         }
 
         print('Future.microtask: Ad loads triggered.');
@@ -248,7 +277,7 @@ class GamePage extends HookConsumerWidget {
       countTime();
 
       return () {
-        gametimer?.cancel();
+        gametimer.value?.cancel();
       };
     }, []);
 
@@ -580,6 +609,8 @@ class GamePage extends HookConsumerWidget {
   }
 }
 
+
+
 class Dialog extends ConsumerWidget {
   const Dialog({Key? key}) : super(key: key); // コンストラクタを追加
 
@@ -633,7 +664,8 @@ class Dialog extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: () {
+              onPressed:(room.player1_finish == true && room.player2_finish == true)?
+              null: () {
                 if (isUserFinished) {
                   // キャンセル処理
                   roomnotifier.notsuggestfinish(room.roomId!, user!);

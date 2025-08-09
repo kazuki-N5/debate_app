@@ -40,7 +40,6 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
 //アプリのライフサイクルでホームに戻ったときと戻ったときの丁稚　キャンセルマッチを実装
   @override
   Future<void> didChangeAppLifecycleState(AppLifecycleState appState) async {
-    final userId = ref.read(currentUserIdProvider);
     super.didChangeAppLifecycleState(appState);
     log(appState.toString());
 
@@ -60,44 +59,55 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     if (appState == AppLifecycleState.resumed) {
       log('App resumed. Checking for room updates.');
       if (state.roomId != null) {
-        try {
-          final roomdata = await supabase
-              .from('rooms')
-              .select()
-              .eq('id', state.roomId!)
-              .single();
-
-          if (!isdisposed) {
-            state = MatchingRoom.fromMap(roomdata);
-          }
-
-          if (state.player2Id != null && !hasNavigatedToChose) {
-            log('対戦相手発見');
-            hasNavigatedToChose = true;
-            final otherUserId =
-                state.player1Id == userId ? state.player2Id : state.player1Id;
-            await ref
-                .read(otherUserProvider.notifier)
-                .fetchOtherUserWithRetry(otherUserId!);
-            ref.read(goProvider.notifier).state = true;
-          }
-
-          if (state.player1_go == true &&
-              state.player2_go == true &&
-              !!hasgotomatching) {
-            ref.read(gochoseProvider.notifier).state = true;
-            hasgotomatching = true;
-          }
-
-          if ((state.player1_go == false || state.player2_go == false) &&
-              !hassplash) {
-            hassplash = true;
-            ref.read(splashProvider.notifier).state = true;
-          }
-        } catch (e) {
-          log(e.toString());
-        }
+        await fetchmatchupdate();
       }
+    }
+  }
+
+  Future<void> fetchmatchupdate() async {
+    try {
+      final roomdata = await supabase
+          .from('rooms')
+          .select()
+          .eq('id', state.roomId!)
+          .single();
+
+      if (!isdisposed) {
+        state = MatchingRoom.fromMap(roomdata);
+      }
+
+      gomatchstate();
+    } catch (e) {
+      log(e.toString());
+    }
+  }
+
+  void gomatchstate() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (state.player2Id != null && !hasNavigatedToChose) {
+      log('対戦相手発見');
+      hasNavigatedToChose = true;
+      final otherUserId =
+          state.player1Id == userId ? state.player2Id : state.player1Id;
+      await ref
+          .read(otherUserProvider.notifier)
+          .fetchOtherUserWithRetry(otherUserId!);
+      ref.read(goProvider.notifier).state = true;
+    }
+
+    if (state.player1_go == true &&
+        state.player2_go == true &&
+        !hasgotomatching) {
+      ref.read(gochoseProvider.notifier).state = true;
+      hasgotomatching = true;
+      log('次に進むのを許可はしました');
+    }
+
+    if ((state.player1_go == false || state.player2_go == false) &&
+        !hassplash) {
+      hassplash = true;
+      ref.read(splashProvider.notifier).state = true;
+      log('スプラッシュ画面を許可はしました');
     }
   }
 
@@ -157,7 +167,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     }).subscribe((status, [error]) async {
       // 購読に成功したら、自分のプレゼンス情報を送信
       if (status == RealtimeSubscribeStatus.subscribed) {
-        print('Successfully subscribed to presence channel: $channelName');
+        log('Successfully subscribed to presence channel: $channelName');
         await _presenceChannel!.track({'user_id': myUserId});
       } else {
         print(
@@ -296,34 +306,18 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
                 state = MatchingRoom.fromMap(newData);
                 log('${state.toString()}');
 
-                if (state.player2Id != null && !hasNavigatedToChose) {
-                  log('対戦相手発見');
-                  hasNavigatedToChose = true;
-                  final otherUserId = state.player1Id == userId
-                      ? state.player2Id
-                      : state.player1Id;
-                  await ref
-                      .read(otherUserProvider.notifier)
-                      .fetchOtherUserWithRetry(otherUserId!);
-                  ref.read(goProvider.notifier).state = true;
-                }
-
-                if (state.player1_go == true &&
-                    state.player2_go == true &&
-                    !hasgotomatching) {
-                  ref.read(gochoseProvider.notifier).state = true;
-                  hasgotomatching = true;
-                  log('次に進むのを許可はしました');
-                }
-
-                if ((state.player1_go == false || state.player2_go == false) &&
-                    !hassplash) {
-                  hassplash = true;
-                  ref.read(splashProvider.notifier).state = true;
-                  log('スプラッシュ画面を許可はしました');
-                }
+                gomatchstate();
               })
-          .subscribe();
+          .subscribe((status, [error]) async {
+            log(status.toString());
+        // subscribe() のコールバックで接続状態を監視
+        if (status == 'SUBSCRIBED') {
+          log('Successfully subscribed or reconnected to channel. Fetching initial state.');
+          await fetchmatchupdate();
+        } else if (status == 'CHANNEL_ERROR') {
+          log('Subscription failed with error: ${error.toString()}');
+        }
+      });
       log('サブスクは完了しました！');
     } catch (e) {
       cancelMatching(roomId);
@@ -357,7 +351,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
       log('スプラッシュ画面を許可はしました');
     }
 
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1));
     log('${state.player2Id}');
     log('一旦サブスク後のgoprovider ${ref.read(goProvider)}');
 

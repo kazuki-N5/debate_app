@@ -2,19 +2,21 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:debate_project/adsence/ad_mbanner_provider.dart';
 import 'package:debate_project/adsence/ad_provider.dart';
-import 'package:debate_project/modes/chat.dart';
-import 'package:debate_project/modes/mathing.dart';
+import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/ai_supabase.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
+import 'package:debate_project/provider/other_user.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
+import 'package:debate_project/view_model/prohibited_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class GamePage extends HookConsumerWidget {
   const GamePage({super.key});
@@ -42,6 +44,7 @@ class GamePage extends HookConsumerWidget {
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
     final isSubscribed = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
     DateTime deadline;
+    final Users otherUserState = ref.watch(otherUserProvider);
 
     String formatTime(int seconds) {
       final minutes = seconds ~/ 60;
@@ -67,6 +70,39 @@ class GamePage extends HookConsumerWidget {
         }
       }
     }
+
+    final myAvatarUrl = ref.watch(userProvider).avatar_url;
+    // 非表示にするメッセージIDのリストを状態として管理
+    final hiddenMessageIds = useState<Set<String>>({});
+    // SharedPreferencesからデータを読み込み中かどうかのフラグ
+    final isLoadingPrefs = useState<bool>(true);
+
+    // SharedPreferencesから非表示IDを読み込む非同期関数
+    Future<void> loadHiddenMessageIds() async {
+      final prefs = await SharedPreferences.getInstance();
+      // ChathistoryPageと同じキー 'hidden_message_ids' を使用
+      final ids = prefs.getStringList('hidden_message_ids') ?? [];
+      if (context.mounted) {
+        // ウィジェットがまだ存在するか確認
+        hiddenMessageIds.value = ids.toSet();
+        isLoadingPrefs.value = false; // 読み込み完了
+      }
+    }
+
+    // 非表示にするメッセージIDを保存し、状態を更新する関数
+    Future<void> hideMessage(String messageId) async {
+      final newHiddenIds = {...hiddenMessageIds.value, messageId};
+      hiddenMessageIds.value = newHiddenIds; // UIを即時更新
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('hidden_message_ids', newHiddenIds.toList());
+    }
+
+    // ウィジェットの初回ビルド時に一度だけ実行される
+    useEffect(() {
+      loadHiddenMessageIds();
+      return null; // クリーンアップは不要
+    }, const []);
 
     bool gemini = false;
     bool gemini2 = false;
@@ -170,8 +206,7 @@ class GamePage extends HookConsumerWidget {
             if (room.player1Id == user) {
               () async {
                 if (!geminia) {
-                  
-              log('geminiを呼び出します試合中断');
+                  log('geminiを呼び出します試合中断');
                   geminia = true;
                   await chatwithai.gemini(
                       room.player1Id!,
@@ -449,18 +484,49 @@ class GamePage extends HookConsumerWidget {
                     child: Column(
                       children: [
                         Expanded(
-                          child: ListView.builder(
-                            controller: scrollController,
-                            reverse: true,
-                            itemCount: chats.length,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 16),
-                            itemBuilder: (context, index) {
-                              final chat = chats[index];
-                              return _buildMessageBubble(
-                                  chat, room, supabase, user!);
-                            },
-                          ),
+                          child: () {
+                            // SharedPreferencesの読み込み中はインジケータを表示
+                            if (isLoadingPrefs.value) {
+                              return const Center(
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white));
+                            }
+
+                            // 非表示IDに含まれないメッセージのみをフィルタリング
+                            final visibleMessages = chats
+                                .where((chat) =>
+                                    !hiddenMessageIds.value.contains(chat.id))
+                                .toList();
+
+                            return ListView.builder(
+                              controller: scrollController,
+                              reverse: true,
+                              itemCount: visibleMessages.length,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 16),
+                              itemBuilder: (context, index) {
+                                final chat = visibleMessages[index];
+                                final isUserMessage = chat.senderId == user;
+
+                                // 前のメッセージの送信者と比較し、アバターを表示するか決定
+                                 final bool showAvatar = index == visibleMessages.length - 1 ||
+      visibleMessages[index + 1].senderId != chat.senderId;
+
+                                // 汎用的なMessageBubbleウィジェットを使用
+                                return MessageBubble(
+                                  chat: chat,
+                                  isUserMessage: isUserMessage,
+                                  // 対戦相手のアバターURLは現在取得できないためnull
+                                  opponentAvatarUrl: otherUserState.avatar_url,
+                                  myAvatarUrl: myAvatarUrl,
+                                  showAvatar: showAvatar,
+                                  roomId: room.roomId,
+                                  // 非表示処理をコールバックとして渡す
+                                  onHide: () => hideMessage(chat.id),
+                                );
+                              },
+                            );
+                          }(),
                         ),
                         Container(
                           decoration: const BoxDecoration(
@@ -566,50 +632,7 @@ class GamePage extends HookConsumerWidget {
       ),
     );
   }
-
-  Widget _buildMessageBubble(Chat chat, MatchingRoom matchingRoomState,
-      SupabaseClient supabase, String user) {
-    final isCurrentUser = chat.senderId == user;
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: isCurrentUser ? 64 : 8,
-        right: isCurrentUser ? 8 : 64,
-        top: 4,
-        bottom: 4,
-      ),
-      child: Column(
-        crossAxisAlignment:
-            isCurrentUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: isCurrentUser ? Colors.green : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  offset: const Offset(0, 1),
-                  blurRadius: 3,
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Text(
-              chat.content,
-              style: TextStyle(
-                color: isCurrentUser ? Colors.white : Colors.black,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
-
-
 
 class Dialog extends ConsumerWidget {
   const Dialog({Key? key}) : super(key: key); // コンストラクタを追加
@@ -664,16 +687,18 @@ class Dialog extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed:(room.player1_finish == true && room.player2_finish == true)?
-              null: () {
-                if (isUserFinished) {
-                  // キャンセル処理
-                  roomnotifier.notsuggestfinish(room.roomId!, user!);
-                } else {
-                  // 判定申し込み処理
-                  roomnotifier.suggestfinish(room.roomId!, user!);
-                }
-              },
+              onPressed:
+                  (room.player1_finish == true && room.player2_finish == true)
+                      ? null
+                      : () {
+                          if (isUserFinished) {
+                            // キャンセル処理
+                            roomnotifier.notsuggestfinish(room.roomId!, user!);
+                          } else {
+                            // 判定申し込み処理
+                            roomnotifier.suggestfinish(room.roomId!, user!);
+                          }
+                        },
               child: Text(
                 isUserFinished ? 'キャンセル' : '判定に進む',
                 style: TextStyle(

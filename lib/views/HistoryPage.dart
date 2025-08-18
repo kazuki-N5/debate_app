@@ -1,14 +1,12 @@
-import 'dart:developer';
-
 import 'package:debate_project/modes/history.dart';
 import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/view_model/prohibited_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:popover/popover.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HistoryPage extends HookConsumerWidget {
   const HistoryPage({Key? key}) : super(key: key);
@@ -68,8 +66,7 @@ class HistoryPage extends HookConsumerWidget {
             print(stack);
             // --- MODIFIED: Error UI with Refresh Button ---
             if (isLoadingRetry.value) {
-              return Center(
-                  child: Container());
+              return Center(child: Container());
             }
 
             return Center(
@@ -116,7 +113,10 @@ class HistoryPage extends HookConsumerWidget {
   }
 }
 
-class _MatchHistoryItem extends HookWidget {
+// (HistoryPageクラスは変更なしのため省略)
+
+class _MatchHistoryItem extends HookConsumerWidget {
+// --- 変更箇所 END ---
   final MatchRecordDisplay record;
 
   const _MatchHistoryItem({
@@ -125,7 +125,10 @@ class _MatchHistoryItem extends HookWidget {
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  // --- 変更箇所 START ---
+  // 3. buildメソッドに `WidgetRef ref` を追加します
+  Widget build(BuildContext context, WidgetRef ref) {
+    // --- 変更箇所 END ---
     final isReasonExpanded = useState(false);
 
     // --- Record Data ---
@@ -139,7 +142,11 @@ class _MatchHistoryItem extends HookWidget {
     final bool isCancelled = record.cancel!;
     final String? opponentid = record.opponentid;
     final String roomid = record.roomid;
-    final supabase = Supabase.instance.client;
+    final supabase = ref.read(supabaseProvider);
+    // --- 変更箇所 START ---
+    // 4. `supabase` の直接インスタンス化は不要になるので削除します
+    // final supabase = Supabase.instance.client;
+    // --- 変更箇所 END ---
 
     // --- UI Constants ---
     final Color cardBackgroundColor = Colors.grey[200] ?? Colors.grey;
@@ -150,68 +157,11 @@ class _MatchHistoryItem extends HookWidget {
     const double collapsedGrayBoxHeight = 90.0;
     final BorderRadius grayBoxBorderRadius = BorderRadius.circular(8.0);
     const double avatarRadius = 18.0;
-    Widget _buildReportButton(BuildContext popoverContext) {
-      return GestureDetector(
-        onTap: () async {
-          Navigator.of(popoverContext).pop();
-          log(opponentid.toString());
-          log(roomid.toString());
 
-          try {
-            // 2. Supabaseのprohibitedテーブルにデータを挿入
-            await supabase.from('prohibited').insert({
-              'user_id': opponentid,
-              'room_id': roomid,
-            });
-
-            // 成功した場合の処理
-            // 非同期処理をまたぐため、contextがまだ有効かチェックするのが安全です
-            if (!context.mounted) return;
-
-            // ポップオーバーを閉じる
-
-            // 成功したことを知らせるスナックバーを表示
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('ユーザーを報告しました。'),// 成功を分かりやすくするために色付け
-                duration: Duration(seconds: 2),
-              ),
-            );
-          } catch (e) {
-            // 3. 失敗した場合の処理
-            if (!context.mounted) return;
-
-
-            // エラーが発生したことを知らせるスナックバーを表示
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('報告に失敗しました。'),// エラーを分かりやすくするために色付け
-                duration: Duration(seconds: 2),
-              ),
-            );
-
-            // デバッグ用にエラー内容をコンソールに出力
-            debugPrint('Supabaseへの挿入エラー: $e');
-          }
-        },
-        child: Container(
-          margin: const EdgeInsets.all(8.0), // 吹き出しの内側の余白
-          decoration: BoxDecoration(
-            color: Colors.red,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: const Center(
-            child: Text(
-              '報告',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+    // --- 変更箇所 START ---
+    // 5. 古い `_buildReportButton` メソッドはViewModelの機能で代替されるため、完全に削除します
+    // Widget _buildReportButton(BuildContext popoverContext) { ... }
+    // --- 変更箇所 END ---
 
     Widget _buildAvatarImage() {
       if (opponentAvatarUrl != null && opponentAvatarUrl.isNotEmpty) {
@@ -233,31 +183,170 @@ class _MatchHistoryItem extends HookWidget {
       }
     }
 
-    // 報告ボタンのウィジェット
-
-    // --- Helper Widget for Avatar ---
     Widget _buildOpponentAvatar() {
-      // InkWellでラップするために、BuildContextを渡せるようにBuilderでラップ
       return Builder(
         builder: (avatarContext) {
           return InkWell(
             customBorder: const CircleBorder(),
             onTap: () {
-              // --- POPOVER表示処理 ---
-              showPopover(
-                context: avatarContext, // タップされたアイコンのcontextを使用
-                bodyBuilder: (popoverContext) =>
-                    _buildReportButton(popoverContext),
-                direction: PopoverDirection.bottom, // アイコンの上側に表示
-                backgroundColor: Colors.white,
-                barrierColor: Colors.transparent,
-                width: 100, // 吹き出しの幅
-                height: 50, // 吹き出しの高さ
-                arrowHeight: 10, // 吹き出しの矢印の高さ
-                arrowWidth: 20, // 吹き出しの矢印の幅
-                transitionDuration: const Duration(milliseconds: 100),
+              final navigator = Navigator.of(avatarContext);
+
+              showCustomPopover(
+                context: avatarContext,
+                height: 100,
+                children: [
+                  PopoverButton(
+                    text: '報告',
+                    onTap: () async {
+                      final prohibitedService =
+                          ref.read(prohibitedServiceProvider);
+
+                      await prohibitedService.sendProhibited(
+                        context: avatarContext,
+                        opponentId: opponentid,
+                        roomId: roomid,
+                      );
+                      navigator.pop();
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  PopoverButton(
+                    text: 'ブロック',
+                    onTap: () {
+                      navigator.pop();
+                      showDialog(
+                        context: avatarContext,
+                        builder: (BuildContext dialogContext) {
+                          return AlertDialog(
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(27.0),
+                            ),
+                            title: const Text(
+                              'ユーザーをブロック',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
+                            ),
+                            content: SingleChildScrollView(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${record.opponentName}さんをブロックしますか？\nブロックすると、このユーザーとの履歴は表示されなくなり、マッチングしなくなります。', // 説明を修正
+                                    style: TextStyle(
+                                      color: Colors.black.withOpacity(0.8),
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            actionsPadding:
+                                const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                            actionsAlignment: MainAxisAlignment.end,
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(dialogContext).pop();
+                                },
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.black,
+                                  backgroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20.0),
+                                    side: const BorderSide(
+                                        color: Colors.black, width: 1.5),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20.0, vertical: 10.0),
+                                  textStyle: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                child: const Text('キャンセル'),
+                              ),
+                              const SizedBox(width: 1),
+                              ElevatedButton(
+                                // --- ▼ 2. ブロックボタンの処理を修正 ---
+                                onPressed: () async {
+                                  final dialogNavigator = Navigator.of(dialogContext);
+                                  final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+                                  try {
+                                    // ① Supabaseにブロック情報を挿入
+                                    await supabase.from('brock_user').insert({
+                                      'user_id': ref.read(currentUserIdProvider),
+                                      'block_user_id': opponentid,
+                                    });
+
+                                    // ② SharedPreferencesにブロックしたroomidを保存
+                                    final prefs = await SharedPreferences.getInstance();
+                                    const key = 'blocked_room_ids'; // 保存キー
+                                    
+                                    // 既存のリストを取得
+                                    final List<String> blockedRoomIds = prefs.getStringList(key) ?? [];
+                                    
+                                    // 新しいIDを追加（重複を避ける）
+                                    if (!blockedRoomIds.contains(roomid)) {
+                                      blockedRoomIds.add(roomid);
+                                      await prefs.setStringList(key, blockedRoomIds);
+                                    }
+
+                                    // ③ プロバイダを無効化し、履歴リストを再読み込み・再フィルタリングさせる
+                                    ref.invalidate(matchRecordsProvider);
+
+                                    // ④ ダイアログを閉じる
+                                    dialogNavigator.pop();
+
+                                    // ⑤ ユーザーに完了を通知
+                                    scaffoldMessenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text('${record.opponentName}さんをブロックしました。'),
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+
+                                  } catch (error) {
+                                    print('ブロック処理に失敗しました: $error');
+                                    // エラー時もダイアログを閉じる
+                                    dialogNavigator.pop();
+                                    // ユーザーにエラーを通知
+                                    scaffoldMessenger.showSnackBar(
+                                      SnackBar(
+                                        content: const Text('ブロック処理に失敗しました。'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                                // --- ▲ 修正ここまで ---
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20.0),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 24.0, vertical: 12.0),
+                                  elevation: 2,
+                                  textStyle: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                child: const Text('はい'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
               );
-              // --- END POPOVER ---
             },
             child: _buildAvatarImage(),
           );
@@ -265,10 +354,8 @@ class _MatchHistoryItem extends HookWidget {
       );
     }
 
-    // アバターの画像部分を分離
-
+    // (これ以降のUI部分に変更はありません)
     return Padding(
-      // (以下、変更なし)
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16.0),
@@ -300,9 +387,7 @@ class _MatchHistoryItem extends HookWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // --- MODIFIED: Tappable Avatar with Popover ---
                     _buildOpponentAvatar(),
-                    // --- END MODIFIED ---
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(

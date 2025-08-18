@@ -50,7 +50,7 @@ class ProhibitedService {
       // 成功したことを知らせるスナックバーを表示
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('報告しました。'), // 成功を示す色
+          content: Text('通報しました。'), // 成功を示す色
           duration: Duration(seconds: 2),
         ),
       );
@@ -62,7 +62,7 @@ class ProhibitedService {
       ScaffoldMessenger.of(context).showSnackBar(
         // contextを正しく指定
         const SnackBar(
-          content: Text('報告に失敗しました。'),
+          content: Text('通報に失敗しました。'),
           duration: Duration(seconds: 2),
         ),
       );
@@ -147,7 +147,7 @@ class MessageBubble extends ConsumerWidget { // ConsumerWidgetに変更
                     height: 90,
                     children: [
                       PopoverButton(
-                        text: '報告',
+                        text: '通報',
                         onTap: () async { // ★★★ async を追加 ★★★
                           // Riverpodを通じてProhibitedServiceのインスタンスを取得
                           final prohibitedService = ref.read(prohibitedServiceProvider);

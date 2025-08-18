@@ -196,7 +196,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
                 height: 100,
                 children: [
                   PopoverButton(
-                    text: '報告',
+                    text: '通報',
                     onTap: () async {
                       final prohibitedService =
                           ref.read(prohibitedServiceProvider);

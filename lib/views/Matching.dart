@@ -360,7 +360,11 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
         } else if ((room.player1Id == userId && room.player2_go == false) ||
             (room.player2Id == userId && room.player1_go == false)) {
           log('相手がやめたのでマッチングを再開します');
-          roomnotifier.findMatch('', '', '', '');
+          try {
+            roomnotifier.findMatch('', '', '', '');
+          } catch (e) {
+            router.go('/home');
+          }
         }
       }
     });
@@ -411,21 +415,28 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
           final estimatedServerTime = DateTime.now().add(timeOffset);
           final diff = deadline.difference(estimatedServerTime).inSeconds;
 
+          log(secondsLeft.value.toString());
           if (diff >= 0) {
             secondsLeft.value = diff;
-            log(secondsLeft.value.toString());
           } else {
             isButtonPressed.value = true;
           }
-          if (diff <= -0.6) {
+          if (diff <= -3) {
             timer.cancel();
             timerRef.value = null;
             try {
+              roomnotifier.findMatch('', '', '', '');
+            } catch (e) {
+              router.go('/home');
+            }
+          }
+          if (diff <= -0.6) {
+            try {
               // .rpc() を使ってデータベース関数を呼び出す
-               await roomnotifier.updategochose(
-                                room.roomId!,
-                                userId!,
-                              );
+              await roomnotifier.updategochose(
+                room.roomId!,
+                userId!,
+              );
 
               // 成功した場合の処理
               print('キャンセル処理が正常に完了しました。');

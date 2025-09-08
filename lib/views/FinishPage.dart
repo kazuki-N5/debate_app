@@ -176,6 +176,9 @@ class FinishPage extends HookConsumerWidget {
     String getResultText(MatchingRoom room, String userId) {
       // room.resultの最初の文字を取得
       String firstChar = room.result![0];
+      if (firstChar != 'A' && firstChar != 'B') {
+        return '勝利';
+      }
       bool isPlayer1 = room.player1Id == userId;
 
       if (isPlayer1) {
@@ -250,8 +253,8 @@ class FinishPage extends HookConsumerWidget {
             return save.value;
           }
         } else {
-          // 引き分けなどのケースがあればここに追記
-          return '0';
+          save.value = '+16'; // この行を追加
+          return save.value;
         }
       }
       return save.value;

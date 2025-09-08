@@ -140,7 +140,6 @@ flutter:
     - assets/images/icons/android_front.png
     - assets/images/icons/ios.png
     - assets/images/adbrock.png
-    - assets/images/discord.png
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

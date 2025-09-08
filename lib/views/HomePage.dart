@@ -22,7 +22,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 // 広告関連のインポートを追加
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:showcaseview/showcaseview.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class HomePage extends HookConsumerWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -53,13 +52,7 @@ class HomePage extends HookConsumerWidget {
     }
 
     // HomePageクラスの外に追加
-Future<void> _launchUrl(String urlString) async {
-  final Uri url = Uri.parse(urlString);
-  if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-    // URLが開けなかった場合のエラーハンドリング
-    log('Could not launch $urlString');
-  }
-}
+
 
     void showAppReviewDialog(BuildContext context) async {
       // final InAppReview inAppReview = InAppReview.instance; // レビュー機能を使う場合
@@ -583,22 +576,7 @@ Future<void> _launchUrl(String urlString) async {
                               ),
                               const SizedBox(
                                   height: 7), 
-                                    GestureDetector(
-                                onTap: () {
-                                  // Discordの招待URLを開く
-                                  _launchUrl('https://discord.gg/Ypwe2RUfhg');
-                                },
-                                // 注: 'assets/images/discord_icon.png' をプロジェクトに追加してください
-                                child: Image.asset(
-                                  'assets/images/discord.png',
-                                  width: 38,
-                                  height: 38,
-                                  fit: BoxFit.contain, // アイコンの比率を保つためにcontain推奨
-                                ),
-                              ),
-                              // --- ▲ ここまで追加 ▲ ---
-
-                              const SizedBox(height: 11),
+                                   
 
                               GestureDetector(
                                 onTap: () {

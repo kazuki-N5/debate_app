@@ -74,6 +74,9 @@ PODS:
     - Flutter
   - vibration (3.0.0):
     - Flutter
+  - video_player_avfoundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - webview_flutter_wkwebview (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -98,6 +101,7 @@ DEPENDENCIES:
   - store_redirect (from `.symlinks/plugins/store_redirect/ios`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
   - vibration (from `.symlinks/plugins/vibration/ios`)
+  - video_player_avfoundation (from `.symlinks/plugins/video_player_avfoundation/darwin`)
   - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
 SPEC REPOS:
@@ -151,40 +155,43 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
   vibration:
     :path: ".symlinks/plugins/vibration/ios"
+  video_player_avfoundation:
+    :path: ".symlinks/plugins/video_player_avfoundation/darwin"
   webview_flutter_wkwebview:
     :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 SPEC CHECKSUMS:
-  app_links: f3e17e4ee5e357b39d8b95290a9b2c299fca71c6
-  audioplayers_darwin: 4027b33a8f471d996c13f71cb77f0b1583b5d923
-  device_info_plus: bf2e3232933866d73fe290f2942f2156cdd10342
-  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
-  flutter_image_compress_common: ec1d45c362c9d30a3f6a0426c297f47c52007e3e
-  flutter_native_splash: df59bb2e1421aa0282cb2e95618af4dcb0c56c29
+  app_links: 76b66b60cc809390ca1ad69bfd66b998d2387ac7
+  audioplayers_darwin: 4f9ca89d92d3d21cec7ec580e78ca888e5fb68bd
+  device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_image_compress_common: 1697a328fd72bfb335507c6bca1a65fa5ad87df1
+  flutter_native_splash: c32d145d68aeda5502d5f543ee38c192065986cf
   Google-Mobile-Ads-SDK: 1dfb0c3cb46c7e2b00b0f4de74a1e06d9ea25d67
-  google_mobile_ads: cab27248050510554aa646195eacc393ce7406ad
+  google_mobile_ads: 535223588a6791b7a3cc3513a1bc7b89d12f3e62
   GoogleUserMessagingPlatform: f8d0cdad3ca835406755d0a69aa634f00e76d576
-  image_cropper: e0bb0042e4404ff2ef134e5cf0492cbd892156cd
-  image_picker_ios: c560581cceedb403a6ff17f2f816d7fea1421fc1
-  in_app_review: a31b5257259646ea78e0e35fc914979b0031d011
+  image_cropper: c4326ea50132b1e1564499e5d32a84f01fb03537
+  image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
+  in_app_review: 5596fe56fab799e8edb3561c03d053363ab13457
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   Mantle: c5aa8794a29a022dfbbfc9799af95f477a69b62d
-  package_info_plus: c0502532a26c7662a62a356cebe2692ec5fe4ec4
-  path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
-  purchases_flutter: b3d4a19d6a0bc7db18f836d55ecc1002631d60d2
+  package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
+  path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
+  purchases_flutter: 9191525a18bf11df40eb303047d507dd64cccb25
   PurchasesHybridCommon: 1583b4532763b795f8ae61913102d6ef9ed556a8
   RevenueCat: 5fa12c42c14b390dd2423897e925f407f474b8fa
-  scroll_screenshot: 0cd01b85365d369d0432861ad7e2e1c01b9c97f8
+  scroll_screenshot: 1dd71aad3669b467fb43aafdb0ab4b1015684b86
   SDWebImage: f29024626962457f3470184232766516dee8dfea
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
-  share_plus: 8b6f8b3447e494cca5317c8c3073de39b3600d1f
-  shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
-  store_redirect: 2977747cf81689a39bd62c248c2deacb7a0d131e
+  share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
+  shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
+  store_redirect: 55fd455802ceab09803b2df6e68f19a58815266a
   TOCropViewController: 80b8985ad794298fb69d3341de183f33d1853654
-  url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
-  vibration: 3797858f8cbf53d841e189ef8bd533d96e4ca93c
-  webview_flutter_wkwebview: a4af96a051138e28e29f60101d094683b9f82188
+  url_launcher_ios: 694010445543906933d732453a59da0a173ae33d
+  vibration: 69774ad57825b11c951ee4c46155f455d7a592ce
+  video_player_avfoundation: 2cef49524dd1f16c5300b9cd6efd9611ce03639b
+  webview_flutter_wkwebview: 1821ceac936eba6f7984d89a9f3bcb4dea99ebb2
 
-PODFILE CHECKSUM: e8bb0b7d718b23680ca9b515fa4accebbc78b7bb
+PODFILE CHECKSUM: 0313dd1323c3948dcb712de3a45c4c25f6f9dd49
 
 COCOAPODS: 1.16.2

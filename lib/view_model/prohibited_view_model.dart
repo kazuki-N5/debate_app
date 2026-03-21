@@ -1,5 +1,6 @@
 import 'package:debate_project/modes/chat.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:popover/popover.dart';
 import 'package:riverpod/riverpod.dart'; // Riverpodのimportを追加
@@ -72,12 +73,11 @@ class ProhibitedService {
     }
   }
 
-  
-
   /// ポップオーバー内で使用する共通のボタンウィジェット
 }
 
-class MessageBubble extends ConsumerWidget { // ConsumerWidgetに変更
+class MessageBubble extends ConsumerWidget {
+  // ConsumerWidgetに変更
   final Chat chat;
   final bool isUserMessage;
   final String? opponentAvatarUrl;
@@ -85,7 +85,6 @@ class MessageBubble extends ConsumerWidget { // ConsumerWidgetに変更
   final bool showAvatar;
   final String? roomId; // ★★★ 追加: roomId を受け取るように変更 ★★★
   final VoidCallback onHide; // 親ウィジェットから非表示処理を受け取るコールバック
-
 
   const MessageBubble({
     Key? key,
@@ -99,148 +98,186 @@ class MessageBubble extends ConsumerWidget { // ConsumerWidgetに変更
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) { // ★★★ WidgetRef ref を追加 ★★★
-    double size = 15;
-    double avatarDiameter = size * 2;
-
-    Widget avatarWidget;
-    if (showAvatar) {
-      if (isUserMessage) {
-        avatarWidget = CircleAvatar(
-          radius: size,
-          backgroundImage: myAvatarUrl != null && myAvatarUrl!.isNotEmpty
-              ? NetworkImage(myAvatarUrl!) as ImageProvider<Object>?
-              : null,
-          child: (myAvatarUrl == null || myAvatarUrl!.isEmpty)
-              ? Icon(Icons.person, color: Colors.grey, size: size)
-              : null,
-          backgroundColor: Colors.grey[200],
-        );
-      } else {
-        avatarWidget = CircleAvatar(
-          radius: size,
-          backgroundImage:
-              opponentAvatarUrl != null && opponentAvatarUrl!.isNotEmpty
-                  ? NetworkImage(opponentAvatarUrl!) as ImageProvider<Object>?
-                  : null,
-          child: (opponentAvatarUrl == null || opponentAvatarUrl!.isEmpty)
-              ? Icon(Icons.person, color: Colors.grey, size: size)
-              : null,
-          backgroundColor: Colors.grey[200],
-        );
-      }
-    } else {
-      avatarWidget = SizedBox(width: avatarDiameter);
-    }
-
-    Widget messageContent = Flexible(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
       child: Column(
-        crossAxisAlignment:
-            isUserMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          Builder(
-            builder: (BuildContext popoverContext) {
-              return GestureDetector(
-                onLongPress: () {
-                  showCustomPopover(
-                    context: popoverContext,
-                    height: 90,
-                    children: [
-                      PopoverButton(
-                        text: '通報',
-                        onTap: () async { // ★★★ async を追加 ★★★
-                          // Riverpodを通じてProhibitedServiceのインスタンスを取得
-                          final prohibitedService = ref.read(prohibitedServiceProvider);
-
-                          // sendProhibitedメソッドを呼び出す
-                          // 報告対象はメッセージの送信者なので chat.senderId を渡す
-                          // （自分が送ったメッセージを報告することはないという前提）
-                          await prohibitedService.sendProhibited(
-                            context: popoverContext, // ポップオーバーのコンテキストを使用
-                            opponentId: chat.senderId, // このメッセージの送信者を報告
-                            roomId: roomId,
-                            chatId: chat.id,
-                          );
-
-                          // ポップオーバーを閉じる
-                          Navigator.of(popoverContext).pop();
-                          // ★★★ ここでのprintは不要になります。サービス内でSnackBarが表示されます。 ★★★
-                        },
-                      ),
-                      const SizedBox(height: 4),
-                      PopoverButton(
-                        text: '非表示',
-                        onTap: () {
-                          // 親から渡されたonHideコールバックを呼び出す
-                          onHide();
-                          // ポップオーバーを閉じる
-                          Navigator.of(popoverContext).pop();
-                          print('「${chat.content}」が非表示にされました。');
-                        },
-                      ),
-                    ],
-                  );
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isUserMessage ? Colors.green : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        offset: const Offset(0, 1),
-                        blurRadius: 3,
-                      ),
-                    ],
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Text(
-                    chat.content,
-                    style: TextStyle(
-                      color: isUserMessage ? Colors.white : Colors.black,
-                      fontSize: 16,
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: isUserMessage
+                  ? MainAxisAlignment.end
+                  : MainAxisAlignment.start,
+              children: [
+                if (!isUserMessage) ...[
+                  SizedBox(
+                    height: double.infinity,
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: showAvatar
+                          ? _buildAvatar()
+                          : const SizedBox(width: 32),
                     ),
                   ),
-                ),
-              );
-            },
+                  const SizedBox(width: 8),
+                ],
+                if (isUserMessage) _buildStatus(),
+                const SizedBox(width: 4),
+                _buildMessageBubble(context, ref),
+                const SizedBox(width: 4),
+                if (!isUserMessage) _buildStatus(),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: isUserMessage ? 64 : 8,
-        right: isUserMessage ? 8 : 64,
-        top: showAvatar ? 4 : 2,
-        bottom: 2,
-      ),
-      child: Row(
-        mainAxisAlignment:
-            isUserMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: isUserMessage
-            ? [
-                messageContent,
-                const SizedBox(width: 8),
-                Transform.translate(
-                  offset: const Offset(0, 5),
-                  child: avatarWidget,
+  Widget _buildAvatar() {
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: Colors.grey[300],
+      backgroundImage:
+          opponentAvatarUrl != null && opponentAvatarUrl!.isNotEmpty
+              ? NetworkImage(opponentAvatarUrl!)
+              : null,
+      child: (opponentAvatarUrl == null || opponentAvatarUrl!.isEmpty)
+          ? const Icon(Icons.person, color: Colors.white, size: 20)
+          : null,
+    );
+  }
+
+  Widget _buildStatus() {
+    if (!isUserMessage) return const SizedBox.shrink();
+
+    String? statusText;
+    Color statusColor = Colors.black54;
+
+    if (chat.id.startsWith('temp_')) {
+      // 送信中 → 何も表示しない
+      statusText = null;
+    } else if (chat.id.startsWith('error_')) {
+      // 送信失敗
+      statusText = '✕';
+      statusColor = Colors.black54;
+    } else {
+      // sent_ または 正規UUID → 送信完了
+      statusText = '送信';
+    }
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (statusText != null)
+          Text(
+            statusText,
+            style: AppTextStyles.notoSans(fontSize: 9, color: statusColor),
+          ),
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+
+  Widget _buildMessageBubble(BuildContext context, WidgetRef ref) {
+    return Flexible(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          GestureDetector(
+            onLongPress: () {
+              showCustomPopover(
+                context: context,
+                height: 90,
+                children: [
+                  PopoverButton(
+                    text: '通報',
+                    onTap: () async {
+                      final prohibitedService =
+                          ref.read(prohibitedServiceProvider);
+                      await prohibitedService.sendProhibited(
+                        context: context,
+                        opponentId: chat.senderId,
+                        roomId: roomId,
+                        chatId: chat.id,
+                      );
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  PopoverButton(
+                    text: '非表示',
+                    onTap: () {
+                      onHide();
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              );
+            },
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.75,
+              ),
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+              decoration: BoxDecoration(
+                color: isUserMessage ? const Color(0xff95eb7c) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                chat.content,
+                style: AppTextStyles.notoSans(
+                  color: Colors.black,
+                  fontSize: 15,
                 ),
-              ]
-            : [
-                Transform.translate(
-                  offset: const Offset(0, 5),
-                  child: avatarWidget,
-                ),
-                const SizedBox(width: 8),
-                messageContent,
-              ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 6,
+            left: isUserMessage ? null : -6,
+            right: isUserMessage ? -6 : null,
+            child: CustomPaint(
+              painter: _BubbleTailPainter(
+                isUserMessage ? const Color(0xff95eb7c) : Colors.white,
+                isUserMessage,
+              ),
+              size: const Size(10, 10),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _BubbleTailPainter extends CustomPainter {
+  final Color color;
+  final bool isUserMessage;
+
+  _BubbleTailPainter(this.color, this.isUserMessage);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = Path();
+    if (isUserMessage) {
+      path.moveTo(0, 0);
+      path.lineTo(size.width, 0);
+      path.lineTo(0, size.height * 0.8);
+    } else {
+      path.moveTo(size.width, 0);
+      path.lineTo(0, 0);
+      path.lineTo(size.width, size.height * 0.8);
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 void showCustomPopover({
@@ -291,7 +328,7 @@ class PopoverButton extends StatelessWidget {
           child: Center(
             child: Text(
               text,
-              style: const TextStyle(
+              style: AppTextStyles.notoSans(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),

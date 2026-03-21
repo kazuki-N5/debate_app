@@ -4,6 +4,7 @@ import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:store_redirect/store_redirect.dart';
 
@@ -43,12 +44,11 @@ class start_errornotifier extends StateNotifier {
               titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
               contentPadding: const EdgeInsets.fromLTRB(
                   24.0, 12.0, 24.0, 12.0), // チェックボックスのために少し調整
-              title: const Text(
+              title: Text(
                 'アップデートができます',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: AppTextStyles.bold(
                   color: textColor,
-                  fontWeight: FontWeight.bold,
                   fontSize: 20.0,
                 ),
               ),
@@ -60,7 +60,7 @@ class start_errornotifier extends StateNotifier {
                   Text(
                     update!.changelog!.replaceAll(r'\n', '\n'),
                     textAlign: TextAlign.left,
-                    style: const TextStyle(
+                    style: AppTextStyles.notoSans(
                       color: textColor,
                       fontSize: 16.0,
                     ),
@@ -97,11 +97,11 @@ class start_errornotifier extends StateNotifier {
                           ),
                         ),
                         const SizedBox(width: 8.0), // チェックボックスとテキストの間のスペース
-                        const Expanded(
+                        Expanded(
                           // テキストが長い場合にも対応
                           child: Text(
                             '次回のアップデートまで表示しない',
-                            style: TextStyle(
+                            style: AppTextStyles.notoSans(
                               color: textColor,
                               fontSize: 14.0,
                             ),
@@ -132,11 +132,10 @@ class start_errornotifier extends StateNotifier {
                           ),
                           minimumSize: const Size(100, 44),
                         ),
-                        child: const Text(
+                        child: Text(
                           'しない',
-                          style: TextStyle(
+                          style: AppTextStyles.bold(
                             color: buttonTextColor,
-                            fontWeight: FontWeight.bold,
                             fontSize: 16.0,
                           ),
                         ),
@@ -157,11 +156,10 @@ class start_errornotifier extends StateNotifier {
                           ),
                           minimumSize: const Size(100, 44),
                         ),
-                        child: const Text(
+                        child: Text(
                           'する',
-                          style: TextStyle(
+                          style: AppTextStyles.bold(
                             color: buttonTextColor,
-                            fontWeight: FontWeight.bold,
                             fontSize: 16.0,
                           ),
                         ),
@@ -205,19 +203,18 @@ class start_errornotifier extends StateNotifier {
           ),
           titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
           contentPadding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 24.0),
-          title: const Text(
+          title: Text(
             'ネットワークエラー',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: AppTextStyles.bold(
               color: textColor,
-              fontWeight: FontWeight.bold,
               fontSize: 20.0,
             ),
           ),
-          content: const Text(
+          content: Text(
             'データの取得に失敗しました。\nもう一度お試しください。',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: AppTextStyles.notoSans(
               color: textColor,
               fontSize: 16.0,
             ),
@@ -237,9 +234,8 @@ class start_errornotifier extends StateNotifier {
               icon: Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
               label: Text(
                 'やり直す',
-                style: TextStyle(
+                style: AppTextStyles.bold(
                   color: buttonTextColor,
-                  fontWeight: FontWeight.bold,
                   fontSize: 16.0,
                 ),
               ),
@@ -275,19 +271,18 @@ class start_errornotifier extends StateNotifier {
           ),
           titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
           contentPadding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 24.0),
-          title: const Text(
-            'メンテナンス中です', // タイトル変更
+          title: Text(
+            'メンテナンス中です',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: AppTextStyles.bold(
               color: textColor,
-              fontWeight: FontWeight.bold,
               fontSize: 20.0,
             ),
           ),
           content: Text(
-            message, // コンテンツメッセージ変更
+            message,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: AppTextStyles.notoSans(
               color: textColor,
               fontSize: 16.0,
             ),
@@ -306,10 +301,9 @@ class start_errornotifier extends StateNotifier {
               ),
               icon: Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
               label: Text(
-                '再試行', // ボタンラベルは「再試行」とする (元の「やり直す」でも可)
-                style: TextStyle(
+                '再試行',
+                style: AppTextStyles.bold(
                   color: buttonTextColor,
-                  fontWeight: FontWeight.bold,
                   fontSize: 16.0,
                 ),
               ),
@@ -343,19 +337,18 @@ class start_errornotifier extends StateNotifier {
           ),
           titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
           contentPadding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 24.0),
-          title: const Text(
-            'アップデートが必要です', // タイトル変更
+          title: Text(
+            'アップデートが必要です',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: AppTextStyles.bold(
               color: textColor,
-              fontWeight: FontWeight.bold,
               fontSize: 20.0,
             ),
           ),
-          content: const Text(
-            '最新バージョンが利用可能です。\nストアでアプリを更新してください。', // 内容変更
+          content: Text(
+            '最新バージョンが利用可能です。\nストアでアプリを更新してください。',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: AppTextStyles.notoSans(
               color: textColor,
               fontSize: 16.0,
             ),
@@ -376,10 +369,9 @@ class start_errornotifier extends StateNotifier {
                   color: buttonTextColor,
                   size: 22.0),
               label: Text(
-                'ストアを開く', // ボタンテキスト変更
-                style: TextStyle(
+                'ストアを開く',
+                style: AppTextStyles.bold(
                   color: buttonTextColor,
-                  fontWeight: FontWeight.bold,
                   fontSize: 16.0,
                 ),
               ),

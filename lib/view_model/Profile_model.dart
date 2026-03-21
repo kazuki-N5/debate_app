@@ -1,6 +1,6 @@
 import 'package:debate_project/modes/users.dart';
 import 'package:flutter/material.dart';
-import 'package:transparent_image/transparent_image.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 
 class UserProfileCard extends StatelessWidget {
   final Users userData; // 型を Users に変更
@@ -14,6 +14,7 @@ class UserProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('UserProfileCard: [${userData.name}] avatar_url=${userData.avatar_url}');
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: textAlignment ?? CrossAxisAlignment.center,
@@ -24,14 +25,24 @@ class UserProfileCard extends StatelessWidget {
           child:
               (userData.avatar_url != null && userData.avatar_url!.isNotEmpty)
                   ? ClipOval(
-                      child: FadeInImage.memoryNetwork(
-                        placeholder: kTransparentImage, // 透明なプレースホルダーを使用
-                        image: userData.avatar_url!, // プロパティ名を avatar_url に修正
+                      child: Image.network(
+                        userData.avatar_url!,
                         fit: BoxFit.cover,
-                        width: 100, // radius * 2
-                        height: 100, // radius * 2
-                        imageErrorBuilder: (context, error, stackTrace) {
-                          // 画像の読み込みエラー時はアイコンを表示
+                        width: 100,
+                        height: 100,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
                           return const Center(
                             child: Icon(
                               Icons.person,
@@ -60,9 +71,8 @@ class UserProfileCard extends StatelessWidget {
           // (userData.name == "null" ? "ゲスト" : userData.name ?? '不明なユーザー') のような処理も検討できます。
           // ここでは、UsersクラスのnameがString?で、適切にnullが渡される前提で userData.name ?? '' とします。
           userData.name ?? 'プレイヤー', // nameがnullの場合のフォールバック
-          style: const TextStyle(
+          style: AppTextStyles.bold(
             fontSize: 18,
-            fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
           textAlign: textAlignment == CrossAxisAlignment.start
@@ -86,7 +96,7 @@ class UserProfileCard extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               userData.trophy.toString(),
-              style: const TextStyle(
+              style: AppTextStyles.notoSans(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 color: Colors.white,
@@ -111,6 +121,7 @@ class UserProfileCard2 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('UserProfileCard2: [${userData.name}] avatar_url=${userData.avatar_url}');
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: textAlignment ?? CrossAxisAlignment.center,
@@ -121,14 +132,24 @@ class UserProfileCard2 extends StatelessWidget {
           child:
               (userData.avatar_url != null && userData.avatar_url!.isNotEmpty)
                   ? ClipOval(
-                      child: FadeInImage.memoryNetwork(
-                        placeholder: kTransparentImage, // 透明なプレースホルダーを使用
-                        image: userData.avatar_url!, // プロパティ名を avatar_url に修正
+                      child: Image.network(
+                        userData.avatar_url!,
                         fit: BoxFit.cover,
-                        width: 100, // radius * 2
-                        height: 100, // radius * 2
-                        imageErrorBuilder: (context, error, stackTrace) {
-                          // 画像の読み込みエラー時はアイコンを表示
+                        width: 100,
+                        height: 100,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
                           return const Center(
                             child: Icon(
                               Icons.person,
@@ -157,9 +178,8 @@ class UserProfileCard2 extends StatelessWidget {
           // (userData.name == "null" ? "ゲスト" : userData.name ?? '不明なユーザー') のような処理も検討できます。
           // ここでは、UsersクラスのnameがString?で、適切にnullが渡される前提で userData.name ?? '' とします。
           userData.name ?? 'プレイヤー', // nameがnullの場合のフォールバック
-          style: const TextStyle(
+          style: AppTextStyles.bold(
             fontSize: 18,
-            fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
           textAlign: textAlignment == CrossAxisAlignment.start

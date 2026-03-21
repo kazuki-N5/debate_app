@@ -3,6 +3,7 @@ import 'package:debate_project/modes/history.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/view_model/prohibited_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 // --- ▼▼▼ ここから変更 ▼▼▼ ---
 import 'package:flutter_hooks/flutter_hooks.dart'; // flutter_hooksをインポート
 import 'package:hooks_riverpod/hooks_riverpod.dart'; // hooks_riverpodをインポート
@@ -87,14 +88,6 @@ class ChatHistoryPage extends HookConsumerWidget {
           appBar: AppBar(
             elevation: 0,
             backgroundColor: Colors.blue,
-            title: Text(
-              '${record.opponentName} とのレスバ',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w300,
-                fontSize: 20.0,
-              ),
-            ),
             automaticallyImplyLeading: false,
           ),
           backgroundColor: Colors.blue,
@@ -113,7 +106,7 @@ class ChatHistoryPage extends HookConsumerWidget {
                   ),
                   child: Text(
                     record.theme,
-                    style: const TextStyle(
+                    style: AppTextStyles.notoSans(
                       color: Colors.black,
                       fontWeight: FontWeight.w600,
                       fontSize: 20,

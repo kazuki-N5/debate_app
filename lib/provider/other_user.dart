@@ -28,26 +28,11 @@ class OtherUserNotifier extends StateNotifier<Users> {
   }
 
   Future<void> fetchOtherUserWithRetry(String id, {int maxRetries = 3}) async {
-    int retryCount = 0;
     try {
-      while (retryCount < maxRetries) {
-        try {
-          await fetchOtherUser(id);
-          return; // 成功したら関数を抜ける
-        } catch (e) {
-          retryCount++;
-          print('リトライ回数: $retryCount');
-          if (retryCount == maxRetries) {
-            print('リトライ回数が上限に達しました。');
-            throw e; // 例外を再スロー
-          }
-          // 少し待ってからリトライ (例: 1秒待つ)
-          await Future.delayed(Duration(seconds: 1));
-        }
-      }
+      await fetchOtherUser(id);
     } catch (e) {
       // ここでエラーをキャッチ
-      print('リトライがすべて失敗しました: $e');
+      print('データの取得に失敗しました: $e');
       // ignore: use_build_context_synchronously
       router.go('/home');
     }

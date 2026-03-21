@@ -21,6 +21,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // 広告関連のインポートを追加
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:showcaseview/showcaseview.dart';
 
 class HomePage extends HookConsumerWidget {
@@ -52,7 +53,6 @@ class HomePage extends HookConsumerWidget {
     }
 
     // HomePageクラスの外に追加
-
 
     void showAppReviewDialog(BuildContext context) async {
       // final InAppReview inAppReview = InAppReview.instance; // レビュー機能を使う場合
@@ -89,9 +89,8 @@ class HomePage extends HookConsumerWidget {
                   children: <Widget>[
                     Text(
                       '応援をよろしくお願いします！',
-                      style: TextStyle(
+                      style: AppTextStyles.bold(
                         fontSize: 22,
-                        fontWeight: FontWeight.bold,
                         color: Colors.orangeAccent[700], // 暖色系のアクセント
                       ),
                       textAlign: TextAlign.center,
@@ -109,7 +108,7 @@ class HomePage extends HookConsumerWidget {
                     Text(
                       'いつもご利用いただきありがとうございます。\nより良いコンテンツをお届けられるように日々改善を続けております。\nぜひレビューしていただけると嬉しいです！',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: AppTextStyles.notoSans(
                         fontSize: 15,
                         color: Colors.grey[800], // 落ち着いたテキスト色
                         height: 1.6, // 行間を少し広めに
@@ -131,7 +130,7 @@ class HomePage extends HookConsumerWidget {
                           ),
                           child: Text(
                             'また今度',
-                            style: TextStyle(
+                            style: AppTextStyles.notoSans(
                               color: Colors.grey[700],
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
@@ -154,18 +153,17 @@ class HomePage extends HookConsumerWidget {
                             ),
                             elevation: 4, // 少し影をつける
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.star,
+                              const Icon(Icons.star,
                                   color: Colors.white, size: 18), // 星アイコン
-                              SizedBox(width: 8),
+                              const SizedBox(width: 8),
                               Text(
                                 '応援する',
-                                style: TextStyle(
+                                style: AppTextStyles.bold(
                                   color: Colors.white,
                                   fontSize: 16,
-                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
@@ -392,9 +390,8 @@ class HomePage extends HookConsumerWidget {
                                     },
                                     child: Text(
                                       user.name!,
-                                      style: const TextStyle(
+                                      style: AppTextStyles.bold(
                                         color: Colors.white,
-                                        fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),
                                     ),
@@ -410,9 +407,8 @@ class HomePage extends HookConsumerWidget {
                                       const SizedBox(width: 1),
                                       Text(
                                         user.trophy.toString(),
-                                        style: const TextStyle(
+                                        style: AppTextStyles.bold(
                                           color: Colors.white,
-                                          fontWeight: FontWeight.bold,
                                           fontSize: 16,
                                         ),
                                       ),
@@ -472,50 +468,47 @@ class HomePage extends HookConsumerWidget {
                                               color: Colors.white,
                                               width: 2), // 白い縁取り
                                         ),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(
-                                              20), // constを追加
-                                          child: const Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start, // 左寄せ
-                                            children: [
-                                              Text(
-                                                '<ルール>',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.bold,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(20),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start, // 左寄せ
+                                              children: [
+                                                Text(
+                                                  '<ルール>',
+                                                  style: AppTextStyles.bold(
+                                                    color: Colors.white,
+                                                    fontSize: 18,
+                                                  ),
                                                 ),
-                                              ),
-                                              SizedBox(height: 15),
-                                              Text(
-                                                "論破する\n20秒以上アプリを離れると負けになります。",
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 16,
+                                                const SizedBox(height: 15),
+                                                Text(
+                                                  "論破する\n20秒以上アプリを離れると負けになります。",
+                                                  style: AppTextStyles.notoSans(
+                                                    color: Colors.white,
+                                                    fontSize: 16,
+                                                  ),
                                                 ),
-                                              ),
-                                              SizedBox(height: 15),
-                                              Text(
-                                                '<判定基準>',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.bold,
+                                                const SizedBox(height: 15),
+                                                Text(
+                                                  '<判定基準>',
+                                                  style: AppTextStyles.bold(
+                                                    color: Colors.white,
+                                                    fontSize: 18,
+                                                  ),
                                                 ),
-                                              ),
-                                              SizedBox(height: 15),
-                                              Text(
-                                                '見る人がどっちに納得するかAIで判定',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 16,
+                                                const SizedBox(height: 15),
+                                                Text(
+                                                  '見る人がどっちに納得するかAIで判定',
+                                                  style: AppTextStyles.notoSans(
+                                                    color: Colors.white,
+                                                    fontSize: 16,
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
-                                        ),
                                       );
                                     },
                                   );
@@ -574,9 +567,7 @@ class HomePage extends HookConsumerWidget {
                                 },
                                 enableFeedback: false, // 触覚フィードバックの無効化もそのまま
                               ),
-                              const SizedBox(
-                                  height: 7), 
-                                   
+                              const SizedBox(height: 7),
 
                               GestureDetector(
                                 onTap: () {
@@ -633,9 +624,9 @@ class HomePage extends HookConsumerWidget {
                                     ),
                                     enableFeedback: false,
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     'フレンドと対戦 / 部屋作成', // ボタンテキスト変更
-                                    style: TextStyle(
+                                    style: AppTextStyles.notoSans(
                                       color: Colors.blue,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 18,
@@ -683,9 +674,9 @@ class HomePage extends HookConsumerWidget {
                                     ),
                                     enableFeedback: false,
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     'ランダムマッチ', // ボタンテキストを修正 ('a' -> 'ランダムマッチ'など)
-                                    style: TextStyle(
+                                    style: AppTextStyles.notoSans(
                                       color: Colors.blue,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 18,

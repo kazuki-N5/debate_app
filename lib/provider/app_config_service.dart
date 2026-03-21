@@ -20,52 +20,46 @@ class AppConfigStateNotifier extends StateNotifier<AppConfig?> {
   final Ref _ref;
   SupabaseClient get supabase => _ref.read(supabaseProvider);
 
-  Future<AppConfig?> fetchAppConfig() async {
-    Map<String, dynamic>? responseMap;
+  Future<AppConfig?> fetchAppConfig({int retryCount = 0}) async {
     try {
-      try {
-         responseMap = await supabase.from('app_config').select().single();
-      } on PostgrestException catch (error) {
-        if (error.code == 'PGRST301') {
-          print('jwt expired');
-          try {
-            // セッションのリフレッシュを試みる
-            await supabase.auth.refreshSession();
-            print('セッションの更新に成功しました。');
-
-            // リフレッシュ後、再度APIを呼び出す
-             responseMap = await supabase.from('app_config').select().single();
-          } catch (e) {
-            print('セッションの更新に失敗しました: $e');
-          }
-        } else {
-          print('セッション以外のエラーAppConfigの取得に失敗しました: $error');
-        }
-      }
+      final responseMap = await supabase.from('app_config').select().single();
 
       String? minVersion;
       String? latestVersion;
 
       if (Platform.isAndroid) {
-        minVersion = responseMap!['min_supported_version_android']?.toString();
+        minVersion = responseMap['min_supported_version_android']?.toString();
         latestVersion = responseMap['latest_version_android']?.toString();
       } else if (Platform.isIOS) {
-        minVersion = responseMap!['min_supported_version_ios']?.toString();
+        minVersion = responseMap['min_supported_version_ios']?.toString();
         latestVersion = responseMap['latest_version_ios']?.toString();
       }
-      // 他のプラットフォーム（Web, Desktopなど）をサポートする場合はここに追加の条件分岐を記述
 
       state = AppConfig(
         minVersion: minVersion,
         latestVersion: latestVersion,
-        changelog: responseMap!['changelog']?.toString(),
+        changelog: responseMap['changelog']?.toString(),
         isMaintenanceMode: responseMap['is_maintenance'] as bool?,
         maintenanceMessage: responseMap['maintenance_message']?.toString(),
       );
       return state;
+    } on PostgrestException catch (error) {
+      // PGRST301(期限切れ) または PGRST303(Unauthorized) の場合、1回だけリフレッシュを試みる
+      if ((error.code == 'PGRST301' || error.code == 'PGRST303') &&
+          retryCount < 1) {
+        print('JWT expired or unauthorized. Refreshing session...');
+        try {
+          await supabase.auth.refreshSession();
+          return await fetchAppConfig(retryCount: retryCount + 1);
+        } catch (refreshError) {
+          print('Session refresh failed: $refreshError');
+        }
+      }
+      print('セッション以外のエラーAppConfigの取得に失敗しました: $error');
+      rethrow; // 上位のAppStatus.error処理に任せる
     } catch (e) {
-      print('AppConfigの取得に失敗しました: $e');
-      throw e;
+      print('AppConfigの取得中に予期せぬエラーが発生しました: $e');
+      rethrow;
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'package:debate_project/provider/user.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -121,13 +122,12 @@ class NamePage extends HookConsumerWidget {
                           controller: scrollController,
                           // ListView自体にパディングを設定
                           padding: const EdgeInsets.all(20.0),
-                          children: const [
+                          children: [
                             // タイトル用のTextウィジェット
                             Text(
                               '利用規約',
-                              style: TextStyle(
-                                fontSize: 24, // フォントサイズを大きく
-                                fontWeight: FontWeight.bold, // 太字に
+                              style: AppTextStyles.bold(
+                                fontSize: 24,
                                 color: Colors.white,
                               ),
                             ),
@@ -135,7 +135,7 @@ class NamePage extends HookConsumerWidget {
                             // 本文用のTextウィジェット
                             Text(
                               termsOfServiceText,
-                              style: TextStyle(
+                              style: AppTextStyles.notoSans(
                                 fontSize: 14,
                                 color: Colors.white,
                               ),
@@ -163,9 +163,9 @@ class NamePage extends HookConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.blue,
         elevation: 0,
-        title: const Text(
+        title: Text(
           '',
-          style: TextStyle(color: Colors.white),
+          style: AppTextStyles.notoSans(color: Colors.white),
         ),
       ),
       body: Center(
@@ -174,11 +174,10 @@ class NamePage extends HookConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 '名前を入力してください',
-                style: TextStyle(
+                style: AppTextStyles.bold(
                   fontSize: 22,
-                  fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
@@ -209,12 +208,12 @@ class NamePage extends HookConsumerWidget {
                     hintText: '１０文字以内',
                     border: InputBorder.none,
                     counterText: '',
-                    errorStyle: const TextStyle(
+                    errorStyle: TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  style: const TextStyle(fontSize: 18),
+                  style: AppTextStyles.notoSans(fontSize: 18),
                 ),
               ),
               if (isTextTooLong.value)
@@ -242,10 +241,9 @@ class NamePage extends HookConsumerWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   '決定',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                  style: AppTextStyles.bold(
                     fontSize: 18,
                   ),
                 ),
@@ -257,7 +255,7 @@ class NamePage extends HookConsumerWidget {
                 child: RichText(
                   textAlign: TextAlign.center,
                   text: TextSpan(
-                    style: TextStyle(
+                    style: AppTextStyles.notoSans(
                       color: Colors.white.withOpacity(0.8),
                       fontSize: 12,
                     ),
@@ -265,9 +263,8 @@ class NamePage extends HookConsumerWidget {
                       const TextSpan(text: '決定ボタンを押すことで'),
                       TextSpan(
                         text: '利用規約',
-                        style: const TextStyle(
+                        style: AppTextStyles.bold(
                           decoration: TextDecoration.underline,
-                          fontWeight: FontWeight.bold,
                         ),
                         recognizer: tapGestureRecognizer,
                       ),

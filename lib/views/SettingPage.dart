@@ -5,6 +5,7 @@ import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -79,8 +80,8 @@ class SettingPage extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('設定',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text('設定',
+            style: AppTextStyles.bold(color: Colors.white)),
         backgroundColor: Colors.blue,
         elevation: 0,
         automaticallyImplyLeading: false,
@@ -155,20 +156,19 @@ class SettingPage extends HookConsumerWidget {
                       backgroundColor: Colors.amber,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
-                      textStyle: const TextStyle(fontSize: 16),
+                      textStyle: AppTextStyles.notoSans(fontSize: 16),
                     ),
                     onPressed: () => _handleSubscription(context, ref),
                   ),
                 ),
               if (isSubscribed)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
                   child: Center(
                     child: Text(
                       'プレミアム機能をご利用中です！',
-                      style: TextStyle(
+                      style: AppTextStyles.bold(
                           color: Colors.white,
-                          fontWeight: FontWeight.bold,
                           fontSize: 16),
                     ),
                   ),
@@ -207,9 +207,8 @@ class SettingPage extends HookConsumerWidget {
       padding: const EdgeInsets.only(bottom: 8.0, top: 16.0),
       child: Text(
         title,
-        style: const TextStyle(
+        style: AppTextStyles.bold(
           fontSize: 18,
-          fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
       ),
@@ -233,7 +232,7 @@ class SettingPage extends HookConsumerWidget {
           children: [
             Expanded(
               flex: 2,
-              child: Text(title, style: const TextStyle(fontSize: 16)),
+              child: Text(title, style: AppTextStyles.notoSans(fontSize: 16)),
             ),
             Expanded(
               flex: 5,
@@ -271,7 +270,7 @@ class SettingPage extends HookConsumerWidget {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
       child: SwitchListTile(
-        title: Text(title, style: const TextStyle(fontSize: 16)),
+        title: Text(title, style: AppTextStyles.notoSans(fontSize: 16)),
         value: value,
         onChanged: onChanged,
         activeColor: Colors.blue.shade700,
@@ -292,7 +291,7 @@ class SettingPage extends HookConsumerWidget {
       child: ListTile(
         // Iconウィジェットにsizeプロパティを渡す
         leading: Icon(icon, color: Colors.blue.shade800, size: iconSize),
-        title: Text(title, style: const TextStyle(fontSize: 16)),
+        title: Text(title, style: AppTextStyles.notoSans(fontSize: 16)),
         trailing: Icon(Icons.chevron_right, color: Colors.grey.shade600),
         onTap: onTap,
         contentPadding:
@@ -388,11 +387,10 @@ class BugReportDialogContent extends HookConsumerWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.0),
         ),
-        title: const Text(
+        title: Text(
           'バグを報告&機能提案',
-          style: TextStyle(
+          style: AppTextStyles.bold(
             color: Colors.black,
-            fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
@@ -403,7 +401,7 @@ class BugReportDialogContent extends HookConsumerWidget {
             children: [
               Text(
                 '発生したバグの内容と、再現手順を詳しく教えてください。\n欲しい機能を教えて下さい。',
-                style: TextStyle(
+                style: AppTextStyles.notoSans(
                   color: Colors.black.withOpacity(0.8),
                   fontSize: 15,
                 ),
@@ -415,10 +413,10 @@ class BugReportDialogContent extends HookConsumerWidget {
                 maxLength: 150,
                 // isSending.valueで状態を読み取ります
                 enabled: !isSending.value,
-                style: const TextStyle(color: Colors.black, fontSize: 14),
+                style: AppTextStyles.notoSans(color: Colors.black, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: '例: ○○の画面で○○をするとアプリがクラッシュする...',
-                  hintStyle: TextStyle(color: Colors.grey[500]),
+                  hintStyle: AppTextStyles.notoSans(color: Colors.grey[500]),
                   filled: true,
                   fillColor: Colors.grey[100],
                   border: OutlineInputBorder(
@@ -453,7 +451,7 @@ class BugReportDialogContent extends HookConsumerWidget {
               padding: const EdgeInsets.symmetric(
                   horizontal: 20.0, vertical: 10.0),
               textStyle:
-                  const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  AppTextStyles.bold(fontSize: 15),
             ),
             child: const Text('キャンセル'),
           ),
@@ -470,7 +468,7 @@ class BugReportDialogContent extends HookConsumerWidget {
                   horizontal: 24.0, vertical: 12.0),
               elevation: 2,
               textStyle:
-                  const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  AppTextStyles.bold(fontSize: 15),
             ),
             child: isSending.value
                 ? const SizedBox(

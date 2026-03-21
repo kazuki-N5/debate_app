@@ -2,6 +2,7 @@
 import 'package:debate_project/modes/transfer_model.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -74,8 +75,8 @@ class WaittransferPage extends HookConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.blue, // 背景を青色に
       appBar: AppBar(
-        title: const Text('引き継ぎ情報',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text('引き継ぎ情報',
+            style: AppTextStyles.bold(color: Colors.white)),
         backgroundColor: Colors.blue,
         elevation: 0,
         automaticallyImplyLeading: false, // AppBarの戻るボタンは非表示
@@ -87,11 +88,11 @@ class WaittransferPage extends HookConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              const Text(
+              Text(
                 '以下のIDとパスワードを\n新しい端末で入力してください。',
                 textAlign: TextAlign.center,
                 style:
-                    TextStyle(fontSize: 18, color: Colors.white, height: 1.5),
+                    AppTextStyles.notoSans(fontSize: 18, color: Colors.white, height: 1.5),
               ),
               const SizedBox(height: 30),
               Container(
@@ -111,34 +112,30 @@ class WaittransferPage extends HookConsumerWidget {
                 ),
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       '引き継ぎID:',
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                      style: AppTextStyles.notoSans(fontSize: 16, color: Colors.black54),
                     ),
                     const SizedBox(height: 8),
                     SelectableText(
                       transferId.value ?? 'エラー: IDなし',
-                      style: const TextStyle(
+                      style: AppTextStyles.bold(
                         fontSize: 26,
-                        fontWeight: FontWeight.bold,
                         color: Colors.black87,
-                        letterSpacing: 2.0, // IDを見やすくするため文字間隔を調整
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 25),
-                    const Text(
+                    Text(
                       'パスワード:',
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                      style: AppTextStyles.notoSans(fontSize: 16, color: Colors.black54),
                     ),
                     const SizedBox(height: 8),
                     SelectableText(
                       transferPassword.value ?? 'エラー: パスワードなし',
-                      style: const TextStyle(
+                      style: AppTextStyles.bold(
                         fontSize: 26,
-                        fontWeight: FontWeight.bold,
                         color: Colors.black87,
-                        letterSpacing: 2.0, // パスワードを見やすくするため文字間隔を調整
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -149,7 +146,7 @@ class WaittransferPage extends HookConsumerWidget {
               Text(
                 '注意: この情報は一度きり有効です。新しい端末で引き継ぎを完了すると、このIDとパスワードは無効になります。',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: AppTextStyles.notoSans(
                     fontSize: 13, color: Colors.white.withOpacity(0.8)),
               ),
             ],
@@ -167,9 +164,9 @@ class WaittransferPage extends HookConsumerWidget {
               borderRadius: BorderRadius.circular(10.0),
             ),
             textStyle:
-                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                AppTextStyles.bold(fontSize: 18),
           ),
-          child: const Text('キャンセルして戻る', style: TextStyle(color: Colors.white)),
+          child: Text('キャンセルして戻る', style: AppTextStyles.notoSans(color: Colors.white)),
         ),
       ),
     );

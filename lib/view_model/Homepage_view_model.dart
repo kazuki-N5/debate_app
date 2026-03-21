@@ -4,6 +4,7 @@ import 'package:debate_project/provider/sfx_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
@@ -108,8 +109,7 @@ class FriendMatchDialog extends HookConsumerWidget {
       enableFeedback: false,
     );
 
-    final buttonTextStyle = const TextStyle(
-      fontWeight: FontWeight.bold,
+    final buttonTextStyle = AppTextStyles.bold(
       fontSize: 16,
     );
 
@@ -175,9 +175,9 @@ class FriendMatchDialog extends HookConsumerWidget {
                       style: TextButton.styleFrom(
                         enableFeedback: false, // <-- ボタンの触覚・聴覚フィードバックを無効化
                       ),
-                      child: const Text(
+                      child: Text(
                         'キャンセル',
-                        style: TextStyle(color: Colors.white70),
+                        style: AppTextStyles.notoSans(color: Colors.white70),
                       ),
                     ),
                     // --- ここからボタンの条件分岐 ---
@@ -257,19 +257,18 @@ class FriendMatchDialog extends HookConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(height: 50),
-          const Text(
+          Text(
             'ルームに参加', // タイトル変更
-            style: TextStyle(
+            style: AppTextStyles.bold(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             'フレンドが作成したルームに参加', // サブタイトル
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            style: AppTextStyles.notoSans(color: Colors.white70, fontSize: 14),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 14),
@@ -280,9 +279,9 @@ class FriendMatchDialog extends HookConsumerWidget {
             centerAlign: true,
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             '合言葉だけ揃えれば通常のレスバができます！',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            style: AppTextStyles.notoSans(color: Colors.white70, fontSize: 14),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 30),
@@ -306,11 +305,10 @@ class FriendMatchDialog extends HookConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '部屋を作成',
-            style: TextStyle(
+            style: AppTextStyles.bold(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
             textAlign: TextAlign.center,
@@ -324,13 +322,12 @@ class FriendMatchDialog extends HookConsumerWidget {
               Expanded(
                   child: _buildTextField(choice1Controller, '選択肢 A (10文字以内)',
                       maxLength: 10)),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
                 child: Text('VS',
-                    style: TextStyle(
+                    style: AppTextStyles.bold(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16)),
+                        fontSize: 16),),
               ),
               Expanded(
                   child: _buildTextField(choice2Controller, '選択肢 B (10文字以内)',
@@ -344,9 +341,9 @@ class FriendMatchDialog extends HookConsumerWidget {
             maxLength: 10,
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             'テーマと選択肢、参加用の合言葉を設定します',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            style: AppTextStyles.notoSans(color: Colors.white70, fontSize: 14),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 10),
@@ -362,7 +359,7 @@ class FriendMatchDialog extends HookConsumerWidget {
       controller: controller,
       maxLength: maxLength,
       textAlign: centerAlign ? TextAlign.center : TextAlign.start,
-      style: const TextStyle(color: Colors.black87, fontSize: 16),
+      style: AppTextStyles.notoSans(color: Colors.black87, fontSize: 16),
       decoration: InputDecoration(
           hintText: hintText,
           filled: true,
@@ -379,7 +376,7 @@ class FriendMatchDialog extends HookConsumerWidget {
             borderSide:
                 const BorderSide(color: Colors.lightBlueAccent, width: 2),
           ),
-          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14)),
+          hintStyle: AppTextStyles.notoSans(color: Colors.grey[500], fontSize: 14)),
     );
   }
 }
@@ -440,11 +437,10 @@ class RankingDialog extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const SizedBox(width: 24.0), // アイコンの幅と合わせるか、適切に調整
-            const Text(
+            Text(
               'ランキング',
-              style: TextStyle(
+              style: AppTextStyles.bold(
                 color: appBarTextColor,
-                fontWeight: FontWeight.bold,
                 fontSize: 22,
               ),
             ),
@@ -495,9 +491,8 @@ class RankingDialog extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8)),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
-                      child: const Text('上位',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15)),
+                      child: Text('上位',
+                          style: AppTextStyles.bold(fontSize: 15)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -521,9 +516,8 @@ class RankingDialog extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8)),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
-                      child: const Text('付近',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15)),
+                      child: Text('付近',
+                          style: AppTextStyles.bold(fontSize: 15)),
                     ),
                   ),
                 ],
@@ -534,19 +528,19 @@ class RankingDialog extends ConsumerWidget {
                 data: (users) {
                   if (selectedTab == RankingTab.nearby &&
                       currentUserId == null) {
-                    return const Center(
+                    return Center(
                       child: Text(
                         '付近のランキングを表示するには\nログインが必要です。',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: appBarTextColor, fontSize: 16),
+                        style: AppTextStyles.notoSans(color: appBarTextColor, fontSize: 16),
                       ),
                     );
                   }
                   if (users.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Text(
                         'ランキングデータがありません。',
-                        style: TextStyle(color: appBarTextColor, fontSize: 16),
+                        style: AppTextStyles.notoSans(color: appBarTextColor, fontSize: 16),
                       ),
                     );
                   }
@@ -587,9 +581,8 @@ class RankingDialog extends ConsumerWidget {
                               ),
                               child: Text(
                                 '$rank',
-                                style: const TextStyle(
+                                style: AppTextStyles.bold(
                                   color: rankTextColor,
-                                  fontWeight: FontWeight.bold,
                                   fontSize: 17,
                                 ),
                               ),
@@ -663,8 +656,7 @@ class RankingDialog extends ConsumerWidget {
                                 children: [
                                   Text(
                                     user.name ?? 'プレイヤー',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                    style: AppTextStyles.bold(
                                       fontSize: 15,
                                       color: playerNameColor,
                                     ),
@@ -672,7 +664,7 @@ class RankingDialog extends ConsumerWidget {
                                   ),
                                   Text(
                                     '勝利数: ${user.win ?? 0}',
-                                    style: const TextStyle(
+                                    style: AppTextStyles.notoSans(
                                       fontSize: 12,
                                       color: clanNameColor,
                                     ),
@@ -694,9 +686,8 @@ class RankingDialog extends ConsumerWidget {
                             const SizedBox(width: 5),
                             Text(
                               user.trophy.toString(),
-                              style: const TextStyle(
+                              style: AppTextStyles.bold(
                                 fontSize: 15,
-                                fontWeight: FontWeight.bold,
                                 color: trophyCountColor,
                               ),
                             ),
@@ -718,7 +709,7 @@ class RankingDialog extends ConsumerWidget {
                       child: Text(
                         'ランキングの表示に失敗しました。\nエラー: ${error.toString()}',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: AppTextStyles.notoSans(
                             color: errorTextColor, fontSize: 16),
                       ),
                     ),
@@ -791,8 +782,7 @@ class SubmitThemeDialog extends HookConsumerWidget {
       enableFeedback: false,
     );
 
-    final buttonTextStyle = const TextStyle(
-      fontWeight: FontWeight.bold,
+    final buttonTextStyle = AppTextStyles.bold(
       fontSize: 16,
     );
 
@@ -839,11 +829,10 @@ class SubmitThemeDialog extends HookConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min, // コンテンツの高さに合わせる
               children: [
-                const Text(
+                Text(
                   'テーマを送信',
-                  style: TextStyle(
+                  style: AppTextStyles.bold(
                     fontSize: 20,
-                    fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                   textAlign: TextAlign.center,
@@ -860,14 +849,13 @@ class SubmitThemeDialog extends HookConsumerWidget {
                           choice1Controller, '選択肢 A (10文字以内)',
                           maxLength: 10),
                     ),
-                    const Padding(
+                    Padding(
                       padding:
                           EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
                       child: Text(
                         'VS',
-                        style: TextStyle(
+                        style: AppTextStyles.bold(
                             color: Colors.white,
-                            fontWeight: FontWeight.bold,
                             fontSize: 16),
                       ),
                     ),
@@ -879,9 +867,9 @@ class SubmitThemeDialog extends HookConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   '追加したいテーマを入力して送信してください',
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                  style: AppTextStyles.notoSans(color: Colors.white70, fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 25),
@@ -912,15 +900,14 @@ class SubmitThemeDialog extends HookConsumerWidget {
     return TextField(
       controller: controller,
       maxLength: maxLength,
-      style: const TextStyle(
-        color: Color(0xFF0D47A1), // 濃い青色
+      style: AppTextStyles.notoSans(
+        color: const Color(0xFF0D47A1),
         fontWeight: FontWeight.w600,
       ),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: TextStyle(
+        hintStyle: AppTextStyles.notoSans(
           color: Colors.grey[500],
-          fontWeight: FontWeight.normal,
         ),
         filled: true,
         fillColor: Colors.white,

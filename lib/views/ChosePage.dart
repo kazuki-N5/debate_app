@@ -10,6 +10,7 @@ import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Profile_model.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 //import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -29,13 +30,13 @@ class ChosePage extends HookConsumerWidget {
     final timerRef = useRef<Timer?>(null);
 
     useEffect(() {
-      if (room.result != null) {
+      if (room.winner != null) {
         Future.microtask(() {
           router.go('/finish');
         });
       }
       return null;
-    }, [room.result]);
+    }, [room.winner]);
 
 // タイマー状態
 
@@ -54,16 +55,14 @@ class ChosePage extends HookConsumerWidget {
     }
 
     Future<DateTime> getServerTimeWithRetry() async {
-      while (true) {
-        try {
-          print('サーバー時刻の取得を試みます...-------------');
-          final now = await getServerTime();
-          print('サーバー時刻の取得に成功しました。');
-          return now; // 成功したら時刻を返して関数を抜ける
-        } catch (e) {
-          print('サーバー時刻の取得に失敗しました: $e。3秒後に再試行します。');
-          await Future.delayed(const Duration(seconds: 3));
-        }
+      try {
+        print('サーバー時刻の取得を試みます...-------------');
+        final now = await getServerTime();
+        print('サーバー時刻の取得に成功しました。');
+        return now; // 成功したら時刻を返して関数を抜ける
+      } catch (e) {
+        print('サーバー時刻の取得に失敗しました: $e。');
+        rethrow;
       }
     }
 
@@ -83,7 +82,6 @@ class ChosePage extends HookConsumerWidget {
       timerRef.value = Timer.periodic(Duration(seconds: 1), (timer) async {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
-        print(diff);
         if (diff >= 0) {
           secondsLeft.value = diff;
         }
@@ -118,7 +116,6 @@ class ChosePage extends HookConsumerWidget {
     }
 
     useEffect(() {
-      roomnotifier.setupPresenceChannel(room.roomId!);
       return () {
         timerRef.value?.cancel();
       };
@@ -188,9 +185,8 @@ class ChosePage extends HookConsumerWidget {
                   secondsLeft.value != null
                       ? formatTime(secondsLeft.value!)
                       : '-',
-                  style: TextStyle(
+                  style: AppTextStyles.bold(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
                       color:
                           secondsLeft.value != null && secondsLeft.value! <= 3
                               ? Colors.red
@@ -211,17 +207,9 @@ class ChosePage extends HookConsumerWidget {
                   padding: EdgeInsets.symmetric(horizontal: 20),
                   child: Text(room.theme!,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: AppTextStyles.bold(
                         fontSize: 32,
-                        fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            offset: Offset(2, 2),
-                            blurRadius: 3.0,
-                            color: Colors.black26,
-                          ),
-                        ],
                       )),
                 ),
                 const SizedBox(height: 50),
@@ -249,17 +237,9 @@ class ChosePage extends HookConsumerWidget {
                 ),
                 const SizedBox(height: 40),
                 Text('現在の選択: ${getChoiceText()}',
-                    style: TextStyle(
+                    style: AppTextStyles.bold(
                       fontSize: 20,
-                      fontWeight: FontWeight.bold,
                       color: Colors.white,
-                      shadows: [
-                        Shadow(
-                          offset: Offset(1, 1),
-                          blurRadius: 2.0,
-                          color: Colors.black26,
-                        ),
-                      ],
                     )),
                 const SizedBox(height: 30),
                 AnimatedOpacity(
@@ -267,17 +247,9 @@ class ChosePage extends HookConsumerWidget {
                   opacity: showerror.value ? 1.0 : 0.0,
                   child: Text(
                     '選択が被りました',
-                    style: TextStyle(
+                    style: AppTextStyles.bold(
                       fontSize: 20,
-                      fontWeight: FontWeight.bold,
                       color: Colors.red,
-                      shadows: [
-                        Shadow(
-                          offset: Offset(1, 1),
-                          blurRadius: 2.0,
-                          color: Colors.black26,
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -324,9 +296,8 @@ Widget _buildChoiceButton({
         child: Center(
           child: Text(
             text,
-            style: TextStyle(
+            style: AppTextStyles.bold(
               fontSize: 24,
-              fontWeight: FontWeight.bold,
               color: isSelected ? activeColor : Colors.black87,
             ),
           ),
@@ -338,144 +309,133 @@ Widget _buildChoiceButton({
 
 
 
-class BattleTransitionScreen extends ConsumerStatefulWidget {
+class BattleTransitionScreen extends HookConsumerWidget {
   const BattleTransitionScreen({Key? key}) : super(key: key);
 
   @override
-  ConsumerState<BattleTransitionScreen> createState() =>
-      _BattleTransitionScreenState();
-}
-
-class _BattleTransitionScreenState extends ConsumerState<BattleTransitionScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<Offset> _userSlideAnimation;
-  late Animation<Offset> _otherUserSlideAnimation;
-  late Animation<double> _vsFadeAnimation;
-  late Animation<double> _vsScaleAnimation;
-
-  @override
-  void initState() {
-    super.initState(); // 仮ルーターにコンテキストをセット
-
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 4000), // アニメーション全体の時間
-      vsync: this,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = useAnimationController(
+      duration: const Duration(milliseconds: 4000),
     );
 
-    // 自分: 左から中央少し手前へ
-    _userSlideAnimation = Tween<Offset>(
-      begin: const Offset(-1.0, 0.0), // 画面外左
-      end: const Offset(-0.1, 0.0), // 画面中央より少し左
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve:
-          const Interval(0.0, 0.6, curve: Curves.easeInOutCubic), // 全体の0%～60%
-    ));
+    final userSlideAnimation = useMemoized(() {
+      return Tween<Offset>(
+        begin: const Offset(-1.0, 0.0),
+        end: const Offset(-0.1, 0.0),
+      ).animate(CurvedAnimation(
+        parent: controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeInOutCubic),
+      ));
+    }, [controller]);
 
-    // 相手: 右から中央少し手前へ
-    _otherUserSlideAnimation = Tween<Offset>(
-      begin: const Offset(1.0, 0.0), // 画面外右
-      end: const Offset(0.1, 0.0), // 画面中央より少し右
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve:
-          const Interval(0.0, 0.6, curve: Curves.easeInOutCubic), // 全体の0%～60%
-    ));
+    final otherUserSlideAnimation = useMemoized(() {
+      return Tween<Offset>(
+        begin: const Offset(1.0, 0.0),
+        end: const Offset(0.1, 0.0),
+      ).animate(CurvedAnimation(
+        parent: controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeInOutCubic),
+      ));
+    }, [controller]);
 
-    // VS: フェードイン
-    _vsFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.5, 0.7, curve: Curves.easeIn), // 全体の50%～80%で表示
-      ),
-    );
+    final vsFadeAnimation = useMemoized(() {
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: controller,
+          curve: const Interval(0.5, 0.7, curve: Curves.easeIn),
+        ),
+      );
+    }, [controller]);
 
-    // VS: スケールアップ
-    _vsScaleAnimation = Tween<double>(begin: 0.5, end: 1.2).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.5, 0.9, curve: Curves.elasticOut), // 伸縮する感じ
-      ),
-    );
+    final vsScaleAnimation = useMemoized(() {
+      return Tween<double>(begin: 0.5, end: 1.2).animate(
+        CurvedAnimation(
+          parent: controller,
+          curve: const Interval(0.5, 0.9, curve: Curves.elasticOut),
+        ),
+      );
+    }, [controller]);
 
-    _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        Future.delayed(const Duration(milliseconds: 800), () {
-          if (mounted) {
-            // 実際のプロジェクトのrouterインスタンスを使用してください
-            // 例: GoRouter.of(context).go('/game');
-            // 例: ref.read(routerProvider).go('/game');
-            router.go('/game');
-          }
-        });
+    useEffect(() {
+      final room = ref.read(matchingRoomProvider);
+      if (room.roomId != null) {
+        ref.read(matchingRoomProvider.notifier).setupPresenceChannel(room.roomId!);
       }
-    });
 
-    // initStateの最後に呼び出すことで、ビルド後にアニメーションが開始される
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _controller.forward();
+      void statusListener(AnimationStatus status) {
+        if (status == AnimationStatus.completed) {
+          Future.delayed(const Duration(milliseconds: 800), () {
+            if (context.mounted) {
+              router.go('/game');
+            }
+          });
+        }
       }
-    });
-  }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+      controller.addStatusListener(statusListener);
+      controller.forward();
 
-  @override
-  Widget build(BuildContext context) {
+      return () => controller.removeStatusListener(statusListener);
+    }, [controller]);
+
     final Users userState = ref.watch(userProvider);
     final Users otherUserState = ref.watch(otherUserProvider);
+    final userId = ref.watch(currentUserIdProvider);
+
+    useEffect(() {
+      final room = ref.read(matchingRoomProvider);
+      final otherUserId =
+          room.player1Id == userId ? room.player2Id : room.player1Id;
+      if (otherUserId != null &&
+          ref.read(otherUserProvider).id != otherUserId) {
+        log('ChosePage: 対戦相手情報取得開始: $otherUserId');
+        ref
+            .read(otherUserProvider.notifier)
+            .fetchOtherUserWithRetry(otherUserId);
+      }
+      return null;
+    }, [ref.watch(matchingRoomProvider).player1Id, ref.watch(matchingRoomProvider).player2Id, userId]);
 
     return Scaffold(
-      backgroundColor: Colors.blue, // 背景色
+      backgroundColor: Colors.blue,
       body: Stack(
         children: [
-          // 自分のプロフィール (左から)
           Align(
             alignment: Alignment.centerLeft,
             child: SlideTransition(
-              position: _userSlideAnimation,
+              position: userSlideAnimation,
               child: Padding(
-                padding: const EdgeInsets.only(left: 30.0), // 画面端からのパディング
+                padding: const EdgeInsets.only(left: 30.0),
                 child: UserProfileCard(
                     userData: userState,
                     textAlignment: CrossAxisAlignment.start),
               ),
             ),
           ),
-
-          // 相手のプロフィール (右から)
           Align(
             alignment: Alignment.centerRight,
             child: SlideTransition(
-              position: _otherUserSlideAnimation,
+              position: otherUserSlideAnimation,
               child: Padding(
-                padding: const EdgeInsets.only(right: 30.0), // 画面端からのパディング
+                padding: const EdgeInsets.only(right: 30.0),
                 child: UserProfileCard(
                     userData: otherUserState,
                     textAlignment: CrossAxisAlignment.end),
               ),
             ),
           ),
-
-          // VS テキスト
           Center(
             child: FadeTransition(
-              opacity: _vsFadeAnimation,
+              opacity: vsFadeAnimation,
               child: ScaleTransition(
-                scale: _vsScaleAnimation,
+                scale: vsScaleAnimation,
                 child: Text(
                   "VS",
                   style: TextStyle(
                     fontSize: 90,
                     fontWeight: FontWeight.bold,
                     color: const Color.fromARGB(255, 15, 3, 3),
-                    fontFamily: 'Impact', // かっこいいフォント (システムにあれば)
+                    fontFamily: 'Impact',
                     shadows: [
                       Shadow(
                         blurRadius: 10.0,
@@ -483,7 +443,6 @@ class _BattleTransitionScreenState extends ConsumerState<BattleTransitionScreen>
                         offset: const Offset(5.0, 5.0),
                       ),
                       const Shadow(
-                        // 縁取りっぽく
                         blurRadius: 0.0,
                         color: Colors.white,
                         offset: Offset(1.0, 1.0),

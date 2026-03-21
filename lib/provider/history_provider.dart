@@ -115,7 +115,7 @@ final matchRecordsProvider =
         String formattedReason = resultReason;
         String formatName(String name) => "'$name'";
         if (formattedReason.isNotEmpty) {
-          formattedReason = formattedReason.substring(1).trim();
+          formattedReason = formattedReason.trim();
           if (currentUserId == player1Id) {
             formattedReason = formattedReason.replaceAll('A', formatName(myname));
             formattedReason = formattedReason.replaceAll('B', formatName(opponentName));

@@ -2,6 +2,7 @@ import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart'; // flutter_hooksをインポート
 import 'package:hooks_riverpod/hooks_riverpod.dart';// hooks_riverpodをインポート
 
@@ -57,8 +58,8 @@ class TransferPage extends HookConsumerWidget {
             backgroundColor: Colors.blue, // 少し濃いめの青
             appBar: AppBar(
               title:
-                  const Text('引き継ぎ',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text('引き継ぎ',
+            style: AppTextStyles.bold(color: Colors.white)),
               backgroundColor: Colors.blue,
               elevation: 0,
               iconTheme: const IconThemeData(color: Colors.white),
@@ -266,16 +267,15 @@ class TransferPage extends HookConsumerWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: AppTextStyles.bold(
               fontSize: 20.0,
-              fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
           ),
           const SizedBox(height: 15),
           Text(
             description,
-            style: TextStyle(
+            style: AppTextStyles.notoSans(
               fontSize: 14.0,
               color: Colors.black54,
               height: 1.6,
@@ -337,8 +337,8 @@ class TransferPage extends HookConsumerWidget {
               ),
               child: Text(
                 buttonText,
-                style: const TextStyle(
-                    fontSize: 17.0, fontWeight: FontWeight.bold),
+                style: AppTextStyles.bold(
+                    fontSize: 17.0),
               ),
             ),
           ),

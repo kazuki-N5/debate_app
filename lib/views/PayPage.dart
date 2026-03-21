@@ -1,6 +1,7 @@
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // このページで利用するProviderの例です。
@@ -46,7 +47,6 @@ class PayPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final viewModel = ref.read(subscriptionViewModelProvider);
-    final textTheme = Theme.of(context).textTheme;
     final inappNotifier = ref.read(inAppPurchaseManagerProvider.notifier);
     final inapp = ref.watch(inAppPurchaseManagerProvider);
     final isSubscribed = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
@@ -54,9 +54,9 @@ class PayPage extends ConsumerWidget {
       backgroundColor: Colors.blue,
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('広告をオフにする',
-            style: TextStyle(
-                color: Color.fromARGB(255, 240, 237, 229),
+        title: Text('広告をオフにする',
+            style: AppTextStyles.notoSans(
+                color: const Color.fromARGB(255, 240, 237, 229),
                 fontWeight: FontWeight.bold)),
         backgroundColor: Colors.blue,
         elevation: 0,
@@ -86,16 +86,17 @@ class PayPage extends ConsumerWidget {
                       const SizedBox(height: 24),
                       Text(
                         'プレミアムプラン',
-                        style: textTheme.headlineMedium?.copyWith(
+                        style: AppTextStyles.notoSans(
                           color: Colors.white,
+                          fontSize: 24, // headlineMediumに相当するサイズ
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
+                      Text(
                         '月額プランに登録して、\nアプリ内のすべての広告を非表示にし、\nもっと快適にレスバを楽しもう！',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: AppTextStyles.notoSans(
                             color: Colors.white, fontSize: 16, height: 1.5),
                       ),
                       const SizedBox(height: 40),
@@ -109,8 +110,9 @@ class PayPage extends ConsumerWidget {
                         child: Text(
                           '月額 500円',
                           textAlign: TextAlign.center,
-                          style: textTheme.titleLarge?.copyWith(
+                          style: AppTextStyles.notoSans(
                             color: Colors.white,
+                            fontSize: 20, // titleLargeに相当するサイズ
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -131,9 +133,9 @@ class PayPage extends ConsumerWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30.0),
                           ),
-                          textStyle: const TextStyle(
+                          textStyle: AppTextStyles.notoSans(
                             fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         onPressed: isSubscribed
@@ -141,8 +143,8 @@ class PayPage extends ConsumerWidget {
                             : () async {
                                 // isSubscribed が false なら非同期処理を実行
                                 final offering = inapp.offerings;
-                                final delete_ads =
-                                    offering?.current?.getPackage('monthly_1month_500');
+                                final delete_ads = offering?.current
+                                    ?.getPackage('monthly_1month_500');
                                 await inappNotifier.purchase(delete_ads!);
                               },
                         child: const Text('登録して広告を非表示にする'),
@@ -153,7 +155,7 @@ class PayPage extends ConsumerWidget {
                       Text(
                         'お支払いは、購入確認時にAppleアカウントに請求されます。サブスクリプションは、現在の期間が終了する24時間前までにキャンセルされない限り、自動的に更新されます。',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: AppTextStyles.notoSans(
                             color: Colors.white.withOpacity(0.8), fontSize: 12),
                       ),
                       const SizedBox(height: 16),
@@ -163,9 +165,9 @@ class PayPage extends ConsumerWidget {
                           TextButton(
                             onPressed: () =>
                                 viewModel.launchURL(_termsOfServiceUrl),
-                            child: const Text(
+                            child: Text(
                               '利用規約',
-                              style: TextStyle(
+                              style: AppTextStyles.notoSans(
                                   color: Colors.white,
                                   decoration: TextDecoration.underline,
                                   decorationColor: Colors.white),
@@ -176,9 +178,9 @@ class PayPage extends ConsumerWidget {
                           TextButton(
                             onPressed: () =>
                                 viewModel.launchURL(_privacyPolicyUrl),
-                            child: const Text(
+                            child: Text(
                               'プライバシーポリシー',
-                              style: TextStyle(
+                              style: AppTextStyles.notoSans(
                                   color: Colors.white,
                                   decoration: TextDecoration.underline,
                                   decorationColor: Colors.white),

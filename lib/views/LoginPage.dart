@@ -3,7 +3,7 @@ import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/provider/setting_provider.dart';
 import 'package:debate_project/provider/user.dart'; // あなたのプロジェクトに合わせてください
-import 'package:debate_project/view_model/Paypage_view_model.dart';
+//import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:debate_project/view_model/start_error_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart'; // flutter_hooksをインポート
@@ -19,10 +19,14 @@ class LoginPage extends HookConsumerWidget {
     final showMainatenanceDialogFlag = useState<bool>(false);
     final showforceupdateDialogFlag = useState<bool>(false);
     final startnotifier = ref.read(startProvider.notifier);
-    final inapppurchase = ref.read(inAppPurchaseManagerProvider.notifier);
+    //final inapppurchase = ref.read(inAppPurchaseManagerProvider.notifier);
 
     Future<void> attemptInit() async {
-      await inapppurchase.initInAppPurchase();
+      try {
+        //await inapppurchase.initInAppPurchase();
+      } catch (e) {
+        print('課金の初期化に失敗しました (起動プロセスを継続します): $e');
+      }
       await ref.read(settingsProvider.notifier).loadSettings();
       final usernotifier = ref.read(userProvider.notifier);
       try {

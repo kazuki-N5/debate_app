@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:debate_project/modes/users.dart';
+import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -10,13 +11,13 @@ import 'package:debate_project/view_model/Profile_model.dart';
 // import 'package:debate_project/router/router.dart'; // context.goを使うため不要になることが多い
 
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart'; // flutter_hooksをインポート
 import 'package:hooks_riverpod/hooks_riverpod.dart'; // hooks_riverpodをインポート
 import 'package:go_router/go_router.dart';
 import 'dart:developer';
 
-final gochoseProvider = StateProvider<bool>((ref) => false);
-final splashProvider = StateProvider<bool>((ref) => false);
+// gochoseProvider と splashProvider は削除し、matchingRoomProvider の状態を直接 listen します。
 
 // ConsumerStatefulWidgetからHookConsumerWidgetに変更
 class MatchingPage extends HookConsumerWidget {
@@ -29,10 +30,11 @@ class MatchingPage extends HookConsumerWidget {
     final room = ref.watch(matchingRoomProvider);
     // ボタン押下などで使うnotifierはreadで十分
     final roomNotifier = ref.read(matchingRoomProvider.notifier);
-    final go = ref.watch(goProvider);
+    // final go = ref.watch(goProvider);
 
     // マッチング成功時の画面遷移をuseEffectで管理
-    final shouldShowTransition = room.player2Id != null && go;
+    // マッチング成功時の画面遷移
+    final shouldShowTransition = room.player2Id != null;
 
     if (shouldShowTransition) {
       return const Scaffold(
@@ -57,18 +59,17 @@ class MatchingPage extends HookConsumerWidget {
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Column(
+                    child: Column(
                       children: [
                         Text(
                           'マッチング中...',
-                          style: TextStyle(
+                          style: AppTextStyles.bold(
                             color: Colors.white,
                             fontSize: 20,
-                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 20),
-                        BlinkingMatchingIndicator(), // HookWidgetに変更
+                        const SizedBox(height: 20),
+                        const BlinkingMatchingIndicator(),
                       ],
                     ),
                   ),
@@ -97,10 +98,9 @@ class MatchingPage extends HookConsumerWidget {
                     ),
                     child: Text(
                       'キャンセル',
-                      style: TextStyle(
+                      style: AppTextStyles.bold(
                         color: Colors.blue[600],
                         fontSize: 18,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
@@ -177,19 +177,18 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
             ),
             titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
             contentPadding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 24.0),
-            title: const Text(
+            title: Text(
               'ネットワークエラー',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: AppTextStyles.bold(
                 color: textColor,
-                fontWeight: FontWeight.bold,
                 fontSize: 20.0,
               ),
             ),
-            content: const Text(
+            content: Text(
               'データの取得に失敗しました。\nもう一度お試しください。',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: AppTextStyles.notoSans(
                 color: textColor,
                 fontSize: 16.0,
               ),
@@ -209,9 +208,8 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
                 icon: Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
                 label: Text(
                   'やり直す',
-                  style: TextStyle(
+                  style: AppTextStyles.bold(
                     color: buttonTextColor,
-                    fontWeight: FontWeight.bold,
                     fontSize: 16.0,
                   ),
                 ),
@@ -326,42 +324,45 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
       controller
     ]); // 第2引数に[controller]を渡すことで、controllerのインスタンスが変わらない限りこのeffectは再実行されない
 
-    ref.listen<bool>(gochoseProvider, (previous, next) {
-      // gochoseがtrueになったら（next == true）
-      if (next) {
-        log('許可されたのでチューズに移動しました');
-        // listenのコールバック内での画面遷移は安全です
+    // matchingRoomProvider の変更を listen してナビゲーションを制御
+    ref.listen<MatchingRoom>(matchingRoomProvider, (previous, next) async {
+      final userId = ref.read(currentUserIdProvider);
+      if (userId == null) return;
+
+      // 1. 対戦相手が見つかった時の処理 (UserProfileの取得)
+      if (next.player2Id != null && (previous == null || previous.player2Id == null)) {
+        log('対戦相手発見 (UI Listener)');
+        final otherUserId = next.player1Id == userId ? next.player2Id : next.player1Id;
+        if (otherUserId != null) {
+          await ref.read(otherUserProvider.notifier).fetchOtherUserWithRetry(otherUserId);
+        }
+      }
+
+      // 2. 両者が「スタート」を押した時の処理 -> /chose へ遷移
+      if (next.player1_go == true && next.player2_go == true && 
+          !(previous?.player1_go == true && previous?.player2_go == true)) {
+        log('両者の準備完了 -> /choseに移動');
         router.go('/chose');
       }
-    });
-    bool issplash = false;
 
-    ref.listen<bool>(splashProvider, (previous, next) async {
-      // splashがtrueになったら
-      if (next && !issplash) {
-        issplash = true;
-        final room = ref.read(matchingRoomProvider); // 最新のroom状態を読み込む
-        final userId = ref.read(currentUserIdProvider); // 最新のuserIdを読み込む
-        final roomnotifier = ref.read(matchingRoomProvider.notifier);
-
-        if ((room.player1Id == userId && room.player1_go == false) ||
-            (room.player2Id == userId && room.player2_go == false)) {
-          print("自分が退出したため、ホーム画面に戻ります。");
+      // 3. どちらかがキャンセルした、または退出した時の処理 (Splash相当)
+      if ((next.player1_go == false && previous?.player1_go != false) || 
+          (next.player2_go == false && previous?.player2_go != false)) {
+        log('プレイヤーの退出を検知');
+        
+        if ((next.player1Id == userId && next.player1_go == false) ||
+            (next.player2Id == userId && next.player2_go == false)) {
+          log('自分が退出したためホームへ');
           try {
-            // この処理は必要に応じて実行
-            await usernotifier.fetchUser(userId!);
+            await ref.read(userProvider.notifier).fetchUser(userId);
             router.go('/home');
           } catch (e) {
             _showErrorDialog(context);
           }
-
-// 相手が抜けた場合の処理
-// (自分がP1でP2が抜けた OR 自分がP2でP1が抜けた)
-        } else if ((room.player1Id == userId && room.player2_go == false) ||
-            (room.player2Id == userId && room.player1_go == false)) {
-          log('相手がやめたのでマッチングを再開します');
+        } else {
+          log('相手が退出したため再マッチング');
           try {
-            roomnotifier.findMatch('', '', '', '');
+            ref.read(matchingRoomProvider.notifier).findMatch('', '', '', '');
           } catch (e) {
             router.go('/home');
           }
@@ -370,6 +371,16 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
     });
 
     final supabase = ref.read(supabaseProvider);
+
+    useEffect(() {
+      final otherUserId =
+          room.player1Id == userId ? room.player2Id : room.player1Id;
+      if (otherUserId != null && ref.read(otherUserProvider).id != otherUserId) {
+        log('初期表示時の対戦相手情報取得: $otherUserId');
+        ref.read(otherUserProvider.notifier).fetchOtherUserWithRetry(otherUserId);
+      }
+      return null;
+    }, [room.player1Id, room.player2Id, userId]);
 
     useEffect(() {
       // 内部で非同期関数を定義して実行する
@@ -381,16 +392,14 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
         }
 
         Future<DateTime> getServerTimeWithRetry() async {
-          while (true) {
-            try {
-              print('サーバー時刻の取得を試みます...-------------');
-              final now = await getServerTime();
-              print('サーバー時刻の取得に成功しました。');
-              return now;
-            } catch (e) {
-              print('サーバー時刻の取得に失敗しました: $e。3秒後に再試行します。');
-              await Future.delayed(const Duration(seconds: 1));
-            }
+          try {
+            print('サーバー時刻の取得を試みます...-------------');
+            final now = await getServerTime();
+            print('サーバー時刻の取得に成功しました。');
+            return now;
+          } catch (e) {
+            print('サーバー時刻の取得に失敗しました: $e。');
+            rethrow;
           }
         }
 
@@ -562,11 +571,10 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
                             horizontal: 60, vertical: 15), // ボタンの余白
                         elevation: 8, // 影をつけて立体感を出す
                       ),
-                      child: const Text(
+                      child: Text(
                         'スタート',
-                        style: TextStyle(
+                        style: AppTextStyles.bold(
                           fontSize: 20,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -593,7 +601,7 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
                                 if (secondsLeft.value != null)
                                   Text(
                                     secondsLeft.value.toString(),
-                                    style: const TextStyle(
+                                    style: AppTextStyles.notoSans(
                                       color: Colors.white70,
                                       fontSize: 16,
                                     ),
@@ -636,9 +644,9 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8.0), // 左右に少し余白を持たせる
                             ),
-                            child: const Text(
+                            child: Text(
                               'キャンセル',
-                              style: TextStyle(
+                              style: AppTextStyles.notoSans(
                                 color: Colors.white70,
                                 fontSize: 16,
                               ),
@@ -662,9 +670,9 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
                                 const SizedBox(width: 4), // 画像と数字の間のスペース
 
                                 // 「-3」という数字
-                                const Text(
+                                Text(
                                   '-3',
-                                  style: TextStyle(
+                                  style: AppTextStyles.notoSans(
                                     color: Colors.white70,
                                     fontSize: 16,
                                   ),

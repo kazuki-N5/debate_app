@@ -17,6 +17,7 @@ import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -45,7 +46,6 @@ class FinishPage extends HookConsumerWidget {
     // isAdBlockingInteraction の状態を監視
     final isAdBlockingInteraction = ref.watch(adNotifierProvider);
     final isSubscribe = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
-    ;
 
     void toggleBoolean() {
       // 現在の isEnabled.value の値を反転させて、再代入します。
@@ -53,7 +53,7 @@ class FinishPage extends HookConsumerWidget {
       isMatching.value = !isMatching.value;
     }
 
-    if (room.roomId == null || room.result == null) {
+    if (room.roomId == null || room.winner == null) {
       return Scaffold(
         body: Center(
           child: Column(
@@ -89,19 +89,18 @@ class FinishPage extends HookConsumerWidget {
             ),
             titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
             contentPadding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 24.0),
-            title: const Text(
+            title: Text(
               'ネットワークエラー',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: AppTextStyles.bold(
                 color: textColor,
-                fontWeight: FontWeight.bold,
                 fontSize: 20.0,
               ),
             ),
-            content: const Text(
+            content: Text(
               'データの取得に失敗しました。\nもう一度お試しください。',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: AppTextStyles.notoSans(
                 color: textColor,
                 fontSize: 16.0,
               ),
@@ -121,9 +120,8 @@ class FinishPage extends HookConsumerWidget {
                 icon: Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
                 label: Text(
                   'やり直す',
-                  style: TextStyle(
+                  style: AppTextStyles.bold(
                     color: buttonTextColor,
-                    fontWeight: FontWeight.bold,
                     fontSize: 16.0,
                   ),
                 ),
@@ -152,8 +150,7 @@ class FinishPage extends HookConsumerWidget {
     useEffect(() {
       // 広告表示を通知 (例: 全画面広告など)
       if (isSubscribe == false) {
-        
-      ref.read(adNotifierProvider.notifier).showAd();
+        ref.read(adNotifierProvider.notifier).showAd();
       }
 
       Future.microtask(() {
@@ -174,17 +171,16 @@ class FinishPage extends HookConsumerWidget {
     }, const []);
 
     String getResultText(MatchingRoom room, String userId) {
-      // room.resultの最初の文字を取得
-      String firstChar = room.result![0];
-      if (firstChar != 'A' && firstChar != 'B') {
-        return '勝利';
+      String? winnerLabel = room.winner;
+      if (winnerLabel == null || (winnerLabel != 'A' && winnerLabel != 'B')) {
+        return '終了';
       }
       bool isPlayer1 = room.player1Id == userId;
 
       if (isPlayer1) {
-        return firstChar == 'A' ? '勝利' : '敗北';
+        return winnerLabel == 'A' ? '勝利' : '敗北';
       } else {
-        return firstChar == 'A' ? '敗北' : '勝利';
+        return winnerLabel == 'A' ? '敗北' : '勝利';
       }
     }
 
@@ -193,10 +189,7 @@ class FinishPage extends HookConsumerWidget {
     }
 
     String formatResult(MatchingRoom room, Users myuser, Users otheruser) {
-      String result = room.result!.substring(1); // 最初の1文字を削除
-
-      // 先頭の空白を削除
-      result = result.trimLeft();
+      String result = room.reason ?? ""; // 理由を直接取得（パース不要）
 
       if (room.player1Id == myuser.id) {
         result = result
@@ -233,7 +226,7 @@ class FinishPage extends HookConsumerWidget {
 
     String displayPoint(
         MatchingRoom room, Users myuser, Users otheruser, String userId) {
-      String firstChar = room.result![0];
+      String? firstChar = room.winner;
       if (ischange.value) {
         ischange.value = false;
         if (firstChar == 'A') {
@@ -253,7 +246,7 @@ class FinishPage extends HookConsumerWidget {
             return save.value;
           }
         } else {
-          save.value = '+16'; // この行を追加
+          save.value = '+16';
           return save.value;
         }
       }
@@ -284,10 +277,12 @@ class FinishPage extends HookConsumerWidget {
           final tempDir = await getTemporaryDirectory();
           final file = await File('${tempDir.path}/debate_result.png').create();
           await file.writeAsBytes(pngBytes);
-           const appStoreUrl = 'https://itunes.apple.com/jp/app/id6747020633?mt=8';
+          const appStoreUrl =
+              'https://itunes.apple.com/jp/app/id6747020633?mt=8';
           // ダイアログを閉じる
 
-          final shareText = 'ディベートで「$resultText」しました！\nみんなも遊んでみよう！\n#ディベートアプリ\n$appStoreUrl';
+          final shareText =
+              'ディベートで「$resultText」しました！\nみんなも遊んでみよう！\n#ディベートアプリ\n$appStoreUrl';
 
           await Share.shareXFiles(
             [XFile(file.path)],
@@ -380,12 +375,11 @@ class FinishPage extends HookConsumerWidget {
                 // --- START: FIXED TOP AREA (スクロールしない上部エリア) ---
                 const SizedBox(height: 24),
                 // Header with centered title
-                const Text(
+                Text(
                   '結果発表',
-                  style: TextStyle(
+                  style: AppTextStyles.bold(
                     color: Colors.black,
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -399,7 +393,7 @@ class FinishPage extends HookConsumerWidget {
                         // 勝利/敗北を中央に配置
                         Text(
                           resultText,
-                          style: TextStyle(
+                          style: AppTextStyles.notoSans(
                             fontSize: 40,
                             fontWeight: FontWeight.bold,
                             color: resultText == ('勝利')
@@ -415,7 +409,7 @@ class FinishPage extends HookConsumerWidget {
                             top: 25,
                             child: Text(
                               displayPoint(room, myuser, otheruser, user),
-                              style: TextStyle(
+                              style: AppTextStyles.notoSans(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 color: resultText == ('勝利')
@@ -451,16 +445,15 @@ class FinishPage extends HookConsumerWidget {
                             children: [
                               Text(
                                 '勝敗の理由:',
-                                style: TextStyle(
+                                style: AppTextStyles.bold(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.bold,
                                   color: Colors.blue[800],
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 formatResult(room, myuser, otheruser),
-                                style: const TextStyle(
+                                style: AppTextStyles.notoSans(
                                   fontSize: 14,
                                   color: Colors.black87,
                                   height: 1.5,
@@ -479,8 +472,7 @@ class FinishPage extends HookConsumerWidget {
                             child: AdWidget(ad: mediumRectangleAd),
                           )
                         else
-                          Container(
-                          ),
+                          Container(),
                         const SizedBox(
                             height: 24), // Add padding at the end of scroll
                       ],
@@ -518,9 +510,9 @@ class FinishPage extends HookConsumerWidget {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
+                          child: Text(
                             'もう一度ディベート',
-                            style: TextStyle(
+                            style: AppTextStyles.notoSans(
                               color: Colors.white,
                               fontSize: 16,
                             ),
@@ -556,9 +548,9 @@ class FinishPage extends HookConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'ホームに戻る',
-                                style: TextStyle(
+                                style: AppTextStyles.notoSans(
                                   color: Colors.blue,
                                   fontSize: 16,
                                 ),
@@ -628,12 +620,11 @@ class _ShareableResultCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             '結果発表',
-            style: TextStyle(
+            style: AppTextStyles.bold(
               color: Colors.black,
               fontSize: 18,
-              fontWeight: FontWeight.bold,
             ),
             textAlign: TextAlign.center,
           ),
@@ -646,9 +637,8 @@ class _ShareableResultCard extends StatelessWidget {
                 children: [
                   Text(
                     result,
-                    style: TextStyle(
+                    style: AppTextStyles.bold(
                       fontSize: 40,
-                      fontWeight: FontWeight.bold,
                       color: result == ('勝利') ? Colors.red : Colors.grey[700],
                     ),
                     textAlign: TextAlign.center,
@@ -670,16 +660,15 @@ class _ShareableResultCard extends StatelessWidget {
               children: [
                 Text(
                   '勝敗の理由:',
-                  style: TextStyle(
+                  style: AppTextStyles.bold(
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
                     color: Colors.blue[800],
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   reason,
-                  style: const TextStyle(
+                  style: AppTextStyles.notoSans(
                     fontSize: 14,
                     color: Colors.black87,
                     height: 1.5,

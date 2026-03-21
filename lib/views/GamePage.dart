@@ -13,6 +13,7 @@ import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:debate_project/view_model/prohibited_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -58,16 +59,14 @@ class GamePage extends HookConsumerWidget {
     }
 
     Future<DateTime> getServerTimeWithRetry() async {
-      while (true) {
-        try {
-          print('サーバー時刻の取得を試みます...-------------');
-          final now = await getServerTime();
-          print('サーバー時刻の取得に成功しました。');
-          return now; // 成功したら時刻を返して関数を抜ける
-        } catch (e) {
-          print('サーバー時刻の取得に失敗しました: $e。3秒後に再試行します。');
-          await Future.delayed(const Duration(seconds: 3));
-        }
+      try {
+        print('サーバー時刻の取得を試みます...-------------');
+        final now = await getServerTime();
+        print('サーバー時刻の取得に成功しました。');
+        return now; // 成功したら時刻を返して関数を抜ける
+      } catch (e) {
+        print('サーバー時刻の取得に失敗しました: $e。');
+        rethrow;
       }
     }
 
@@ -112,6 +111,7 @@ class GamePage extends HookConsumerWidget {
     final finishtimer = useState<Timer?>(null);
 
     Future<void> countTime() async {
+      //これはフォント確認用にわざと止めているのでエターになってるだけです無視してくださいこのエラーはビルドに関係ないです
       deadline = room.updatedAt!.add(const Duration(seconds: 182));
 
       final DateTime serverTime = await getServerTimeWithRetry();
@@ -122,7 +122,6 @@ class GamePage extends HookConsumerWidget {
       gametimer.value = Timer.periodic(Duration(seconds: 1), (timer) async {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
-        log(diff.toString());
 
         if (diff < 165) {
           if (cantap.value == false) {
@@ -135,6 +134,7 @@ class GamePage extends HookConsumerWidget {
         if (diff <= 0) {
           finish.value = true;
           textFieldFocusNode.unfocus();
+          /* 
           if (!gemini) {
             gemini = true;
             log('gemiiniを呼び出します');
@@ -148,10 +148,11 @@ class GamePage extends HookConsumerWidget {
                   room.player1Choice!);
             }
           }
+          */
         }
-        if (diff < -7) {
+          /*
           if (!gemini2) {
-            if (room.result == null) {
+            if (room.winner == null) {
               gemini2 = true;
               log('gemiini2を呼び出します');
               if (room.player2Id == user) {
@@ -165,7 +166,7 @@ class GamePage extends HookConsumerWidget {
               }
             }
           }
-        }
+          */
         if (diff < -14) {
           if (!win) {
             win = true;
@@ -201,7 +202,7 @@ class GamePage extends HookConsumerWidget {
           final estimatedServerTime = DateTime.now().add(timeOffset);
           final fiinishcount =
               deadline.difference(estimatedServerTime).inSeconds.abs();
-          log(fiinishcount.toString());
+          /*
           if (fiinishcount >= 1) {
             if (room.player1Id == user) {
               () async {
@@ -219,7 +220,9 @@ class GamePage extends HookConsumerWidget {
               }();
             }
           }
+          */
 
+          /*
           if (fiinishcount >= 8) {
             if (room.player2Id == user) {
               if (!gemini2a) {
@@ -236,6 +239,7 @@ class GamePage extends HookConsumerWidget {
               }
             }
           }
+          */
 
           if (fiinishcount >= 15) {
             if (!wina) {
@@ -265,8 +269,8 @@ class GamePage extends HookConsumerWidget {
     }, [finish.value]);
 
     useEffect(() {
-      // ゲーム終了時 (room.result != null) の広告表示ロジック
-      if (room.result != null) {
+      // ゲーム終了時 (room.winner != null) の広告表示ロジック
+      if (room.winner != null) {
         Future.microtask(() async {
           // 非同期処理を行うためasync/awaitを使用
 
@@ -275,7 +279,7 @@ class GamePage extends HookConsumerWidget {
         });
       }
       return null; // Clean-up は不要
-    }, [room.result]);
+    }, [room.winner]);
 
     useEffect(() {
       finishgeme();
@@ -309,7 +313,7 @@ class GamePage extends HookConsumerWidget {
 
     useEffect(() {
       chatsnotifier.subscribeToMessages(room.roomId!);
-      countTime();
+      countTime(); 
 
       return () {
         gametimer.value?.cancel();
@@ -337,7 +341,7 @@ class GamePage extends HookConsumerWidget {
                       padding: const EdgeInsets.only(left: 15),
                       child: Text(
                         '選択: ${user == room.player1Id ? (room.player1Choice! ? room.choice1 : room.choice2) : (room.player2Choice! ? room.choice1 : room.choice2)}',
-                        style: const TextStyle(
+                        style: AppTextStyles.notoSans(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -372,7 +376,7 @@ class GamePage extends HookConsumerWidget {
                               countdown.value != null
                                   ? formatTime(countdown.value!)
                                   : '-',
-                              style: TextStyle(
+                              style: AppTextStyles.notoSans(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: countdown.value != null &&
@@ -389,60 +393,49 @@ class GamePage extends HookConsumerWidget {
                   // 右に配置するボタン
                   Expanded(
                     flex: 1,
-                    child: Stack(
-                      alignment: Alignment.centerRight,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(right: 17),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Opacity(
-                                // cantap.value が true の場合は完全に不透明 (1.0)
-                                // cantap.value が false の場合は半透明 (例: 0.5)
-                                opacity:
-                                    cantap.value ? 1.0 : 0.5, // ここで透明度を調整できます
-                                child: IconButton(
-                                  icon: Icon(Icons.door_back_door,
-                                      color: Colors.white), // アイコンの色はそのまま
-                                  iconSize: 29,
-                                  onPressed: cantap
-                                          .value // onPressed が null のときにタッチ操作が無効になる
-                                      ? () {
-                                          showDialog(
-                                            context: context,
-                                            builder: (context) =>
-                                                Dialog(), // 表示したいダイアログウィジェット
-                                          );
-                                        }
-                                      : null, // cantap.value が false の時は null にしてボタンを無効化
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 17),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Opacity(
+                            opacity: cantap.value ? 1.0 : 0.5,
+                            child: IconButton(
+                              icon: const Icon(Icons.door_back_door,
+                                  color: Colors.white),
+                              iconSize: 29,
+                              onPressed: cantap.value
+                                  ? () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => Dialog(),
+                                      );
+                                    }
+                                  : null,
+                            ),
+                          ),
+                          if (room.player1_finish == true ||
+                              room.player2_finish == true)
+                            Positioned(
+                              top: 3,
+                              child: IconButton(
+                                onPressed: cantap.value
+                                    ? () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => Dialog(),
+                                        );
+                                      }
+                                    : null,
+                                icon: FaIcon(
+                                  FontAwesomeIcons.check,
+                                  size: 19,
+                                  color: Colors.red[900],
                                 ),
                               ),
-                              // チェックアイコンをドアアイコンの真ん中に重ねて表示
-                              if (room.player1_finish == true ||
-                                  room.player2_finish == true)
-                                Positioned(
-                                  top: 3,
-                                  child: IconButton(
-                                    onPressed: cantap.value
-                                        ? () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) => Dialog(),
-                                            );
-                                          }
-                                        : null,
-                                    icon: FaIcon(
-                                      FontAwesomeIcons.check,
-                                      size: 19,
-                                      color: Colors.red[900],
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                        ],
+                      ),
                     ),
                   )
                 ],
@@ -462,7 +455,7 @@ class GamePage extends HookConsumerWidget {
                     ),
                     child: Text(
                       room.theme!,
-                      style: const TextStyle(
+                      style: AppTextStyles.notoSans(
                         color: Colors.black,
                         fontWeight: FontWeight.w600,
                         fontSize: 20,
@@ -474,9 +467,9 @@ class GamePage extends HookConsumerWidget {
                 ),
                 Expanded(
                   child: Container(
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.blue,
-                      borderRadius: const BorderRadius.only(
+                      borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(20),
                         topRight: Radius.circular(20),
                       ),
@@ -503,20 +496,21 @@ class GamePage extends HookConsumerWidget {
                               reverse: true,
                               itemCount: visibleMessages.length,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 16),
+                                  horizontal: 4, vertical: 4),
                               itemBuilder: (context, index) {
                                 final chat = visibleMessages[index];
                                 final isUserMessage = chat.senderId == user;
 
-                                // 前のメッセージの送信者と比較し、アバターを表示するか決定
-                                 final bool showAvatar = index == visibleMessages.length - 1 ||
-      visibleMessages[index + 1].senderId != chat.senderId;
+                                // アバター表示ロジック：相手の発言かつ、一つ前（古い方）の送信者と異なる場合に表示
+                                bool showAvatar = !isUserMessage &&
+                                    (index == visibleMessages.length - 1 ||
+                                        visibleMessages[index + 1].senderId !=
+                                            chat.senderId);
 
                                 // 汎用的なMessageBubbleウィジェットを使用
                                 return MessageBubble(
                                   chat: chat,
                                   isUserMessage: isUserMessage,
-                                  // 対戦相手のアバターURLは現在取得できないためnull
                                   opponentAvatarUrl: otherUserState.avatar_url,
                                   myAvatarUrl: myAvatarUrl,
                                   showAvatar: showAvatar,
@@ -531,33 +525,32 @@ class GamePage extends HookConsumerWidget {
                         Container(
                           decoration: const BoxDecoration(
                             color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                offset: Offset(0, -1),
-                                blurRadius: 4,
-                              ),
-                            ],
                           ),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 8),
+                              horizontal: 8, vertical: 4),
                           child: Row(
                             children: [
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: Colors.grey[200],
+                                    color: Colors.grey[100],
                                     borderRadius: BorderRadius.circular(25),
+                                    border:
+                                        Border.all(color: Colors.grey[300]!),
                                   ),
                                   child: TextField(
                                     focusNode: textFieldFocusNode,
                                     controller: textControler,
-                                    style: const TextStyle(color: Colors.black),
+                                    textAlignVertical: TextAlignVertical.center,
+                                    style: AppTextStyles.notoSans(
+                                        color: Colors.black, fontSize: 14),
                                     decoration: InputDecoration(
-                                      hintText: '論破しよう',
-                                      hintStyle:
-                                          TextStyle(color: Colors.grey[600]),
+                                      isDense: true,
                                       border: InputBorder.none,
+                                      hintText: 'レスバしよう',
+                                      hintStyle:
+                                          AppTextStyles.notoSans(color: Colors.grey[400]),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
                                         horizontal: 16,
@@ -570,30 +563,23 @@ class GamePage extends HookConsumerWidget {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Container(
-                                decoration: const BoxDecoration(
-                                  color: Colors.blue,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: IconButton(
-                                  onPressed: () {
-                                    if (textControler.text.trim().isNotEmpty) {
-                                      ref
-                                          .read(chatProvider.notifier)
-                                          .sendMesage(room.roomId!,
-                                              textControler.text.trim());
-                                      textControler.clear();
-                                      scrollController.animateTo(
-                                        0,
-                                        duration:
-                                            const Duration(milliseconds: 300),
-                                        curve: Curves.easeOut,
-                                      );
-                                    }
-                                  },
-                                  icon: const Icon(Icons.send,
-                                      color: Colors.white, size: 20),
-                                ),
+                              IconButton(
+                                onPressed: () {
+                                  if (textControler.text.trim().isNotEmpty) {
+                                    ref.read(chatProvider.notifier).sendMesage(
+                                        room.roomId!,
+                                        textControler.text.trim());
+                                    textControler.clear();
+                                    scrollController.animateTo(
+                                      0,
+                                      duration:
+                                          const Duration(milliseconds: 300),
+                                      curve: Curves.easeOut,
+                                    );
+                                  }
+                                },
+                                icon: const Icon(Icons.send,
+                                    color: Colors.blue, size: 24),
                               ),
                             ],
                           ),
@@ -670,9 +656,8 @@ class Dialog extends ConsumerWidget {
                 roomnotifier.finish(room.roomId!, user!);
               },
               child: Text('降参する',
-                  style: TextStyle(
+                  style: AppTextStyles.bold(
                       fontSize: 17,
-                      fontWeight: FontWeight.bold,
                       color: Colors.white)),
             ),
             const SizedBox(height: 20),
@@ -701,9 +686,8 @@ class Dialog extends ConsumerWidget {
                         },
               child: Text(
                 isUserFinished ? 'キャンセル' : '判定に進む',
-                style: TextStyle(
+                style: AppTextStyles.bold(
                   fontSize: 17,
-                  fontWeight: FontWeight.bold,
                   color: isUserFinished ? Colors.black : Colors.white,
                 ),
               ),
@@ -711,9 +695,8 @@ class Dialog extends ConsumerWidget {
             SizedBox(height: 12),
             Text(
               '${(room.player1_finish == true ? 1 : 0) + (room.player2_finish == true ? 1 : 0)}/2',
-              style: TextStyle(
+              style: AppTextStyles.bold(
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
                 color:
                     (room.player1_finish == true || room.player2_finish == true)
                         ? Colors.red

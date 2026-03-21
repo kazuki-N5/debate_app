@@ -3,6 +3,7 @@ import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/view_model/prohibited_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -30,8 +31,8 @@ class HistoryPage extends HookConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.blue,
       appBar: AppBar(
-        title: const Text('履歴',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text('履歴',
+            style: AppTextStyles.bold(color: Colors.white)),
         backgroundColor: Colors.blue,
         elevation: 0,
         automaticallyImplyLeading: false,
@@ -42,9 +43,9 @@ class HistoryPage extends HookConsumerWidget {
           matchRecordsAsync.when(data: (records) {
             if (isLoadingRetry.value) isLoadingRetry.value = false;
             if (currentUserId == null) {
-              return const Center(
+              return Center(
                   child: Text('ログインしてください。',
-                      style: TextStyle(color: Colors.white)));
+                      style: AppTextStyles.notoSans(color: Colors.white)));
             }
             return ListView.builder(
               padding: const EdgeInsets.only(
@@ -73,9 +74,9 @@ class HistoryPage extends HookConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     '履歴の読み込みに失敗しました。',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
+                    style: AppTextStyles.notoSans(color: Colors.white, fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
@@ -222,11 +223,10 @@ class _MatchHistoryItem extends HookConsumerWidget {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(27.0),
                             ),
-                            title: const Text(
+                            title: Text(
                               'ユーザーをブロック',
-                              style: TextStyle(
+                              style: AppTextStyles.bold(
                                 color: Colors.black,
-                                fontWeight: FontWeight.bold,
                                 fontSize: 20,
                               ),
                             ),
@@ -237,7 +237,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
                                 children: [
                                   Text(
                                     '${record.opponentName}さんをブロックしますか？\nブロックすると、このユーザーとの履歴は表示されなくなり、マッチングしなくなります。', // 説明を修正
-                                    style: TextStyle(
+                                    style: AppTextStyles.notoSans(
                                       color: Colors.black.withOpacity(0.8),
                                       fontSize: 15,
                                     ),
@@ -263,9 +263,8 @@ class _MatchHistoryItem extends HookConsumerWidget {
                                   ),
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 20.0, vertical: 10.0),
-                                  textStyle: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
+                                  textStyle: AppTextStyles.bold(
+                                      fontSize: 15),
                                 ),
                                 child: const Text('キャンセル'),
                               ),
@@ -302,7 +301,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
                                     // ④ ダイアログを閉じる
                                     dialogNavigator.pop();
 
-                                    // ⑤ ユーザーに完了を通知
+                                    // ④ ユーザーに完了を通知
                                     scaffoldMessenger.showSnackBar(
                                       SnackBar(
                                         content: Text('${record.opponentName}さんをブロックしました。'),
@@ -333,9 +332,8 @@ class _MatchHistoryItem extends HookConsumerWidget {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 24.0, vertical: 12.0),
                                   elevation: 2,
-                                  textStyle: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
+                                  textStyle: AppTextStyles.bold(
+                                      fontSize: 15),
                                 ),
                                 child: const Text('はい'),
                               ),
@@ -371,18 +369,16 @@ class _MatchHistoryItem extends HookConsumerWidget {
                   children: [
                     Text(
                       resultStatus,
-                      style: TextStyle(
+                      style: AppTextStyles.bold(
                         fontSize: 20,
-                        fontWeight: FontWeight.bold,
                         color: resultColor,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       trophyChangeString,
-                      style: TextStyle(
+                      style: AppTextStyles.bold(
                         fontSize: 18,
-                        fontWeight: FontWeight.bold,
                         color: resultColor,
                       ),
                     ),
@@ -392,8 +388,8 @@ class _MatchHistoryItem extends HookConsumerWidget {
                     Expanded(
                       child: Text(
                         opponentName,
-                        style: const TextStyle(
-                            fontSize: 16, color: Colors.black87),
+                        style: AppTextStyles.notoSans(
+                          fontSize: 16, color: Colors.black87),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                       ),
@@ -408,10 +404,9 @@ class _MatchHistoryItem extends HookConsumerWidget {
                         highlightColor: Colors.transparent,
                         child: Text(
                           'レスバを見る',
-                          style: TextStyle(
+                          style: AppTextStyles.bold(
                               fontSize: 14,
-                              color: const Color.fromARGB(255, 114, 114, 114),
-                              fontWeight: FontWeight.bold),
+                              color: const Color.fromARGB(255, 114, 114, 114)),
                         ),
                       ),
                   ],
@@ -449,43 +444,40 @@ class _MatchHistoryItem extends HookConsumerWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (!isCancelled) ...[
-                                  const Text(
+                                  Text(
                                     'テーマ:',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold,
+                                    style: AppTextStyles.bold(
                                         color: Colors.black87),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     theme,
                                     style:
-                                        const TextStyle(color: Colors.black87),
+                                        AppTextStyles.notoSans(color: Colors.black87),
                                   ),
                                   const SizedBox(height: 8),
-                                  const Text(
+                                  Text(
                                     'あなたの選択:',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold,
+                                    style: AppTextStyles.bold(
                                         color: Colors.black87),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     userChoice,
                                     style:
-                                        const TextStyle(color: Colors.black87),
+                                        AppTextStyles.notoSans(color: Colors.black87),
                                   ),
                                   const SizedBox(height: 8),
                                 ],
-                                const Text(
+                                Text(
                                   '理由:',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                  style: AppTextStyles.bold(
                                       color: Colors.black87),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   reason,
-                                  style: const TextStyle(color: Colors.black87),
+                                  style: AppTextStyles.notoSans(color: Colors.black87),
                                 ),
                               ],
                             ),

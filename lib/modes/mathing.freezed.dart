@@ -21,7 +21,8 @@ mixin _$MatchingRoom {
   String? get player2Id => throw _privateConstructorUsedError;
   bool? get isMatched => throw _privateConstructorUsedError;
   DateTime? get createdAt => throw _privateConstructorUsedError;
-  String? get result => throw _privateConstructorUsedError;
+  String? get winner => throw _privateConstructorUsedError;
+  String? get reason => throw _privateConstructorUsedError;
   bool? get player1Choice => throw _privateConstructorUsedError;
   bool? get player2Choice => throw _privateConstructorUsedError;
   DateTime? get updatedAt => throw _privateConstructorUsedError;
@@ -57,7 +58,8 @@ abstract class $MatchingRoomCopyWith<$Res> {
       String? player2Id,
       bool? isMatched,
       DateTime? createdAt,
-      String? result,
+      String? winner,
+      String? reason,
       bool? player1Choice,
       bool? player2Choice,
       DateTime? updatedAt,
@@ -95,7 +97,8 @@ class _$MatchingRoomCopyWithImpl<$Res, $Val extends MatchingRoom>
     Object? player2Id = freezed,
     Object? isMatched = freezed,
     Object? createdAt = freezed,
-    Object? result = freezed,
+    Object? winner = freezed,
+    Object? reason = freezed,
     Object? player1Choice = freezed,
     Object? player2Choice = freezed,
     Object? updatedAt = freezed,
@@ -133,9 +136,13 @@ class _$MatchingRoomCopyWithImpl<$Res, $Val extends MatchingRoom>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      result: freezed == result
-          ? _value.result
-          : result // ignore: cast_nullable_to_non_nullable
+      winner: freezed == winner
+          ? _value.winner
+          : winner // ignore: cast_nullable_to_non_nullable
+              as String?,
+      reason: freezed == reason
+          ? _value.reason
+          : reason // ignore: cast_nullable_to_non_nullable
               as String?,
       player1Choice: freezed == player1Choice
           ? _value.player1Choice
@@ -215,7 +222,8 @@ abstract class _$$MatchingRoomImplCopyWith<$Res>
       String? player2Id,
       bool? isMatched,
       DateTime? createdAt,
-      String? result,
+      String? winner,
+      String? reason,
       bool? player1Choice,
       bool? player2Choice,
       DateTime? updatedAt,
@@ -251,7 +259,8 @@ class __$$MatchingRoomImplCopyWithImpl<$Res>
     Object? player2Id = freezed,
     Object? isMatched = freezed,
     Object? createdAt = freezed,
-    Object? result = freezed,
+    Object? winner = freezed,
+    Object? reason = freezed,
     Object? player1Choice = freezed,
     Object? player2Choice = freezed,
     Object? updatedAt = freezed,
@@ -289,9 +298,13 @@ class __$$MatchingRoomImplCopyWithImpl<$Res>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      result: freezed == result
-          ? _value.result
-          : result // ignore: cast_nullable_to_non_nullable
+      winner: freezed == winner
+          ? _value.winner
+          : winner // ignore: cast_nullable_to_non_nullable
+              as String?,
+      reason: freezed == reason
+          ? _value.reason
+          : reason // ignore: cast_nullable_to_non_nullable
               as String?,
       player1Choice: freezed == player1Choice
           ? _value.player1Choice
@@ -366,7 +379,8 @@ class _$MatchingRoomImpl implements _MatchingRoom {
       this.player2Id,
       this.isMatched,
       this.createdAt,
-      this.result,
+      this.winner,
+      this.reason,
       this.player1Choice,
       this.player2Choice,
       this.updatedAt,
@@ -394,7 +408,9 @@ class _$MatchingRoomImpl implements _MatchingRoom {
   @override
   final DateTime? createdAt;
   @override
-  final String? result;
+  final String? winner;
+  @override
+  final String? reason;
   @override
   final bool? player1Choice;
   @override
@@ -428,7 +444,7 @@ class _$MatchingRoomImpl implements _MatchingRoom {
 
   @override
   String toString() {
-    return 'MatchingRoom(roomId: $roomId, player1Id: $player1Id, player2Id: $player2Id, isMatched: $isMatched, createdAt: $createdAt, result: $result, player1Choice: $player1Choice, player2Choice: $player2Choice, updatedAt: $updatedAt, change: $change, go: $go, player1_finish: $player1_finish, player2_finish: $player2_finish, player1_go: $player1_go, player2_go: $player2_go, player1_time: $player1_time, player2_time: $player2_time, theme: $theme, choice1: $choice1, choice2: $choice2, password: $password)';
+    return 'MatchingRoom(roomId: $roomId, player1Id: $player1Id, player2Id: $player2Id, isMatched: $isMatched, createdAt: $createdAt, winner: $winner, reason: $reason, player1Choice: $player1Choice, player2Choice: $player2Choice, updatedAt: $updatedAt, change: $change, go: $go, player1_finish: $player1_finish, player2_finish: $player2_finish, player1_go: $player1_go, player2_go: $player2_go, player1_time: $player1_time, player2_time: $player2_time, theme: $theme, choice1: $choice1, choice2: $choice2, password: $password)';
   }
 
   @override
@@ -445,7 +461,8 @@ class _$MatchingRoomImpl implements _MatchingRoom {
                 other.isMatched == isMatched) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
-            (identical(other.result, result) || other.result == result) &&
+            (identical(other.winner, winner) || other.winner == winner) &&
+            (identical(other.reason, reason) || other.reason == reason) &&
             (identical(other.player1Choice, player1Choice) ||
                 other.player1Choice == player1Choice) &&
             (identical(other.player2Choice, player2Choice) ||
@@ -481,7 +498,8 @@ class _$MatchingRoomImpl implements _MatchingRoom {
         player2Id,
         isMatched,
         createdAt,
-        result,
+        winner,
+        reason,
         player1Choice,
         player2Choice,
         updatedAt,
@@ -515,7 +533,8 @@ abstract class _MatchingRoom implements MatchingRoom {
       final String? player2Id,
       final bool? isMatched,
       final DateTime? createdAt,
-      final String? result,
+      final String? winner,
+      final String? reason,
       final bool? player1Choice,
       final bool? player2Choice,
       final DateTime? updatedAt,
@@ -543,7 +562,9 @@ abstract class _MatchingRoom implements MatchingRoom {
   @override
   DateTime? get createdAt;
   @override
-  String? get result;
+  String? get winner;
+  @override
+  String? get reason;
   @override
   bool? get player1Choice;
   @override

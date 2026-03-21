@@ -85,13 +85,19 @@ class AdNotifier extends StateNotifier<bool> {
     if (!shouldShow) {
       debugPrint('Interstitial Ad: Load skipped based on logic.');
       _isLoading = false; // ロードは行わないのでフラグを下ろす
-      state = false; // Stateはnullのまま
+      Future.microtask(() {
+        if (mounted) state = false;
+      });
       return;
     }
 
     _disposeAdInternal();
 
-    state = true;
+    Future.microtask(() {
+      if (mounted) {
+        state = true;
+      }
+    });
 
     debugPrint('Interstitial Ad: Start loading...');
     // ロード開始時にStateをnullにしても良いが、今回はシンプルに完了時のみ更新
@@ -112,12 +118,16 @@ class AdNotifier extends StateNotifier<bool> {
               debugPrint('Interstitial Ad: Dismissed.');
              _disposeAdInternal();
 
-              state = false;
+              Future.microtask(() {
+                if (mounted) state = false;
+              });
             },
             onAdFailedToShowFullScreenContent: (ad, err) {
               debugPrint('Interstitial Ad: Failed to show: ${err.message}');
               _disposeAdInternal();
-              state = false;
+              Future.microtask(() {
+                if (mounted) state = false;
+              });
               // 内部でdisposeとstateクリア
               // 表示失敗時も同様にFinishPageからの遷移はここでは行わない
             },
@@ -129,7 +139,9 @@ class AdNotifier extends StateNotifier<bool> {
         onAdFailedToLoad: (err) {
           debugPrint('Interstitial Ad: Failed to load: ${err.message}');
           _interstitialAd = null; // 内部変数もクリア
-          state = false; // StateNotifierの状態を更新
+          Future.microtask(() {
+            if (mounted) state = false;
+          });
           _isLoading = false; // ロード完了（失敗）
           // ロード失敗時は特に何もしない（FinishPageに遷移して広告が表示されないだけ）
         },
@@ -163,7 +175,11 @@ class AdNotifier extends StateNotifier<bool> {
     _interstitialAd = null; // 内部変数もクリア
     // StateNotifierのStateもクリア
     // StateNotifierの状態と内部変数を一致させる
-    state = false;
+    Future.microtask(() {
+      if (mounted) {
+        state = false;
+      }
+    });
     _isLoading = false; // ロード中フラグもリセット
   }
 

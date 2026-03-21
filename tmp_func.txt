@@ -1,0 +1,42 @@
+ CREATE OR REPLACE FUNCTION public.schedule_gemini_with_qstash()                                                                                             +
+  RETURNS trigger                                                                                                                                            +
+  LANGUAGE plpgsql                                                                                                                                           +
+  SECURITY DEFINER                                                                                                                                           +
+ AS $function$\r                                                                                                                                             +
+ DECLARE\r                                                                                                                                                   +
+   -- Upstash から発行されたアクセストークン\r                                                                                                               +
+   qstash_token text := 'eyJVc2VySUQiOiJhYzQ3YjI2Yi03MTg4LTQ4ZjUtYTIwMS00ZGE2MTQ0ZmEwZDAiLCJQYXNzd29yZCI6IjJlYjA4YzRlZjg2YjRkNjI5YTg4ODhkYjFmNzU2OTczIn0=';\r+
+   -- ngrok で公開しているローカル Function の URL\r                                                                                                         +
+   target_url text := 'https://undebilitative-engagedly-salma.ngrok-free.dev/functions/v1/gemini';\r                                                         +
+   -- QStash の公開エンドポイント\r                                                                                                                          +
+   qstash_publish_url text := 'https://qstash-us-east-1.upstash.io' || target_url;\r                                                                         +
+ BEGIN\r                                                                                                                                                     +
+   -- 両者の player1_go, player2_go が true になり、かつ「今まさにその状態になった」ことを判定\r                                                             +
+   IF (NEW.player1_go = true AND NEW.player2_go = true) \r                                                                                                   +
+      AND (OLD.player1_go = false OR OLD.player2_go = false OR OLD.player1_go IS NULL OR OLD.player2_go IS NULL) THEN\r                                      +
+     \r                                                                                                                                                      +
+     -- QStash へ 3 分遅延 (Upstash-Delay: 3m) でリクエストを送信\r                                                                                          +
+     PERFORM net.http_post(\r                                                                                                                                +
+       url := qstash_publish_url,\r                                                                                                                          +
+       headers := jsonb_build_object(\r                                                                                                                      +
+         'Authorization', 'Bearer ' || qstash_token,\r                                                                                                       +
+         'Content-Type', 'application/json',\r                                                                                                               +
+         'Upstash-Delay', '3s'\r                                                                                                                             +
+       ),\r                                                                                                                                                  +
+       body := jsonb_build_object(\r                                                                                                                         +
+         'room_id', NEW.id,\r                                                                                                                                +
+         'theme', NEW.current_theme,\r                                                                                                                       +
+         'player1_choice', NEW.current_choice1,\r                                                                                                            +
+         'player2_choice', NEW.current_choice2\r                                                                                                             +
+       )\r                                                                                                                                                   +
+     );\r                                                                                                                                                    +
+     \r                                                                                                                                                      +
+     -- デバッグ用ログ\r                                                                                                                                     +
+     RAISE NOTICE 'QStash timer scheduled for room_id: %', NEW.id;\r                                                                                         +
+   END IF;\r                                                                                                                                                 +
+ \r                                                                                                                                                          +
+   RETURN NEW;\r                                                                                                                                             +
+ END;\r                                                                                                                                                      +
+ $function$                                                                                                                                                  +
+ 
+

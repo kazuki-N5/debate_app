@@ -10,7 +10,8 @@ class MatchingRoom with _$MatchingRoom {
     String? player2Id,
     bool? isMatched,
     DateTime? createdAt,
-    String? result,
+    String? winner,
+    String? reason,
     bool? player1Choice,
     bool? player2Choice,
     DateTime? updatedAt,
@@ -37,7 +38,8 @@ class MatchingRoom with _$MatchingRoom {
       createdAt: map['created_at'] != null 
           ? DateTime.parse(map['created_at']) 
           : null,
-      result: map['result']?.toString(),
+      winner: map['winner']?.toString(),
+      reason: map['reason']?.toString(),
       player1Choice: map['player1_choice'],
       player2Choice: map['player2_choice'],
       updatedAt: map['updated_at'] != null 

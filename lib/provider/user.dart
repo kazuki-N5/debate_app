@@ -26,10 +26,14 @@ class UserNotifier extends StateNotifier<Users> {
   final Ref _ref;
   SupabaseClient get supabase => _ref.read(supabaseProvider);
   Future<void> signinandname() async {
+    print('signinandname: 処理開始');
     final user = _ref.read(currentUserIdProvider);
     try {
       if (user != null) {
+        print('signinandname: ユーザーID検出 ($user). fetchUserを開始します');
         await fetchUser(user);
+        print('signinandname: fetchUser完了. ステータス: ${state.status}, 名前: ${state.name}');
+        
         if (state.status == true) {
           final bool nameIsNullOrWhitespace;
 
@@ -41,25 +45,28 @@ class UserNotifier extends StateNotifier<Users> {
           }
 
           if (nameIsNullOrWhitespace) {
+            print('signinandname: 名前が空または文字列表記の"null"のため /name へ遷移します');
             FlutterNativeSplash.remove();
             router.go('/name');
-
             return;
           } else {
+            print('signinandname: 名前が設定済みのため /home へ遷移します');
             FlutterNativeSplash.remove();
             router.go('/home');
-
             return;
           }
+        } else {
+          print('signinandname: state.status が true ではないため遷移をスキップしました (status: ${state.status})');
         }
       } else {
-        print('ユーザーが存在しません');
+        print('signinandname: ユーザーが存在しません (新規ログイン). signInAnonymouslyを実行します');
         await supabase.auth.signInAnonymously();
+        print('signinandname: 匿名サインイン完了. /name へ遷移します');
         FlutterNativeSplash.remove();
-
         router.go('/name');
       }
     } catch (e) {
+      print('signinandname でエラーが発生しました: $e');
       throw e;
     }
   }

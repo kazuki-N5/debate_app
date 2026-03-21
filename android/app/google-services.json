@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "449143151805",
+    "project_id": "debate-resuba",
+    "storage_bucket": "debate-resuba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:449143151805:android:45940222a87395e34b2bd4",
+        "android_client_info": {
+          "package_name": "com.kazuk.debate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSmGbiXKaHHp7VQo88UmsR9tmin-yYp7A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

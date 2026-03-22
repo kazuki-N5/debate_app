@@ -40,8 +40,8 @@ void main() async {
   }
 
   await Supabase.initialize(
-    url: dotenv.get('VAR_URL'), // .envのURLを取得.
-    anonKey: dotenv.get('VAR_ANONKEY'), // .envのanonキーを取得.
+    url: dotenv.get('P_VAR_URL'), // .envのURLを取得.
+    anonKey: dotenv.get('P_VAR_ANONKEY'), // .envのanonキーを取得.
   );
 
   runApp(ProviderScope(child: MyApp()));

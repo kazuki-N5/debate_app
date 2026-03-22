@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'package:debate_project/adsence/ad_mbanner_provider.dart';
 import 'package:debate_project/adsence/ad_provider.dart';
 import 'package:debate_project/modes/users.dart';
-import 'package:debate_project/provider/ai_supabase.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
@@ -28,22 +27,23 @@ class GamePage extends HookConsumerWidget {
     final finish = useState(false);
     final textControler = useTextEditingController();
     final textFieldFocusNode = useFocusNode();
-    // --- ▼ここから追加▼ ---
+
     // 点滅アニメーションのためのAnimationController
     final animationController = useAnimationController(
       duration: const Duration(milliseconds: 800), // 点滅の速度
     );
-    // --- ▲ここまで追加▲ ---
+
     final scrollController = useScrollController();
     final room = ref.watch(matchingRoomProvider);
     final chats = ref.watch(chatProvider);
     final chatsnotifier = ref.read(chatProvider.notifier);
-    final chatwithai = ref.read(chatWithAiProvider);
+
     final supabase = ref.read(supabaseProvider);
     final user = ref.read(currentUserIdProvider);
     final cantap = useState(false);
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
     final isSubscribed = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
+    final offlineCountdown = ref.watch(opponentOfflineStatusProvider);
     DateTime deadline;
     final Users otherUserState = ref.watch(otherUserProvider);
 
@@ -103,8 +103,6 @@ class GamePage extends HookConsumerWidget {
       return null; // クリーンアップは不要
     }, const []);
 
-    bool gemini = false;
-    bool gemini2 = false;
     bool win = false;
 
     final gametimer = useState<Timer?>(null);
@@ -134,39 +132,8 @@ class GamePage extends HookConsumerWidget {
         if (diff <= 0) {
           finish.value = true;
           textFieldFocusNode.unfocus();
-          /* 
-          if (!gemini) {
-            gemini = true;
-            log('gemiiniを呼び出します');
-            if (room.player1Id == user) {
-              await chatwithai.gemini(
-                  room.player1Id!,
-                  room.roomId!,
-                  room.theme!,
-                  room.choice1!,
-                  room.choice2!,
-                  room.player1Choice!);
-            }
-          }
-          */
         }
-          /*
-          if (!gemini2) {
-            if (room.winner == null) {
-              gemini2 = true;
-              log('gemiini2を呼び出します');
-              if (room.player2Id == user) {
-                await chatwithai.gemini(
-                    room.player1Id!,
-                    room.roomId!,
-                    room.theme!,
-                    room.choice1!,
-                    room.choice2!,
-                    room.player1Choice!);
-              }
-            }
-          }
-          */
+
         if (diff < -14) {
           if (!win) {
             win = true;
@@ -180,8 +147,6 @@ class GamePage extends HookConsumerWidget {
       });
     }
 
-    bool geminia = false;
-    bool gemini2a = false;
     bool wina = false;
 
     Future<void> finishgeme() async {
@@ -202,44 +167,7 @@ class GamePage extends HookConsumerWidget {
           final estimatedServerTime = DateTime.now().add(timeOffset);
           final fiinishcount =
               deadline.difference(estimatedServerTime).inSeconds.abs();
-          /*
-          if (fiinishcount >= 1) {
-            if (room.player1Id == user) {
-              () async {
-                if (!geminia) {
-                  log('geminiを呼び出します試合中断');
-                  geminia = true;
-                  await chatwithai.gemini(
-                      room.player1Id!,
-                      room.roomId!,
-                      room.theme!,
-                      room.choice1!,
-                      room.choice2!,
-                      room.player1Choice!);
-                }
-              }();
-            }
-          }
-          */
 
-          /*
-          if (fiinishcount >= 8) {
-            if (room.player2Id == user) {
-              if (!gemini2a) {
-                gemini2a = true;
-                log('gemini2を呼び出します試合中断');
-                // player2のAIにメッセージを送信
-                await chatwithai.gemini(
-                    room.player1Id!,
-                    room.roomId!,
-                    room.theme!,
-                    room.choice1!,
-                    room.choice2!,
-                    room.player1Choice!);
-              }
-            }
-          }
-          */
 
           if (fiinishcount >= 15) {
             if (!wina) {
@@ -257,7 +185,7 @@ class GamePage extends HookConsumerWidget {
       }
     }
 
-    // --- ▼ここから追加▼ ---
+
     // finish.valueの状態を監視し、アニメーションを制御するuseEffect
     useEffect(() {
       if (finish.value) {
@@ -313,7 +241,7 @@ class GamePage extends HookConsumerWidget {
 
     useEffect(() {
       chatsnotifier.subscribeToMessages(room.roomId!);
-      countTime(); 
+      countTime(); // タイマーを再稼働
 
       return () {
         gametimer.value?.cancel();
@@ -591,7 +519,7 @@ class GamePage extends HookConsumerWidget {
               ],
             ),
           ),
-          // --- ▼ここから追加▼ ---
+
           // finish.valueがtrueの場合にオーバーレイを表示
           if (finish.value)
             Positioned.fill(
@@ -613,7 +541,46 @@ class GamePage extends HookConsumerWidget {
                 ),
               ),
             ),
-          // --- ▲ここまで追加▲ ---
+
+
+
+          if (offlineCountdown != null)
+            Positioned(
+              top: 120, // テーマ表示エリアの下あたり
+              left: 30,
+              right: 30,
+              child: Material(
+                type: MaterialType.transparency,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.wifi_off, color: Colors.white, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        '相手がオフラインです (${offlineCountdown}s)',
+                        style: AppTextStyles.bold(color: Colors.white, fontSize: 15),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
         ],
       ),
     );

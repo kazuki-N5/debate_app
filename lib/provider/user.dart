@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:debate_project/modes/transfer_model.dart';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/provider/fcm_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -34,6 +35,10 @@ class UserNotifier extends StateNotifier<Users> {
         await fetchUser(user);
         print('signinandname: fetchUser完了. ステータス: ${state.status}, 名前: ${state.name}');
         
+        // --- FCMトークンをデータベースに保存する（MVVM的呼び出し） ---
+        _ref.read(fcmServiceProvider).saveTokenToDatabase(user);
+        // -----------------------------------------------------------------
+
         if (state.status == true) {
           final bool nameIsNullOrWhitespace;
 
@@ -397,6 +402,31 @@ class UserNotifier extends StateNotifier<Users> {
       return result; // "Data transfer canceled successfully." など
     } catch (e) {
       print('Error canceling transfer: $e');
+      rethrow;
+    }
+  }
+
+  // --- テスト用: トロフィーを即座に変更する ---
+  void incrementTrophyDebug(int amount) {
+    state = state.copyWith(trophy: state.trophy + amount);
+  }
+
+  // 通知のオン・オフを更新する
+  Future<void> updateNotificationStatus(bool isEnabled) async {
+    final userId = state.id;
+    if (userId.isEmpty) return;
+
+    try {
+      // データベースを更新
+      await supabase
+          .from('users')
+          .update({'is_notification_enabled': isEnabled}).eq('id', userId);
+
+      // 成功したらローカルの状態も更新
+      await fetchUser(userId);
+      print('通知設定を更新しました: $isEnabled');
+    } catch (e) {
+      print('通知設定の更新に失敗しました: $e');
       rethrow;
     }
   }

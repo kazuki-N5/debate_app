@@ -38,8 +38,6 @@ class ChosePage extends HookConsumerWidget {
       return null;
     }, [room.winner]);
 
-// タイマー状態
-
     final isTimerActive = useState<bool>(true);
     final choice = useState<bool?>(null);
 
@@ -92,7 +90,6 @@ class ChosePage extends HookConsumerWidget {
           if (!hasChoiceBeenUpdated) {
             hasChoiceBeenUpdated = true;
             if (selectedChoice.value == null) {
-              print(selectedChoice.value);
               choice.value = Random().nextBool();
               await roomnotifier.updateChoice(
                   room.roomId!, user!, choice.value!, 3);
@@ -105,6 +102,41 @@ class ChosePage extends HookConsumerWidget {
         if (diff < -12) {
           timer.cancel();
           timerRef.value = null;
+
+          if (context.mounted) {
+            final latestRoom = ref.read(matchingRoomProvider);
+            final isPlayer1 = latestRoom.player1Id == user;
+            final myChoice =
+                isPlayer1 ? latestRoom.player1Choice : latestRoom.player2Choice;
+            final opponentChoice =
+                isPlayer1 ? latestRoom.player2Choice : latestRoom.player1Choice;
+
+            String message = '通信エラーが発生しました';
+            if (myChoice == null) {
+              message = 'あなたが選択しませんでした';
+            } else if (opponentChoice == null) {
+              message = '相手が選択しませんでした';
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'マッチ終了：$message',
+                  style: AppTextStyles.bold(color: Colors.white, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+                margin: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).size.height * 0.68,
+                  left: 50,
+                  right: 50,
+                ),
+              ),
+            );
+          }
           router.go('/home');
         }
       });

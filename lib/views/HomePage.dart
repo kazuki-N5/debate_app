@@ -13,6 +13,7 @@ import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Homepage_view_model.dart';
 import 'package:debate_project/view_model/start_error_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart'; // CupertinoSwitchのために追加
 import 'package:flutter_hooks/flutter_hooks.dart'; // Hooksを継続して使用
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart'; // hooks_riverpodを継続して使用
@@ -20,9 +21,13 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // 広告関連のインポートを追加
+import 'package:debate_project/widgets/trophy_count_animation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:showcaseview/showcaseview.dart';
+
+// 前回のトロフィー数を保持してアニメーションの起点にするためのプロバイダー
+final lastTrophyCountProvider = StateProvider<int?>((ref) => null);
 
 class HomePage extends HookConsumerWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -30,8 +35,26 @@ class HomePage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isMatching = useState<bool>(false);
+    // 元の notificationEnabled (useState) は削除し、userProvider の値を直接使用するように変更
+
+    // トロフィーアニメーションの起点となる値を管理
+    final lastTrophy = ref.watch(lastTrophyCountProvider);
     final user = ref.watch(userProvider);
-    final roomnotifier = ref.read(matchingRoomProvider.notifier);
+
+    // 現在のトロフィー数を保存して、次回の「前回値」として使う
+    useEffect(() {
+      if (user.trophy != lastTrophy) {
+        // 表示が終わるのを待たずに更新して良いが、
+        // 次回のビルドでアニメーションの起点が変わってしまわないよう
+        // 微調整が必要な場合はFuture.microtask等を使う
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(lastTrophyCountProvider.notifier).state = user.trophy;
+        });
+      }
+      return null;
+    }, [user.trophy]);
+
+    final matchingRoomnotifier = ref.watch(matchingRoomProvider.notifier);
     final vibration = ref.read(vibrationServiceProvider);
     final chatsnotifier = ref.read(chatProvider.notifier);
     final optionalupdate = ref.read(optionalboolProvider);
@@ -203,7 +226,7 @@ class HomePage extends HookConsumerWidget {
       Future<void> initializePage() async {
         // 以前の状態をクリアする、または初期化として実行したい処理
         // これらがもし非同期処理なら await を付けてください
-        roomnotifier.delete();
+        matchingRoomnotifier.delete();
         chatsnotifier.unsubscribeFromMessages();
 
         // バージョン情報を取得
@@ -405,12 +428,10 @@ class HomePage extends HookConsumerWidget {
                                         height: a,
                                       ),
                                       const SizedBox(width: 1),
-                                      Text(
-                                        user.trophy.toString(),
-                                        style: AppTextStyles.bold(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                        ),
+                                      TrophyCountAnimation(
+                                        targetTrophy: user.trophy,
+                                        startTrophy:
+                                            lastTrophy, // nullなら現在の値が使われる
                                       ),
                                     ],
                                   ),
@@ -460,55 +481,54 @@ class HomePage extends HookConsumerWidget {
                                     builder: (BuildContext context) {
                                       return Dialog(
                                         backgroundColor: Colors.blue,
-                                        shape: BeveledRectangleBorder(
-                                          // 角を四角に
-                                          borderRadius: BorderRadius.zero,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(15),
                                           side: const BorderSide(
-                                              // constを追加
                                               color: Colors.white,
                                               width: 2), // 白い縁取り
                                         ),
-                                          child: Container(
-                                            padding: const EdgeInsets.all(20),
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start, // 左寄せ
-                                              children: [
-                                                Text(
-                                                  '<ルール>',
-                                                  style: AppTextStyles.bold(
-                                                    color: Colors.white,
-                                                    fontSize: 18,
-                                                  ),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(20),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start, // 左寄せ
+                                            children: [
+                                              Text(
+                                                '<ルール>',
+                                                style: AppTextStyles.bold(
+                                                  color: Colors.white,
+                                                  fontSize: 18,
                                                 ),
-                                                const SizedBox(height: 15),
-                                                Text(
-                                                  "論破する\n20秒以上アプリを離れると負けになります。",
-                                                  style: AppTextStyles.notoSans(
-                                                    color: Colors.white,
-                                                    fontSize: 16,
-                                                  ),
+                                              ),
+                                              const SizedBox(height: 15),
+                                              Text(
+                                                "論破する\n20秒以上アプリを離れると負けになります。",
+                                                style: AppTextStyles.notoSans(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
                                                 ),
-                                                const SizedBox(height: 15),
-                                                Text(
-                                                  '<判定基準>',
-                                                  style: AppTextStyles.bold(
-                                                    color: Colors.white,
-                                                    fontSize: 18,
-                                                  ),
+                                              ),
+                                              const SizedBox(height: 15),
+                                              Text(
+                                                '<判定基準>',
+                                                style: AppTextStyles.bold(
+                                                  color: Colors.white,
+                                                  fontSize: 18,
                                                 ),
-                                                const SizedBox(height: 15),
-                                                Text(
-                                                  '見る人がどっちに納得するかAIで判定',
-                                                  style: AppTextStyles.notoSans(
-                                                    color: Colors.white,
-                                                    fontSize: 16,
-                                                  ),
+                                              ),
+                                              const SizedBox(height: 15),
+                                              Text(
+                                                '見る人がどっちに納得するかAIで判定',
+                                                style: AppTextStyles.notoSans(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
                                                 ),
-                                              ],
-                                            ),
+                                              ),
+                                            ],
                                           ),
+                                        ),
                                       );
                                     },
                                   );
@@ -526,7 +546,8 @@ class HomePage extends HookConsumerWidget {
                                 onTap: () {
                                   showDialog(
                                     context: context,
-                                    barrierDismissible: true, // ダイアログ外タップで閉じるか
+                                    barrierDismissible: true,
+                                    barrierColor: Colors.transparent, // 背景を暗くしない
                                     builder: (BuildContext dialogContext) {
                                       // dialogContext を使うことで、元の context と区別する
                                       return const RankingDialog();
@@ -557,6 +578,7 @@ class HomePage extends HookConsumerWidget {
                                   // 画面遷移の代わりにダイアログを表示します
                                   showDialog(
                                     context: context,
+                                    barrierColor: Colors.transparent, // 背景を暗くしない
                                     // barrierDismissibleをfalseにすると、ダイアログの外側をタップしても閉じなくなります（任意）
                                     // barrierDismissible: false,
                                     builder: (BuildContext dialogContext) {
@@ -605,6 +627,7 @@ class HomePage extends HookConsumerWidget {
                                     // 新しいカスタムダイアログを表示
                                     showDialog(
                                       context: context,
+                                      barrierColor: Colors.transparent, // 背景を暗くしない
                                       // ダイアログ外タップで閉じないようにする (任意)
                                       barrierDismissible:
                                           true, // キーボード外タップで閉じたいのでtrueのまま
@@ -712,12 +735,89 @@ class HomePage extends HookConsumerWidget {
 
               // 前景レイヤー：画面の中央に画像を配置
               Center(
-                child: SizedBox(
-                  width: 230,
-                  height: 230,
-                  child: Image(
-                    image: AssetImage('assets/images/debateimage.png'),
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 230,
+                      height: 230,
+                      child: Image(
+                        image: AssetImage('assets/images/debateimage.png'),
+                      ),
+                    ),
+                    const SizedBox(height: 0),
+                    // 通知設定セクション（UIのみ）
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              barrierColor: Colors.transparent, // 背景を暗くしない
+                              builder: (context) {
+                                return Dialog(
+                                  backgroundColor: Colors.blue,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                    side: const BorderSide(
+                                        color: Colors.white, width: 2),
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '通知について',
+                                          style: AppTextStyles.bold(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 15),
+                                        Text(
+                                          '誰かがマッチングを開始したときに通知を受け取ることができます。\n\n※対戦者が非常に多い時間帯などは、通知が停止する場合があります。',
+                                          style: AppTextStyles.notoSans(
+                                            color: Colors.white,
+                                            fontSize: 15,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.only(right: 2, left: 10, top: 10, bottom: 10),
+                            child: Icon(
+                              Icons.info_outline,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.notifications,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 4),
+                        CupertinoSwitch(
+                          value: user.is_notification_enabled ?? false,
+                          onChanged: (value) {
+                            // プロバイダーを通じてDBを更新
+                            ref
+                                .read(userProvider.notifier)
+                                .updateNotificationStatus(value);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],

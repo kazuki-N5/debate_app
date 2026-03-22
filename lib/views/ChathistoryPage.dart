@@ -85,23 +85,20 @@ class ChatHistoryPage extends HookConsumerWidget {
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(
-            elevation: 0,
-            backgroundColor: Colors.blue,
-            automaticallyImplyLeading: false,
-          ),
+          appBar: null,
           backgroundColor: Colors.blue,
-          body: Column(
-            children: [
-              Center(
-                child: Container(
-                  width: MediaQuery.of(context).size.width * 0.9,
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
+          body: SafeArea(
+            child: Column(
+              children: [
+                Center(
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.9,
+                    margin:
+                        const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -172,7 +169,8 @@ class ChatHistoryPage extends HookConsumerWidget {
                   // --- ▲▲▲ ここまで変更 ▲▲▲ ---
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
         Positioned(

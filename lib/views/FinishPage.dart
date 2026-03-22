@@ -1,5 +1,3 @@
-import 'dart:math' hide log;
-
 import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:debate_project/adsence/ad_mbanner_provider.dart';
 import 'package:debate_project/adsence/ad_provider.dart'; // adNotifierProvider がここにあると仮定
@@ -14,6 +12,7 @@ import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
+import 'package:debate_project/utils/rating_systems/brawl_stars_rating.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -32,8 +31,6 @@ class FinishPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final vibration = ref.read(vibrationServiceProvider);
     final isMatching = useState<bool>(false);
-    final ischange = useState<bool>(true);
-    final save = useState<String>('');
     final roomState = useState(ref.read(matchingRoomProvider));
     final room = roomState.value;
     final myuser = ref.watch(userProvider);
@@ -205,57 +202,32 @@ class FinishPage extends HookConsumerWidget {
       return result;
     }
 
-    int clamp(int point, int min, int max) {
-      if (point < min) {
-        return min;
-      } else if (max < point) {
-        return max;
-      } else {
-        return point;
-      }
-    }
-
-    String calculatePoint(int winnerRate, int loserRate) {
-      const int K = 32;
-
-      double calculation = K / (pow(10, (winnerRate - loserRate) / 400) + 1);
-      int point = calculation.round();
-      point = clamp(point, 2, 32);
-      return "$point";
-    }
-
-    String displayPoint(
-        MatchingRoom room, Users myuser, Users otheruser, String userId) {
-      String? firstChar = room.winner;
-      if (ischange.value) {
-        ischange.value = false;
-        if (firstChar == 'A') {
-          if (room.player1Id == userId) {
-            save.value = '+${calculatePoint(myuser.trophy, otheruser.trophy)}';
-            return save.value;
-          } else {
-            save.value = '-${calculatePoint(otheruser.trophy, myuser.trophy)}';
-            return save.value;
-          }
-        } else if (firstChar == 'B') {
-          if (room.player1Id == userId) {
-            save.value = '-${calculatePoint(otheruser.trophy, myuser.trophy)}';
-            return save.value;
-          } else {
-            save.value = '+${calculatePoint(myuser.trophy, otheruser.trophy)}';
-            return save.value;
-          }
-        } else {
-          save.value = '+16';
-          return save.value;
-        }
-      }
-      return save.value;
-    }
-
-    final pointText = displayPoint(room, myuser, otheruser, user!);
+    // 決定した勝敗理由と結果テキスト
     final reasonText = formatResult(room, myuser, otheruser);
-    final resultText = getResultText(room, user);
+    final resultText = getResultText(room, user!);
+
+    // ポイント計算ロジックを useMemoized で管理（データ変更時に自動再計算）
+    final ratingDetail = useMemoized(() {
+      final winner = room.winner;
+      if (winner == null || (winner != 'A' && winner != 'B')) return null;
+      final isWin = (winner == 'A' && room.player1Id == user) ||
+          (winner == 'B' && room.player2Id == user);
+
+      return BrawlStarsRating.calculatePlayerChangeDetail(
+        myuser.trophy,
+        otheruser.trophy,
+        isWin,
+      );
+    }, [room.winner, myuser.trophy, otheruser.trophy, user]);
+
+    final isUnderdogVal = ratingDetail?.isUnderdog ?? false;
+    final basePointTextVal = ratingDetail == null
+        ? ''
+        : (ratingDetail.baseChange >= 0 ? '+' : '') +
+            ratingDetail.baseChange.toString();
+    final bonusPointTextVal = ratingDetail == null
+        ? ''
+        : (ratingDetail.bonus >= 0 ? '+' : '') + ratingDetail.bonus.toString();
 
     void showSharePreviewDialog() {
       final GlobalKey globalKey = GlobalKey();
@@ -314,8 +286,13 @@ class FinishPage extends HookConsumerWidget {
                   key: globalKey,
                   child: _ShareableResultCard(
                     result: resultText,
-                    points: room.password == null ? pointText : null,
+                    points:
+                        room.password == null ? basePointTextVal : null,
+                    bonus: room.password == null && isUnderdogVal
+                        ? bonusPointTextVal
+                        : null,
                     reason: reasonText,
+                    isUnderdog: isUnderdogVal,
                   ),
                 ),
                 // --- ここまで ---
@@ -385,41 +362,142 @@ class FinishPage extends HookConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Center(
-                  child: SizedBox(
-                    width: 200, // Stackに十分な幅を確保
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // 勝利/敗北を中央に配置
-                        Text(
-                          resultText,
-                          style: AppTextStyles.notoSans(
-                            fontSize: 40,
-                            fontWeight: FontWeight.bold,
-                            color: resultText == ('勝利')
-                                ? Colors.red
-                                : Colors.grey[700],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        // 数字を右側に配置
-                        if (room.password == null)
-                          Positioned(
-                            right: 20,
-                            top: 25,
-                            child: Text(
-                              displayPoint(room, myuser, otheruser, user),
-                              style: AppTextStyles.notoSans(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: resultText == ('勝利')
-                                    ? Colors.red
-                                    : Colors.grey[700],
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // 左側のダミー（表示されないがスペースを確保して「勝利/敗北」を中央に保つ）
+                          if (room.password == null)
+                            Opacity(
+                              opacity: 0,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Transform.translate(
+                                    offset: const Offset(0, 6),
+                                    child: Row(
+                                      children: [
+                                        Image(
+                                          image: const AssetImage(
+                                              'assets/images/trofie.png'),
+                                          width: 24,
+                                          height: 24,
+                                        ),
+                                        const SizedBox(width: 1),
+                                        Text(
+                                          basePointTextVal,
+                                          style: AppTextStyles.notoSans(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
                               ),
                             ),
+                          // 勝利/敗北
+                          Text(
+                            resultText,
+                            style: AppTextStyles.notoSans(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: resultText == '勝利'
+                                  ? Colors.red
+                                  : Colors.grey[700],
+                            ),
                           ),
+                          if (room.password == null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(width: 4),
+                                Transform.translate(
+                                  offset: const Offset(0, 6),
+                                  child: Row(
+                                    children: [
+                                      Image(
+                                        image: const AssetImage(
+                                            'assets/images/trofie.png'),
+                                        width: 24,
+                                        height: 24,
+                                      ),
+                                      const SizedBox(width: 1),
+                                      // 数字（-6等）
+                                      Text(
+                                        basePointTextVal,
+                                        style: AppTextStyles.notoSans(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: basePointTextVal.startsWith('+')
+                                              ? Colors.red
+                                              : Colors.grey[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                      if (isUnderdogVal && room.password == null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 2),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.amber[400]!,
+                                Colors.amber[700]!,
+                                Colors.orange[800]!,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '格差ボーナス ',
+                                style: AppTextStyles.bold(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Image(
+                                image: const AssetImage(
+                                    'assets/images/trofie.png'),
+                                width: 16,
+                                height: 16,
+                              ),
+                              const SizedBox(width: 1),
+                              Text(
+                                bonusPointTextVal,
+                                style: AppTextStyles.bold(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
-                    ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -602,12 +680,16 @@ class _ShareableResultCard extends StatelessWidget {
     Key? key,
     required this.result,
     this.points,
+    this.bonus,
     required this.reason,
+    this.isUnderdog = false,
   }) : super(key: key);
 
   final String result;
   final String? points;
+  final String? bonus;
   final String reason;
+  final bool isUnderdog;
 
   @override
   Widget build(BuildContext context) {
@@ -630,21 +712,134 @@ class _ShareableResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 0),
           Center(
-            child: SizedBox(
-              width: 200,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Text(
-                    result,
-                    style: AppTextStyles.bold(
-                      fontSize: 40,
-                      color: result == ('勝利') ? Colors.red : Colors.grey[700],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (points != null)
+                      Opacity(
+                        opacity: 0,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Transform.translate(
+                              offset: const Offset(0, 4),
+                              child: Row(
+                                children: [
+                                  Image(
+                                    image: const AssetImage(
+                                        'assets/images/trofie.png'),
+                                    width: 18,
+                                    height: 18,
+                                  ),
+                                  const SizedBox(width: 1),
+                                  Text(
+                                    points!,
+                                    style: AppTextStyles.bold(
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                        ),
+                      ),
+                    Text(
+                      result,
+                      style: AppTextStyles.bold(
+                        fontSize: 32,
+                        color: result == '勝利' ? Colors.red : Colors.grey[700],
+                      ),
                     ),
-                    textAlign: TextAlign.center,
+                    if (points != null)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(width: 4),
+                          Transform.translate(
+                            offset: const Offset(0, 4),
+                            child: Row(
+                              children: [
+                                Image(
+                                  image: const AssetImage(
+                                      'assets/images/trofie.png'),
+                                  width: 18,
+                                  height: 18,
+                                ),
+                                const SizedBox(width: 1),
+                                Text(
+                                  points!,
+                                  style: AppTextStyles.notoSans(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: points!.startsWith('+')
+                                        ? Colors.red
+                                        : Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+                if (isUnderdog && bonus != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.amber[400]!,
+                          Colors.amber[700]!,
+                          Colors.orange[800]!,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '格差ボーナス ',
+                          style: AppTextStyles.bold(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Image(
+                          image: const AssetImage('assets/images/trofie.png'),
+                          width: 14,
+                          height: 14,
+                        ),
+                        const SizedBox(width: 1),
+                        Text(
+                          bonus.toString(),
+                          style: AppTextStyles.bold(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-              ),
+              ],
             ),
           ),
           const SizedBox(height: 5),

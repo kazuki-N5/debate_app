@@ -6,6 +6,7 @@ import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Homepage_view_model.dart';
 // import 'package:debate_project/views/Matching.dart';
@@ -19,6 +20,8 @@ final matchingRoomProvider =
     StateNotifierProvider<MatchingRoomNotifier, MatchingRoom>((ref) {
   return MatchingRoomNotifier(ref);
 });
+
+final opponentOfflineStatusProvider = StateProvider<int?>((ref) => null);
 
 // final goProvider = StateProvider<bool>((ref) => false);
 
@@ -76,7 +79,6 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
       _presenceChannel = null;
     }
 
-
     // チャンネルの作成 (両ユーザーで共通のroomIdをKeyとして指定)
     _presenceChannel = supabase.channel(
       roomId,
@@ -92,21 +94,23 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
         .onEvents(
           'presence_state',
           ChannelFilter(),
-          (payload, [ref]) {
+          (payload, [_]) {
             log('★★★ MANUAL Presence State (RAW): $payload');
             final currentPresences = _presenceChannel!.presenceState();
             log('--- Current Presences Total: ${currentPresences.length}');
-            
+
             // 初期状態チェック: 相手がいなければタイマー開始
             final opponentId = _opponentId;
             if (opponentId != null) {
               final isOpponentOnline = currentPresences.any((p) {
-                return p.presences.any((meta) => meta.payload['user_id'] == opponentId);
+                return p.presences
+                    .any((meta) => meta.payload['user_id'] == opponentId);
               });
               if (!isOpponentOnline) {
                 _startOfflineTimer();
               } else {
                 _offlineTimer?.cancel();
+                ref.read(opponentOfflineStatusProvider.notifier).state = null;
               }
             }
           },
@@ -115,7 +119,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
         .onEvents(
           'presence_diff',
           ChannelFilter(),
-          (payload, [ref]) {
+          (payload, [_]) {
             log('★★★ MANUAL Presence Diff (RAW): $payload');
             final Map<String, dynamic> joins = payload['joins'] ?? {};
             final Map<String, dynamic> leaves = payload['leaves'] ?? {};
@@ -123,20 +127,23 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
 
             if (opponentId != null) {
               // 相手が戻ってきたかチェック
-              bool opponentJoined = joins.values.any((user) => 
-                (user['metas'] as List).any((m) => m['user_id'] == opponentId));
-              
+              bool opponentJoined = joins.values.any((user) =>
+                  (user['metas'] as List)
+                      .any((m) => m['user_id'] == opponentId));
+
               if (opponentJoined) {
                 log('✅ 相手（$opponentId）が復帰しました。タイマーを停止します。');
                 _offlineTimer?.cancel();
+                ref.read(opponentOfflineStatusProvider.notifier).state = null;
               }
 
               // 相手が離脱したかチェック
-              bool opponentLeft = leaves.values.any((user) => 
-                (user['metas'] as List).any((m) => m['user_id'] == opponentId));
+              bool opponentLeft = leaves.values.any((user) =>
+                  (user['metas'] as List)
+                      .any((m) => m['user_id'] == opponentId));
 
               if (opponentLeft) {
-                 _startOfflineTimer();
+                _startOfflineTimer();
               }
             }
           },
@@ -166,7 +173,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
               );
             });
           }
-        }); 
+        });
   }
 
   Future delete() async {
@@ -180,7 +187,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     // });
     isdisposed = false;
     hassplash = false;
-    _offlineTimer?.cancel(); // タイマーの解除
+    _offlineTimer?.cancel(); // オフラインタイマーの解除
 
     ref.read(chatProvider.notifier).unsubscribeFromMessages();
     if (_subscription != null) {
@@ -205,6 +212,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     }
     WidgetsBinding.instance.removeObserver(this);
     _offlineTimer?.cancel(); // 追加
+    ref.read(opponentOfflineStatusProvider.notifier).state = null;
     log('All notifier resources cleaned up.');
   }
 
@@ -212,13 +220,16 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     if (_offlineTimer?.isActive ?? false) return;
     _countdownSeconds = 20; // カウントダウンのリセット
     log('⚠️ 相手がオフラインです。カウントダウンを開始します（20秒）');
-    
+
     _offlineTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       _countdownSeconds--;
       log('⏳ 相手の復帰待ち... 残り $_countdownSeconds 秒');
+      ref.read(opponentOfflineStatusProvider.notifier).state =
+          _countdownSeconds;
 
       if (_countdownSeconds <= 0) {
         timer.cancel();
+        ref.read(opponentOfflineStatusProvider.notifier).state = null;
         log('⌛ タイムアップ。相手が戻らなかったため勝利判定を処理します。');
         await win(state, ref.read(currentUserIdProvider)!);
       }
@@ -266,6 +277,13 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
 
     await delete();
     log(userId);
+    // マッチング開始前に自分の最新データを取得してレートを同期
+    try {
+      await ref.read(userProvider.notifier).fetchUser(userId);
+    } catch (e) {
+      log('User info fetch failed: $e');
+      // エラーでもマッチング自体は継続可能だが、念のためログ出力
+    }
     try {
       // データベース関数を呼び出してトランザクション処理を行う
       final result = await supabase.rpc('join_room', params: {
@@ -288,6 +306,24 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
         ref.read(friendmatchProvider.notifier).state = false;
 
         await waitForMatch(roomId);
+
+        // --- 追加部分：ランダムマッチ（passwordが空）かつ相手がいなければ即時に通知を飛ばす ---
+        if (password.isEmpty && state.player2Id == null) {
+          log('🕒 新規のランダムマッチルームです。Edge Functionで全体に通知を発火します！');
+          try {
+            // push_notification という関数を叩く
+            await supabase.functions.invoke(
+              'push_notification',
+              body: {
+                'room_id': roomId,
+                'user_id': userId, // ルームの作成者
+              },
+            );
+          } catch (e) {
+            log('通知呼び出しエラー: $e');
+          }
+        }
+        // -------------------------------------------------------------
       } else {
         log('マッチングエラー: ${result['error']}');
         ref.read(friendmatchProvider.notifier).state = false;

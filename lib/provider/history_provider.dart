@@ -107,11 +107,24 @@ final matchRecordsProvider =
           ];
         }
       } else {
-        final moveTrophy = record['move_trophy'] as int? ?? 0;
-        final resultReason = record['result'] as String? ?? '';
+        // 新しい個別カラムを取得
+        final p1Move = record['player1_move_trophy'] as int?;
+        final p2Move = record['player2_move_trophy'] as int?;
+        final isUnderdog = record['is_underdog'] as bool? ?? false;
+        final moveTrophyLegacy = record['move_trophy'] as int? ?? 0;
+
         final isWinner = winnerId != null && currentUserId == winnerId;
         final resultString = isWinner ? '勝利' : '敗北';
-        final trophyChange = isWinner ? moveTrophy : -moveTrophy;
+
+        // 自分のプレイヤーIDに応じて、正しい増減値を採用する
+        int trophyChange;
+        if (currentUserId == player1Id) {
+          trophyChange = p1Move ?? (isWinner ? moveTrophyLegacy : -moveTrophyLegacy);
+        } else {
+          trophyChange = p2Move ?? (isWinner ? moveTrophyLegacy : -moveTrophyLegacy);
+        }
+
+        final resultReason = record['result'] as String? ?? '';
         String formattedReason = resultReason;
         String formatName(String name) => "'$name'";
         if (formattedReason.isNotEmpty) {
@@ -136,6 +149,9 @@ final matchRecordsProvider =
             userChoice: userChoice,
             reason: formattedReason.isEmpty ? '理由がありませんでした。' : formattedReason,
             cancel: false,
+            isUnderdog: isUnderdog,
+            player1MoveTrophy: p1Move,
+            player2MoveTrophy: p2Move,
           )
         ];
       }

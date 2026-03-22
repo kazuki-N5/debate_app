@@ -72,6 +72,59 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 
 
+CREATE OR REPLACE FUNCTION "public"."calculate_brawl_trophy_change"("p_my_trophy" integer, "p_opponent_trophy" integer, "p_is_win" boolean) RETURNS integer
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_base_change integer;
+    v_is_underdog boolean;
+    v_underdog_bonus CONSTANT integer := 4;
+BEGIN
+    -- アンダードッグ判定：相手の方が200以上高い場合
+    v_is_underdog := (p_opponent_trophy - p_my_trophy) >= 200;
+
+    IF p_is_win THEN
+        -- 勝利時のテーブル (ティアに応じて減少)
+        IF p_my_trophy < 500 THEN v_base_change := 8;
+        ELSIF p_my_trophy < 600 THEN v_base_change := 7;
+        ELSIF p_my_trophy < 700 THEN v_base_change := 6;
+        ELSIF p_my_trophy < 800 THEN v_base_change := 5;
+        ELSIF p_my_trophy < 900 THEN v_base_change := 4;
+        ELSE v_base_change := 3;
+        END IF;
+        
+        RETURN CASE WHEN v_is_underdog THEN v_base_change + v_underdog_bonus ELSE v_base_change END;
+    ELSE
+        -- 敗北時のテーブル
+        IF p_my_trophy < 50 THEN v_base_change := 0;
+        ELSIF p_my_trophy < 100 THEN v_base_change := -1;
+        ELSIF p_my_trophy < 200 THEN v_base_change := -2;
+        ELSIF p_my_trophy < 300 THEN v_base_change := -3;
+        ELSIF p_my_trophy < 400 THEN v_base_change := -4;
+        ELSIF p_my_trophy < 500 THEN v_base_change := -5;
+        ELSIF p_my_trophy < 600 THEN v_base_change := -6;
+        ELSIF p_my_trophy < 700 THEN v_base_change := -7;
+        ELSIF p_my_trophy < 800 THEN v_base_change := -8;
+        ELSIF p_my_trophy < 900 THEN v_base_change := -9;
+        ELSIF p_my_trophy < 1000 THEN v_base_change := -10;
+        ELSIF p_my_trophy < 1100 THEN v_base_change := -11;
+        ELSE v_base_change := -12;
+        END IF;
+
+        -- アンダードッグなら敗北ペナルティを軽減（-8 + 4 = -4 など）
+        IF v_is_underdog THEN
+            RETURN LEAST(0, v_base_change + v_underdog_bonus);
+        ELSE
+            RETURN v_base_change;
+        END IF;
+    END IF;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."calculate_brawl_trophy_change"("p_my_trophy" integer, "p_opponent_trophy" integer, "p_is_win" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."calculate_elo_rating"("winner_rate" numeric, "loser_rate" numeric) RETURNS integer
     LANGUAGE "plpgsql"
     AS $$
@@ -675,7 +728,7 @@ BEGIN
               headers := jsonb_build_object(
                 'Authorization', 'Bearer ' || qstash_token,
                 'Content-Type', 'application/json',
-                'Upstash-Delay', '15s'
+                'Upstash-Delay', '3m'
               ),
               body := jsonb_build_object(
                 'room_id', NEW.id,
@@ -1040,50 +1093,56 @@ CREATE OR REPLACE FUNCTION "public"."process_game_result"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
 DECLARE
-  v_winner_id uuid := NULL;
-  v_loser_id uuid := NULL;
-  v_winner_trophy integer;
-  v_loser_trophy integer;
-  v_points_change integer := 0;
+  v_p1_trophy integer;
+  v_p2_trophy integer;
+  v_p1_move integer := 0;
+  v_p2_move integer := 0;
+  v_is_underdog_match boolean := false;
   v_is_ranked_match BOOLEAN;
 BEGIN
-  -- ランクマッチ（パスワードなし）判定
   v_is_ranked_match := (NEW.password IS NULL OR NEW.password = '');
   NEW.updated_at = now();
 
-  -- winner カラムを直接判定
-  IF NEW.winner = 'A' THEN
-    v_winner_id := NEW.player1_id;
-    v_loser_id := NEW.player2_id;
-  ELSIF NEW.winner = 'B' THEN
-    v_winner_id := NEW.player2_id;
-    v_loser_id := NEW.player1_id;
+  IF v_is_ranked_match THEN
+    SELECT trophy INTO v_p1_trophy FROM users WHERE id = NEW.player1_id;
+    SELECT trophy INTO v_p2_trophy FROM users WHERE id = NEW.player2_id;
+
+    -- アンダードッグ判定 (レート差が 200 以上)
+    v_is_underdog_match := ABS(v_p1_trophy - v_p2_trophy) >= 200;
+
+    IF NEW.winner = 'A' THEN
+      v_p1_move := calculate_brawl_trophy_change(v_p1_trophy, v_p2_trophy, true);
+      v_p2_move := calculate_brawl_trophy_change(v_p2_trophy, v_p1_trophy, false);
+      
+      UPDATE users SET win = win + 1, trophy = GREATEST(0, trophy + v_p1_move) WHERE id = NEW.player1_id;
+      UPDATE users SET lose = lose + 1, trophy = GREATEST(0, trophy + v_p2_move) WHERE id = NEW.player2_id;
+    ELSIF NEW.winner = 'B' THEN
+      v_p1_move := calculate_brawl_trophy_change(v_p1_trophy, v_p2_trophy, false);
+      v_p2_move := calculate_brawl_trophy_change(v_p2_trophy, v_p1_trophy, true);
+
+      UPDATE users SET lose = lose + 1, trophy = GREATEST(0, trophy + v_p1_move) WHERE id = NEW.player1_id;
+      UPDATE users SET win = win + 1, trophy = GREATEST(0, trophy + v_p2_move) WHERE id = NEW.player2_id;
+    ELSE
+      -- 引き分け等の特殊処理
+      v_p1_move := 16;
+      v_p2_move := 16;
+      UPDATE users SET trophy = trophy + 16 WHERE id = NEW.player1_id;
+      UPDATE users SET trophy = trophy + 16 WHERE id = NEW.player2_id;
+    END IF;
   END IF;
 
-  -- 勝者が確定している場合のみレーティング計算
-  IF v_winner_id IS NOT NULL THEN
-    IF v_is_ranked_match THEN
-      SELECT trophy INTO v_winner_trophy FROM users WHERE id = v_winner_id;
-      SELECT trophy INTO v_loser_trophy FROM users WHERE id = v_loser_id;
-      v_points_change := calculate_elo_rating(v_winner_trophy, v_loser_trophy);
-
-      UPDATE users SET win = win + 1, trophy = trophy + v_points_change WHERE id = v_winner_id;
-      UPDATE users SET lose = lose + 1, trophy = GREATEST(0, trophy - v_points_change) WHERE id = v_loser_id;
-    END IF;
-  ELSE
-    -- A/B以外（エラー'C'など）の救済措置
-    IF v_is_ranked_match THEN
-      UPDATE users SET win = win + 1, trophy = trophy + 16 WHERE id = NEW.player1_id;
-      UPDATE users SET win = win + 1, trophy = trophy + 16 WHERE id = NEW.player2_id;
-      v_points_change := 16;
-    END IF;
-  END IF;
-
-  -- 履歴への挿入
+  -- 履歴への挿入 (player1_trophy, player2_trophy を除外)
   INSERT INTO match_record (
-    roomid, player1_id, player2_id, theme, winner, move_trophy, result
+    roomid, player1_id, player2_id, theme, winner, 
+    player1_move_trophy, player2_move_trophy, 
+    is_underdog,
+    move_trophy, result
   ) VALUES (
-    NEW.id, NEW.player1_id, NEW.player2_id, NEW.current_theme, v_winner_id, v_points_change, NEW.reason
+    NEW.id, NEW.player1_id, NEW.player2_id, NEW.current_theme, 
+    CASE WHEN NEW.winner = 'A' THEN NEW.player1_id WHEN NEW.winner = 'B' THEN NEW.player2_id ELSE NULL END, 
+    v_p1_move, v_p2_move, 
+    v_is_underdog_match,
+    v_p1_move, NEW.reason
   );
 
   RETURN NEW;
@@ -1259,7 +1318,10 @@ CREATE TABLE IF NOT EXISTS "public"."match_record" (
     "move_trophy" integer,
     "result" "text",
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "cancel" boolean
+    "cancel" boolean,
+    "player1_move_trophy" integer,
+    "player2_move_trophy" integer,
+    "is_underdog" boolean DEFAULT false
 );
 
 
@@ -1341,7 +1403,9 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "lose" integer DEFAULT 0,
     "avatar_url" "text",
     "status" boolean DEFAULT true,
-    "created_at" timestamp with time zone DEFAULT "now"()
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "fcm_token" "text",
+    "is_notification_enabled" boolean DEFAULT false
 );
 
 
@@ -1759,6 +1823,12 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
+
+
+
+GRANT ALL ON FUNCTION "public"."calculate_brawl_trophy_change"("p_my_trophy" integer, "p_opponent_trophy" integer, "p_is_win" boolean) TO "anon";
+GRANT ALL ON FUNCTION "public"."calculate_brawl_trophy_change"("p_my_trophy" integer, "p_opponent_trophy" integer, "p_is_win" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."calculate_brawl_trophy_change"("p_my_trophy" integer, "p_opponent_trophy" integer, "p_is_win" boolean) TO "service_role";
 
 
 

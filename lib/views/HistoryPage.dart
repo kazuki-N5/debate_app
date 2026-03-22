@@ -382,6 +382,23 @@ class _MatchHistoryItem extends HookConsumerWidget {
                         color: resultColor,
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    // 自分が「格差ボーナス」対象だった場合のみバッジを表示
+                    if (record.isUnderdog)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[800],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '格差ボーナス',
+                          style: AppTextStyles.bold(
+                            fontSize: 10,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     const SizedBox(width: 12),
                     _buildOpponentAvatar(),
                     const SizedBox(width: 6),

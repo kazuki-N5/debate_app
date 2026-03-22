@@ -361,6 +361,26 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
           }
         } else {
           log('相手が退出したため再マッチング');
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'マッチ終了：相手がキャンセルをしました',
+                  style: AppTextStyles.bold(color: Colors.white, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                duration: const Duration(seconds: 1),
+                behavior: SnackBarBehavior.floating,
+                margin: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).size.height * 0.68,
+                  left: 50,
+                  right: 50,
+                ),
+              ),
+            );
+          }
           try {
             ref.read(matchingRoomProvider.notifier).findMatch('', '', '', '');
           } catch (e) {
@@ -430,7 +450,7 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
           } else {
             isButtonPressed.value = true;
           }
-          if (diff <= -3) {
+          if (diff <= -5) {
             timer.cancel();
             timerRef.value = null;
             try {

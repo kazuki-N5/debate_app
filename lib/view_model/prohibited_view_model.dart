@@ -1,7 +1,8 @@
 import 'package:debate_project/modes/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:popover/popover.dart';
 import 'package:riverpod/riverpod.dart'; // Riverpodのimportを追加
 import 'package:supabase_flutter/supabase_flutter.dart'; // SupabaseClientの型のためにimportを追加
@@ -76,7 +77,7 @@ class ProhibitedService {
   /// ポップオーバー内で使用する共通のボタンウィジェット
 }
 
-class MessageBubble extends ConsumerWidget {
+class MessageBubble extends HookConsumerWidget {
   // ConsumerWidgetに変更
   final Chat chat;
   final bool isUserMessage;
@@ -99,6 +100,9 @@ class MessageBubble extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 各メッセージごとに固有のアンカー用キーを生成
+    final anchorKey = useMemoized(() => GlobalKey(), [chat.id]);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
       child: Column(
@@ -124,7 +128,7 @@ class MessageBubble extends ConsumerWidget {
                 ],
                 if (isUserMessage) _buildStatus(),
                 const SizedBox(width: 4),
-                _buildMessageBubble(context, ref),
+                _buildMessageBubble(context, ref, anchorKey),
                 const SizedBox(width: 4),
                 if (!isUserMessage) _buildStatus(),
               ],
@@ -181,16 +185,21 @@ class MessageBubble extends ConsumerWidget {
     );
   }
 
-  Widget _buildMessageBubble(BuildContext context, WidgetRef ref) {
+  Widget _buildMessageBubble(BuildContext context, WidgetRef ref, GlobalKey anchorKey) {
     return Flexible(
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           GestureDetector(
             onLongPress: () {
+              // バブル本体のコンテキストではなく、内側に配置したアンカーのコンテキストを使用
+              final anchorContext = anchorKey.currentContext;
+              if (anchorContext == null) return;
+              
               showCustomPopover(
-                context: context,
+                context: anchorContext,
                 height: 90,
+                arrowDxOffset: 0, // アンカー位置で調整するためオフセットは0
                 children: [
                   PopoverButton(
                     text: '通報',
@@ -234,6 +243,14 @@ class MessageBubble extends ConsumerWidget {
                 ),
               ),
             ),
+          ),
+          // ポップオーバーを表示するための透明なアンカーポイント
+          // 端から28pxの位置に配置することで、メニューが画面端に張り付くのを防ぎ「ゆとり」を持たせる
+          Positioned(
+            bottom: 0,
+            left: isUserMessage ? null : 50,
+            right: isUserMessage ? 50 : null,
+            child: SizedBox(key: anchorKey, width: 1, height: 1),
           ),
           Positioned(
             top: 6,
@@ -284,6 +301,7 @@ void showCustomPopover({
   required BuildContext context,
   required List<Widget> children,
   required double height,
+  double arrowDxOffset = 0,
 }) {
   showPopover(
     context: context,
@@ -297,10 +315,12 @@ void showCustomPopover({
     direction: PopoverDirection.bottom,
     backgroundColor: Colors.white,
     barrierColor: Colors.transparent,
-    width: 100,
+    width: 80,
     height: height,
-    arrowHeight: 10,
-    arrowWidth: 20,
+    arrowHeight: 0,
+    arrowWidth: 0,
+    arrowDxOffset: arrowDxOffset,
+    shadow: const [], // 影をなくす
     transitionDuration: const Duration(milliseconds: 150),
   );
 }

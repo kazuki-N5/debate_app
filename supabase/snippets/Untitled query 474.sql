@@ -74,7 +74,7 @@ BEGIN
               headers := jsonb_build_object(
                 'Authorization', 'Bearer ' || qstash_token,
                 'Content-Type', 'application/json',
-                'Upstash-Delay', '15s'
+                'Upstash-Delay', '3m'
               ),
               body := jsonb_build_object(
                 'room_id', NEW.id,

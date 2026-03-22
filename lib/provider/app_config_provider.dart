@@ -1,4 +1,3 @@
-
 import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,8 +29,7 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
 
   // コンストラクタでRefを受け取り、初期状態と初期化処理の呼び出し
   AppStateNotifier(this._ref) : super(AppStatus.loading) {}
-  
- 
+
   SupabaseClient get supabase => _ref.read(supabaseProvider);
   Future<String> chackAppVersion() async {
     try {
@@ -56,17 +54,16 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
   }
 
   Future<String?> getVersion() async {
-  try {
-    // SharedPreferences のインスタンスを取得
-    final prefs = await SharedPreferences.getInstance();
-    final String? version = prefs.getString('thisappversionkey');
-    return version;
-  } catch (e) {
-    // エラーが発生した場合は、呼び出し元にエラーをスロー
-    throw e;
+    try {
+      // SharedPreferences のインスタンスを取得
+      final prefs = await SharedPreferences.getInstance();
+      final String? version = prefs.getString('thisappversionkey');
+      return version;
+    } catch (e) {
+      // エラーが発生した場合は、呼び出し元にエラーをスロー
+      throw e;
+    }
   }
-}
-
 
   Future<AppStatus> loadVersion() async {
     final appconfignotifier = _ref.read(appConfigProvider.notifier);

@@ -4,6 +4,8 @@ import 'package:debate_project/modes/transfer_model.dart';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/fcm_provider.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:debate_project/view_model/start_error_dialog.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -412,22 +414,70 @@ class UserNotifier extends StateNotifier<Users> {
   }
 
   // 通知のオン・オフを更新する
-  Future<void> updateNotificationStatus(bool isEnabled) async {
+  Future<void> updateNotificationStatus(BuildContext? context, bool isEnabled,
+      {bool isSilent = false}) async {
     final userId = state.id;
     if (userId.isEmpty) return;
 
+    // 現在の状態を保存（エラー時のロールバック用）
+    final previousState = state;
+
+    // 1. 先にローカルの状態（UI）を更新する（楽観的更新）
+    state = state.copyWith(is_notification_enabled: isEnabled);
+
+    if (isEnabled && !isSilent) {
+      // 権限をリクエストする
+      final settings =
+          await _ref.read(fcmServiceProvider).requestNotificationPermission();
+
+      // もし許可されなかった場合は、状態を元に戻して案内を出す
+      if (settings.authorizationStatus != AuthorizationStatus.authorized &&
+          settings.authorizationStatus != AuthorizationStatus.provisional) {
+        print('通知権限が許可されませんでした。ステータス: ${settings.authorizationStatus}');
+
+        // 状態を元に戻す
+        state = previousState;
+
+        if (context != null && context.mounted) {
+          _ref.read(startProvider.notifier).showPermissionDeniedDialog(context);
+        }
+        return;
+      }
+    }
+
     try {
-      // データベースを更新
+      // 2. データベースをバックグラウンドで更新
       await supabase
           .from('users')
           .update({'is_notification_enabled': isEnabled}).eq('id', userId);
 
-      // 成功したらローカルの状態も更新
-      await fetchUser(userId);
-      print('通知設定を更新しました: $isEnabled');
+      // 有効にした場合は、ついでにFCMトークンを再保存して確実にする
+      if (isEnabled) {
+        await _ref.read(fcmServiceProvider).saveTokenToDatabase(userId);
+      }
+      print('通知設定の更新に成功しました: $isEnabled');
     } catch (e) {
-      print('通知設定の更新に失敗しました: $e');
+      print('通知設定の更新に失敗しました。元の状態に戻します: $e');
+      // 失敗した場合は元の状態にロールバック
+      state = previousState;
       rethrow;
+    }
+  }
+
+  /// OSの設定状態を確認し、もし許可されているのにアプリ内がオフなら同期する（設定画面から戻った時などに使用）
+  Future<void> syncNotificationStatusWithSystem() async {
+    final userId = state.id;
+    if (userId.isEmpty) return;
+
+    final settings = await FirebaseMessaging.instance.getNotificationSettings();
+    final isAuthorized =
+        settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional;
+
+    // OS側が許可されているのに、DB側がオフになっている場合のみ同期（オンにする）
+    if (isAuthorized && (state.is_notification_enabled == false)) {
+      print('OS側の通知許可を検知したため、アプリ内の設定もオンに同期します');
+      await updateNotificationStatus(null, true, isSilent: true);
     }
   }
 }

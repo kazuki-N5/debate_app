@@ -99,7 +99,17 @@ serve(async (req) => {
       privateKey: serviceAccount.private_key,
     });
 
-    const fcmPromises = targetUsers.map(async (user) => {
+    // FCMトークンの重複排除（同じ端末への二重送信を防止）
+    const uniqueTokens = new Set<string>();
+    const uniqueTargetUsers = targetUsers.filter((u) => {
+      if (!u.fcm_token || uniqueTokens.has(u.fcm_token)) {
+        return false;
+      }
+      uniqueTokens.add(u.fcm_token);
+      return true;
+    });
+
+    const fcmPromises = uniqueTargetUsers.map(async (user) => {
       try {
         if (!user.fcm_token) return;
 

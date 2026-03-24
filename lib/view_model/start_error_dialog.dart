@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:store_redirect/store_redirect.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class start_errornotifier extends StateNotifier {
   start_errornotifier(this.ref) : super(const ());
@@ -385,9 +386,73 @@ class start_errornotifier extends StateNotifier {
           ],
         );
       },
-    ).then((_) {
-      // ダイアログが閉じた後に実行される (オプション)
-    });
+    );
+  }
+
+  void showPermissionDeniedDialog(BuildContext context) {
+    const Color dialogBackgroundColor = Color(0xFF42A5F5);
+    const Color textColor = Colors.white;
+    const Color buttonTextColor = Color(0xFF1565C0);
+    const Color buttonBackgroundColor = Colors.white;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: dialogBackgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
+          contentPadding: const EdgeInsets.fromLTRB(24.0, 12.0, 24.0, 24.0),
+          title: Text(
+            '通知がオフになっています',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bold(
+              color: textColor,
+              fontSize: 20.0,
+            ),
+          ),
+          content: Text(
+            '通知を受け取るには、設定画面から通知を「許可」にしてください。',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.notoSans(
+              color: textColor,
+              fontSize: 16.0,
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: <Widget>[
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: buttonBackgroundColor,
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+              ),
+              child: Text(
+                '設定を開く',
+                style: AppTextStyles.bold(
+                  color: buttonTextColor,
+                  fontSize: 16.0,
+                ),
+              ),
+              onPressed: () {
+                openAppSettings();
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('閉じる', style: TextStyle(color: Colors.white)),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 

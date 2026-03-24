@@ -49,10 +49,12 @@ Deno.serve(async (req) => {
       console.error("roomError details:", roomError);
       throw roomError;
     }
-    
+
     // winner がすでに存在していれば終了（二重実行防止）
     if (room?.winner) {
-      console.log(`Room ${room_id} already has a judgment: winner=${room?.winner}`);
+      console.log(
+        `Room ${room_id} already has a judgment: winner=${room?.winner}`,
+      );
       return new Response(
         JSON.stringify({ success: true, message: "Judgment already exists." }),
         {
@@ -160,7 +162,7 @@ Deno.serve(async (req) => {
 
     const error = err instanceof Error ? err : new Error(String(err));
 
-    // すでに他のリクエストで処理済みの場合は救済
+    // すでに他のリクエストで処理済み（レースコンディション）の場合は何もしない
     if (error.message.includes("Judgment results cannot be updated")) {
       return new Response(
         JSON.stringify({
@@ -171,6 +173,24 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
+    }
+
+    // 【追加】Geminiの応答失敗やその他のエラー時に "C: エラーが発生しました" をDBに記録
+    if (room_id) {
+      try {
+        const supabase = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        );
+        console.log(`Recording failure state (C) for room: ${room_id}`);
+        await supabase
+          .from("rooms")
+          .update({ winner: "C", reason: "エラーが発生しました" })
+          .eq("id", room_id);
+      } catch (dbErr) {
+        console.error("Failed to record error state to DB:", dbErr);
+        // ここでの失敗はさらに上位のcatchには回さずログのみ
+      }
     }
 
     return new Response(JSON.stringify({ error: error.message }), {

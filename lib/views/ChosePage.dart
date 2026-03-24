@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:developer';
 import 'dart:math' hide log;
 
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
+import 'package:debate_project/provider/match_error_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
@@ -28,6 +30,7 @@ class ChosePage extends HookConsumerWidget {
     final isfirst = useState(false);
     final secondsLeft = useState<int?>(null);
     final timerRef = useRef<Timer?>(null);
+    final matchErrorService = ref.read(matchErrorServiceProvider);
 
     useEffect(() {
       if (room.winner != null) {
@@ -99,7 +102,7 @@ class ChosePage extends HookConsumerWidget {
             }
           }
         }
-        if (diff < -12) {
+        if (diff < -5) {
           timer.cancel();
           timerRef.value = null;
 
@@ -118,26 +121,11 @@ class ChosePage extends HookConsumerWidget {
               message = '相手が選択しませんでした';
             }
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'マッチ終了：$message',
-                  style: AppTextStyles.bold(color: Colors.white, fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                duration: const Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-                margin: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).size.height * 0.68,
-                  left: 50,
-                  right: 50,
-                ),
-              ),
-            );
+            if (context.mounted) {
+              matchErrorService.showMatchEndMessage('マッチ終了：$message', 0.68);
+            }
+            router.go('/home');
           }
-          router.go('/home');
         }
       });
     }
@@ -173,8 +161,8 @@ class ChosePage extends HookConsumerWidget {
           return null;
         }
         showerror.value = true;
-        // 1秒後に非表示
-        Future.delayed(Duration(seconds: 1), () {
+        // 2秒後に非表示
+        Future.delayed(Duration(seconds: 2), () {
           showerror.value = false;
         });
       }
@@ -339,8 +327,6 @@ Widget _buildChoiceButton({
   );
 }
 
-
-
 class BattleTransitionScreen extends HookConsumerWidget {
   const BattleTransitionScreen({Key? key}) : super(key: key);
 
@@ -391,7 +377,9 @@ class BattleTransitionScreen extends HookConsumerWidget {
     useEffect(() {
       final room = ref.read(matchingRoomProvider);
       if (room.roomId != null) {
-        ref.read(matchingRoomProvider.notifier).setupPresenceChannel(room.roomId!);
+        ref
+            .read(matchingRoomProvider.notifier)
+            .setupPresenceChannel(room.roomId!);
       }
 
       void statusListener(AnimationStatus status) {
@@ -426,7 +414,11 @@ class BattleTransitionScreen extends HookConsumerWidget {
             .fetchOtherUserWithRetry(otherUserId);
       }
       return null;
-    }, [ref.watch(matchingRoomProvider).player1Id, ref.watch(matchingRoomProvider).player2Id, userId]);
+    }, [
+      ref.watch(matchingRoomProvider).player1Id,
+      ref.watch(matchingRoomProvider).player2Id,
+      userId
+    ]);
 
     return Scaffold(
       backgroundColor: Colors.blue,
@@ -463,28 +455,10 @@ class BattleTransitionScreen extends HookConsumerWidget {
                 scale: vsScaleAnimation,
                 child: Text(
                   "VS",
-                  style: TextStyle(
-                    fontSize: 90,
-                    fontWeight: FontWeight.bold,
-                    color: const Color.fromARGB(255, 15, 3, 3),
-                    fontFamily: 'Impact',
-                    shadows: [
-                      Shadow(
-                        blurRadius: 10.0,
-                        color: Colors.black.withOpacity(0.5),
-                        offset: const Offset(5.0, 5.0),
-                      ),
-                      const Shadow(
-                        blurRadius: 0.0,
-                        color: Colors.white,
-                        offset: Offset(1.0, 1.0),
-                      ),
-                      const Shadow(
-                        blurRadius: 0.0,
-                        color: Colors.white,
-                        offset: Offset(-1.0, -1.0),
-                      ),
-                    ],
+                  style: GoogleFonts.lilitaOne(
+                    fontSize: 50,
+                    fontWeight: FontWeight.w200,
+                    color: Colors.white,
                   ),
                 ),
               ),

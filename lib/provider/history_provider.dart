@@ -114,7 +114,8 @@ final matchRecordsProvider =
         final moveTrophyLegacy = record['move_trophy'] as int? ?? 0;
 
         final isWinner = winnerId != null && currentUserId == winnerId;
-        final resultString = isWinner ? '勝利' : '敗北';
+        final bool isDraw = winnerId == null;
+        final resultString = isDraw ? '引き分け' : (isWinner ? '勝利' : '敗北');
 
         // 自分のプレイヤーIDに応じて、正しい増減値を採用する
         int trophyChange;

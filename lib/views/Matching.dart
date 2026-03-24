@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
+import 'package:debate_project/provider/match_error_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
@@ -15,6 +17,9 @@ import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart'; // flutter_hooksをインポート
 import 'package:hooks_riverpod/hooks_riverpod.dart'; // hooks_riverpodをインポート
 import 'package:go_router/go_router.dart';
+import 'package:debate_project/adsence/ad_banner_provider.dart';
+import 'package:debate_project/view_model/Paypage_view_model.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:developer';
 
 // gochoseProvider と splashProvider は削除し、matchingRoomProvider の状態を直接 listen します。
@@ -30,6 +35,8 @@ class MatchingPage extends HookConsumerWidget {
     final room = ref.watch(matchingRoomProvider);
     // ボタン押下などで使うnotifierはreadで十分
     final roomNotifier = ref.read(matchingRoomProvider.notifier);
+    final bannerAd = ref.watch(bannerAdProvider);
+    final isSubscribe = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
     // final go = ref.watch(goProvider);
 
     // マッチング成功時の画面遷移をuseEffectで管理
@@ -46,67 +53,97 @@ class MatchingPage extends HookConsumerWidget {
     return Scaffold(
       body: Container(
         color: Colors.blue,
-        child: Stack(
+        child: Column(
           children: [
-            // go == false の場合のみマッチング待機UIを表示
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            Expanded(
+              child: Stack(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'マッチング中...',
-                          style: AppTextStyles.bold(
-                            color: Colors.white,
-                            fontSize: 20,
+                  // go == false の場合のみマッチング待機UIを表示
+                  Stack(
+                    children: [
+                      // アニメーション中の四角形を画面中央に配置
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min, // 最小限の高さに
+                            children: [
+                              Text(
+                                'マッチング中...',
+                                style: AppTextStyles.bold(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              const BlinkingMatchingIndicator(),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        const BlinkingMatchingIndicator(),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 60),
-                  ElevatedButton(
-                    onPressed: () {
-                      // ボタン押下時のキャンセル処理
-                      if (room.roomId != null) {
-                        log('User pressed Cancel button for roomId: ${room.roomId}');
-                        roomNotifier.cancelMatching(room.roomId!);
-                      } else {
-                        // go_routerの推奨プラクティスに従いcontext.goを使用
-                        context.go('/home');
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40,
-                        vertical: 15,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                      // キャンセルボタンを画面下部に配置（中心より下へ）
+                      Align(
+                        alignment: const Alignment(0, 0.45), // 位置を少し上に調整
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // ボタン押下時のキャンセル処理
+                            if (room.roomId != null) {
+                              log('User pressed Cancel button for roomId: ${room.roomId}');
+                              roomNotifier.cancelMatching(room.roomId!);
+                            } else {
+                              // go_routerの推奨プラクティスに従いcontext.goを使用
+                              context.go('/home');
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 40,
+                              vertical: 15,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            elevation: 5,
+                          ),
+                          child: Text(
+                            'キャンセル',
+                            style: AppTextStyles.bold(
+                              color: Colors.blue[600],
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
                       ),
-                      elevation: 5,
-                    ),
-                    child: Text(
-                      'キャンセル',
-                      style: AppTextStyles.bold(
-                        color: Colors.blue[600],
-                        fontSize: 18,
-                      ),
-                    ),
+                    ],
                   ),
                 ],
               ),
             ),
+            // バナー広告表示エリア
+            if (isSubscribe == false)
+              if (bannerAd != null)
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    alignment: Alignment.center,
+                    width: bannerAd.size.width.toDouble(),
+                    height: bannerAd.size.height.toDouble(),
+                    child: AdWidget(ad: bannerAd),
+                  ),
+                )
+              else
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    height: AdSize.banner.height.toDouble(),
+                    color: Colors.blue,
+                  ),
+                ),
           ],
         ),
       ),
@@ -153,6 +190,7 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
     final isButtonPressed = useState(false);
     final usernotifier = ref.read(userProvider.notifier);
+    final matchErrorService = ref.read(matchErrorServiceProvider);
     // AnimationControllerをフックで初期化
     // SingleTickerProviderStateMixinの代わりにuseSingleTickerProviderフックを使用
     final controller = useAnimationController(
@@ -330,26 +368,31 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
       if (userId == null) return;
 
       // 1. 対戦相手が見つかった時の処理 (UserProfileの取得)
-      if (next.player2Id != null && (previous == null || previous.player2Id == null)) {
+      if (next.player2Id != null &&
+          (previous == null || previous.player2Id == null)) {
         log('対戦相手発見 (UI Listener)');
-        final otherUserId = next.player1Id == userId ? next.player2Id : next.player1Id;
+        final otherUserId =
+            next.player1Id == userId ? next.player2Id : next.player1Id;
         if (otherUserId != null) {
-          await ref.read(otherUserProvider.notifier).fetchOtherUserWithRetry(otherUserId);
+          await ref
+              .read(otherUserProvider.notifier)
+              .fetchOtherUserWithRetry(otherUserId);
         }
       }
 
       // 2. 両者が「スタート」を押した時の処理 -> /chose へ遷移
-      if (next.player1_go == true && next.player2_go == true && 
+      if (next.player1_go == true &&
+          next.player2_go == true &&
           !(previous?.player1_go == true && previous?.player2_go == true)) {
         log('両者の準備完了 -> /choseに移動');
         router.go('/chose');
       }
 
       // 3. どちらかがキャンセルした、または退出した時の処理 (Splash相当)
-      if ((next.player1_go == false && previous?.player1_go != false) || 
+      if ((next.player1_go == false && previous?.player1_go != false) ||
           (next.player2_go == false && previous?.player2_go != false)) {
         log('プレイヤーの退出を検知');
-        
+
         if ((next.player1Id == userId && next.player1_go == false) ||
             (next.player2Id == userId && next.player2_go == false)) {
           log('自分が退出したためホームへ');
@@ -362,24 +405,7 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
         } else {
           log('相手が退出したため再マッチング');
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'マッチ終了：相手がキャンセルをしました',
-                  style: AppTextStyles.bold(color: Colors.white, fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                duration: const Duration(seconds: 1),
-                behavior: SnackBarBehavior.floating,
-                margin: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).size.height * 0.68,
-                  left: 50,
-                  right: 50,
-                ),
-              ),
-            );
+            matchErrorService.showMatchEndMessage('マッチ終了：相手がキャンセルをしました', 0.68);
           }
           try {
             ref.read(matchingRoomProvider.notifier).findMatch('', '', '', '');
@@ -395,9 +421,12 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
     useEffect(() {
       final otherUserId =
           room.player1Id == userId ? room.player2Id : room.player1Id;
-      if (otherUserId != null && ref.read(otherUserProvider).id != otherUserId) {
+      if (otherUserId != null &&
+          ref.read(otherUserProvider).id != otherUserId) {
         log('初期表示時の対戦相手情報取得: $otherUserId');
-        ref.read(otherUserProvider.notifier).fetchOtherUserWithRetry(otherUserId);
+        ref
+            .read(otherUserProvider.notifier)
+            .fetchOtherUserWithRetry(otherUserId);
       }
       return null;
     }, [room.player1Id, room.player2Id, userId]);
@@ -453,6 +482,27 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
           if (diff <= -5) {
             timer.cancel();
             timerRef.value = null;
+
+            if (context.mounted) {
+              final latestRoom = ref.read(matchingRoomProvider);
+              final isPlayer1 = latestRoom.player1Id == userId;
+              final myGo =
+                  isPlayer1 ? latestRoom.player1_go : latestRoom.player2_go;
+              final opponentGo =
+                  isPlayer1 ? latestRoom.player2_go : latestRoom.player1_go;
+
+              String message = '通信エラーが発生しました';
+              if (myGo != true) {
+                message = 'あなたが準備完了しませんでした';
+              } else if (opponentGo != true) {
+                message = '相手が準備完了しませんでした';
+              }
+
+              if (context.mounted) {
+                matchErrorService.showMatchEndMessage('マッチ終了：$message', 0.68);
+              }
+            }
+
             try {
               roomnotifier.findMatch('', '', '', '');
             } catch (e) {
@@ -530,29 +580,10 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
                 scale: vsScaleAnimation,
                 child: Text(
                   "VS",
-                  style: TextStyle(
-                    fontSize: 90,
-                    fontWeight: FontWeight.bold,
-                    color: const Color.fromARGB(255, 15, 3, 3),
-                    fontFamily: 'Impact', // かっこいいフォント (システムにあれば)
-                    shadows: [
-                      Shadow(
-                        blurRadius: 10.0,
-                        color: Colors.black.withOpacity(0.5),
-                        offset: const Offset(5.0, 5.0),
-                      ),
-                      const Shadow(
-                        // 縁取りっぽく
-                        blurRadius: 0.0,
-                        color: Colors.white,
-                        offset: Offset(1.0, 1.0),
-                      ),
-                      const Shadow(
-                        blurRadius: 0.0,
-                        color: Colors.white,
-                        offset: Offset(-1.0, -1.0),
-                      ),
-                    ],
+                  style: GoogleFonts.lilitaOne(
+                    fontSize: 50,
+                    fontWeight: FontWeight.w200,
+                    color: Colors.white,
                   ),
                 ),
               ),

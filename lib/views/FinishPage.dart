@@ -169,6 +169,7 @@ class FinishPage extends HookConsumerWidget {
 
     String getResultText(MatchingRoom room, String userId) {
       String? winnerLabel = room.winner;
+      if (winnerLabel == 'C') return '引き分け';
       if (winnerLabel == null || (winnerLabel != 'A' && winnerLabel != 'B')) {
         return '終了';
       }
@@ -209,6 +210,13 @@ class FinishPage extends HookConsumerWidget {
     // ポイント計算ロジックを useMemoized で管理（データ変更時に自動再計算）
     final ratingDetail = useMemoized(() {
       final winner = room.winner;
+      if (winner == 'C') {
+        return BrawlStarsRating.calculatePlayerChangeDetail(
+          myuser.trophy,
+          myuser.trophy,
+          true,
+        );
+      }
       if (winner == null || (winner != 'A' && winner != 'B')) return null;
       final isWin = (winner == 'A' && room.player1Id == user) ||
           (winner == 'B' && room.player2Id == user);

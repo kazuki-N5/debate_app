@@ -41,6 +41,13 @@ class HomePage extends HookConsumerWidget {
     final lastTrophy = ref.watch(lastTrophyCountProvider);
     final user = ref.watch(userProvider);
 
+    // 設定画面から戻ったときなどに通知状態を同期する
+    useOnAppLifecycleStateChange((previous, current) {
+      if (current == AppLifecycleState.resumed) {
+        ref.read(userProvider.notifier).syncNotificationStatusWithSystem();
+      }
+    });
+
     // 現在のトロフィー数を保存して、次回の「前回値」として使う
     useEffect(() {
       if (user.trophy != lastTrophy) {
@@ -318,6 +325,7 @@ class HomePage extends HookConsumerWidget {
     }, const []);
 
     double a = 25;
+    double bigicon = 170;
 
     // --- メインのbuildメソッド ---
     return ShowCaseWidget(onFinish: () async {
@@ -547,7 +555,8 @@ class HomePage extends HookConsumerWidget {
                                   showDialog(
                                     context: context,
                                     barrierDismissible: true,
-                                    barrierColor: Colors.transparent, // 背景を暗くしない
+                                    barrierColor:
+                                        Colors.transparent, // 背景を暗くしない
                                     builder: (BuildContext dialogContext) {
                                       // dialogContext を使うことで、元の context と区別する
                                       return const RankingDialog();
@@ -578,7 +587,8 @@ class HomePage extends HookConsumerWidget {
                                   // 画面遷移の代わりにダイアログを表示します
                                   showDialog(
                                     context: context,
-                                    barrierColor: Colors.transparent, // 背景を暗くしない
+                                    barrierColor:
+                                        Colors.transparent, // 背景を暗くしない
                                     // barrierDismissibleをfalseにすると、ダイアログの外側をタップしても閉じなくなります（任意）
                                     // barrierDismissible: false,
                                     builder: (BuildContext dialogContext) {
@@ -627,7 +637,8 @@ class HomePage extends HookConsumerWidget {
                                     // 新しいカスタムダイアログを表示
                                     showDialog(
                                       context: context,
-                                      barrierColor: Colors.transparent, // 背景を暗くしない
+                                      barrierColor:
+                                          Colors.transparent, // 背景を暗くしない
                                       // ダイアログ外タップで閉じないようにする (任意)
                                       barrierDismissible:
                                           true, // キーボード外タップで閉じたいのでtrueのまま
@@ -739,8 +750,8 @@ class HomePage extends HookConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
-                      width: 230,
-                      height: 230,
+                      width: bigicon,
+                      height: bigicon,
                       child: Image(
                         image: AssetImage('assets/images/debateimage.png'),
                       ),
@@ -792,7 +803,8 @@ class HomePage extends HookConsumerWidget {
                             );
                           },
                           child: const Padding(
-                            padding: EdgeInsets.only(right: 2, left: 10, top: 10, bottom: 10),
+                            padding: EdgeInsets.only(
+                                right: 2, left: 10, top: 10, bottom: 10),
                             child: Icon(
                               Icons.info_outline,
                               color: Colors.white,
@@ -812,7 +824,7 @@ class HomePage extends HookConsumerWidget {
                             // プロバイダーを通じてDBを更新
                             ref
                                 .read(userProvider.notifier)
-                                .updateNotificationStatus(value);
+                                .updateNotificationStatus(context, value);
                           },
                         ),
                       ],

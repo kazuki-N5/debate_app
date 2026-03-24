@@ -151,8 +151,9 @@ class _MatchHistoryItem extends HookConsumerWidget {
 
     // --- UI Constants ---
     final Color cardBackgroundColor = Colors.grey[200] ?? Colors.grey;
-    final Color resultColor =
-        resultStatus == '勝利' ? Colors.red[700]! : Colors.grey[700]!;
+    final Color resultColor = resultStatus == '勝利'
+        ? Colors.red[700]!
+        : Colors.grey[700]!;
     final String trophyChangeString =
         (trophyChange > 0 ? '+' : '') + trophyChange.toString();
     const double collapsedGrayBoxHeight = 90.0;

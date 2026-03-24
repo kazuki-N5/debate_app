@@ -137,7 +137,7 @@ class GamePage extends HookConsumerWidget {
         if (diff < -14) {
           if (!win) {
             win = true;
-            roomnotifier.win(room, user!);
+            roomnotifier.draw(room, user!);
           }
         }
         if (diff < -20) {
@@ -168,12 +168,11 @@ class GamePage extends HookConsumerWidget {
           final fiinishcount =
               deadline.difference(estimatedServerTime).inSeconds.abs();
 
-
           if (fiinishcount >= 15) {
             if (!wina) {
               wina = true;
               log('勝利を確定します');
-              roomnotifier.win(room, user!);
+              roomnotifier.draw(room, user!);
             }
           }
 
@@ -184,7 +183,6 @@ class GamePage extends HookConsumerWidget {
         });
       }
     }
-
 
     // finish.valueの状態を監視し、アニメーションを制御するuseEffect
     useEffect(() {
@@ -477,8 +475,8 @@ class GamePage extends HookConsumerWidget {
                                       isDense: true,
                                       border: InputBorder.none,
                                       hintText: 'レスバしよう',
-                                      hintStyle:
-                                          AppTextStyles.notoSans(color: Colors.grey[400]),
+                                      hintStyle: AppTextStyles.notoSans(
+                                          color: Colors.grey[400]),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
                                         horizontal: 16,
@@ -542,8 +540,6 @@ class GamePage extends HookConsumerWidget {
               ),
             ),
 
-
-
           if (offlineCountdown != null)
             Positioned(
               top: 120, // テーマ表示エリアの下あたり
@@ -573,14 +569,14 @@ class GamePage extends HookConsumerWidget {
                       const SizedBox(width: 10),
                       Text(
                         '相手がオフラインです (${offlineCountdown}s)',
-                        style: AppTextStyles.bold(color: Colors.white, fontSize: 15),
+                        style: AppTextStyles.bold(
+                            color: Colors.white, fontSize: 15),
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-
         ],
       ),
     );
@@ -623,9 +619,7 @@ class Dialog extends ConsumerWidget {
                 roomnotifier.finish(room.roomId!, user!);
               },
               child: Text('降参する',
-                  style: AppTextStyles.bold(
-                      fontSize: 17,
-                      color: Colors.white)),
+                  style: AppTextStyles.bold(fontSize: 17, color: Colors.white)),
             ),
             const SizedBox(height: 20),
             ElevatedButton(

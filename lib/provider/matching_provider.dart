@@ -231,7 +231,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
         timer.cancel();
         ref.read(opponentOfflineStatusProvider.notifier).state = null;
         log('⌛ タイムアップ。相手が戻らなかったため勝利判定を処理します。');
-        await win(state, ref.read(currentUserIdProvider)!);
+        await draw(state, ref.read(currentUserIdProvider)!);
       }
     });
   }
@@ -453,13 +453,12 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     }
   }
 
-  Future<void> win(MatchingRoom room, String player) async {
-    final which = player == state.player1Id ? 'A' : 'B';
+  Future<void> draw(MatchingRoom room, String player) async {
     if (room.winner == null) {
       try {
         await supabase.from('rooms').update({
-          'winner': which,
-          'reason': 'オフラインになりました',
+          'winner': "C",
+          'reason': 'エラーが発生しました',
         }).eq('id', room.roomId!);
         return;
       } catch (e) {}

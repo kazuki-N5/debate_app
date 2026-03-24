@@ -774,7 +774,7 @@ BEGIN
 END;$$;
 
 
-ALTER FUNCTION "public"."handle_room_updates_integrated"() OWNER TO "postgres";
+ALTER FUNCTION "public"."_room_updates_integrated"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."initiate_data_transfer"("p_sender_id" "uuid") RETURNS TABLE("transfer_id" "text", "transfer_password" "text")

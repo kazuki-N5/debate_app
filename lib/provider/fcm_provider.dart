@@ -33,6 +33,16 @@ class FCMService {
     }
   }
 
+  /// 通知の権限をリクエストし、ユーザーの選択（許可・拒否）を確認する。
+  Future<NotificationSettings> requestNotificationPermission() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    return await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+  }
+
   /// Supabaseのusersテーブルの fcm_token カラムを更新する実際の処理
   Future<void> _updateTokenInSupabase(String userId, String token) async {
     try {

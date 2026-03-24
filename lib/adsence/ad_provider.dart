@@ -51,11 +51,9 @@ class AdNotifier extends StateNotifier<bool> {
           'Interstitial Ad Logic: Count ${count}. Not showing (first 3).');
       return false;
     }
-    // 3回目以降 (カウントが 3, 4, 5... の時) は交互に表示
-    // カウント 3, 5, 7... の時に表示する
-    // (count - 3) は 0, 1, 2, 3, 4, 5... となる
-    // これの偶数 (0, 2, 4...) に対応するのは (count - 3) % 2 == 0
-    if ((count - 3) % 3 == 0) {
+    // 3回目以降 (カウントが 3, 4, 5... の時) は2回に1回（交互に）表示
+    // (count - 3) が 0, 1, 2, 3... と増えるため、% 2 で判定
+    if ((count - 3) % 2 == 0) {
       debugPrint(
           'Interstitial Ad Logic: Count ${count}. Showing (alternating).');
       return true;

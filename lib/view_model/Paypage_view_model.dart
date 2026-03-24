@@ -3,7 +3,6 @@ import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // import 'package:firebase_auth/firebase_auth.dart'; // logInを使わないので不要になるかも
@@ -39,7 +38,6 @@ class InAppPurchaseManager with ChangeNotifier {
       // ★重要：logInを使わずにconfigureするだけにする
       await Purchases.configure(configuration);
 
-      await MobileAds.instance.initialize();
 
       // Offeringsを取得
       offerings = await Purchases.getOfferings();

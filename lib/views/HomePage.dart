@@ -326,7 +326,7 @@ class HomePage extends HookConsumerWidget {
     }, const []);
 
     double a = 25;
-    double bigicon = 170;
+    double bigicon = 290;
 
     // --- メインのbuildメソッド ---
     return ShowCaseWidget(onFinish: () async {
@@ -629,6 +629,87 @@ class HomePage extends HookConsumerWidget {
                           padding: const EdgeInsets.all(20.0),
                           child: Column(
                             children: [
+                              // 通知設定セクション（UIのみ）
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      showDialog(
+                                        context: context,
+                                        barrierColor:
+                                            Colors.transparent, // 背景を暗くしない
+                                        builder: (context) {
+                                          return Dialog(
+                                            backgroundColor: Colors.blue,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
+                                              side: const BorderSide(
+                                                  color: Colors.white,
+                                                  width: 2),
+                                            ),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(20),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    '通知について',
+                                                    style: AppTextStyles.bold(
+                                                      color: Colors.white,
+                                                      fontSize: 18,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 15),
+                                                  Text(
+                                                    '誰かがマッチングを開始したときに通知を受け取ることができます。\n\n※対戦者が非常に多い時間帯などは、通知が停止する場合があります。',
+                                                    style:
+                                                        AppTextStyles.notoSans(
+                                                      color: Colors.white,
+                                                      fontSize: 15,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                    child: const Padding(
+                                      padding: EdgeInsets.only(
+                                          right: 2,
+                                          left: 10,
+                                          top: 10,
+                                          bottom: 10),
+                                      child: Icon(
+                                        Icons.info_outline,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.notifications,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  CupertinoSwitch(
+                                    value: user.is_notification_enabled ?? false,
+                                    onChanged: (value) {
+                                      // プロバイダーを通じてDBを更新
+                                      ref
+                                          .read(userProvider.notifier)
+                                          .updateNotificationStatus(
+                                              context, value);
+                                    },
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
                               // フレンドと対戦ボタン
                               Container(
                                 width: double.infinity,
@@ -751,90 +832,12 @@ class HomePage extends HookConsumerWidget {
 
               // 前景レイヤー：画面の中央に画像を配置
               Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: bigicon,
-                      height: bigicon,
-                      child: Image(
-                        image: AssetImage('assets/images/debateimage.png'),
-                      ),
-                    ),
-                    const SizedBox(height: 0),
-                    // 通知設定セクション（UIのみ）
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              barrierColor: Colors.transparent, // 背景を暗くしない
-                              builder: (context) {
-                                return Dialog(
-                                  backgroundColor: Colors.blue,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                    side: const BorderSide(
-                                        color: Colors.white, width: 2),
-                                  ),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(20),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          '通知について',
-                                          style: AppTextStyles.bold(
-                                            color: Colors.white,
-                                            fontSize: 18,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 15),
-                                        Text(
-                                          '誰かがマッチングを開始したときに通知を受け取ることができます。\n\n※対戦者が非常に多い時間帯などは、通知が停止する場合があります。',
-                                          style: AppTextStyles.notoSans(
-                                            color: Colors.white,
-                                            fontSize: 15,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                          child: const Padding(
-                            padding: EdgeInsets.only(
-                                right: 2, left: 10, top: 10, bottom: 10),
-                            child: Icon(
-                              Icons.info_outline,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.notifications,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 4),
-                        CupertinoSwitch(
-                          value: user.is_notification_enabled ?? false,
-                          onChanged: (value) {
-                            // プロバイダーを通じてDBを更新
-                            ref
-                                .read(userProvider.notifier)
-                                .updateNotificationStatus(context, value);
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
+                child: SizedBox(
+                  width: bigicon,
+                  height: bigicon,
+                  child: const Image(
+                    image: AssetImage('assets/images/debateimage.png'),
+                  ),
                 ),
               ),
             ],

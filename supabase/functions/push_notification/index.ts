@@ -2,8 +2,10 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { JWT } from 'npm:google-auth-library@9';
 
-// 公式ドキュメントの記載に従い、親フォルダにある service-account.json を読み込む
-import serviceAccount from '../service-account.json' with { type: 'json' };
+// 公式ドキュメントの記載に従い、環境変数から認証情報を取得する
+const FCM_CLIENT_EMAIL = Deno.env.get('FCM_CLIENT_EMAIL')!;
+const FCM_PRIVATE_KEY = Deno.env.get('FCM_PRIVATE_KEY')!.replace(/\\n/g, '\n');
+const FCM_PROJECT_ID = Deno.env.get('FCM_PROJECT_ID')!;
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -95,8 +97,8 @@ serve(async (req) => {
 
     // FCMのアクセストークンを取得
     const accessToken = await getAccessToken({
-      clientEmail: serviceAccount.client_email,
-      privateKey: serviceAccount.private_key,
+      clientEmail: FCM_CLIENT_EMAIL,
+      privateKey: FCM_PRIVATE_KEY,
     });
 
     // FCMトークンの重複排除（同じ端末への二重送信を防止）
@@ -114,7 +116,7 @@ serve(async (req) => {
         if (!user.fcm_token) return;
 
         const res = await fetch(
-          `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`,
+          `https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/messages:send`,
           {
             method: 'POST',
             headers: {

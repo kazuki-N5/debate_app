@@ -11,6 +11,7 @@ import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Homepage_view_model.dart';
+import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:debate_project/view_model/start_error_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart'; // CupertinoSwitchのために追加
@@ -723,20 +724,24 @@ class HomePage extends HookConsumerWidget {
                         ),
 
                         // --- バナー広告表示エリア ---
-                        if (bannerAd != null)
-                          Container(
-                            alignment: Alignment.center, // 広告を水平方向に中央揃え
-                            width: bannerAd.size.width.toDouble(),
-                            height: bannerAd.size.height.toDouble(),
-                            child: AdWidget(ad: bannerAd), // ロードされた広告ウィジェット
-                          )
-                        else
-                          // オプション: ロード中や失敗時にプレースホルダーを表示
-                          Container(
-                            height: AdSize.banner.height
-                                .toDouble(), // 広告の高さ分のスペースを確保
-                            color: Colors.blue, // プレースホルダーの背景色
-                          ),
+                        if (ref
+                                .watch(inAppPurchaseManagerProvider)
+                                .isSubscribed ==
+                            false)
+                          if (bannerAd != null)
+                            Container(
+                              alignment: Alignment.center, // 広告を水平方向に中央揃え
+                              width: bannerAd.size.width.toDouble(),
+                              height: bannerAd.size.height.toDouble(),
+                              child: AdWidget(ad: bannerAd), // ロードされた広告ウィジェット
+                            )
+                          else
+                            // オプション: ロード中や失敗時にプレースホルダーを表示
+                            Container(
+                              height: AdSize.banner.height
+                                  .toDouble(), // 広告の高さ分のスペースを確保
+                              color: Colors.blue, // プレースホルダーの背景色
+                            ),
                         // --- バナー広告表示エリア 終了 ---
                       ],
                     ),

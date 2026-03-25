@@ -143,9 +143,18 @@ class PayPage extends ConsumerWidget {
                             : () async {
                                 // isSubscribed が false なら非同期処理を実行
                                 final offering = inapp.offerings;
-                                final delete_ads = offering?.current
+                                final deleteAdsPackage = offering?.current
                                     ?.getPackage('monthly_1month_500');
-                                await inappNotifier.purchase(delete_ads!);
+                                
+                                if (deleteAdsPackage != null) {
+                                  await inappNotifier.purchase(deleteAdsPackage);
+                                } else {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('購入情報を取得できませんでした。ネット接続を確認してください。')),
+                                    );
+                                  }
+                                }
                               },
                         child: const Text('登録して広告を非表示にする'),
                       ),

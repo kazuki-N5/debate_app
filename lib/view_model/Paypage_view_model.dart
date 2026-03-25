@@ -32,7 +32,7 @@ class InAppPurchaseManager with ChangeNotifier {
       } else if (Platform.isIOS) {
         await dotenv.load(fileName: '.env');
         configuration =
-            await PurchasesConfiguration(dotenv.get('REVENUECAT_APPLE'));
+            PurchasesConfiguration(dotenv.get('REVENUECAT_APPLE'));
       }
 
       // ★重要：logInを使わずにconfigureするだけにする

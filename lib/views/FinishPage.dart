@@ -294,8 +294,7 @@ class FinishPage extends HookConsumerWidget {
                   key: globalKey,
                   child: _ShareableResultCard(
                     result: resultText,
-                    points:
-                        room.password == null ? basePointTextVal : null,
+                    points: room.password == null ? basePointTextVal : null,
                     bonus: room.password == null && isUnderdogVal
                         ? bonusPointTextVal
                         : null,
@@ -441,9 +440,11 @@ class FinishPage extends HookConsumerWidget {
                                         style: AppTextStyles.notoSans(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
-                                          color: (ratingDetail?.baseChange ?? 0) > 0
-                                              ? Colors.red
-                                              : Colors.grey[700],
+                                          color:
+                                              (ratingDetail?.baseChange ?? 0) >
+                                                      0
+                                                  ? Colors.red
+                                                  : Colors.grey[700],
                                         ),
                                       ),
                                     ],
@@ -550,13 +551,16 @@ class FinishPage extends HookConsumerWidget {
                         ),
                         const SizedBox(height: 24),
                         // --- Medium Rectangle Ad 表示エリア ---
-                        if (mediumRectangleAd != null)
-                          Container(
-                            alignment: Alignment.center,
-                            width: mediumRectangleAd.size.width.toDouble(),
-                            height: mediumRectangleAd.size.height.toDouble(),
-                            child: AdWidget(ad: mediumRectangleAd),
-                          )
+                        if (isSubscribe == false)
+                          if (mediumRectangleAd != null)
+                            Container(
+                              alignment: Alignment.center,
+                              width: mediumRectangleAd.size.width.toDouble(),
+                              height: mediumRectangleAd.size.height.toDouble(),
+                              child: AdWidget(ad: mediumRectangleAd),
+                            )
+                          else
+                            Container()
                         else
                           Container(),
                         const SizedBox(

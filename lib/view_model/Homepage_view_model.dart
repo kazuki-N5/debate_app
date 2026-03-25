@@ -46,8 +46,7 @@ class FriendMatchDialog extends HookConsumerWidget {
         !isPasswordEmpty.value;
     // isCurrentPageValid は不要になるので削除
     final friendmatch = ref.watch(friendmatchProvider);
-    final friendmatchnotifier =
-        ref.watch(friendmatchProvider.notifier);
+    final friendmatchnotifier = ref.watch(friendmatchProvider.notifier);
 
     void toggleBoolean() {
       // 現在の isEnabled.value の値を反転させて、再代入します。
@@ -183,11 +182,13 @@ class FriendMatchDialog extends HookConsumerWidget {
                     // --- ここからボタンの条件分岐 ---
                     if (currentPage.value == 0) // ページ1 (参加) の場合
                       ElevatedButton(
-                        onPressed: (!isPage1Valid || isMatching.value || friendmatch)
+                        onPressed: (!isPage1Valid ||
+                                isMatching.value ||
+                                friendmatch)
                             ? null // ページ1が無効ならnull
                             : () async {
                                 toggleBoolean();
-                                friendmatchnotifier.state = true; 
+                                friendmatchnotifier.state = true;
                                 ref
                                     .read(soundServiceProvider)
                                     .playSfx(SfxAssets.go);
@@ -202,7 +203,7 @@ class FriendMatchDialog extends HookConsumerWidget {
                                     .findMatch(
                                         secretWordController.text, '', '', '');
                                 toggleBoolean();
-                                friendmatchnotifier.state = false; 
+                                friendmatchnotifier.state = false;
                                 Navigator.of(context).pop();
                               },
                         style: buttonStyle,
@@ -210,31 +211,32 @@ class FriendMatchDialog extends HookConsumerWidget {
                       )
                     else if (currentPage.value == 1) // ページ2 (作成) の場合
                       ElevatedButton(
-                        onPressed: !isPage2Valid || isMatching.value || friendmatch
-                            ? null // ページ2が無効ならnull
-                            : () async {
-                                toggleBoolean();
-                                friendmatchnotifier.state = true; 
-                                ref
-                                    .read(soundServiceProvider)
-                                    .playSfx(SfxAssets.go);
-                                final theme = themeController.text;
-                                final choice1 = choice1Controller.text;
-                                final choice2 = choice2Controller.text;
-                                // ページ2の合言葉は passwordController.text を使う
-                                final password = passwordController.text;
-                                print(
-                                    '部屋を作成して開始: テーマ=$theme, 選択肢=$choice1 vs $choice2, 合言葉=$password');
-                                vibration.vibrateShort();
-                                // ページ2の引数でメソッドを呼び出す
-                                await ref
-                                    .read(matchingRoomProvider.notifier)
-                                    .findMatch(
-                                        password, theme, choice1, choice2);
-                                toggleBoolean();
-                                friendmatchnotifier.state = false;
-                                Navigator.of(context).pop();
-                              },
+                        onPressed:
+                            !isPage2Valid || isMatching.value || friendmatch
+                                ? null // ページ2が無効ならnull
+                                : () async {
+                                    toggleBoolean();
+                                    friendmatchnotifier.state = true;
+                                    ref
+                                        .read(soundServiceProvider)
+                                        .playSfx(SfxAssets.go);
+                                    final theme = themeController.text;
+                                    final choice1 = choice1Controller.text;
+                                    final choice2 = choice2Controller.text;
+                                    // ページ2の合言葉は passwordController.text を使う
+                                    final password = passwordController.text;
+                                    print(
+                                        '部屋を作成して開始: テーマ=$theme, 選択肢=$choice1 vs $choice2, 合言葉=$password');
+                                    vibration.vibrateShort();
+                                    // ページ2の引数でメソッドを呼び出す
+                                    await ref
+                                        .read(matchingRoomProvider.notifier)
+                                        .findMatch(
+                                            password, theme, choice1, choice2);
+                                    toggleBoolean();
+                                    friendmatchnotifier.state = false;
+                                    Navigator.of(context).pop();
+                                  },
                         style: buttonStyle,
                         child: Text('作成して開始', style: buttonTextStyle),
                       ),
@@ -324,10 +326,10 @@ class FriendMatchDialog extends HookConsumerWidget {
                       maxLength: 10)),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
-                child: Text('VS',
-                    style: AppTextStyles.bold(
-                        color: Colors.white,
-                        fontSize: 16),),
+                child: Text(
+                  'VS',
+                  style: AppTextStyles.bold(color: Colors.white, fontSize: 16),
+                ),
               ),
               Expanded(
                   child: _buildTextField(choice2Controller, '選択肢 B (10文字以内)',
@@ -376,7 +378,8 @@ class FriendMatchDialog extends HookConsumerWidget {
             borderSide:
                 const BorderSide(color: Colors.lightBlueAccent, width: 2),
           ),
-          hintStyle: AppTextStyles.notoSans(color: Colors.grey[500], fontSize: 14)),
+          hintStyle:
+              AppTextStyles.notoSans(color: Colors.grey[500], fontSize: 14)),
     );
   }
 }
@@ -491,8 +494,8 @@ class RankingDialog extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8)),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
-                      child: Text('上位',
-                          style: AppTextStyles.bold(fontSize: 15)),
+                      child:
+                          Text('上位', style: AppTextStyles.bold(fontSize: 15)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -516,8 +519,8 @@ class RankingDialog extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8)),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
-                      child: Text('付近',
-                          style: AppTextStyles.bold(fontSize: 15)),
+                      child:
+                          Text('付近', style: AppTextStyles.bold(fontSize: 15)),
                     ),
                   ),
                 ],
@@ -532,7 +535,8 @@ class RankingDialog extends ConsumerWidget {
                       child: Text(
                         '付近のランキングを表示するには\nログインが必要です。',
                         textAlign: TextAlign.center,
-                        style: AppTextStyles.notoSans(color: appBarTextColor, fontSize: 16),
+                        style: AppTextStyles.notoSans(
+                            color: appBarTextColor, fontSize: 16),
                       ),
                     );
                   }
@@ -540,7 +544,8 @@ class RankingDialog extends ConsumerWidget {
                     return Center(
                       child: Text(
                         'ランキングデータがありません。',
-                        style: AppTextStyles.notoSans(color: appBarTextColor, fontSize: 16),
+                        style: AppTextStyles.notoSans(
+                            color: appBarTextColor, fontSize: 16),
                       ),
                     );
                   }
@@ -855,8 +860,7 @@ class SubmitThemeDialog extends HookConsumerWidget {
                       child: Text(
                         'VS',
                         style: AppTextStyles.bold(
-                            color: Colors.white,
-                            fontSize: 16),
+                            color: Colors.white, fontSize: 16),
                       ),
                     ),
                     Expanded(
@@ -869,7 +873,8 @@ class SubmitThemeDialog extends HookConsumerWidget {
                 const SizedBox(height: 20),
                 Text(
                   '追加したいテーマを入力して送信してください',
-                  style: AppTextStyles.notoSans(color: Colors.white70, fontSize: 14),
+                  style: AppTextStyles.notoSans(
+                      color: Colors.white70, fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 25),

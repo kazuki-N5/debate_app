@@ -40,6 +40,7 @@ void main() async {
 class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: ref.watch(scaffoldMessengerKeyProvider),
       title: 'Debate App',
       routeInformationProvider: router.routeInformationProvider,

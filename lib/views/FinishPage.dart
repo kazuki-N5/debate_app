@@ -231,11 +231,11 @@ class FinishPage extends HookConsumerWidget {
     final isUnderdogVal = ratingDetail?.isUnderdog ?? false;
     final basePointTextVal = ratingDetail == null
         ? ''
-        : (ratingDetail.baseChange >= 0 ? '+' : '') +
+        : (ratingDetail.baseChange > 0 ? '+' : '') +
             ratingDetail.baseChange.toString();
     final bonusPointTextVal = ratingDetail == null
         ? ''
-        : (ratingDetail.bonus >= 0 ? '+' : '') + ratingDetail.bonus.toString();
+        : (ratingDetail.bonus > 0 ? '+' : '') + ratingDetail.bonus.toString();
 
     void showSharePreviewDialog() {
       final GlobalKey globalKey = GlobalKey();
@@ -441,7 +441,7 @@ class FinishPage extends HookConsumerWidget {
                                         style: AppTextStyles.notoSans(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
-                                          color: basePointTextVal.startsWith('+')
+                                          color: (ratingDetail?.baseChange ?? 0) > 0
                                               ? Colors.red
                                               : Colors.grey[700],
                                         ),

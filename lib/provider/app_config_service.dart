@@ -26,18 +26,22 @@ class AppConfigStateNotifier extends StateNotifier<AppConfig?> {
 
       String? minVersion;
       String? latestVersion;
+      String? maxVersion;
 
       if (Platform.isAndroid) {
         minVersion = responseMap['min_supported_version_android']?.toString();
         latestVersion = responseMap['latest_version_android']?.toString();
+        maxVersion = responseMap['max_version_android']?.toString();
       } else if (Platform.isIOS) {
         minVersion = responseMap['min_supported_version_ios']?.toString();
         latestVersion = responseMap['latest_version_ios']?.toString();
+        maxVersion = responseMap['max_version_ios']?.toString();
       }
 
       state = AppConfig(
         minVersion: minVersion,
         latestVersion: latestVersion,
+        maxVersion: maxVersion,
         changelog: responseMap['changelog']?.toString(),
         isMaintenanceMode: responseMap['is_maintenance'] as bool?,
         maintenanceMessage: responseMap['maintenance_message']?.toString(),

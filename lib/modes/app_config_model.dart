@@ -8,6 +8,7 @@ class AppConfig with _$AppConfig {
   const factory AppConfig({
     String? minVersion, // 変更: 汎用的な最小サポートバージョン
     String? latestVersion, // 変更: 汎用的な最新バージョン
+    String? maxVersion, // 追加: 開発用の最大バージョン
     String? changelog, // 共通の変更ログ
     bool? isMaintenanceMode,
     String? maintenanceMessage,

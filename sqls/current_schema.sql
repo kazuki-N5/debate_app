@@ -252,64 +252,58 @@ CREATE OR REPLACE FUNCTION "public"."complete_data_transfer"("p_transfer_id" "te
     v_transfer_record public.transfer%ROWTYPE;
     v_sender_user_data public.users%ROWTYPE;
 BEGIN
-    -- トランザクション開始
-
-    -- 1. transferテーブルから有効なレコードを取得
+    -- 移行情報を取得
     SELECT * INTO v_transfer_record
     FROM public.transfer
     WHERE id = p_transfer_id
       AND password = p_password
       AND delete_at > now()
-      AND receive_id IS NULL; -- まだ使用されていないことを確認
+      AND receive_id IS NULL;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Invalid transfer ID, password, expired, or already used.';
     END IF;
 
-    -- 2. receive_idを更新
-    UPDATE public.transfer
-    SET receive_id = p_receiver_id
-    WHERE id = v_transfer_record.id;
+    -- 移行情報の更新
+    UPDATE public.transfer SET receive_id = p_receiver_id WHERE id = v_transfer_record.id;
 
-    -- 3. 送信者のユーザーデータを取得
-    SELECT * INTO v_sender_user_data
-    FROM public.users
-    WHERE id = v_transfer_record.send_id;
+    -- 送信者（移行元）のデータを取得
+    SELECT * INTO v_sender_user_data FROM public.users WHERE id = v_transfer_record.send_id;
 
     IF NOT FOUND THEN
-        -- このケースは通常ありえない (initiateでstatus変更しているため)
-        RAISE EXCEPTION 'Sender user data not found for ID: %', v_transfer_record.send_id;
+        RAISE EXCEPTION 'Sender user not found.';
     END IF;
 
-    -- 4. 受信者のユーザーデータを送信者のデータで上書き
+    -- 受信者（移行先）を更新：通知設定 (is_notification_enabled) も引き継ぐ
     UPDATE public.users
     SET
         win = v_sender_user_data.win,
         lose = v_sender_user_data.lose,
         trophy = v_sender_user_data.trophy,
-        created_at = v_sender_user_data.created_at
-        -- avatar_urlなども移行する場合はここに追加
+        created_at = v_sender_user_data.created_at,
+        is_notification_enabled = v_sender_user_data.is_notification_enabled -- ★追加：通知設定の引き継ぎ
     WHERE id = p_receiver_id;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'Receiver user not found: %', p_receiver_id;
+        RAISE EXCEPTION 'Receiver user not found.';
     END IF;
 
-    -- 5. 送信者のユーザーデータを初期化し、ステータスをtrueに戻す
+    -- 送信者（移行元）を初期化：通知関連も完全にリセットしてクリーンにする
     UPDATE public.users
     SET
         win = 0,
         lose = 0,
         trophy = 0,
         status = true,
-         created_at = now()
+        created_at = now(),
+        fcm_token = NULL,               -- ★追加：通知IDを削除
+        is_notification_enabled = false -- ★追加：通知設定をOFFに
     WHERE id = v_transfer_record.send_id;
 
     RETURN 'Data transfer completed successfully.';
 
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE INFO 'Error in complete_data_transfer: %', SQLERRM;
         RAISE;
 END;$$;
 
@@ -634,6 +628,26 @@ $$;
 ALTER FUNCTION "public"."handle_cancellation"("p_user_id" "uuid", "p_room_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."handle_fcm_token_uniqueness"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  -- もし新しいトークンがセットされ、かつNULLでない場合
+  IF (NEW.fcm_token IS NOT NULL) AND (OLD.fcm_token IS DISTINCT FROM NEW.fcm_token) THEN
+    -- 他のユーザーが同じトークンを持っていたら、そのユーザーのトークンをNULLにして解除する
+    UPDATE public.users 
+    SET fcm_token = NULL 
+    WHERE fcm_token = NEW.fcm_token 
+    AND id != NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."handle_fcm_token_uniqueness"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -728,7 +742,7 @@ BEGIN
               headers := jsonb_build_object(
                 'Authorization', 'Bearer ' || qstash_token,
                 'Content-Type', 'application/json',
-                'Upstash-Delay', '3m'
+                'Upstash-Delay', '1m30s'
               ),
               body := jsonb_build_object(
                 'room_id', NEW.id,
@@ -774,7 +788,7 @@ BEGIN
 END;$$;
 
 
-ALTER FUNCTION "public"."_room_updates_integrated"() OWNER TO "postgres";
+ALTER FUNCTION "public"."handle_room_updates_integrated"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."initiate_data_transfer"("p_sender_id" "uuid") RETURNS TABLE("transfer_id" "text", "transfer_password" "text")
@@ -1123,15 +1137,20 @@ BEGIN
       UPDATE users SET lose = lose + 1, trophy = GREATEST(0, trophy + v_p1_move) WHERE id = NEW.player1_id;
       UPDATE users SET win = win + 1, trophy = GREATEST(0, trophy + v_p2_move) WHERE id = NEW.player2_id;
     ELSE
-      -- 引き分け等の特殊処理
-      v_p1_move := 16;
-      v_p2_move := 16;
-      UPDATE users SET trophy = trophy + 16 WHERE id = NEW.player1_id;
-      UPDATE users SET trophy = trophy + 16 WHERE id = NEW.player2_id;
+      -- AでもBでもない場合（本来獲得するはずだったbrawlの分だけ追加：アンダードッグ適用なし）
+      -- 相手のトロフィーを自分と同じ値で渡すことでレート差によるアンダードッグ判定を回避
+      v_p1_move := calculate_brawl_trophy_change(v_p1_trophy, v_p1_trophy, true);
+      v_p2_move := calculate_brawl_trophy_change(v_p2_trophy, v_p2_trophy, true);
+      
+      -- このケースではアンダードッグフラグを立てない
+      v_is_underdog_match := false;
+
+      UPDATE users SET trophy = GREATEST(0, trophy + v_p1_move) WHERE id = NEW.player1_id;
+      UPDATE users SET trophy = GREATEST(0, trophy + v_p2_move) WHERE id = NEW.player2_id;
     END IF;
   END IF;
 
-  -- 履歴への挿入 (player1_trophy, player2_trophy を除外)
+  -- 履歴への挿入
   INSERT INTO match_record (
     roomid, player1_id, player2_id, theme, winner, 
     player1_move_trophy, player2_move_trophy, 
@@ -1340,6 +1359,16 @@ CREATE TABLE IF NOT EXISTS "public"."messages" (
 ALTER TABLE "public"."messages" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."notification_logs" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."notification_logs" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."prohibited" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -1451,6 +1480,11 @@ ALTER TABLE ONLY "public"."messages"
 
 
 
+ALTER TABLE ONLY "public"."notification_logs"
+    ADD CONSTRAINT "notification_logs_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."prohibited"
     ADD CONSTRAINT "prohibited_pkey" PRIMARY KEY ("id");
 
@@ -1471,11 +1505,19 @@ ALTER TABLE ONLY "public"."users"
 
 
 
+CREATE INDEX "idx_notification_logs_user_id_created_at" ON "public"."notification_logs" USING "btree" ("user_id", "created_at" DESC);
+
+
+
 CREATE OR REPLACE TRIGGER "prevent_result_update_trigger" BEFORE UPDATE ON "public"."rooms" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_result_update"();
 
 
 
 CREATE OR REPLACE TRIGGER "process_game_result" BEFORE UPDATE OF "reason" ON "public"."rooms" FOR EACH ROW WHEN ((("old"."reason" IS NULL) AND ("new"."reason" IS NOT NULL))) EXECUTE FUNCTION "public"."process_game_result"();
+
+
+
+CREATE OR REPLACE TRIGGER "tr_fcm_token_uniqueness" BEFORE UPDATE OF "fcm_token" ON "public"."users" FOR EACH ROW EXECUTE FUNCTION "public"."handle_fcm_token_uniqueness"();
 
 
 
@@ -1504,6 +1546,11 @@ ALTER TABLE ONLY "public"."match_record"
 
 ALTER TABLE ONLY "public"."messages"
     ADD CONSTRAINT "messages_user_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."notification_logs"
+    ADD CONSTRAINT "notification_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id");
 
 
 
@@ -1910,6 +1957,12 @@ GRANT ALL ON FUNCTION "public"."handle_cancellation"("p_user_id" "uuid", "p_room
 
 
 
+GRANT ALL ON FUNCTION "public"."handle_fcm_token_uniqueness"() TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_fcm_token_uniqueness"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_fcm_token_uniqueness"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."handle_new_auth_user"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_new_auth_user"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_new_auth_user"() TO "service_role";
@@ -2042,6 +2095,12 @@ GRANT ALL ON TABLE "public"."match_record" TO "service_role";
 GRANT ALL ON TABLE "public"."messages" TO "anon";
 GRANT ALL ON TABLE "public"."messages" TO "authenticated";
 GRANT ALL ON TABLE "public"."messages" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."notification_logs" TO "anon";
+GRANT ALL ON TABLE "public"."notification_logs" TO "authenticated";
+GRANT ALL ON TABLE "public"."notification_logs" TO "service_role";
 
 
 

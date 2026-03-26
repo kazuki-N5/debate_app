@@ -671,7 +671,7 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
                                     try {
                                       // .rpc() を使ってデータベース関数を呼び出す
                                       await supabase.rpc(
-                                        'handle_cancellation', // 作成したSQL関数名
+                                        'handle_cancellation_v2', // 作成したSQL関数名
                                         params: {
                                           'p_user_id':
                                               userId, // SQL関数の引数名 'p_user_id' に値を渡す

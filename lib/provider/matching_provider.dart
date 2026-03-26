@@ -54,7 +54,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
   Future<void> fetchmatchupdate() async {
     try {
       final roomdata = await supabase
-          .from('rooms')
+          .from('rooms_v2')
           .select()
           .eq('id', state.roomId!)
           .single();
@@ -286,7 +286,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     }
     try {
       // データベース関数を呼び出してトランザクション処理を行う
-      final result = await supabase.rpc('join_room', params: {
+      final result = await supabase.rpc('join_room_v2', params: {
         'p_user_id': userId, // パラメータ名を SQL 関数に合わせる
         'p_room_password': password.isNotEmpty ? password : null,
         'p_room_theme': theme.isNotEmpty ? theme : null,
@@ -343,7 +343,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
           .onPostgresChanges(
               event: PostgresChangeEvent.all,
               schema: 'public',
-              table: 'rooms',
+              table: 'rooms_v2',
               filter: PostgresChangeFilter(
                 type: PostgresChangeFilterType.eq,
                 column: 'id',
@@ -353,7 +353,6 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
                 final newData = payload.newRecord;
                 if (!isdisposed) {
                   state = MatchingRoom.fromMap(newData);
-                  // gomatchstate();
                 }
               })
           .subscribe((status, [error]) async {
@@ -378,7 +377,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
 
   Future<void> cancelMatching(String roomId) async {
     final userId = ref.read(currentUserIdProvider);
-    final response = await supabase.rpc('deleteroom', params: {
+    final response = await supabase.rpc('deleteroom_v2', params: {
       'p_room_id': roomId,
       'p_user_id': userId,
     });
@@ -391,7 +390,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
   Future<void> updategochose(String roomId, String player) async {
     final which = player == state.player1Id ? 'player1_go' : 'player2_go';
     try {
-      await supabase.from('rooms').update({
+      await supabase.from('rooms_v2').update({
         which: true,
       }).eq('id', roomId);
       log('次に進むように変更が完了しました');
@@ -405,7 +404,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     final which =
         player == state.player1Id ? 'player1_choice' : 'player2_choice';
     try {
-      await supabase.from('rooms').update({
+      await supabase.from('rooms_v2').update({
         which: choice,
       }).eq('id', roomId);
     } catch (e) {
@@ -418,7 +417,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     final which =
         player == state.player1Id ? 'player1_finish' : 'player2_finish';
     try {
-      await supabase.from('rooms').update({
+      await supabase.from('rooms_v2').update({
         which: true,
       }).eq('id', roomId);
     } catch (e) {
@@ -430,7 +429,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     final which =
         player == state.player1Id ? 'player1_finish' : 'player2_finish';
     try {
-      await supabase.from('rooms').update({
+      await supabase.from('rooms_v2').update({
         which: false,
       }).eq('id', roomId);
     } catch (e) {
@@ -444,7 +443,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     log(roomId);
 
     try {
-      await supabase.from('rooms').update({
+      await supabase.from('rooms_v2').update({
         'winner': which,
         'reason': '降参した',
       }).eq('id', roomId);
@@ -456,7 +455,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
   Future<void> draw(MatchingRoom room, String player) async {
     if (room.winner == null) {
       try {
-        await supabase.from('rooms').update({
+        await supabase.from('rooms_v2').update({
           'winner': "C",
           'reason': 'エラーが発生しました',
         }).eq('id', room.roomId!);

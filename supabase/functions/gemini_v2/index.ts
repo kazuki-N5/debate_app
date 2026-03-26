@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
 
     // 2. 二重判定防止チェック
     const { data: room, error: roomError } = await supabase
-      .from("rooms")
+      .from("rooms_v2")
       .select("winner, reason, player1_id, player2_id")
       .eq("id", room_id)
       .single();
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
 
     // 5. DB保存
     const { error: updateError } = await supabase
-      .from("rooms")
+      .from("rooms_v2")
       .update({ winner, reason })
       .eq("id", room_id);
 
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
         );
         console.log(`Recording failure state (C) for room: ${room_id}`);
         await supabase
-          .from("rooms")
+          .from("rooms_v2")
           .update({ winner: "C", reason: "エラーが発生しました" })
           .eq("id", room_id);
       } catch (dbErr) {

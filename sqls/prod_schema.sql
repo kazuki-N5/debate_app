@@ -19,13 +19,6 @@ CREATE EXTENSION IF NOT EXISTS "pg_cron" WITH SCHEMA "pg_catalog";
 
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
-
-
-
-
-
-
 COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
@@ -70,59 +63,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 
 
-
-
-CREATE OR REPLACE FUNCTION "public"."calculate_brawl_trophy_change"("p_my_trophy" integer, "p_opponent_trophy" integer, "p_is_win" boolean) RETURNS integer
-    LANGUAGE "plpgsql"
-    AS $$
-DECLARE
-    v_base_change integer;
-    v_is_underdog boolean;
-    v_underdog_bonus CONSTANT integer := 4;
-BEGIN
-    -- アンダードッグ判定：相手の方が200以上高い場合
-    v_is_underdog := (p_opponent_trophy - p_my_trophy) >= 200;
-
-    IF p_is_win THEN
-        -- 勝利時のテーブル (ティアに応じて減少)
-        IF p_my_trophy < 500 THEN v_base_change := 8;
-        ELSIF p_my_trophy < 600 THEN v_base_change := 7;
-        ELSIF p_my_trophy < 700 THEN v_base_change := 6;
-        ELSIF p_my_trophy < 800 THEN v_base_change := 5;
-        ELSIF p_my_trophy < 900 THEN v_base_change := 4;
-        ELSE v_base_change := 3;
-        END IF;
-        
-        RETURN CASE WHEN v_is_underdog THEN v_base_change + v_underdog_bonus ELSE v_base_change END;
-    ELSE
-        -- 敗北時のテーブル
-        IF p_my_trophy < 50 THEN v_base_change := 0;
-        ELSIF p_my_trophy < 100 THEN v_base_change := -1;
-        ELSIF p_my_trophy < 200 THEN v_base_change := -2;
-        ELSIF p_my_trophy < 300 THEN v_base_change := -3;
-        ELSIF p_my_trophy < 400 THEN v_base_change := -4;
-        ELSIF p_my_trophy < 500 THEN v_base_change := -5;
-        ELSIF p_my_trophy < 600 THEN v_base_change := -6;
-        ELSIF p_my_trophy < 700 THEN v_base_change := -7;
-        ELSIF p_my_trophy < 800 THEN v_base_change := -8;
-        ELSIF p_my_trophy < 900 THEN v_base_change := -9;
-        ELSIF p_my_trophy < 1000 THEN v_base_change := -10;
-        ELSIF p_my_trophy < 1100 THEN v_base_change := -11;
-        ELSE v_base_change := -12;
-        END IF;
-
-        -- アンダードッグなら敗北ペナルティを軽減（-8 + 4 = -4 など）
-        IF v_is_underdog THEN
-            RETURN LEAST(0, v_base_change + v_underdog_bonus);
-        ELSE
-            RETURN v_base_change;
-        END IF;
-    END IF;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."calculate_brawl_trophy_change"("p_my_trophy" integer, "p_opponent_trophy" integer, "p_is_win" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."calculate_elo_rating"("winner_rate" numeric, "loser_rate" numeric) RETURNS integer
@@ -252,58 +192,64 @@ CREATE OR REPLACE FUNCTION "public"."complete_data_transfer"("p_transfer_id" "te
     v_transfer_record public.transfer%ROWTYPE;
     v_sender_user_data public.users%ROWTYPE;
 BEGIN
-    -- 移行情報を取得
+    -- トランザクション開始
+
+    -- 1. transferテーブルから有効なレコードを取得
     SELECT * INTO v_transfer_record
     FROM public.transfer
     WHERE id = p_transfer_id
       AND password = p_password
       AND delete_at > now()
-      AND receive_id IS NULL;
+      AND receive_id IS NULL; -- まだ使用されていないことを確認
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Invalid transfer ID, password, expired, or already used.';
     END IF;
 
-    -- 移行情報の更新
-    UPDATE public.transfer SET receive_id = p_receiver_id WHERE id = v_transfer_record.id;
+    -- 2. receive_idを更新
+    UPDATE public.transfer
+    SET receive_id = p_receiver_id
+    WHERE id = v_transfer_record.id;
 
-    -- 送信者（移行元）のデータを取得
-    SELECT * INTO v_sender_user_data FROM public.users WHERE id = v_transfer_record.send_id;
+    -- 3. 送信者のユーザーデータを取得
+    SELECT * INTO v_sender_user_data
+    FROM public.users
+    WHERE id = v_transfer_record.send_id;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'Sender user not found.';
+        -- このケースは通常ありえない (initiateでstatus変更しているため)
+        RAISE EXCEPTION 'Sender user data not found for ID: %', v_transfer_record.send_id;
     END IF;
 
-    -- 受信者（移行先）を更新：通知設定 (is_notification_enabled) も引き継ぐ
+    -- 4. 受信者のユーザーデータを送信者のデータで上書き
     UPDATE public.users
     SET
         win = v_sender_user_data.win,
         lose = v_sender_user_data.lose,
         trophy = v_sender_user_data.trophy,
-        created_at = v_sender_user_data.created_at,
-        is_notification_enabled = v_sender_user_data.is_notification_enabled -- ★追加：通知設定の引き継ぎ
+        created_at = v_sender_user_data.created_at
+        -- avatar_urlなども移行する場合はここに追加
     WHERE id = p_receiver_id;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'Receiver user not found.';
+        RAISE EXCEPTION 'Receiver user not found: %', p_receiver_id;
     END IF;
 
-    -- 送信者（移行元）を初期化：通知関連も完全にリセットしてクリーンにする
+    -- 5. 送信者のユーザーデータを初期化し、ステータスをtrueに戻す
     UPDATE public.users
     SET
         win = 0,
         lose = 0,
         trophy = 0,
         status = true,
-        created_at = now(),
-        fcm_token = NULL,               -- ★追加：通知IDを削除
-        is_notification_enabled = false -- ★追加：通知設定をOFFに
+         created_at = now()
     WHERE id = v_transfer_record.send_id;
 
     RETURN 'Data transfer completed successfully.';
 
 EXCEPTION
     WHEN OTHERS THEN
+        RAISE INFO 'Error in complete_data_transfer: %', SQLERRM;
         RAISE;
 END;$$;
 
@@ -531,7 +477,7 @@ CREATE OR REPLACE FUNCTION "public"."get_recent_match_history"() RETURNS TABLE("
     mr.player2_choice,
     mr.winner,
     mr.move_trophy,
-    mr.result, -- 履歴テーブルのresultカラム（ここではそのまま）
+    mr.result,
     mr.created_at
   FROM public.match_record mr
   WHERE mr.created_at >= (now() - interval '7 days')
@@ -628,26 +574,6 @@ $$;
 ALTER FUNCTION "public"."handle_cancellation"("p_user_id" "uuid", "p_room_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."handle_fcm_token_uniqueness"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    AS $$
-BEGIN
-  -- もし新しいトークンがセットされ、かつNULLでない場合
-  IF (NEW.fcm_token IS NOT NULL) AND (OLD.fcm_token IS DISTINCT FROM NEW.fcm_token) THEN
-    -- 他のユーザーが同じトークンを持っていたら、そのユーザーのトークンをNULLにして解除する
-    UPDATE public.users 
-    SET fcm_token = NULL 
-    WHERE fcm_token = NEW.fcm_token 
-    AND id != NEW.id;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."handle_fcm_token_uniqueness"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -664,131 +590,6 @@ $$;
 
 
 ALTER FUNCTION "public"."handle_new_auth_user"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."handle_room_updates_integrated"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$DECLARE
-    selected_theme RECORD;
-    total_themes INT;
-    current_used_ids INTEGER[];
-    new_theme_id INT;
-    -- QStash用の変数
-    qstash_token text := 'eyJVc2VySUQiOiJhYzQ3YjI2Yi03MTg4LTQ4ZjUtYTIwMS00ZGE2MTQ0ZmEwZDAiLCJQYXNzd29yZCI6IjJlYjA4YzRlZjg2YjRkNjI5YTg4ODhkYjFmNzU2OTczIn0=';
-    target_url text := 'https://undebilitative-engagedly-salma.ngrok-free.dev/functions/v1/gemini';
-    qstash_publish_url text := 'https://qstash-us-east-1.upstash.io/v2/publish/' || target_url;
-BEGIN
-    -- INSERT時 (ルーム作成時)
-    IF TG_OP = 'INSERT' THEN
-        IF NEW.theme_s IS TRUE THEN
-            NEW.player1_choice := NULL;
-            NEW.player2_choice := NULL;
-            NEW.change := FALSE;
-        ELSE
-            SELECT * INTO selected_theme FROM debate_themes ORDER BY random() LIMIT 1;
-
-            NEW.current_theme := selected_theme.theme;
-            NEW.current_choice1 := selected_theme.choice1;
-            NEW.current_choice2 := selected_theme.choice2;
-            NEW.player1_choice := NULL; 
-            NEW.player2_choice := NULL; 
-            NEW.change := FALSE; 
-            NEW.used_theme_ids := ARRAY[selected_theme.id]; 
-        END IF;
-
-    -- UPDATE時
-    ELSIF TG_OP = 'UPDATE' THEN
-        -- パターンA: 両者の選択が完了し、かつ【被った場合（一致した場合）】
-        IF NEW.player1_choice IS NOT NULL AND
-           NEW.player2_choice IS NOT NULL AND
-           NEW.player1_choice = NEW.player2_choice AND
-           (OLD.player1_choice IS NULL OR OLD.player2_choice IS NULL OR OLD.player1_choice <> OLD.player2_choice)
-        THEN
-            IF COALESCE(OLD.theme_s, FALSE) IS FALSE THEN
-                current_used_ids := COALESCE(OLD.used_theme_ids, ARRAY[]::INTEGER[]);
-                SELECT count(*) INTO total_themes FROM debate_themes;
-
-                IF array_length(current_used_ids, 1) >= total_themes THEN
-                    current_used_ids := ARRAY[]::INTEGER[];
-                END IF;
-
-                SELECT id INTO new_theme_id FROM debate_themes WHERE id <> ALL(current_used_ids) ORDER BY random() LIMIT 1;
-
-                IF new_theme_id IS NOT NULL THEN
-                    SELECT * INTO selected_theme FROM debate_themes WHERE id = new_theme_id;
-                    NEW.current_theme := selected_theme.theme;
-                    NEW.current_choice1 := selected_theme.choice1;
-                    NEW.current_choice2 := selected_theme.choice2;
-                    NEW.used_theme_ids := array_append(current_used_ids, new_theme_id); 
-                ELSE
-                    NEW.used_theme_ids := current_used_ids;
-                END IF;
-            END IF; 
-
-            -- 選択をリセットして change フラグを反転（これにより Flutter 側の resetTimer() を誘発）
-            NEW.player1_choice := NULL;
-            NEW.player2_choice := NULL;
-            NEW.change := NOT OLD.change; 
-            
-        -- パターンB: 両者の選択が完了し、かつ【異なる場合（被らなかった場合）】
-        ELSIF NEW.player1_choice IS NOT NULL AND
-              NEW.player2_choice IS NOT NULL AND
-              NEW.player1_choice != NEW.player2_choice AND
-              (OLD.player1_choice IS NULL OR OLD.player2_choice IS NULL OR OLD.player1_choice = OLD.player2_choice)
-        THEN
-            -- ここで Gemini にスケジュール投下！
-            PERFORM net.http_post(
-              url := qstash_publish_url,
-              headers := jsonb_build_object(
-                'Authorization', 'Bearer ' || qstash_token,
-                'Content-Type', 'application/json',
-                'Upstash-Delay', '1m30s'
-              ),
-              body := jsonb_build_object(
-                'room_id', NEW.id,
-                'theme', NEW.current_theme,
-                'player1_choice', NEW.current_choice1,
-                'player2_choice', NEW.current_choice2
-              )
-            );
-            RAISE NOTICE 'QStash timer scheduled for room_id: %', NEW.id;
-        END IF; 
-
-        -- 【新規機能】両プレーヤーが finish を選択した時の直接 Gemini トリガーと状態固定
-        -- 両方 true の状態が完成した瞬間に作動（前回から変わった時のみ）
-        IF NEW.player1_finish IS TRUE AND NEW.player2_finish IS TRUE AND
-           (OLD.player1_finish IS DISTINCT FROM TRUE OR OLD.player2_finish IS DISTINCT FROM TRUE)
-        THEN
-            -- QStashを使わずに直接Gemini(Edge Function)を叩く処理
-            PERFORM net.http_post(
-              url := target_url,
-              headers := jsonb_build_object(
-                'Content-Type', 'application/json'
-              ),
-              body := jsonb_build_object(
-                'room_id', NEW.id,
-                'theme', NEW.current_theme,
-                'player1_choice', NEW.current_choice1,
-                'player2_choice', NEW.current_choice2
-              )
-            );
-            RAISE NOTICE 'Direct Gemini judging called for room_id: %', NEW.id;
-        END IF;
-
-        -- 一度両者が true になったら、それ以降変動させずに固定する
-        IF OLD.player1_finish IS TRUE AND OLD.player2_finish IS TRUE THEN
-            NEW.player1_finish := TRUE;
-            NEW.player2_finish := TRUE;
-        END IF;
-
-        NEW.updated_at = NOW();
-    END IF; 
-
-    RETURN NEW;
-END;$$;
-
-
-ALTER FUNCTION "public"."handle_room_updates_integrated"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."initiate_data_transfer"("p_sender_id" "uuid") RETURNS TABLE("transfer_id" "text", "transfer_password" "text")
@@ -1091,9 +892,9 @@ CREATE OR REPLACE FUNCTION "public"."prevent_result_update"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
-  -- すでに判定(winner)がセットされている場合、更新を禁止する
-  IF OLD.winner IS NOT NULL AND NEW.winner IS DISTINCT FROM OLD.winner THEN
-    RAISE EXCEPTION 'Judgment results cannot be updated once set.';
+  -- resultが既に値を持っていて、更新しようとした場合
+  IF OLD.result IS NOT NULL AND NEW.result IS DISTINCT FROM OLD.result THEN
+    RAISE EXCEPTION 'result field cannot be updated once set';
   END IF;
   RETURN NEW;
 END;
@@ -1105,108 +906,118 @@ ALTER FUNCTION "public"."prevent_result_update"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."process_game_result"() RETURNS "trigger"
     LANGUAGE "plpgsql"
-    AS $$
-DECLARE
-  v_p1_trophy integer;
-  v_p2_trophy integer;
-  v_p1_move integer := 0;
-  v_p2_move integer := 0;
-  v_is_underdog_match boolean := false;
+    AS $$DECLARE
+  v_winner_id uuid := NULL;
+  v_loser_id uuid := NULL;
+  v_winner_trophy integer;
+  v_loser_trophy integer;
+  v_points_change integer := 0;
+  v_player1_choice TEXT;
+  v_player2_choice TEXT;
   v_is_ranked_match BOOLEAN;
+  v_result_prefix CHAR(1);
+  v_original_result TEXT := NEW.result; -- 元の値を保持 (ログ用)
 BEGIN
+  -- Check if the match is ranked
   v_is_ranked_match := (NEW.password IS NULL OR NEW.password = '');
   NEW.updated_at = now();
 
-  IF v_is_ranked_match THEN
-    SELECT trophy INTO v_p1_trophy FROM users WHERE id = NEW.player1_id;
-    SELECT trophy INTO v_p2_trophy FROM users WHERE id = NEW.player2_id;
+ 
 
-    -- アンダードッグ判定 (レート差が 200 以上)
-    v_is_underdog_match := ABS(v_p1_trophy - v_p2_trophy) >= 200;
-
-    IF NEW.winner = 'A' THEN
-      v_p1_move := calculate_brawl_trophy_change(v_p1_trophy, v_p2_trophy, true);
-      v_p2_move := calculate_brawl_trophy_change(v_p2_trophy, v_p1_trophy, false);
-      
-      UPDATE users SET win = win + 1, trophy = GREATEST(0, trophy + v_p1_move) WHERE id = NEW.player1_id;
-      UPDATE users SET lose = lose + 1, trophy = GREATEST(0, trophy + v_p2_move) WHERE id = NEW.player2_id;
-    ELSIF NEW.winner = 'B' THEN
-      v_p1_move := calculate_brawl_trophy_change(v_p1_trophy, v_p2_trophy, false);
-      v_p2_move := calculate_brawl_trophy_change(v_p2_trophy, v_p1_trophy, true);
-
-      UPDATE users SET lose = lose + 1, trophy = GREATEST(0, trophy + v_p1_move) WHERE id = NEW.player1_id;
-      UPDATE users SET win = win + 1, trophy = GREATEST(0, trophy + v_p2_move) WHERE id = NEW.player2_id;
-    ELSE
-      -- AでもBでもない場合（本来獲得するはずだったbrawlの分だけ追加：アンダードッグ適用なし）
-      -- 相手のトロフィーを自分と同じ値で渡すことでレート差によるアンダードッグ判定を回避
-      v_p1_move := calculate_brawl_trophy_change(v_p1_trophy, v_p1_trophy, true);
-      v_p2_move := calculate_brawl_trophy_change(v_p2_trophy, v_p2_trophy, true);
-      
-      -- このケースではアンダードッグフラグを立てない
-      v_is_underdog_match := false;
-
-      UPDATE users SET trophy = GREATEST(0, trophy + v_p1_move) WHERE id = NEW.player1_id;
-      UPDATE users SET trophy = GREATEST(0, trophy + v_p2_move) WHERE id = NEW.player2_id;
-    END IF;
+  -- Determine player choices (Simplified assumption)
+  IF NEW.player1_choice = TRUE AND NEW.player2_choice = FALSE THEN
+    v_player1_choice := NEW.current_choice1;
+    v_player2_choice := NEW.current_choice2;
+  ELSIF NEW.player1_choice = FALSE AND NEW.player2_choice = TRUE THEN
+    v_player1_choice := NEW.current_choice2;
+    v_player2_choice := NEW.current_choice1;
+  ELSE
+    v_player1_choice := NULL;
+    v_player2_choice := NULL;
   END IF;
 
-  -- 履歴への挿入
+  -- Determine winner/loser based on the *original* incoming result
+  v_result_prefix := LEFT(v_original_result, 1);
+
+  IF v_result_prefix = 'A' THEN
+    v_winner_id := NEW.player1_id;
+    v_loser_id := NEW.player2_id;
+
+    IF v_is_ranked_match THEN
+      SELECT trophy INTO v_winner_trophy FROM users WHERE id = v_winner_id;
+      SELECT trophy INTO v_loser_trophy FROM users WHERE id = v_loser_id;
+      v_points_change := calculate_elo_rating(v_winner_trophy, v_loser_trophy);
+
+      UPDATE users SET win = win + 1 WHERE id = v_winner_id;
+      UPDATE users SET lose = lose + 1 WHERE id = v_loser_id;
+      UPDATE users SET trophy = trophy + v_points_change WHERE id = v_winner_id;
+      UPDATE users SET trophy = GREATEST(0, trophy - v_points_change) WHERE id = v_loser_id;
+    ELSE
+      v_points_change := 0;
+    END IF;
+
+  ELSIF v_result_prefix = 'B' THEN
+    v_winner_id := NEW.player2_id;
+    v_loser_id := NEW.player1_id;
+
+    IF v_is_ranked_match THEN
+      SELECT trophy INTO v_winner_trophy FROM users WHERE id = v_winner_id;
+      SELECT trophy INTO v_loser_trophy FROM users WHERE id = v_loser_id;
+      v_points_change := calculate_elo_rating(v_winner_trophy, v_loser_trophy);
+
+      UPDATE users SET win = win + 1 WHERE id = v_winner_id;
+      UPDATE users SET lose = lose + 1 WHERE id = v_loser_id;
+      UPDATE users SET trophy = trophy + v_points_change WHERE id = v_winner_id;
+      UPDATE users SET trophy = GREATEST(0, trophy - v_points_change) WHERE id = v_loser_id;
+    ELSE
+      v_points_change := 0;
+    END IF;
+
+  ELSE
+    NEW.result := 'C 審査にエラーが起きました'; 
+    v_winner_id := NULL;
+    v_loser_id := NULL;
+
+    IF v_is_ranked_match THEN
+      UPDATE users SET win = win + 1, trophy = trophy + 16 WHERE id = NEW.player1_id;
+      UPDATE users SET win = win + 1, trophy = trophy + 16 WHERE id = NEW.player2_id;
+      v_points_change := 16;
+    ELSE
+      v_points_change := 0;
+    END IF;
+
+  END IF;
+
+  -- Record in match_record (Always runs)
   INSERT INTO match_record (
-    roomid, player1_id, player2_id, theme, winner, 
-    player1_move_trophy, player2_move_trophy, 
-    is_underdog,
-    move_trophy, result
+    roomid,
+    player1_id,
+    player2_id,
+    theme,
+    player1_choice,
+    player2_choice,
+    winner,
+    move_trophy,
+    result
   ) VALUES (
-    NEW.id, NEW.player1_id, NEW.player2_id, NEW.current_theme, 
-    CASE WHEN NEW.winner = 'A' THEN NEW.player1_id WHEN NEW.winner = 'B' THEN NEW.player2_id ELSE NULL END, 
-    v_p1_move, v_p2_move, 
-    v_is_underdog_match,
-    v_p1_move, NEW.reason
+    NEW.id,
+    NEW.player1_id, -- ここを修正
+    NEW.player2_id,
+    NEW.current_theme,
+    v_player1_choice,
+    v_player2_choice,
+    v_winner_id,
+    v_points_change,
+    NEW.result
   );
 
+  -- Return the (potentially modified) NEW record to be written to the table
   RETURN NEW;
-END;
-$$;
+
+END;$$;
 
 
 ALTER FUNCTION "public"."process_game_result"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."schedule_gemini_with_qstash"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-  qstash_token text := 'eyJVc2VySUQiOiJhYzQ3YjI2Yi03MTg4LTQ4ZjUtYTIwMS00ZGE2MTQ0ZmEwZDAiLCJQYXNzd29yZCI6IjJlYjA4YzRlZjg2YjRkNjI5YTg4ODhkYjFmNzU2OTczIn0=';
-  target_url text := 'https://undebilitative-engagedly-salma.ngrok-free.dev/functions/v1/gemini';
-  qstash_publish_url text := 'https://qstash-us-east-1.upstash.io/v2/publish/' || target_url;
-BEGIN
-  -- 変更点: お互いの選択が完了（NULLではない）し、かつ被らなかった（選択が異なる）場合
-  IF (NEW.player1_choice IS NOT NULL AND NEW.player2_choice IS NOT NULL AND NEW.player1_choice != NEW.player2_choice) 
-     -- 以前の状態は「どちらかがNULLだった」か「被っていた」場合（重複して発火するのを防ぐため）
-     AND (OLD.player1_choice IS NULL OR OLD.player2_choice IS NULL OR OLD.player1_choice = OLD.player2_choice) THEN
-    PERFORM net.http_post(
-      url := qstash_publish_url,
-      headers := jsonb_build_object(
-        'Authorization', 'Bearer ' || qstash_token,
-        'Content-Type', 'application/json',
-        -- 変更点: 10秒後に設定
-        'Upstash-Delay', '10s'
-      ),
-      body := jsonb_build_object(
-        'room_id', NEW.id,
-        'theme', NEW.current_theme,
-        'player1_choice', NEW.current_choice1,
-        'player2_choice', NEW.current_choice2
-      )::text
-    );
-    RAISE NOTICE 'QStash timer scheduled for room_id: %', NEW.id;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."schedule_gemini_with_qstash"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
@@ -1337,10 +1148,7 @@ CREATE TABLE IF NOT EXISTS "public"."match_record" (
     "move_trophy" integer,
     "result" "text",
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "cancel" boolean,
-    "player1_move_trophy" integer,
-    "player2_move_trophy" integer,
-    "is_underdog" boolean DEFAULT false
+    "cancel" boolean
 );
 
 
@@ -1357,16 +1165,6 @@ CREATE TABLE IF NOT EXISTS "public"."messages" (
 
 
 ALTER TABLE "public"."messages" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_logs" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "user_id" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"()
-);
-
-
-ALTER TABLE "public"."notification_logs" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."prohibited" (
@@ -1388,6 +1186,7 @@ CREATE TABLE IF NOT EXISTS "public"."rooms" (
     "is_matched" boolean DEFAULT false,
     "player1_choice" boolean,
     "player2_choice" boolean,
+    "result" "text",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "current_theme" "text",
@@ -1402,9 +1201,7 @@ CREATE TABLE IF NOT EXISTS "public"."rooms" (
     "password" character varying(10),
     "theme_s" boolean DEFAULT false NOT NULL,
     "player1_go" boolean,
-    "player2_go" boolean,
-    "reason" "text",
-    "winner" character(1)
+    "player2_go" boolean
 );
 
 
@@ -1432,9 +1229,7 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "lose" integer DEFAULT 0,
     "avatar_url" "text",
     "status" boolean DEFAULT true,
-    "created_at" timestamp with time zone DEFAULT "now"(),
-    "fcm_token" "text",
-    "is_notification_enabled" boolean DEFAULT false
+    "created_at" timestamp with time zone DEFAULT "now"()
 );
 
 
@@ -1480,11 +1275,6 @@ ALTER TABLE ONLY "public"."messages"
 
 
 
-ALTER TABLE ONLY "public"."notification_logs"
-    ADD CONSTRAINT "notification_logs_pkey" PRIMARY KEY ("id");
-
-
-
 ALTER TABLE ONLY "public"."prohibited"
     ADD CONSTRAINT "prohibited_pkey" PRIMARY KEY ("id");
 
@@ -1505,7 +1295,7 @@ ALTER TABLE ONLY "public"."users"
 
 
 
-CREATE INDEX "idx_notification_logs_user_id_created_at" ON "public"."notification_logs" USING "btree" ("user_id", "created_at" DESC);
+CREATE INDEX "idx_rooms_result_updated_at" ON "public"."rooms" USING "btree" ("result", "updated_at") WHERE ("result" IS NOT NULL);
 
 
 
@@ -1513,15 +1303,11 @@ CREATE OR REPLACE TRIGGER "prevent_result_update_trigger" BEFORE UPDATE ON "publ
 
 
 
-CREATE OR REPLACE TRIGGER "process_game_result" BEFORE UPDATE OF "reason" ON "public"."rooms" FOR EACH ROW WHEN ((("old"."reason" IS NULL) AND ("new"."reason" IS NOT NULL))) EXECUTE FUNCTION "public"."process_game_result"();
+CREATE OR REPLACE TRIGGER "process_game_result" BEFORE UPDATE OF "result" ON "public"."rooms" FOR EACH ROW WHEN ((("old"."result" IS NULL) AND ("new"."result" IS NOT NULL))) EXECUTE FUNCTION "public"."process_game_result"();
 
 
 
-CREATE OR REPLACE TRIGGER "tr_fcm_token_uniqueness" BEFORE UPDATE OF "fcm_token" ON "public"."users" FOR EACH ROW EXECUTE FUNCTION "public"."handle_fcm_token_uniqueness"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_handle_room_updates_integrated" BEFORE INSERT OR UPDATE ON "public"."rooms" FOR EACH ROW EXECUTE FUNCTION "public"."handle_room_updates_integrated"();
+CREATE OR REPLACE TRIGGER "set_initial_or_update_theme" BEFORE INSERT OR UPDATE ON "public"."rooms" FOR EACH ROW EXECUTE FUNCTION "public"."manage_room_theme"();
 
 
 
@@ -1546,11 +1332,6 @@ ALTER TABLE ONLY "public"."match_record"
 
 ALTER TABLE ONLY "public"."messages"
     ADD CONSTRAINT "messages_user_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "auth"."users"("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_logs"
-    ADD CONSTRAINT "notification_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id");
 
 
 
@@ -1662,9 +1443,6 @@ ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."messages";
 
 
 ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."rooms";
-
-
-
 
 
 
@@ -1867,18 +1645,6 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-
-
-
-
-
-
-GRANT ALL ON FUNCTION "public"."calculate_brawl_trophy_change"("p_my_trophy" integer, "p_opponent_trophy" integer, "p_is_win" boolean) TO "anon";
-GRANT ALL ON FUNCTION "public"."calculate_brawl_trophy_change"("p_my_trophy" integer, "p_opponent_trophy" integer, "p_is_win" boolean) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."calculate_brawl_trophy_change"("p_my_trophy" integer, "p_opponent_trophy" integer, "p_is_win" boolean) TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."calculate_elo_rating"("winner_rate" numeric, "loser_rate" numeric) TO "anon";
 GRANT ALL ON FUNCTION "public"."calculate_elo_rating"("winner_rate" numeric, "loser_rate" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."calculate_elo_rating"("winner_rate" numeric, "loser_rate" numeric) TO "service_role";
@@ -1957,21 +1723,9 @@ GRANT ALL ON FUNCTION "public"."handle_cancellation"("p_user_id" "uuid", "p_room
 
 
 
-GRANT ALL ON FUNCTION "public"."handle_fcm_token_uniqueness"() TO "anon";
-GRANT ALL ON FUNCTION "public"."handle_fcm_token_uniqueness"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."handle_fcm_token_uniqueness"() TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."handle_new_auth_user"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_new_auth_user"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_new_auth_user"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."handle_room_updates_integrated"() TO "anon";
-GRANT ALL ON FUNCTION "public"."handle_room_updates_integrated"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."handle_room_updates_integrated"() TO "service_role";
 
 
 
@@ -2002,12 +1756,6 @@ GRANT ALL ON FUNCTION "public"."prevent_result_update"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."process_game_result"() TO "anon";
 GRANT ALL ON FUNCTION "public"."process_game_result"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."process_game_result"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."schedule_gemini_with_qstash"() TO "anon";
-GRANT ALL ON FUNCTION "public"."schedule_gemini_with_qstash"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."schedule_gemini_with_qstash"() TO "service_role";
 
 
 
@@ -2095,12 +1843,6 @@ GRANT ALL ON TABLE "public"."match_record" TO "service_role";
 GRANT ALL ON TABLE "public"."messages" TO "anon";
 GRANT ALL ON TABLE "public"."messages" TO "authenticated";
 GRANT ALL ON TABLE "public"."messages" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."notification_logs" TO "anon";
-GRANT ALL ON TABLE "public"."notification_logs" TO "authenticated";
-GRANT ALL ON TABLE "public"."notification_logs" TO "service_role";
 
 
 

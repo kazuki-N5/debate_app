@@ -378,7 +378,7 @@ class UserNotifier extends StateNotifier<Users> {
   }) async {
     try {
       final String result = await supabase.rpc(
-        'complete_data_transfer',
+        'complete_data_transfer_v2',
         params: {
           'p_transfer_id': transferId,
           'p_password': password,

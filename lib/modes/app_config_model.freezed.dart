@@ -20,6 +20,8 @@ mixin _$AppConfig {
       throw _privateConstructorUsedError; // 変更: 汎用的な最小サポートバージョン
   String? get latestVersion =>
       throw _privateConstructorUsedError; // 変更: 汎用的な最新バージョン
+  String? get maxVersion =>
+      throw _privateConstructorUsedError; // 追加: 開発用の最大バージョン
   String? get changelog => throw _privateConstructorUsedError; // 共通の変更ログ
   bool? get isMaintenanceMode => throw _privateConstructorUsedError;
   String? get maintenanceMessage => throw _privateConstructorUsedError;
@@ -39,6 +41,7 @@ abstract class $AppConfigCopyWith<$Res> {
   $Res call(
       {String? minVersion,
       String? latestVersion,
+      String? maxVersion,
       String? changelog,
       bool? isMaintenanceMode,
       String? maintenanceMessage});
@@ -61,6 +64,7 @@ class _$AppConfigCopyWithImpl<$Res, $Val extends AppConfig>
   $Res call({
     Object? minVersion = freezed,
     Object? latestVersion = freezed,
+    Object? maxVersion = freezed,
     Object? changelog = freezed,
     Object? isMaintenanceMode = freezed,
     Object? maintenanceMessage = freezed,
@@ -73,6 +77,10 @@ class _$AppConfigCopyWithImpl<$Res, $Val extends AppConfig>
       latestVersion: freezed == latestVersion
           ? _value.latestVersion
           : latestVersion // ignore: cast_nullable_to_non_nullable
+              as String?,
+      maxVersion: freezed == maxVersion
+          ? _value.maxVersion
+          : maxVersion // ignore: cast_nullable_to_non_nullable
               as String?,
       changelog: freezed == changelog
           ? _value.changelog
@@ -101,6 +109,7 @@ abstract class _$$AppConfigImplCopyWith<$Res>
   $Res call(
       {String? minVersion,
       String? latestVersion,
+      String? maxVersion,
       String? changelog,
       bool? isMaintenanceMode,
       String? maintenanceMessage});
@@ -121,6 +130,7 @@ class __$$AppConfigImplCopyWithImpl<$Res>
   $Res call({
     Object? minVersion = freezed,
     Object? latestVersion = freezed,
+    Object? maxVersion = freezed,
     Object? changelog = freezed,
     Object? isMaintenanceMode = freezed,
     Object? maintenanceMessage = freezed,
@@ -133,6 +143,10 @@ class __$$AppConfigImplCopyWithImpl<$Res>
       latestVersion: freezed == latestVersion
           ? _value.latestVersion
           : latestVersion // ignore: cast_nullable_to_non_nullable
+              as String?,
+      maxVersion: freezed == maxVersion
+          ? _value.maxVersion
+          : maxVersion // ignore: cast_nullable_to_non_nullable
               as String?,
       changelog: freezed == changelog
           ? _value.changelog
@@ -156,6 +170,7 @@ class _$AppConfigImpl implements _AppConfig {
   const _$AppConfigImpl(
       {this.minVersion,
       this.latestVersion,
+      this.maxVersion,
       this.changelog,
       this.isMaintenanceMode,
       this.maintenanceMessage});
@@ -167,6 +182,9 @@ class _$AppConfigImpl implements _AppConfig {
   final String? latestVersion;
 // 変更: 汎用的な最新バージョン
   @override
+  final String? maxVersion;
+// 追加: 開発用の最大バージョン
+  @override
   final String? changelog;
 // 共通の変更ログ
   @override
@@ -176,7 +194,7 @@ class _$AppConfigImpl implements _AppConfig {
 
   @override
   String toString() {
-    return 'AppConfig(minVersion: $minVersion, latestVersion: $latestVersion, changelog: $changelog, isMaintenanceMode: $isMaintenanceMode, maintenanceMessage: $maintenanceMessage)';
+    return 'AppConfig(minVersion: $minVersion, latestVersion: $latestVersion, maxVersion: $maxVersion, changelog: $changelog, isMaintenanceMode: $isMaintenanceMode, maintenanceMessage: $maintenanceMessage)';
   }
 
   @override
@@ -188,6 +206,8 @@ class _$AppConfigImpl implements _AppConfig {
                 other.minVersion == minVersion) &&
             (identical(other.latestVersion, latestVersion) ||
                 other.latestVersion == latestVersion) &&
+            (identical(other.maxVersion, maxVersion) ||
+                other.maxVersion == maxVersion) &&
             (identical(other.changelog, changelog) ||
                 other.changelog == changelog) &&
             (identical(other.isMaintenanceMode, isMaintenanceMode) ||
@@ -198,7 +218,7 @@ class _$AppConfigImpl implements _AppConfig {
 
   @override
   int get hashCode => Object.hash(runtimeType, minVersion, latestVersion,
-      changelog, isMaintenanceMode, maintenanceMessage);
+      maxVersion, changelog, isMaintenanceMode, maintenanceMessage);
 
   /// Create a copy of AppConfig
   /// with the given fields replaced by the non-null parameter values.
@@ -213,6 +233,7 @@ abstract class _AppConfig implements AppConfig {
   const factory _AppConfig(
       {final String? minVersion,
       final String? latestVersion,
+      final String? maxVersion,
       final String? changelog,
       final bool? isMaintenanceMode,
       final String? maintenanceMessage}) = _$AppConfigImpl;
@@ -221,6 +242,8 @@ abstract class _AppConfig implements AppConfig {
   String? get minVersion; // 変更: 汎用的な最小サポートバージョン
   @override
   String? get latestVersion; // 変更: 汎用的な最新バージョン
+  @override
+  String? get maxVersion; // 追加: 開発用の最大バージョン
   @override
   String? get changelog; // 共通の変更ログ
   @override

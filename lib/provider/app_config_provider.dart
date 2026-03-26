@@ -34,7 +34,7 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
   Future<String> chackAppVersion() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      return packageInfo.version;
+      return '${packageInfo.version}+${packageInfo.buildNumber}';
     } catch (e) {
       print('AppConfigの取得に失敗しました: $e');
       throw e;
@@ -73,11 +73,15 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
       final thisversion = Version.parse(await chackAppVersion());
       print('今のスマホのバージョン: $thisversion');
       final isMaintenance = app_config!.isMaintenanceMode;
-      Version? latestversion;
-      Version? minversion;
+      final latestversion = Version.parse(app_config.latestVersion!);
+      final minversion = Version.parse(app_config.minVersion!);
+      final maxversion =
+          app_config.maxVersion != null ? Version.parse(app_config.maxVersion!) : null;
 
-      latestversion = Version.parse(app_config.latestVersion!);
-      minversion = Version.parse(app_config.minVersion!);
+      // 開発用などの特別バージョンの場合はnormalとする
+      if (maxversion != null && thisversion == maxversion) {
+        return AppStatus.normal;
+      }
 
       if (thisversion <= minversion) {
         return AppStatus.forceUpdate;

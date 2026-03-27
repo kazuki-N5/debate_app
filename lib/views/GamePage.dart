@@ -25,6 +25,7 @@ class GamePage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final countdown = useState<int?>(null);
     final finish = useState(false);
+    final showFullChoice = useState(false);
     final textControler = useTextEditingController();
     final textFieldFocusNode = useFocusNode();
 
@@ -112,6 +113,10 @@ class GamePage extends HookConsumerWidget {
       //これはフォント確認用にわざと止めているのでエターになってるだけです無視してくださいこのエラーはビルドに関係ないです
       deadline = room.updatedAt!.add(const Duration(seconds: 182));
 
+      countdown.value = 180; // テスト用に固定を表示
+      cantap.value = true; // テスト用：常に降参ボタンを有効化
+
+      
       final DateTime serverTime = await getServerTimeWithRetry();
 
       final clientTime = DateTime.now();
@@ -145,6 +150,7 @@ class GamePage extends HookConsumerWidget {
           router.go('/home');
         }
       });
+      
     }
 
     bool wina = false;
@@ -217,13 +223,9 @@ class GamePage extends HookConsumerWidget {
     useEffect(() {
       print('useEffect: Widget mounted.');
 
-      // Future.microtask を使って、現在のイベントループの最後に処理をスケジュールします。
-      // これにより、ウィジェットのビルドと描画が完了してから少し遅れて実行されます。
       Future.microtask(() {
         print('Future.microtask: Triggering ad loads...');
 
-        // ref.read() を使って Notifier のインスタンスを取得し、メソッドを呼び出します。
-        // read() は状態変化を監視しないため、useEffect や Future コールバック内でも安全です。
         if (isSubscribed == false) {
           ref.read(adNotifierProvider.notifier).loadAd();
           ref.read(mediumRectangleAdProvider.notifier).loadAd();
@@ -232,8 +234,6 @@ class GamePage extends HookConsumerWidget {
         print('Future.microtask: Ad loads triggered.');
       });
 
-      // クリーンアップ関数は不要なので null を返します。
-      // もし何か購読などを設定した場合は、ここで購読解除処理などを記述します。
       return null;
     }, const []);
 
@@ -249,6 +249,7 @@ class GamePage extends HookConsumerWidget {
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
+        showFullChoice.value = false;
       },
       child: Stack(
         children: [
@@ -258,93 +259,87 @@ class GamePage extends HookConsumerWidget {
               elevation: 0,
               backgroundColor: Colors.blue,
               automaticallyImplyLeading: false,
-              title: Row(
+              title: Stack(
                 children: [
-                  // 左に配置する選択テキスト
-                  Expanded(
-                    flex: 1,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 15),
-                      child: Text(
-                        '選択: ${user == room.player1Id ? (room.player1Choice! ? room.choice1 : room.choice2) : (room.player2Choice! ? room.choice1 : room.choice2)}',
-                        style: AppTextStyles.notoSans(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // 中央に配置するタイマー
-                  Expanded(
-                    flex: 1,
-                    child: Center(
-                      child: Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 15, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.timer, // 時計のアイコン
-                              size: 20,
-                              color: countdown.value != null &&
-                                      countdown.value! <= 3
-                                  ? Colors.red
-                                  : Colors.grey[800],
-                            ),
-                            SizedBox(width: 5), // アイコンとテキストの間隔
-                            Text(
-                              countdown.value != null
-                                  ? formatTime(countdown.value!)
-                                  : '-',
+                  Row(
+                    children: [
+                      // 左に配置する選択テキスト
+                      Expanded(
+                        flex: 1,
+                        child: GestureDetector(
+                          onTap: () => showFullChoice.value = true,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 15),
+                            child: Text(
+                              '選択: ${user == room.player1Id ? (room.player1Choice! ? room.choice1 : room.choice2) : (room.player2Choice! ? room.choice1 : room.choice2)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: AppTextStyles.notoSans(
+                                color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: countdown.value != null &&
-                                        countdown.value! <= 3
-                                    ? Colors.red
-                                    : Colors.grey[800],
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  // 右に配置するボタン
-                  Expanded(
-                    flex: 1,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 17),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Opacity(
-                            opacity: cantap.value ? 1.0 : 0.5,
-                            child: IconButton(
-                              icon: const Icon(Icons.door_back_door,
-                                  color: Colors.white),
-                              iconSize: 29,
-                              onPressed: cantap.value
-                                  ? () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => Dialog(),
-                                      );
-                                    }
-                                  : null,
+                      // 中央に配置するタイマー
+                      Expanded(
+                        flex: 1,
+                        child: Center(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 15, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.timer, // 時計のアイコン
+                                  size: 20,
+                                  color: countdown.value != null &&
+                                          countdown.value! <= 3
+                                      ? Colors.red
+                                      : Colors.grey[800],
+                                ),
+                                SizedBox(width: 5), // アイコンとテキストの間隔
+                                Text(
+                                  countdown.value != null
+                                      ? formatTime(countdown.value!)
+                                      : '-',
+                                  style: AppTextStyles.notoSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: countdown.value != null &&
+                                            countdown.value! <= 3
+                                        ? Colors.red
+                                        : Colors.grey[800],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          if (room.player1_finish == true ||
-                              room.player2_finish == true)
-                            Positioned(
-                              top: 3,
+                        ),
+                      ),
+                      // 右に配置するボタン
+                      Expanded(
+                        flex: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 5),
+                          child: Stack(
+                            alignment: Alignment.centerRight,
+                            children: [
+                            Opacity(
+                              opacity: cantap.value ? 1.0 : 0.5,
                               child: IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.door_back_door,
+                                    color: Colors.white),
+                                iconSize: 29,
                                 onPressed: cantap.value
                                     ? () {
                                         showDialog(
@@ -353,17 +348,59 @@ class GamePage extends HookConsumerWidget {
                                         );
                                       }
                                     : null,
-                                icon: FaIcon(
-                                  FontAwesomeIcons.check,
-                                  size: 19,
-                                  color: Colors.red[900],
-                                ),
                               ),
                             ),
-                        ],
+                            if (room.player1_finish == true ||
+                                room.player2_finish == true)
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: cantap.value
+                                      ? () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => Dialog(),
+                                          );
+                                        }
+                                      : null,
+                                  icon: FaIcon(
+                                    FontAwesomeIcons.check,
+                                    size: 19,
+                                    color: Colors.red[900],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                  )
+                  ],
+                ),
+                  if (showFullChoice.value)
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: () => showFullChoice.value = false,
+                        child: Container(
+                          color: Colors.blue,
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(horizontal: 15),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Text(
+                              '選択: ${user == room.player1Id ? (room.player1Choice! ? room.choice1 : room.choice2) : (room.player2Choice! ? room.choice1 : room.choice2)}',
+                              style: AppTextStyles.notoSans(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -452,8 +489,7 @@ class GamePage extends HookConsumerWidget {
                           decoration: const BoxDecoration(
                             color: Colors.white,
                           ),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.fromLTRB(8, 4, 2, 4),
                           child: Row(
                             children: [
                               const SizedBox(width: 8),
@@ -468,6 +504,7 @@ class GamePage extends HookConsumerWidget {
                                   child: TextField(
                                     focusNode: textFieldFocusNode,
                                     controller: textControler,
+                                    maxLength: 50,
                                     textAlignVertical: TextAlignVertical.center,
                                     style: AppTextStyles.notoSans(
                                         color: Colors.black, fontSize: 14),
@@ -475,6 +512,7 @@ class GamePage extends HookConsumerWidget {
                                       isDense: true,
                                       border: InputBorder.none,
                                       hintText: 'レスバしよう',
+                                      counterText: '',
                                       hintStyle: AppTextStyles.notoSans(
                                           color: Colors.grey[400]),
                                       contentPadding:
@@ -488,8 +526,43 @@ class GamePage extends HookConsumerWidget {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 4),
+                              Transform.translate(
+                                offset: const Offset(4, 0),
+                                child: ValueListenableBuilder<TextEditingValue>(
+                                  valueListenable: textControler,
+                                  builder: (context, value, child) {
+                                    final remaining = 50 - value.text.length;
+                                    return Container(
+                                      constraints:
+                                          const BoxConstraints(minWidth: 28),
+                                      alignment: Alignment.center,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[100],
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                            color: Colors.grey[300]!),
+                                      ),
+                                      child: Text(
+                                        '$remaining',
+                                        style: AppTextStyles.notoSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: remaining <= 0
+                                              ? Colors.red
+                                              : Colors.grey[600],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
                               IconButton(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                constraints: const BoxConstraints(),
                                 onPressed: () {
                                   if (textControler.text.trim().isNotEmpty) {
                                     ref.read(chatProvider.notifier).sendMesage(

@@ -6,6 +6,7 @@ import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/provider/other_user.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Homepage_view_model.dart';
@@ -213,6 +214,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     WidgetsBinding.instance.removeObserver(this);
     _offlineTimer?.cancel(); // 追加
     ref.read(opponentOfflineStatusProvider.notifier).state = null;
+    ref.read(otherUserProvider.notifier).clear();
     log('All notifier resources cleaned up.');
   }
 
@@ -231,7 +233,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
         timer.cancel();
         ref.read(opponentOfflineStatusProvider.notifier).state = null;
         log('⌛ タイムアップ。相手が戻らなかったため勝利判定を処理します。');
-        await draw(state, ref.read(currentUserIdProvider)!);
+        await win(state, ref.read(currentUserIdProvider)!);
       }
     });
   }
@@ -461,6 +463,20 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
         }).eq('id', room.roomId!);
         return;
       } catch (e) {}
+    }
+  }
+
+  Future<void> win(MatchingRoom room, String player) async {
+    if (room.winner == null) {
+      final winnerLabel = player == room.player1Id ? 'A' : 'B';
+      try {
+        await supabase.from('rooms_v2').update({
+          'winner': winnerLabel,
+          'reason': '相手が離脱しました',
+        }).eq('id', room.roomId!);
+      } catch (e) {
+        log('win error: $e');
+      }
     }
   }
 

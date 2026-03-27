@@ -35,8 +35,9 @@ class MatchingPage extends HookConsumerWidget {
     final room = ref.watch(matchingRoomProvider);
     // ボタン押下などで使うnotifierはreadで十分
     final roomNotifier = ref.read(matchingRoomProvider.notifier);
-    final bannerAd = ref.watch(bannerAdProvider);
+    final bannerAd = ref.watch(matchingBannerAdProvider);
     final isSubscribe = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
+
     // final go = ref.watch(goProvider);
 
     // マッチング成功時の画面遷移をuseEffectで管理
@@ -141,7 +142,7 @@ class MatchingPage extends HookConsumerWidget {
                   top: false,
                   child: Container(
                     height: AdSize.banner.height.toDouble(),
-                    color: Colors.blue,
+                    color: Colors.transparent,
                   ),
                 ),
           ],
@@ -421,9 +422,12 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
     useEffect(() {
       final otherUserId =
           room.player1Id == userId ? room.player2Id : room.player1Id;
-      if (otherUserId != null &&
-          ref.read(otherUserProvider).id != otherUserId) {
-        log('初期表示時の対戦相手情報取得: $otherUserId');
+      
+      final currentFetchedId = ref.read(otherUserProvider).id;
+      log('【DEBUG】対戦相手情報取得の判定: currentFetchedId=$currentFetchedId, nextOpponentId=$otherUserId');
+      
+      if (otherUserId != null && currentFetchedId != otherUserId) {
+        log('【DEBUG】対戦相手情報の取得を開始します: $otherUserId');
         ref
             .read(otherUserProvider.notifier)
             .fetchOtherUserWithRetry(otherUserId);

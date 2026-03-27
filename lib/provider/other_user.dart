@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
@@ -21,6 +23,7 @@ class OtherUserNotifier extends StateNotifier<Users> {
 
       if (response.isNotEmpty) {
         state = Users.fromMap(response);
+        log('【DEBUG】対戦相手の情報を取得しました: ID=${state.id}, 名前=${state.name}, トロフィー=${state.trophy}');
       }
     } catch (e) {
       rethrow;
@@ -36,5 +39,9 @@ class OtherUserNotifier extends StateNotifier<Users> {
       // ignore: use_build_context_synchronously
       router.go('/home');
     }
+  }
+
+  void clear() {
+    state = Users(id: '', name: '', trophy: 0);
   }
 }

@@ -154,6 +154,7 @@ class FinishPage extends HookConsumerWidget {
         if (isSubscribe == false) {
           // 広告をロード
           ref.read(bannerAdProvider.notifier).loadAd();
+          ref.read(matchingBannerAdProvider.notifier).loadAd();
         }
         // ロード済みの広告を表示 (Medium Rectangle Ad はビルド内で watch しているのでここで特別な処理は不要)
       });

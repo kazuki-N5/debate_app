@@ -58,6 +58,7 @@ class InAppPurchaseManager with ChangeNotifier {
       await updatePurchaseStatus(customerInfo);
       if (isSubscribed == false) {
         _ref.read(bannerAdProvider.notifier).loadAd();
+        _ref.read(matchingBannerAdProvider.notifier).loadAd();
       }
     } catch (e) {
       print("initInAppPurchase error caught! ${e.toString()}");

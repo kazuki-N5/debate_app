@@ -51,3 +51,8 @@ class BannerAdNotifier extends StateNotifier<BannerAd?> {
 final bannerAdProvider = StateNotifierProvider<BannerAdNotifier, BannerAd?>(
   (ref) => BannerAdNotifier(),
 );
+
+// MatchingPage 専用の広告プロバイダー（HomePage との競合を避けるため）
+final matchingBannerAdProvider = StateNotifierProvider<BannerAdNotifier, BannerAd?>(
+  (ref) => BannerAdNotifier(),
+);

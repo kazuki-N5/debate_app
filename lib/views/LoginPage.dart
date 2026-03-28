@@ -119,7 +119,7 @@ class LoginPage extends HookConsumerWidget {
           width: 230,
           height: 230,
           child: Image(
-            image: AssetImage('assets/images/debateimage.png'),
+            image: AssetImage('assets/images/debateimage_v2.png'),
           ),
         ),
       ),

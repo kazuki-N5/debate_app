@@ -1,10 +1,10 @@
-import 'package:debate_project/provider/app_config_service.dart';
+// import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:version/version.dart';
+// import 'package:version/version.dart';
 
 enum AppStatus {
   normal,
@@ -66,6 +66,8 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
   }
 
   Future<AppStatus> loadVersion() async {
+    return AppStatus.normal;
+    /*
     final appconfignotifier = _ref.read(appConfigProvider.notifier);
 
     try {
@@ -75,8 +77,9 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
       final isMaintenance = app_config!.isMaintenanceMode;
       final latestversion = Version.parse(app_config.latestVersion!);
       final minversion = Version.parse(app_config.minVersion!);
-      final maxversion =
-          app_config.maxVersion != null ? Version.parse(app_config.maxVersion!) : null;
+      final maxversion = app_config.maxVersion != null
+          ? Version.parse(app_config.maxVersion!)
+          : null;
 
       // 開発用などの特別バージョンの場合はnormalとする
       if (maxversion != null && thisversion == maxversion) {
@@ -97,5 +100,6 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
     } catch (e) {
       return AppStatus.error;
     }
+    */
   }
 }

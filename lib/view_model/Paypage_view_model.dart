@@ -19,25 +19,31 @@ class InAppPurchaseManager with ChangeNotifier {
   bool isSubscribed = false;
   Offerings? offerings; // 初期値はnullの可能性があるので?をつける
 
-  // ★変更点1: init処理をシンプルにする
-  Future<void> initInAppPurchase() async {
-    try {
-      // デバッグログは開発中に便利
-      //await Purchases.setDebugLogsEnabled(true);
+  bool _isConfigured = false;
 
-      // プラットフォームごとの設定
-      late PurchasesConfiguration configuration;
-      if (Platform.isAndroid) {
-        configuration = PurchasesConfiguration('Android用のRevenuecat APIキー');
-      } else if (Platform.isIOS) {
-        await dotenv.load(fileName: '.env');
-        configuration =
-            PurchasesConfiguration(dotenv.get('REVENUECAT_APPLE'));
+  // ★変更点1: init処理を最新版向けにリファクタリング
+  Future<void> initInAppPurchase() async {
+    if (_isConfigured) return; // 二重初期化を防ぐ
+
+    try {
+      // 開発時は詳細なログを出すように設定
+      if (kDebugMode) {
+        await Purchases.setLogLevel(LogLevel.debug);
       }
 
-      // ★重要：logInを使わずにconfigureするだけにする
-      await Purchases.configure(configuration);
+      await dotenv.load(fileName: '.env');
+      
+      // プラットフォームごとの設定
+      final String apiKey = Platform.isAndroid 
+          ? dotenv.get('REVENUECAT_GOOGLE') 
+          : dotenv.get('REVENUECAT_APPLE');
 
+      final configuration = PurchasesConfiguration(apiKey)
+        ..appUserID = null // 匿名ユーザー（後で認証システムと紐付けも可能）
+        ..purchasesAreCompletedBy = const PurchasesAreCompletedByRevenueCat();
+
+      await Purchases.configure(configuration);
+      _isConfigured = true;
 
       // Offeringsを取得
       offerings = await Purchases.getOfferings();

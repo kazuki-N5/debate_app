@@ -1,10 +1,11 @@
-// import 'package:debate_project/provider/app_config_service.dart';
+import 'dart:developer';
+import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-// import 'package:version/version.dart';
+import 'package:version/version.dart';
 
 enum AppStatus {
   normal,
@@ -66,40 +67,58 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
   }
 
   Future<AppStatus> loadVersion() async {
-    return AppStatus.normal;
-    /*
-    final appconfignotifier = _ref.read(appConfigProvider.notifier);
+    final appConfigNotifier = _ref.read(appConfigProvider.notifier);
 
     try {
-      final app_config = await appconfignotifier.fetchAppConfig();
-      final thisversion = Version.parse(await chackAppVersion());
-      print('今のスマホのバージョン: $thisversion');
-      final isMaintenance = app_config!.isMaintenanceMode;
-      final latestversion = Version.parse(app_config.latestVersion!);
-      final minversion = Version.parse(app_config.minVersion!);
-      final maxversion = app_config.maxVersion != null
-          ? Version.parse(app_config.maxVersion!)
-          : null;
-
-      // 開発用などの特別バージョンの場合はnormalとする
-      if (maxversion != null && thisversion == maxversion) {
-        return AppStatus.normal;
-      }
-
-      if (thisversion <= minversion) {
-        return AppStatus.forceUpdate;
-      } else if (isMaintenance == true) {
-        return AppStatus.maintenance;
-      } else if (minversion < thisversion && thisversion < latestversion) {
-        return AppStatus.optionalUpdate;
-      } else if (latestversion == thisversion) {
-        return AppStatus.normal;
-      } else {
+      final appConfig = await appConfigNotifier.fetchAppConfig();
+      if (appConfig == null) {
+        log('AppConfigがnullのためエラーを返します');
         return AppStatus.error;
       }
+
+      final thisVersion = Version.parse(await chackAppVersion());
+      log('現在のアプリバージョン: $thisVersion');
+
+      // 1. maxversionが今のバージョンと完全一致だったらノーマル（開発用などでバイパスするため）
+      if (appConfig.maxVersion != null && appConfig.maxVersion!.isNotEmpty) {
+        final maxVersion = Version.parse(appConfig.maxVersion!);
+        if (thisVersion == maxVersion) {
+          log('maxVersion一致により開発用バイパス(normal)として判定されました');
+          return AppStatus.normal;
+        }
+      }
+
+      // 2. メンテナンス
+      if (appConfig.isMaintenanceMode == true) {
+        log('メンテナンスモードとして判定されました');
+        return AppStatus.maintenance;
+      }
+
+      // 3. 矯正アップデート (現在のバージョンが最小サポートバージョン未満)
+      if (appConfig.minVersion != null && appConfig.minVersion!.isNotEmpty) {
+        final minVersion = Version.parse(appConfig.minVersion!);
+        if (thisVersion < minVersion) {
+          log('最小サポートバージョン（$minVersion）未満のため、強制アップデートが必要です');
+          return AppStatus.forceUpdate;
+        }
+      }
+
+      // 4. オプショナルアップデート (現在のバージョンが最新バージョン未満)
+      if (appConfig.latestVersion != null &&
+          appConfig.latestVersion!.isNotEmpty) {
+        final latestVersion = Version.parse(appConfig.latestVersion!);
+        if (thisVersion < latestVersion) {
+          log('最新バージョン（$latestVersion）が利用可能なため、オプショナルアップデートを推奨します');
+          return AppStatus.optionalUpdate;
+        }
+      }
+
+      // 5. ノーマル
+      log('正常（最新バージョン）として判定されました');
+      return AppStatus.normal;
     } catch (e) {
+      log('バージョンチェック中にエラーが発生しました: $e');
       return AppStatus.error;
     }
-    */
   }
 }

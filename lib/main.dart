@@ -12,6 +12,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/provider/notification_service.dart';
 
 final scaffoldMessengerKeyProvider = Provider((ref) => GlobalKey<ScaffoldMessengerState>());
 
@@ -34,7 +35,11 @@ void main() async {
     anonKey: dotenv.get('P_VAR_ANONKEY'), // .envのanonキーを取得.
   );
 
-  runApp(ProviderScope(child: MyApp()));
+  // 通知プロバイダーのコンテナを作成 (ProviderScopeなしの状態でもアクセス可能にするため。またはProviderScope内でrefを利用)
+  final container = ProviderContainer();
+  await container.read(notificationServiceProvider).initialize();
+
+  runApp(UncontrolledProviderScope(container: container, child: MyApp()));
 }
 
 class MyApp extends ConsumerWidget {

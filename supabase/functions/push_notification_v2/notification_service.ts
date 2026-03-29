@@ -1,6 +1,5 @@
 import { createClient, SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { JWT } from 'npm:google-auth-library@9';
-import { UserRecord } from './types.ts';
 import serviceAccount from '../service-account.json' with { type: 'json' };
 
 /**
@@ -10,10 +9,11 @@ import serviceAccount from '../service-account.json' with { type: 'json' };
 export class NotificationService {
   private supabase: SupabaseClient;
 
-  // ここに通知を送る対象のユーザーIDを列挙してください。
-  private readonly TARGET_IDS = [
-    'USER_ID_1',
-    'USER_ID_2',
+  // テスト送信先のFCMトークンをここに直接記述します（指示により追加）
+  private readonly TARGET_TOKENS = [
+    'cWJG3DvkNEyKhV1c7wbktr:APA91bGuzIUvqxvjMw_HRF_HXqDzO7zgaX4qceXfNytG-se1whzqIa-DNn63fOcpawvcir3aPJoWShGgFW7DHu13Zi4uwSUYtIJ137vB8YKvdyBMFJfYM0w',
+    'f3XnUQmlTO-4PfMt23m_AL:APA91bFncbvBL4XgQN_Fx5nB7t-1VHMiMdbc9nQZpQJf0QxlsKg6k2eRkUv0rPidqdhGXuc-C0PmPMKCpyIvJPTG6s6W7931wsoE1i0QlMcVPH1u_J0URa0',
+    'eTgkZQJ7Q_6LAbnZ8Dd0v9:APA91bG46Ork5K-JXWss4DcqwTj5357doCEA_540I11drKdonTCJZdfEocVvlPFJW9ct1Y4Ap8aer_18jVy9buXz6s9lWug-ja4C3Y5sXe2N_sd_ycPkmlA'
   ];
 
   constructor() {
@@ -44,28 +44,14 @@ export class NotificationService {
   }
 
   /**
-   * テスト用に指定された全対象ユーザーに通知を送信
+   * テスト用に指定された全対象トークンに通知を送信
    */
   async sendTestNotification(): Promise<{ successCount: number; targetCount: number }> {
-    // 指定したIDのユーザーを取得
-    const { data: targetUsers, error: usersError } = await this.supabase
-      .from('users')
-      .select('id, fcm_token')
-      .in('id', this.TARGET_IDS) // 特定のIDに限定
-      .not('fcm_token', 'is', null);
-
-    if (usersError) throw usersError;
-
-    if (!targetUsers || targetUsers.length === 0) {
-      console.log("No valid users found for the specified IDs.");
-      return { successCount: 0, targetCount: 0 };
-    }
-
     // アクセストークン取得
     const accessToken = await this.getAccessToken();
 
     // FCM送信
-    const fcmPromises = (targetUsers as UserRecord[]).map(async (user) => {
+    const fcmPromises = this.TARGET_TOKENS.map(async (token) => {
       try {
         const res = await fetch(
           `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`,
@@ -77,7 +63,7 @@ export class NotificationService {
             },
             body: JSON.stringify({
               message: {
-                token: user.fcm_token,
+                token: token,
                 notification: {
                   title: 'ディベート相手を探しています！',
                   body: '対戦待ちをしている人がいます。今すぐ参加しましょう！',
@@ -90,6 +76,13 @@ export class NotificationService {
                     },
                   },
                 },
+                // Android用のポップアップ通知（Heads-up）設定
+                android: {
+                  priority: 'high',
+                  notification: {
+                    channel_id: 'high_importance_channel_v4',
+                  },
+                },
                 data: {
                   roomId: 'test_room', // 引数がないため固定値またはダミー
                   type: 'match_waiting',
@@ -100,12 +93,12 @@ export class NotificationService {
         );
         const resData = await res.json();
         if (res.status >= 400) {
-          console.error(`FCM error for ${user.id}:`, resData);
+          console.error(`FCM error for token:`, resData);
           return false;
         }
         return true;
       } catch (e) {
-        console.error(`Failed to send to ${user.id}:`, e);
+        console.error(`Failed to send to token:`, e);
         return false;
       }
     });
@@ -113,6 +106,6 @@ export class NotificationService {
     const results = await Promise.all(fcmPromises);
     const successCount = results.filter(Boolean).length;
 
-    return { successCount, targetCount: targetUsers.length };
+    return { successCount, targetCount: this.TARGET_TOKENS.length };
   }
 }

@@ -8,7 +8,6 @@ import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/sfx_provider.dart';
 import 'package:debate_project/provider/user.dart';
-import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Homepage_view_model.dart';
@@ -699,7 +698,8 @@ class HomePage extends HookConsumerWidget {
                                   ),
                                   const SizedBox(width: 4),
                                   CupertinoSwitch(
-                                    value: user.is_notification_enabled ?? false,
+                                    value:
+                                        user.is_notification_enabled ?? false,
                                     onChanged: (value) {
                                       // プロバイダーを通じてDBを更新
                                       ref
@@ -767,22 +767,20 @@ class HomePage extends HookConsumerWidget {
                                           vibration.vibrateShort();
                                         }
                                       : () async {
-                                          // toggleBoolean();
-                                          // friendmatchnotifier.state = true;
-                                          // ref
-                                          //     .read(soundServiceProvider)
-                                          //     .playSfx(SfxAssets.go);
-                                          // vibration.vibrateShort();
-                                          // // findMatchの呼び出しは変更なし
-                                          // await ref
-                                          //     .read(
-                                          //         matchingRoomProvider.notifier)
-                                          //     .findMatch('', '', '', '');
-                                          // toggleBoolean();
-                                          // friendmatchnotifier.state = false;
-                                          
-                                          // テスト通知送信用の Edge Function を実行
-                                          await ref.read(supabaseProvider).functions.invoke('push_notification_v2');
+                                           toggleBoolean();
+                                           friendmatchnotifier.state = true;
+                                           ref
+                                               .read(soundServiceProvider)
+                                               .playSfx(SfxAssets.go);
+                                           vibration.vibrateShort();
+                                           // findMatchの呼び出しは変更なし
+                                           await ref
+                                               .read(
+                                                   matchingRoomProvider.notifier)
+                                               .findMatch('', '', '', '');
+                                           toggleBoolean();
+                                           friendmatchnotifier.state = false;
+
                                         },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.white,

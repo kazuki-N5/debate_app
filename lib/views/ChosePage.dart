@@ -71,6 +71,7 @@ class ChosePage extends HookConsumerWidget {
       timerRef.value?.cancel();
       DateTime deadline;
 
+      log('【DEBUG】ChosePage: resetTimer initiated');
       final DateTime serverTime = await getServerTimeWithRetry();
 
       final clientTime = DateTime.now();
@@ -80,11 +81,13 @@ class ChosePage extends HookConsumerWidget {
       deadline = room.updatedAt!.add(const Duration(seconds: 9));
       print('また始まってる');
       bool hasChoiceBeenUpdated = false;
+      log('【DEBUG】ChosePage: Timer start. deadline: $deadline');
       timerRef.value = Timer.periodic(Duration(seconds: 1), (timer) async {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
         if (diff >= 0) {
           secondsLeft.value = diff;
+          log('【DEBUG】ChosePage: Timer tick, secondsLeft: ${secondsLeft.value}, diff: $diff');
         }
 
         if (diff < 0) {
@@ -137,7 +140,11 @@ class ChosePage extends HookConsumerWidget {
 
     useEffect(() {
       return () {
+        log('【DEBUG】ChosePage: unmounted. Cancelling timer.');
         timerRef.value?.cancel();
+        if (timerRef.value == null) {
+          log('【DEBUG】ChosePage: timerRef.value was null at unmount!');
+        }
       };
     }, []);
 

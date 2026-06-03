@@ -83,9 +83,10 @@ final matchRecordsProvider =
         }
       }
       
-      final userChoice = (currentUserId == player1Id)
+      final String choiceInDb = (currentUserId == player1Id)
           ? player1Choice
           : (currentUserId == player2Id ? player2Choice : 'N/A');
+      final userChoice = choiceInDb.isEmpty ? '未選択' : choiceInDb;
       
       if (cancel) {
         if (currentUserId == winnerId) {

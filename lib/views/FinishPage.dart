@@ -34,7 +34,8 @@ class FinishPage extends HookConsumerWidget {
     final roomState = useState(ref.read(matchingRoomProvider));
     final room = roomState.value;
     final myuser = ref.watch(userProvider);
-    final otheruser = ref.watch(otherUserProvider);
+    final otheruserState = useState(ref.read(otherUserProvider));
+    final otheruser = otheruserState.value;
     final user = ref.read(currentUserIdProvider);
     final usernotifier = ref.watch(userProvider.notifier);
     final roomnotifier = ref.read(matchingRoomProvider.notifier);

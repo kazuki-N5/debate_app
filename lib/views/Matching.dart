@@ -190,6 +190,7 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
     final secondsLeft = useState<int?>(null);
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
     final isButtonPressed = useState(false);
+    final hasAutoGoCalled = useState(false); // 自動準備完了の連投防止フラグを追加
     final usernotifier = ref.read(userProvider.notifier);
     final matchErrorService = ref.read(matchErrorServiceProvider);
     // AnimationControllerをフックで初期化
@@ -438,6 +439,7 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
     useEffect(() {
       // 内部で非同期関数を定義して実行する
       Future<void> startTimer() async {
+        log('【DEBUG】Matching: startTimer initiated');
         // --- 既存のresetTimerのロジックをここに移動 ---
         Future<DateTime> getServerTime() async {
           final response = await supabase.rpc('get_server_time');
@@ -472,12 +474,13 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
 
         log('タイマーを開始します。');
 
+        log('【DEBUG】Matching: Timer periodic start. deadline: $deadline');
         timerRef.value =
             Timer.periodic(const Duration(seconds: 1), (timer) async {
           final estimatedServerTime = DateTime.now().add(timeOffset);
           final diff = deadline.difference(estimatedServerTime).inSeconds;
 
-          log(secondsLeft.value.toString());
+          log('【DEBUG】Matching: Timer tick, secondsLeft: ${secondsLeft.value}, diff: $diff');
           if (diff >= 0) {
             secondsLeft.value = diff;
           } else {
@@ -513,7 +516,8 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
               router.go('/home');
             }
           }
-          if (diff <= -0.6) {
+          if (diff <= -0.6 && !hasAutoGoCalled.value) { // 1回だけ送信するようにフラグをチェック
+            hasAutoGoCalled.value = true; // 送信済みフラグを立てる
             try {
               // .rpc() を使ってデータベース関数を呼び出す
               await roomnotifier.updategochose(
@@ -537,8 +541,11 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
       // 2. クリーンアップ関数を返す
       //    このウィジェットが破棄されるときにタイマーをキャンセルする
       return () {
-        print("BattleTransitionScreen2 is unmounted. Cancelling timer.");
+        log('【DEBUG】Matching: BattleTransitionScreen2 is unmounted. Cancelling timer.');
         timerRef.value?.cancel();
+        if (timerRef.value == null) {
+          log('【DEBUG】Matching: timerRef.value was null at unmount!');
+        }
       };
     }, []);
     final Users userState = ref.watch(userProvider);

@@ -178,14 +178,10 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
   }
 
   Future delete() async {
+    log('【DEBUG】MatchingRoomNotifier: delete() called. Performing cleanup...');
     hasNavigatedToChose = false;
     hasgotomatching = false;
     hasgotochose = false;
-    // Future.microtask(() {
-    //   ref.read(gochoseProvider.notifier).state = false;
-    //   ref.read(splashProvider.notifier).state = false;
-    //   ref.read(goProvider.notifier).state = false;
-    // });
     isdisposed = false;
     hassplash = false;
     _offlineTimer?.cancel(); // オフラインタイマーの解除

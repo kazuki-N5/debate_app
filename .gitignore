@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Secrets (Excludes signature keys and service accounts)
+key.jks
+supabase/functions/service-account.json

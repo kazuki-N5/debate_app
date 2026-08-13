@@ -74,6 +74,9 @@ class UserNotifier extends StateNotifier<Users> {
       }
     } catch (e) {
       print('signinandname でエラーが発生しました: $e');
+      // ローカルDBがリセットされてユーザーが存在しない場合などのためのフォールバック
+      print('セッションをクリアして再試行を促します...');
+      await supabase.auth.signOut();
       throw e;
     }
   }

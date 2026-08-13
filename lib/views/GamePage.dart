@@ -109,14 +109,17 @@ class GamePage extends HookConsumerWidget {
     final gametimer = useState<Timer?>(null);
     final finishtimer = useState<Timer?>(null);
 
-    Future<void> countTime() async {
-      //これはフォント確認用にわざと止めているのでエターになってるだけです無視してくださいこのエラーはビルドに関係ないです
-      deadline = room.updatedAt!.add(const Duration(seconds: 182));
+    // 試合の制限時間（秒）: 10分 (600秒) - この変数を変更するだけで試合時間全体の設定が切り替わります
+    const int matchDurationSeconds = 600;
 
-      countdown.value = 180; // テスト用に固定を表示
+    Future<void> countTime() async {
+      // 試合制限時間（秒）に基づいて終了期限を計算（通信ラグを考慮して+2秒のバッファ）
+      deadline = room.updatedAt!.add(const Duration(seconds: matchDurationSeconds + 2));
+
+      countdown.value = matchDurationSeconds; // 初期カウントダウン表示
       cantap.value = true; // テスト用：常に降参ボタンを有効化
 
-      
+
       final DateTime serverTime = await getServerTimeWithRetry();
 
       final clientTime = DateTime.now();
@@ -126,7 +129,8 @@ class GamePage extends HookConsumerWidget {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
 
-        if (diff < 165) {
+        // 試合開始から15秒経過後に降参・判定ボタンを有効化
+        if (diff < (matchDurationSeconds - 15)) {
           if (cantap.value == false) {
             cantap.value = true;
           }
@@ -150,7 +154,7 @@ class GamePage extends HookConsumerWidget {
           router.go('/home');
         }
       });
-      
+
     }
 
     bool wina = false;

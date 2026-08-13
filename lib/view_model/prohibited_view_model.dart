@@ -105,35 +105,23 @@ class MessageBubble extends HookConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
-      child: Column(
+      child: Row(
+        crossAxisAlignment: isUserMessage
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        mainAxisAlignment: isUserMessage
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: isUserMessage
-                  ? MainAxisAlignment.end
-                  : MainAxisAlignment.start,
-              children: [
-                if (!isUserMessage) ...[
-                  SizedBox(
-                    height: double.infinity,
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: showAvatar
-                          ? _buildAvatar()
-                          : const SizedBox(width: 32),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                if (isUserMessage) _buildStatus(),
-                const SizedBox(width: 4),
-                _buildMessageBubble(context, ref, anchorKey),
-                const SizedBox(width: 4),
-                if (!isUserMessage) _buildStatus(),
-              ],
-            ),
-          ),
+          if (!isUserMessage) ...[
+            showAvatar ? _buildAvatar() : const SizedBox(width: 32),
+            const SizedBox(width: 8),
+          ],
+          if (isUserMessage) ...[
+            _buildStatus(),
+            const SizedBox(width: 4),
+          ],
+          _buildMessageBubble(context, ref, anchorKey),
         ],
       ),
     );

@@ -73,8 +73,8 @@ Deno.serve(async (req) => {
     }).join("\n");
 
     // 4. DeepSeek API 呼び出し
-    const apiKey = Deno.env.get("DEEPSEEK_API_KEY") || "***REMOVED***";
-    if (!apiKey) throw new Error("DEEPSEEK_API_KEY is not defined");
+    const apiKey = Deno.env.get("TEST_DEEPSEEK_API_KEY");
+    if (!apiKey) throw new Error("TEST_DEEPSEEK_API_KEY is not defined");
 
     console.log("Calling DeepSeek API for room:", room_id);
     const userPrompt =

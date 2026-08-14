@@ -1,1 +1,0 @@
-ALTER TABLE public.users ADD COLUMN is_notification_enabled boolean DEFAULT false;

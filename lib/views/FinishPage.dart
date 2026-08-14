@@ -1,6 +1,7 @@
 import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:debate_project/adsence/ad_mbanner_provider.dart';
 import 'package:debate_project/adsence/ad_provider.dart'; // adNotifierProvider がここにあると仮定
+import 'package:debate_project/modes/debate_scores.dart';
 import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
@@ -14,6 +15,7 @@ import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/utils/rating_systems/brawl_stars_rating.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
+import 'package:debate_project/widgets/radar_chart_view.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
@@ -209,6 +211,12 @@ class FinishPage extends HookConsumerWidget {
     final reasonText = formatResult(room, myuser, otheruser);
     final resultText = getResultText(room, user!);
 
+    // スコア情報の取得
+    final isPlayer1 = room.player1Id == user;
+    final scores = room.scores;
+    final myScore = scores?.getMyScore(isPlayer1) ?? const PlayerScore();
+    final opponentScore = scores?.getOpponentScore(isPlayer1);
+
     // ポイント計算ロジックを useMemoized で管理（データ変更時に自動再計算）
     final ratingDetail = useMemoized(() {
       final winner = room.winner;
@@ -302,6 +310,10 @@ class FinishPage extends HookConsumerWidget {
                         : null,
                     reason: reasonText,
                     isUnderdog: isUnderdogVal,
+                    myScore: myScore,
+                    opponentScore: opponentScore,
+                    myName: myuser.name ?? 'あなた',
+                    opponentName: otheruser.name ?? '対戦相手',
                   ),
                 ),
                 // --- ここまで ---
@@ -521,6 +533,14 @@ class FinishPage extends HookConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Column(
                       children: [
+                        // レーダーチャート＆論理能力%表示
+                        RadarChartView(
+                          myScore: myScore,
+                          opponentScore: opponentScore,
+                          myName: myuser.name ?? 'あなた',
+                          opponentName: otheruser.name ?? '対戦相手',
+                        ),
+                        const SizedBox(height: 16),
                         // 勝敗の理由
                         Container(
                           width: double.infinity,
@@ -697,6 +717,10 @@ class _ShareableResultCard extends StatelessWidget {
     this.bonus,
     required this.reason,
     this.isUnderdog = false,
+    required this.myScore,
+    this.opponentScore,
+    this.myName = 'あなた',
+    this.opponentName,
   }) : super(key: key);
 
   final String result;
@@ -704,6 +728,10 @@ class _ShareableResultCard extends StatelessWidget {
   final String? bonus;
   final String reason;
   final bool isUnderdog;
+  final PlayerScore myScore;
+  final PlayerScore? opponentScore;
+  final String myName;
+  final String? opponentName;
 
   @override
   Widget build(BuildContext context) {
@@ -856,7 +884,16 @@ class _ShareableResultCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 12),
+          // レーダーチャート (静止画キャプチャ用)
+          RadarChartView(
+            myScore: myScore,
+            opponentScore: opponentScore,
+            myName: myName,
+            opponentName: opponentName,
+            isStatic: true,
+          ),
+          const SizedBox(height: 12),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),

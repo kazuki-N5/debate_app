@@ -1,9 +1,4 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import {
-  FunctionCallingMode,
-  GoogleGenerativeAI,
-  SchemaType,
-} from "https://esm.sh/@google/generative-ai@0.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 // 1. CORS設定（Flutterアプリからの呼び出しに必須）
@@ -77,58 +72,101 @@ Deno.serve(async (req) => {
       return `${label}: ${m.content}`;
     }).join("\n");
 
-    // 4. Gemini API 呼び出し
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) throw new Error("GEMINI_API_KEY is not defined");
+    // 4. DeepSeek API 呼び出し
+    const apiKey = Deno.env.get("DEEPSEEK_API_KEY") || "sk-bd1aabc030804428acdc91a9f85b8507";
+    if (!apiKey) throw new Error("DEEPSEEK_API_KEY is not defined");
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      tools: [{
-        functionDeclarations: [{
-          name: "submit_debate_judgment",
-          description:
-            "ディベートの勝者を判定し、理由とともに結果を提出します。",
-          parameters: {
-            type: SchemaType.OBJECT,
-            properties: {
-              winner: { type: SchemaType.STRING, enum: ["A", "B"] },
-              reason: { type: SchemaType.STRING },
-            },
-            required: ["winner", "reason"],
-          },
-        }],
-      }],
-      toolConfig: {
-        functionCallingConfig: {
-          mode: FunctionCallingMode.ANY,
-          allowedFunctionNames: ["submit_debate_judgment"],
-        },
-      },
-    });
-
-    console.log("Calling Gemini for room:", room_id);
-    const prompt =
+    console.log("Calling DeepSeek API for room:", room_id);
+    const userPrompt =
       `テーマ: ${theme}\nAの立場: ${player1_choice}\nBの立場: ${player2_choice}\n\n[チャットログ]\n${formattedChat}`;
 
-    // プロンプト文をそのままログに表示する
-    console.log("==== Gemini Prompt ====");
-    console.log(prompt);
-    console.log("=======================");
+    console.log("==== DeepSeek Prompt ====");
+    console.log(userPrompt);
+    console.log("=========================");
 
-    const result = await model.generateContent(prompt);
-    const call = result.response.candidates?.[0]?.content?.parts?.[0]
-      ?.functionCall;
+    const systemPrompt = `あなたはディベートの厳正な審判です。議論の内容を論理的に評価し、勝利した立場(AまたはB)、勝敗の理由、および両プレイヤーの5項目能力スコア（0〜100点）を厳正に判定してください。
 
-    if (!call) throw new Error("AI did not return a function call judgment.");
+【評価項目】
+1. logic: 論理性（主張の筋道、根拠の妥当性）
+2. persuasion: 説得力（表現力、具体例、説得度）
+3. rebuttal: 反論力（相手の弱点を突く鋭さ）
+4. structure: 構成力（展開のわかりやすさ、テンポ）
+5. manner: マナー（冷静さ、品格、ルール遵守）
 
-    const { winner, reason } = call.args as { winner: string; reason: string };
-    console.log(`AI judgment: winner=${winner}`);
+必ず以下のJSONフォーマット形式のみで返答してください。余計なマークダウン装飾(例: \`\`\`json)は一切含めないでください。
+{
+  "winner": "A",
+  "reason": "勝敗の理由説明",
+  "scores": {
+    "player_a": {
+      "logic": 85,
+      "persuasion": 90,
+      "rebuttal": 80,
+      "structure": 75,
+      "manner": 95
+    },
+    "player_b": {
+      "logic": 70,
+      "persuasion": 75,
+      "rebuttal": 65,
+      "structure": 80,
+      "manner": 90
+    }
+  }
+}`;
+
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: userPrompt,
+          },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`DeepSeek API Error (${response.status}): ${errText}`);
+    }
+
+    const resJson = await response.json();
+    const content = resJson.choices?.[0]?.message?.content;
+    if (!content) throw new Error("DeepSeek API returned empty content.");
+
+    let winner = "C";
+    let reason = "エラーが発生しました";
+    let scores: Record<string, unknown> | null = null;
+
+    try {
+      const parsed = JSON.parse(content);
+      winner = parsed.winner === "A" || parsed.winner === "B" ? parsed.winner : "A";
+      reason = parsed.reason || "判定完了";
+      scores = parsed.scores || null;
+    } catch (_e) {
+      console.error("Failed to parse DeepSeek JSON response:", content);
+      throw new Error("JSON parse error from DeepSeek response");
+    }
+
+    console.log(`DeepSeek judgment: winner=${winner}, scores=`, scores);
 
     // 5. DB保存
     const { error: updateError } = await supabase
       .from("rooms_v2")
-      .update({ winner, reason })
+      .update({ winner, reason, scores })
       .eq("id", room_id);
 
     if (updateError) {
@@ -151,12 +189,11 @@ Deno.serve(async (req) => {
       throw updateError;
     }
 
-    return new Response(JSON.stringify({ success: true, winner, reason }), {
+    return new Response(JSON.stringify({ success: true, winner, reason, scores }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (err) {
-    // Supabase由来のエラーか標準Errorかに関わらず生のエラー内容も出力する
     console.error("Critical Function Error Details:", err);
     console.error("Stringified Error:", JSON.stringify(err));
 
@@ -175,7 +212,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 【追加】Geminiの応答失敗やその他のエラー時に "C: エラーが発生しました" をDBに記録
+    // エラー時に "C: エラーが発生しました" をDBに記録
     if (room_id) {
       try {
         const supabase = createClient(
@@ -189,7 +226,6 @@ Deno.serve(async (req) => {
           .eq("id", room_id);
       } catch (dbErr) {
         console.error("Failed to record error state to DB:", dbErr);
-        // ここでの失敗はさらに上位のcatchには回さずログのみ
       }
     }
 

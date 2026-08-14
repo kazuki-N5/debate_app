@@ -1,3 +1,4 @@
+import 'package:debate_project/modes/debate_scores.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'mathing.freezed.dart';
@@ -27,9 +28,19 @@ class MatchingRoom with _$MatchingRoom {
     String? choice1,
     String? choice2,
     String? password,
+    MatchScores? scores,
   }) = _MatchingRoom;
 
   factory MatchingRoom.fromMap(Map<String, dynamic> map) {
+    MatchScores? parsedScores;
+    if (map['scores'] != null) {
+      if (map['scores'] is Map<String, dynamic>) {
+        parsedScores = MatchScores.fromMap(map['scores'] as Map<String, dynamic>);
+      } else if (map['scores'] is String) {
+        parsedScores = MatchScores.fromJsonString(map['scores'] as String);
+      }
+    }
+
     return MatchingRoom(
       roomId: map['id']?.toString(),
       player1Id: map['player1_id']?.toString(),
@@ -60,6 +71,7 @@ class MatchingRoom with _$MatchingRoom {
       choice1: map['current_choice1']?.toString(),
       choice2: map['current_choice2']?.toString(),
       password: map['password']?.toString(),
+      scores: parsedScores,
     );
   }
 }

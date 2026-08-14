@@ -47,3 +47,6 @@ app.*.map.json
 # Secrets (Excludes signature keys and service accounts)
 key.jks
 supabase/functions/service-account.json
+
+# Flutter Demon user preferences (not tracked)
+.fdemon/settings.local.toml

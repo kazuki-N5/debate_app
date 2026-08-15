@@ -13,7 +13,10 @@ import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Homepage_view_model.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
+import 'package:debate_project/view_model/Profile_model.dart';
 import 'package:debate_project/view_model/start_error_dialog.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/bbs_applying_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart'; // CupertinoSwitchのために追加
 import 'package:flutter_hooks/flutter_hooks.dart'; // Hooksを継続して使用
@@ -432,6 +435,7 @@ class HomePage extends HookConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    const BbsApplyingBanner(),
                     // トップセクション (ヘッダー)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(21, 25, 21, 21),

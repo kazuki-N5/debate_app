@@ -11,6 +11,7 @@ import 'package:debate_project/provider/other_user.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Homepage_view_model.dart';
+import 'package:debate_project/provider/match_error_provider.dart';
 // import 'package:debate_project/views/Matching.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

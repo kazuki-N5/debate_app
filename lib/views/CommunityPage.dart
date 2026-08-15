@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/views/bbs/BbsTimelineView.dart';
+import 'package:debate_project/widgets/bbs_applying_banner.dart';
 
 class CommunityPage extends HookConsumerWidget {
   const CommunityPage({super.key});
@@ -14,7 +16,6 @@ class CommunityPage extends HookConsumerWidget {
     final bbsRooms = ref.watch(bbsListProvider);
     final bbsListNotifier = ref.read(bbsListProvider.notifier);
     final currentUserId = ref.watch(currentUserIdProvider);
-    final guestState = ref.watch(bbsGuestProvider);
 
     useEffect(() {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -23,48 +24,37 @@ class CommunityPage extends HookConsumerWidget {
       return null;
     }, []);
 
-    return Scaffold(
-      backgroundColor: Colors.blue[50], // 背景色
-      appBar: AppBar(
-        title: Text(
-          'コミュニティ',
-          style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: Colors.blue[50], // 背景色
+        appBar: AppBar(
+          title: Text(
+            'コミュニティ',
+            style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
+          ),
+          backgroundColor: Colors.blueAccent,
+          elevation: 0,
+          bottom: const TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(text: '対戦募集'),
+              Tab(text: '掲示板'),
+            ],
+          ),
         ),
-        backgroundColor: Colors.blueAccent,
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          if (guestState != null)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: Colors.orangeAccent,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        body: Column(
+          children: [
+            const BbsApplyingBanner(),
+            Expanded(
+              child: TabBarView(
                 children: [
-                  Text(
-                    '現在応募中...',
-                    style: AppTextStyles.bold(color: Colors.white, fontSize: 16),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.orange,
-                    ),
-                    onPressed: () async {
-                      final error = await ref.read(bbsGuestProvider.notifier).cancelApplication();
-                      if (error != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-                      }
-                    },
-                    child: Text('やっぱやめる', style: AppTextStyles.bold()),
-                  )
-                ],
-              ),
-            ),
-          Expanded(
-            child: RefreshIndicator(
+                  // 対戦募集タブ
+                  Scaffold(
+                    backgroundColor: Colors.transparent,
+                    body: RefreshIndicator(
               onRefresh: bbsListNotifier.fetchRooms,
               child: bbsRooms.isEmpty
                   ? Center(
@@ -145,17 +135,23 @@ class CommunityPage extends HookConsumerWidget {
                   );
                 },
               ),
+                    ),
+                    floatingActionButton: FloatingActionButton.extended(
+                      onPressed: () {
+                        _showCreateRoomDialog(context, ref);
+                      },
+                      backgroundColor: Colors.orangeAccent,
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: Text('新規募集', style: AppTextStyles.bold(color: Colors.white)),
+                    ),
+                  ),
+                  // 掲示板タブ
+                  const BbsTimelineView(),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          _showCreateRoomDialog(context, ref);
-        },
-        backgroundColor: Colors.orangeAccent,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text('新規募集', style: AppTextStyles.bold(color: Colors.white)),
+          ],
+        ),
       ),
     );
   }

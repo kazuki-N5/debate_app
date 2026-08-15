@@ -204,9 +204,9 @@ class BbsHostNotifier extends StateNotifier<BbsRoomState?> {
     }
   }
 
-  Future<void> approveChallenger(bool approve) async {
+  Future<bool> approveChallenger(bool approve) async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null || state?.roomId == null) return;
+    if (userId == null || state?.roomId == null) return false;
 
     try {
       final response = await supabase.rpc('approve_bbs_room', params: {
@@ -222,9 +222,12 @@ class BbsHostNotifier extends StateNotifier<BbsRoomState?> {
         } else {
           state = state?.copyWith(challengerId: null);
         }
+        return true;
       }
+      return false;
     } catch (e) {
       log('approveChallenger error: $e');
+      return false;
     }
   }
 

@@ -48,34 +48,67 @@ class HomePage extends HookConsumerWidget {
     final user = ref.watch(userProvider);
 
     ref.listen<BbsRoomState?>(bbsHostProvider, (previous, next) {
+      // 誰かから申し込みがあった時
       if (previous?.challengerId == null && next?.challengerId != null) {
         showDialog(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text('申し込みがありました', style: AppTextStyles.bold(fontSize: 18)),
-            content: const Text('対戦を申し込みました。やりますか？'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  ref.read(bbsHostProvider.notifier).approveChallenger(false);
-                },
-                child: const Text('いいえ'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  await ref.read(bbsHostProvider.notifier).approveChallenger(true);
-                  if (next?.roomId != null) {
-                    await ref.read(matchingRoomProvider.notifier).joinBbsRoom(next!.roomId!);
-                  }
-                  router.go('/wait'); 
-                },
-                child: const Text('はい'),
-              ),
-            ],
-          ),
+          barrierDismissible: false, // 処理中に外側タップで閉じられないようにする
+          builder: (ctx) {
+            bool isLoading = false;
+            return StatefulBuilder(
+              builder: (ctx, setState) {
+                return AlertDialog(
+                  title: Text('申し込みがありました', style: AppTextStyles.bold(fontSize: 18)),
+                  content: isLoading
+                      ? const SizedBox(
+                          height: 50,
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : const Text('対戦を申し込みました。やりますか？'),
+                  actions: [
+                    if (!isLoading)
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          ref.read(bbsHostProvider.notifier).approveChallenger(false);
+                        },
+                        child: const Text('いいえ'),
+                      ),
+                    if (!isLoading)
+                      ElevatedButton(
+                        onPressed: () async {
+                          setState(() {
+                            isLoading = true;
+                          });
+                          final success = await ref.read(bbsHostProvider.notifier).approveChallenger(true);
+                          if (!success) {
+                            setState(() {
+                              isLoading = false;
+                            });
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('承認に失敗しました')));
+                            }
+                          }
+                          // 成功時はダイアログは開いたまま(ぐるぐる状態)で、下のリスナーで画面遷移する
+                        },
+                        child: const Text('はい'),
+                      ),
+                  ],
+                );
+              },
+            );
+          },
         );
+      }
+
+      // マッチング成立(承認成功)時の処理: ぐるぐるダイアログを閉じて画面遷移
+      if (previous?.player2Id == null && next?.player2Id != null) {
+        Navigator.of(context, rootNavigator: true).pop(); // ダイアログを閉じる
+        if (next?.roomId != null) {
+          ref.read(matchingRoomProvider.notifier).joinBbsRoom(next!.roomId!).then((_) {
+            router.go('/wait');
+          });
+        }
       }
     });
 

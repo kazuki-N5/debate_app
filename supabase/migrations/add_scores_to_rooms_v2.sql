@@ -12,7 +12,7 @@ CREATE OR REPLACE FUNCTION "public"."v2_process_game_result"() RETURNS "trigger"
   v_p1_move integer := 0; v_p2_move integer := 0;
   v_is_underdog_match boolean := false;
 BEGIN
-  IF (NEW.password IS NULL OR NEW.password = '') THEN
+  IF (NEW.password IS NULL OR NEW.password = '') AND (NEW.is_bbs IS NOT TRUE) THEN
     SELECT trophy INTO v_p1_trophy FROM users WHERE id = NEW.player1_id;
     SELECT trophy INTO v_p2_trophy FROM users WHERE id = NEW.player2_id;
     v_is_underdog_match := ABS(v_p1_trophy - v_p2_trophy) >= 200;

@@ -324,6 +324,9 @@ class BbsGuestNotifier extends StateNotifier<BbsRoomState?> {
         _startListening(roomId);
         return null;
       } else {
+        if (response['error'] == 'ALREADY_APPLYING_BBS') {
+          return '現在応募中のルームがあります。まずはキャンセルしてください';
+        }
         return '申し込みに失敗しました: ${response['error']}';
       }
     } catch (e) {

@@ -487,6 +487,18 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
           } else {
             isButtonPressed.value = true;
           }
+          
+          if (diff <= 0 && room.isBbs == true) {
+            timer.cancel();
+            timerRef.value = null;
+            if (context.mounted) {
+              roomnotifier.hasgotomatching = true;
+              roomnotifier.hassplash = false;
+              router.go('/chose');
+            }
+            return;
+          }
+
           if (diff <= -5) {
             timer.cancel();
             timerRef.value = null;
@@ -613,139 +625,151 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 開始ボタン
-                    ElevatedButton(
-                      onPressed: isButtonPressed.value
-                          ? null // isButtonPressedがtrueなら、onPressedにnullを渡しボタンを無効化
-                          : () async {
-                              isButtonPressed.value = true;
-                              await roomnotifier.updategochose(
-                                room.roomId!,
-                                userId!,
-                              );
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white, // ボタンの背景色
-                        foregroundColor: Colors.blue, // テキストやアイコンの色
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30.0), // 角を丸くする
+                    if (room.isBbs != true) ...[
+                      // 開始ボタン
+                      ElevatedButton(
+                        onPressed: isButtonPressed.value
+                            ? null // isButtonPressedがtrueなら、onPressedにnullを渡しボタンを無効化
+                            : () async {
+                                isButtonPressed.value = true;
+                                await roomnotifier.updategochose(
+                                  room.roomId!,
+                                  userId!,
+                                );
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white, // ボタンの背景色
+                          foregroundColor: Colors.blue, // テキストやアイコンの色
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.0), // 角を丸くする
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 60, vertical: 15), // ボタンの余白
+                          elevation: 8, // 影をつけて立体感を出す
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 60, vertical: 15), // ボタンの余白
-                        elevation: 8, // 影をつけて立体感を出す
-                      ),
-                      child: Text(
-                        'スタート',
-                        style: AppTextStyles.bold(
-                          fontSize: 20,
+                        child: Text(
+                          'スタート',
+                          style: AppTextStyles.bold(
+                            fontSize: 20,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16), // ボタン間のスペース
-                    // キャンセルボタン
-                    SizedBox(
-                      // 要素が増えたため、必要に応じて幅を調整してください。
-                      // width: 160,
-                      // TextButtonをRowに置き換えて、クリック範囲を限定しつつレイアウトを再構築
-                      child: Row(
-                        // 垂直方向の配置を中央に設定
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // --- 左側の要素（秒数） ---
-                          // Expandedが利用可能なスペースを埋めることで、中央の要素が真ん中に来る
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.end, // 要素を右端（中央側）に寄せる
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.center, // 垂直方向も中央揃え
-                              children: [
-                                // 秒数 (nullでない場合のみ表示)
-                                if (secondsLeft.value != null)
+                      const SizedBox(height: 16), // ボタン間のスペース
+                      // キャンセルボタン
+                      SizedBox(
+                        // 要素が増えたため、必要に応じて幅を調整してください。
+                        // width: 160,
+                        // TextButtonをRowに置き換えて、クリック範囲を限定しつつレイアウトを再構築
+                        child: Row(
+                          // 垂直方向の配置を中央に設定
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // --- 左側の要素（秒数） ---
+                            // Expandedが利用可能なスペースを埋めることで、中央の要素が真ん中に来る
+                            Expanded(
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.end, // 要素を右端（中央側）に寄せる
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.center, // 垂直方向も中央揃え
+                                children: [
+                                  // 秒数 (nullでない場合のみ表示)
+                                  if (secondsLeft.value != null)
+                                    Text(
+                                      secondsLeft.value.toString(),
+                                      style: AppTextStyles.notoSans(
+                                        color: Colors.white70,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+
+                            // --- 中央の要素（キャンセルボタン） ---
+                            // 「キャンセル」テキストのみをTextButtonで囲み、クリック範囲を限定
+                            TextButton(
+                              onPressed: isButtonPressed.value
+                                  ? null // isButtonPressedがtrueなら、onPressedにnullを渡しボタンを無効化
+                                  : () async {
+                                      isButtonPressed.value = true;
+                                      try {
+                                        // .rpc() を使ってデータベース関数を呼び出す
+                                        await supabase.rpc(
+                                          'handle_cancellation_v2', // 作成したSQL関数名
+                                          params: {
+                                            'p_user_id':
+                                                userId, // SQL関数の引数名 'p_user_id' に値を渡す
+                                            'p_room_id': room
+                                                .roomId, // SQL関数の引数名 'p_room_id' に値を渡す
+                                          },
+                                        );
+
+                                        // 成功した場合の処理
+                                        print('キャンセル処理が正常に完了しました。');
+                                      } catch (error) {
+                                        // エラー処理
+                                        log('予期せぬエラーが発生しました: $error');
+                                      }
+                                    },
+                              // 元のPaddingウィジェットの代わりにstyleで余白を設定
+                              style: TextButton.styleFrom(
+                                splashFactory: NoSplash.splashFactory,
+                                overlayColor: const Color.fromARGB(
+                                    255, 10, 89, 153), // 波紋エフェクトの色
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0), // 左右に少し余白を持たせる
+                              ),
+                              child: Text(
+                                'キャンセル',
+                                style: AppTextStyles.notoSans(
+                                  color: Colors.white70,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+
+                            // --- 右側の要素（画像と-3） ---
+                            Expanded(
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.start, // 要素を左端（中央側）に寄せる
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.center, // 垂直方向も中央揃え
+                                children: [
+                                  // 画像
+                                  Image.asset(
+                                    'assets/images/trofie.png',
+                                    width: 20,
+                                    height: 20,
+                                  ),
+                                  const SizedBox(width: 4), // 画像と数字の間のスペース
+
+                                  // 「-3」という数字
                                   Text(
-                                    secondsLeft.value.toString(),
+                                    '-3',
                                     style: AppTextStyles.notoSans(
                                       color: Colors.white70,
                                       fontSize: 16,
                                     ),
                                   ),
-                              ],
-                            ),
-                          ),
-
-                          // --- 中央の要素（キャンセルボタン） ---
-                          // 「キャンセル」テキストのみをTextButtonで囲み、クリック範囲を限定
-                          TextButton(
-                            onPressed: isButtonPressed.value
-                                ? null // isButtonPressedがtrueなら、onPressedにnullを渡しボタンを無効化
-                                : () async {
-                                    isButtonPressed.value = true;
-                                    try {
-                                      // .rpc() を使ってデータベース関数を呼び出す
-                                      await supabase.rpc(
-                                        'handle_cancellation_v2', // 作成したSQL関数名
-                                        params: {
-                                          'p_user_id':
-                                              userId, // SQL関数の引数名 'p_user_id' に値を渡す
-                                          'p_room_id': room
-                                              .roomId, // SQL関数の引数名 'p_room_id' に値を渡す
-                                        },
-                                      );
-
-                                      // 成功した場合の処理
-                                      print('キャンセル処理が正常に完了しました。');
-                                    } catch (error) {
-                                      // エラー処理
-                                      log('予期せぬエラーが発生しました: $error');
-                                    }
-                                  },
-                            // 元のPaddingウィジェットの代わりにstyleで余白を設定
-                            style: TextButton.styleFrom(
-                              splashFactory: NoSplash.splashFactory,
-                              overlayColor: const Color.fromARGB(
-                                  255, 10, 89, 153), // 波紋エフェクトの色
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0), // 左右に少し余白を持たせる
-                            ),
-                            child: Text(
-                              'キャンセル',
-                              style: AppTextStyles.notoSans(
-                                color: Colors.white70,
-                                fontSize: 16,
+                                ],
                               ),
                             ),
-                          ),
-
-                          // --- 右側の要素（画像と-3） ---
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.start, // 要素を左端（中央側）に寄せる
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.center, // 垂直方向も中央揃え
-                              children: [
-                                // 画像
-                                Image.asset(
-                                  'assets/images/trofie.png',
-                                  width: 20,
-                                  height: 20,
-                                ),
-                                const SizedBox(width: 4), // 画像と数字の間のスペース
-
-                                // 「-3」という数字
-                                Text(
-                                  '-3',
-                                  style: AppTextStyles.notoSans(
-                                    color: Colors.white70,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                    ] else ...[
+                      // BBSの場合はタイマー秒数だけシンプルに表示
+                      if (secondsLeft.value != null && secondsLeft.value! >= 0)
+                        Text(
+                          secondsLeft.value.toString(),
+                          style: AppTextStyles.bold(
+                            color: Colors.white,
+                            fontSize: 32,
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ),

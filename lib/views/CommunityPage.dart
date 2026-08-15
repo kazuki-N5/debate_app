@@ -162,72 +162,101 @@ class CommunityPage extends HookConsumerWidget {
     final choice1Controller = TextEditingController();
     final choice2Controller = TextEditingController();
     final passwordController = TextEditingController();
+    
+    bool isCustomTheme = false;
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('新規募集作成', style: AppTextStyles.bold(fontSize: 18)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: themeController,
-                  decoration: const InputDecoration(labelText: 'テーマ'),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('新規募集作成', style: AppTextStyles.bold(fontSize: 18)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: isCustomTheme,
+                          onChanged: (val) {
+                            setState(() {
+                              isCustomTheme = val ?? false;
+                            });
+                          },
+                        ),
+                        Text('テーマを自分で設定する', style: AppTextStyles.notoSans(fontSize: 14)),
+                      ],
+                    ),
+                    if (isCustomTheme) ...[
+                      TextField(
+                        controller: themeController,
+                        decoration: const InputDecoration(labelText: 'テーマ'),
+                      ),
+                      TextField(
+                        controller: choice1Controller,
+                        decoration: const InputDecoration(labelText: '選択肢1'),
+                      ),
+                      TextField(
+                        controller: choice2Controller,
+                        decoration: const InputDecoration(labelText: '選択肢2'),
+                      ),
+                    ] else ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: Text(
+                          '※テーマと選択肢はランダムに決定されます。',
+                          style: AppTextStyles.notoSans(fontSize: 13, color: Colors.grey),
+                        ),
+                      ),
+                    ],
+                    TextField(
+                      controller: passwordController,
+                      decoration: const InputDecoration(labelText: 'パスワード(任意)'),
+                    ),
+                  ],
                 ),
-                TextField(
-                  controller: choice1Controller,
-                  decoration: const InputDecoration(labelText: '選択肢1'),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('キャンセル'),
                 ),
-                TextField(
-                  controller: choice2Controller,
-                  decoration: const InputDecoration(labelText: '選択肢2'),
-                ),
-                TextField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(labelText: 'パスワード(任意)'),
+                ElevatedButton(
+                  onPressed: () async {
+                    final theme = isCustomTheme ? themeController.text : '';
+                    final choice1 = isCustomTheme ? choice1Controller.text : '';
+                    final choice2 = isCustomTheme ? choice2Controller.text : '';
+                    final password = passwordController.text;
+
+                    if (isCustomTheme && (theme.isEmpty || choice1.isEmpty || choice2.isEmpty)) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('入力されていない項目があります')));
+                      return;
+                    }
+
+                    Navigator.pop(context);
+                    final error = await ref.read(bbsHostProvider.notifier).createRoom(theme, choice1, choice2, password);
+
+                    if (error == 'ALREADY_EXISTS') {
+                      if (context.mounted) {
+                        _showAlreadyExistsDialog(context, ref);
+                      }
+                    } else if (error != null) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+                      }
+                    } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('募集を作成しました')));
+                      }
+                    }
+                  },
+                  child: const Text('作成'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('キャンセル'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final theme = themeController.text;
-                final choice1 = choice1Controller.text;
-                final choice2 = choice2Controller.text;
-                final password = passwordController.text;
-
-                if (theme.isEmpty || choice1.isEmpty || choice2.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('入力されていない項目があります')));
-                  return;
-                }
-
-                Navigator.pop(context);
-                final error = await ref.read(bbsHostProvider.notifier).createRoom(theme, choice1, choice2, password);
-
-                if (error == 'ALREADY_EXISTS') {
-                  if (context.mounted) {
-                    _showAlreadyExistsDialog(context, ref);
-                  }
-                } else if (error != null) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-                  }
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('募集を作成しました')));
-                  }
-                }
-              },
-              child: const Text('作成'),
-            ),
-          ],
+            );
+          }
         );
       },
     );

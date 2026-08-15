@@ -66,10 +66,10 @@ class HomePage extends HookConsumerWidget {
                 onPressed: () {
                   Navigator.pop(ctx);
                   ref.read(bbsHostProvider.notifier).approveChallenger(true);
-                  final roomId = next.roomId;
-                  if (roomId != null) {
-                    ref.read(matchingRoomProvider.notifier).joinBbsRoom(roomId);
+                  if (next?.roomId != null) {
+                    ref.read(matchingRoomProvider.notifier).joinBbsRoom(next!.roomId!);
                   }
+                  router.go('/wait'); 
                 },
                 child: const Text('はい'),
               ),
@@ -81,11 +81,11 @@ class HomePage extends HookConsumerWidget {
 
     ref.listen<BbsRoomState?>(bbsGuestProvider, (previous, next) {
       if (previous?.challengerId != null && next?.player2Id != null) {
-         final roomId = next?.roomId;
-         if (roomId != null) {
-           ref.read(matchingRoomProvider.notifier).joinBbsRoom(roomId);
+         if (next?.roomId != null) {
+           ref.read(matchingRoomProvider.notifier).joinBbsRoom(next!.roomId!);
          }
          ref.read(bbsGuestProvider.notifier).clearState();
+         router.go('/wait');
       } else if (previous?.challengerId != null && next?.challengerId == null && next?.player2Id == null) {
          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('申し込みが拒否されました')));
       }

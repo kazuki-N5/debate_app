@@ -235,12 +235,27 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     });
   }
 
+  // BBS機能でマッチング成立後、MatchingRoomとして監視を引き継ぐためのメソッド
   Future<void> joinBbsRoom(String roomId) async {
-    await delete();
-    state = MatchingRoom(roomId: roomId);
-    await fetchmatchupdate(); // 部屋の完全なデータを取得（player2Id等がセットされる）
-    router.go('/wait');
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+    
+    await delete(); // 既存の監視をクリーンアップ
+
+    try {
+      final roomdata = await supabase
+          .from('rooms_v2')
+          .select()
+          .eq('id', roomId)
+          .single();
+      state = MatchingRoom.fromMap(roomdata);
+    } catch(e) {
+      log('BBS部屋の取得エラー: $e');
+    }
+
     WidgetsBinding.instance.addObserver(this);
+    
+    // Postgres監視開始
     await waitForMatch(roomId);
   }
 

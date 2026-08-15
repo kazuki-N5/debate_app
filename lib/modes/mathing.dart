@@ -30,6 +30,7 @@ class MatchingRoom with _$MatchingRoom {
     String? choice2,
     String? password,
     MatchScores? scores,
+    bool? isBbs,
   }) = _MatchingRoom;
 
   factory MatchingRoom.fromMap(Map<String, dynamic> map) {
@@ -58,6 +59,7 @@ class MatchingRoom with _$MatchingRoom {
           ? DateTime.parse(map['updated_at']) 
           : null,
       change: map['change'],
+      go: map['go'],
       player1_finish: map['player1_finish'],
       player2_finish: map['player2_finish'],
       player1_go: map['player1_go'],
@@ -68,11 +70,11 @@ class MatchingRoom with _$MatchingRoom {
       player2_time: map['player2_time'] != null 
           ? DateTime.parse(map['player2_time']) 
           : null,
-      theme: map['current_theme']?.toString(),
-      choice1: map['current_choice1']?.toString(),
-      choice2: map['current_choice2']?.toString(),
-      password: map['password']?.toString(),
+      theme: map['current_theme'],
+      choice1: map['current_choice1'],
+      choice2: map['current_choice2'],
+      password: map['password'],
       scores: parsedScores,
+      isBbs: map['is_bbs'],
     );
   }
-}

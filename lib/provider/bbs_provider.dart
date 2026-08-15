@@ -327,6 +327,10 @@ class BbsGuestNotifier extends StateNotifier<BbsRoomState?> {
       } else {
         if (response['error'] == 'ALREADY_APPLYING_BBS') {
           return '現在応募中のルームがあります。まずはキャンセルしてください';
+        } else if (response['error'] == 'ALREADY_CHALLENGED') {
+          return '現在他の人が申し込み中（ホストの返答待ち）です';
+        } else if (response['error'] == 'ALREADY_MATCHED') {
+          return 'すでにマッチングが成立しています';
         }
         return '申し込みに失敗しました: ${response['error']}';
       }

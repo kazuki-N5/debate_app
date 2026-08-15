@@ -223,7 +223,6 @@ class CommunityPage extends HookConsumerWidget {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('募集を作成しました')));
                   }
-                  ref.read(bbsListProvider.notifier).fetchRooms();
                 }
               },
               child: const Text('作成'),
@@ -254,7 +253,6 @@ class CommunityPage extends HookConsumerWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('前の募集を削除しました')));
                 }
-                ref.read(bbsListProvider.notifier).fetchRooms();
               },
               child: const Text('削除する', style: TextStyle(color: Colors.white)),
             ),

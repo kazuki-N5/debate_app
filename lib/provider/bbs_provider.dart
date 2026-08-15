@@ -89,6 +89,15 @@ class BbsListNotifier extends StateNotifier<List<BbsRoomInfo>> {
       state = [];
     }
   }
+
+  void addRoomLocally(BbsRoomInfo room) {
+    // リストの一番下に追加
+    state = [...state, room];
+  }
+
+  void removeRoomLocally(String roomId) {
+    state = state.where((r) => r.id != roomId).toList();
+  }
 }
 
 final bbsHostProvider = StateNotifierProvider<BbsHostNotifier, BbsRoomState?>((ref) {
@@ -146,6 +155,20 @@ class BbsHostNotifier extends StateNotifier<BbsRoomState?> {
         final roomData = response['room'];
         final roomId = roomData['id'];
         state = BbsRoomState(roomId: roomId);
+        
+        // 作成した部屋を通信なしで即座にリストの一番下へ追加（Optimistic Update）
+        // JSONキーをアプリのBbsRoomInfoに合わせて少し変換
+        final newRoom = BbsRoomInfo(
+          id: roomData['id'],
+          player1Id: roomData['player1_id'],
+          theme: roomData['current_theme'] ?? '',
+          choice1: roomData['current_choice1'] ?? '',
+          choice2: roomData['current_choice2'] ?? '',
+          hasPassword: roomData['password'] != null && roomData['password'] != '',
+          createdAt: DateTime.parse(roomData['created_at']),
+        );
+        ref.read(bbsListProvider.notifier).addRoomLocally(newRoom);
+
         _startListening(roomId);
         return null; // 成功
       } else {
@@ -171,6 +194,8 @@ class BbsHostNotifier extends StateNotifier<BbsRoomState?> {
       });
 
       if (response['success'] == true) {
+        // リストから即座に削除
+        ref.read(bbsListProvider.notifier).removeRoomLocally(state!.roomId!);
         _stopListening();
         state = null;
       }

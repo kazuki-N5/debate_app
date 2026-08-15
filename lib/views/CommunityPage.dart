@@ -75,6 +75,36 @@ class CommunityPage extends HookConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Builder(
+                            builder: (context) {
+                              final hostName = room.hostUser?.name ?? '名無し';
+                              final hostAvatar = room.hostUser?.avatar_url;
+                              final dateStr = '${room.createdAt.month.toString().padLeft(2, '0')}/${room.createdAt.day.toString().padLeft(2, '0')} ${room.createdAt.hour.toString().padLeft(2, '0')}:${room.createdAt.minute.toString().padLeft(2, '0')}';
+                              
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundImage: hostAvatar != null && hostAvatar.isNotEmpty ? NetworkImage(hostAvatar) : null,
+                                      child: hostAvatar == null || hostAvatar.isEmpty ? const Icon(Icons.person, size: 20) : null,
+                                      radius: 16,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(hostName, style: AppTextStyles.bold(fontSize: 14)),
+                                          Text(dateStr, style: AppTextStyles.notoSans(fontSize: 12, color: Colors.grey)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                          ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [

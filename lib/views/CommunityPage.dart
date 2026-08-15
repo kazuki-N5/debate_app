@@ -77,7 +77,7 @@ class CommunityPage extends HookConsumerWidget {
                           const SizedBox(height: 16),
                           Align(
                             alignment: Alignment.centerRight,
-                            child: room.hostId == currentUserId
+                            child: room.player1Id == currentUserId
                                 ? ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.grey,

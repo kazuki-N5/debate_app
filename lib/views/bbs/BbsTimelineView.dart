@@ -12,7 +12,7 @@ class BbsTimelineView extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final timelineAsync = ref.watch(bbsTimelineProvider);
-    final currentUserId = ref.watch(currentUserIdProvider);
+    ref.watch(currentUserIdProvider);
 
     return Scaffold(
       backgroundColor: Colors.blue[50],

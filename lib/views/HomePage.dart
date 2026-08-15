@@ -63,11 +63,11 @@ class HomePage extends HookConsumerWidget {
                 child: const Text('いいえ'),
               ),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(ctx);
-                  ref.read(bbsHostProvider.notifier).approveChallenger(true);
+                  await ref.read(bbsHostProvider.notifier).approveChallenger(true);
                   if (next?.roomId != null) {
-                    ref.read(matchingRoomProvider.notifier).joinBbsRoom(next!.roomId!);
+                    await ref.read(matchingRoomProvider.notifier).joinBbsRoom(next!.roomId!);
                   }
                   router.go('/wait'); 
                 },
@@ -79,10 +79,10 @@ class HomePage extends HookConsumerWidget {
       }
     });
 
-    ref.listen<BbsRoomState?>(bbsGuestProvider, (previous, next) {
+    ref.listen<BbsRoomState?>(bbsGuestProvider, (previous, next) async {
       if (previous?.challengerId != null && next?.player2Id != null) {
          if (next?.roomId != null) {
-           ref.read(matchingRoomProvider.notifier).joinBbsRoom(next!.roomId!);
+           await ref.read(matchingRoomProvider.notifier).joinBbsRoom(next!.roomId!);
          }
          ref.read(bbsGuestProvider.notifier).clearState();
          router.go('/wait');

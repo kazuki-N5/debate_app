@@ -78,3 +78,4 @@ class MatchingRoom with _$MatchingRoom {
       isBbs: map['is_bbs'],
     );
   }
+}

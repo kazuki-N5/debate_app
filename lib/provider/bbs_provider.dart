@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/provider/match_error_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/match_error_provider.dart';
+import 'package:debate_project/modes/users.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -16,6 +17,7 @@ class BbsRoomInfo {
   final String choice2;
   final bool hasPassword;
   final DateTime createdAt;
+  final Users? hostUser; // ホストのユーザー情報
 
   BbsRoomInfo({
     required this.id,
@@ -25,9 +27,15 @@ class BbsRoomInfo {
     required this.choice2,
     required this.hasPassword,
     required this.createdAt,
+    this.hostUser,
   });
 
   factory BbsRoomInfo.fromJson(Map<String, dynamic> json) {
+    Users? user;
+    if (json['user'] != null) {
+      user = Users.fromMap(json['user']);
+    }
+
     return BbsRoomInfo(
       id: json['id'],
       player1Id: json['player1_id'],
@@ -36,6 +44,7 @@ class BbsRoomInfo {
       choice2: json['choice2'] ?? '',
       hasPassword: json['has_password'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
+      hostUser: user,
     );
   }
 }

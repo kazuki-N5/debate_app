@@ -13,7 +13,6 @@ import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Homepage_view_model.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
-import 'package:debate_project/view_model/Profile_model.dart';
 import 'package:debate_project/view_model/start_error_dialog.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/widgets/bbs_applying_banner.dart';
@@ -31,7 +30,6 @@ import 'package:debate_project/views/CommunityPage.dart';
 // 広告関連のインポートを追加
 import 'package:debate_project/widgets/trophy_count_animation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:showcaseview/showcaseview.dart';
 
 // 前回のトロフィー数を保持してアニメーションの起点にするためのプロバイダー
@@ -419,8 +417,9 @@ class HomePage extends HookConsumerWidget {
       // チュートリアルが完了したことを保存し、次回以降は表示しないようにする
       await prefs.setBool('hasSeenProfileIconTutorial', true);
     }, builder: (context) {
-      // ← このように関数を直接指定する
-      return PageView(
+      return Stack(
+        children: [
+          PageView(
         controller: pageController,
         children: [
           const CommunityPage(),
@@ -435,7 +434,6 @@ class HomePage extends HookConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const BbsApplyingBanner(),
                     // トップセクション (ヘッダー)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(21, 25, 21, 21),
@@ -936,7 +934,17 @@ class HomePage extends HookConsumerWidget {
           ),
         ),
       ),
-      ],
+          ],
+          ),
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: BbsApplyingBanner(),
+            ),
+          ),
+        ],
       );
     });
   }

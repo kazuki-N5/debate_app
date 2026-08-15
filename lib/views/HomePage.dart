@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:developer';
 
 import 'package:debate_project/adsence/ad_banner_provider.dart';
@@ -21,6 +22,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart'; // hooks_riverpodを継続�
 import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:debate_project/provider/bbs_provider.dart';
+import 'package:debate_project/views/CommunityPage.dart';
+
 // 広告関連のインポートを追加
 import 'package:debate_project/widgets/trophy_count_animation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -31,16 +35,55 @@ import 'package:showcaseview/showcaseview.dart';
 final lastTrophyCountProvider = StateProvider<int?>((ref) => null);
 
 class HomePage extends HookConsumerWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final pageController = usePageController(initialPage: 1);
     final isMatching = useState<bool>(false);
     // 元の notificationEnabled (useState) は削除し、userProvider の値を直接使用するように変更
 
     // トロフィーアニメーションの起点となる値を管理
     final lastTrophy = ref.watch(lastTrophyCountProvider);
     final user = ref.watch(userProvider);
+
+    ref.listen<BbsRoomState?>(bbsHostProvider, (previous, next) {
+      if (previous?.challengerId == null && next?.challengerId != null) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('申し込みがありました', style: AppTextStyles.bold(fontSize: 18)),
+            content: const Text('対戦を申し込みました。やりますか？'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  ref.read(bbsHostProvider.notifier).approveChallenger(false);
+                },
+                child: const Text('いいえ'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  ref.read(bbsHostProvider.notifier).approveChallenger(true);
+                  router.go('/wait'); 
+                },
+                child: const Text('はい'),
+              ),
+            ],
+          ),
+        );
+      }
+    });
+
+    ref.listen<BbsRoomState?>(bbsGuestProvider, (previous, next) {
+      if (previous?.challengerId != null && next?.player2Id != null) {
+         ref.read(bbsGuestProvider.notifier).clearState();
+         router.go('/wait');
+      } else if (previous?.challengerId != null && next?.challengerId == null && next?.player2Id == null) {
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('申し込みが拒否されました')));
+      }
+    });
 
     // 設定画面から戻ったときなどに通知状態を同期する
     useOnAppLifecycleStateChange((previous, current) {
@@ -105,7 +148,7 @@ class HomePage extends HookConsumerWidget {
                 borderRadius: BorderRadius.circular(20.0),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
+                    color: Colors.grey.withValues(alpha: 0.3),
                     spreadRadius: 2,
                     blurRadius: 7,
                     offset: const Offset(0, 3),
@@ -305,7 +348,7 @@ class HomePage extends HookConsumerWidget {
       return null; // useEffect のクリーンアップ関数 (この場合はなし)
     }, [forceupdate, maintenance, review]);
 
-    final _profileIconKey = useMemoized(() => GlobalKey());
+    final profileIconKey = useMemoized(() => GlobalKey());
 
     useEffect(() {
       // ウィジェットのビルドが完了した後に実行
@@ -316,10 +359,10 @@ class HomePage extends HookConsumerWidget {
 
         // チュートリアルをまだ見ておらず、キーに紐づくコンテキストが利用可能な場合
         // _profileIconKey.currentContext が null でないことを確認するのが重要です
-        if (!hasSeenTutorial && _profileIconKey.currentContext != null) {
+        if (!hasSeenTutorial && profileIconKey.currentContext != null) {
           // Showcaseを開始
-          ShowCaseWidget.of(_profileIconKey.currentContext!)
-              .startShowCase([_profileIconKey]);
+          ShowCaseWidget.of(profileIconKey.currentContext!)
+              .startShowCase([profileIconKey]);
         }
       });
       return null; // クリーンアップは不要
@@ -335,12 +378,16 @@ class HomePage extends HookConsumerWidget {
       await prefs.setBool('hasSeenProfileIconTutorial', true);
     }, builder: (context) {
       // ← このように関数を直接指定する
-      return Scaffold(
-        resizeToAvoidBottomInset: false,
-        body: Container(
-          color: Colors.blue,
-          child: Stack(
-            children: [
+      return PageView(
+        controller: pageController,
+        children: [
+          const CommunityPage(),
+          Scaffold(
+            resizeToAvoidBottomInset: false,
+            body: Container(
+              color: Colors.blue,
+              child: Stack(
+                children: [
               // 背景レイヤー：ヘッダーとフッターのみをSafeAreaで囲みます
               SafeArea(
                 child: Column(
@@ -358,7 +405,7 @@ class HomePage extends HookConsumerWidget {
                             children: [
                               // プロフィール画像
                               Showcase(
-                                key: _profileIconKey,
+                                key: profileIconKey,
                                 description: 'アイコンが変更できます',
                                 tooltipBackgroundColor: Colors.blueAccent,
                                 textColor: Colors.white,
@@ -431,7 +478,7 @@ class HomePage extends HookConsumerWidget {
                                   Row(
                                     children: [
                                       Image(
-                                        image: AssetImage(
+                                        image: const AssetImage(
                                             'assets/images/trofie.png'), // 画像パスを指定
                                         width: a, // サイズ調整
                                         height: a,
@@ -845,6 +892,8 @@ class HomePage extends HookConsumerWidget {
             ],
           ),
         ),
+      ),
+      ],
       );
     });
   }

@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/modes/history.dart';
 import 'package:debate_project/views/ChathistoryPage.dart';
 import 'package:debate_project/views/ChosePage.dart';
@@ -18,52 +19,52 @@ import 'package:go_router/go_router.dart';
 
 final GoRouter router = GoRouter(
   errorBuilder: (context, state) => Scaffold(
-    appBar: AppBar(title: Text("Routing Error")),
+    appBar: AppBar(title: const Text("Routing Error")),
     body: Center(child: Text('Page not found: ${state.error}')),
   ),
   routes: [
     GoRoute(
       path: '/',
-      pageBuilder: (context, state) => NoTransitionPage(child: LoginPage(), key: state.pageKey),
+      pageBuilder: (context, state) => NoTransitionPage(child: const LoginPage(), key: state.pageKey),
     ),
 
     // ★ MatchingPageのみアニメーションあり（builder をそのまま使う）
     GoRoute(
       path: '/wait',
-      builder: (context, state) => MatchingPage(),
+      builder: (context, state) => const MatchingPage(),
     ),
 
     GoRoute(
       path: '/home',
-      pageBuilder: (context, state) => NoTransitionPage(child: HomePage(), key: state.pageKey),
+      pageBuilder: (context, state) => NoTransitionPage(child: const HomePage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/game',
-      pageBuilder: (context, state) => NoTransitionPage(child: GamePage(), key: state.pageKey),
+      pageBuilder: (context, state) => NoTransitionPage(child: const GamePage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/chose',
-      pageBuilder: (context, state) => NoTransitionPage(child: ChosePage(), key: state.pageKey),
+      pageBuilder: (context, state) => NoTransitionPage(child: const ChosePage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/finish',
-      pageBuilder: (context, state) => NoTransitionPage(child: FinishPage(), key: state.pageKey),
+      pageBuilder: (context, state) => NoTransitionPage(child: const FinishPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/name',
-      pageBuilder: (context, state) => NoTransitionPage(child: NamePage(), key: state.pageKey),
+      pageBuilder: (context, state) => NoTransitionPage(child: const NamePage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/setting',
-      pageBuilder: (context, state) => NoTransitionPage(child: SettingPage(), key: state.pageKey),
+      pageBuilder: (context, state) => NoTransitionPage(child: const SettingPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/history',
-      pageBuilder: (context, state) => NoTransitionPage(child: HistoryPage(), key: state.pageKey),
+      pageBuilder: (context, state) => NoTransitionPage(child: const HistoryPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/name2',
-      pageBuilder: (context, state) => NoTransitionPage(child: NamePageChange(), key: state.pageKey),
+      pageBuilder: (context, state) => NoTransitionPage(child: const NamePageChange(), key: state.pageKey),
     ),
     GoRoute(
       path: '/chistory',
@@ -77,7 +78,7 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: '/transfer',
-      pageBuilder: (context, state) => NoTransitionPage(child: TransferPage(), key: state.pageKey),
+      pageBuilder: (context, state) => NoTransitionPage(child: const TransferPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/waittransfer',

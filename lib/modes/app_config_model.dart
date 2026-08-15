@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 // lib/models/app_config_model.dart
 import 'package:freezed_annotation/freezed_annotation.dart';
 

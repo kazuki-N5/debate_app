@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 // debate_project/pages/wait_transfer_page.dart
 import 'package:debate_project/modes/transfer_model.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -10,7 +11,7 @@ import 'package:debate_project/provider/user.dart'; // userProvider と SharedPr
 import 'package:debate_project/router/router.dart'; // router をインポート
 
 class WaittransferPage extends HookConsumerWidget {
-  const WaittransferPage({Key? key}) : super(key: key);
+  const WaittransferPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -67,7 +68,6 @@ class WaittransferPage extends HookConsumerWidget {
         }
       } catch (e) {
         print('Error during cancelTransfer RPC call: $e');
-        ;
         return;
       }
     }
@@ -103,7 +103,7 @@ class WaittransferPage extends HookConsumerWidget {
                   borderRadius: BorderRadius.circular(15.0),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       spreadRadius: 1,
                       blurRadius: 4,
                       offset: const Offset(0, 2),
@@ -147,7 +147,7 @@ class WaittransferPage extends HookConsumerWidget {
                 '注意: この情報は一度きり有効です。新しい端末で引き継ぎを完了すると、このIDとパスワードは無効になります。',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.notoSans(
-                    fontSize: 13, color: Colors.white.withOpacity(0.8)),
+                    fontSize: 13, color: Colors.white.withValues(alpha: 0.8)),
               ),
             ],
           ),

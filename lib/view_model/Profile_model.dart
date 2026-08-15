@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/modes/users.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
@@ -7,10 +8,10 @@ class UserProfileCard extends StatelessWidget {
   final CrossAxisAlignment? textAlignment;
 
   const UserProfileCard({
-    Key? key,
+    super.key,
     required this.userData,
     this.textAlignment,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -114,10 +115,10 @@ class UserProfileCard2 extends StatelessWidget {
   final CrossAxisAlignment? textAlignment;
 
   const UserProfileCard2({
-    Key? key,
+    super.key,
     required this.userData,
     this.textAlignment,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/provider/user.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
@@ -6,7 +7,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart'; // go_routerパッケージをインポート
 
 class NamePageChange extends HookConsumerWidget {
-  const NamePageChange({Key? key}) : super(key: key);
+  const NamePageChange({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -48,11 +49,11 @@ class NamePageChange extends HookConsumerWidget {
                   Container(
                     width: MediaQuery.of(context).size.width * 0.8,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 10,
                           spreadRadius: 1,
                         )
@@ -67,7 +68,7 @@ class NamePageChange extends HookConsumerWidget {
                         isTextTooLong.value = text.length > 10;
                         isTextEmpty.value = text.isEmpty;
                       },
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText: '１０文字以内',
                         border: InputBorder.none,
                         counterText: '',

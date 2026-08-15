@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/main.dart';
 import 'package:debate_project/widgets/match_error_message.dart';
 import 'package:flutter/material.dart';

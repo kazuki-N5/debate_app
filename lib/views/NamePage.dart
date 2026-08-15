@@ -1,13 +1,13 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/provider/user.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class NamePage extends HookConsumerWidget {
-  const NamePage({Key? key}) : super(key: key);
+  const NamePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -131,7 +131,7 @@ class NamePage extends HookConsumerWidget {
                                 color: Colors.white,
                               ),
                             ),
-                            SizedBox(height: 24), // タイトルと本文の間のスペース
+                            const SizedBox(height: 24), // タイトルと本文の間のスペース
                             // 本文用のTextウィジェット
                             Text(
                               termsOfServiceText,
@@ -185,11 +185,11 @@ class NamePage extends HookConsumerWidget {
               Container(
                 width: MediaQuery.of(context).size.width * 0.8,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 10,
                       spreadRadius: 1,
                     )
@@ -204,7 +204,7 @@ class NamePage extends HookConsumerWidget {
                     isTextTooLong.value = text.length > 10;
                     isTextEmpty.value = text.isEmpty;
                   },
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     hintText: '１０文字以内',
                     border: InputBorder.none,
                     counterText: '',
@@ -256,7 +256,7 @@ class NamePage extends HookConsumerWidget {
                   textAlign: TextAlign.center,
                   text: TextSpan(
                     style: AppTextStyles.notoSans(
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 12,
                     ),
                     children: [

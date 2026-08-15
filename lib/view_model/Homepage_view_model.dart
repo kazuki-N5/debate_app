@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously, empty_catches
 import 'package:debate_project/modes/userranking_model.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/sfx_provider.dart';
@@ -12,7 +13,7 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 final friendmatchProvider = StateProvider<bool>((ref) => false);
 
 class FriendMatchDialog extends HookConsumerWidget {
-  const FriendMatchDialog({Key? key}) : super(key: key);
+  const FriendMatchDialog({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -325,7 +326,7 @@ class FriendMatchDialog extends HookConsumerWidget {
                   child: _buildTextField(choice1Controller, '選択肢 A (10文字以内)',
                       maxLength: 10)),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
                 child: Text(
                   'VS',
                   style: AppTextStyles.bold(color: Colors.white, fontSize: 16),
@@ -385,7 +386,7 @@ class FriendMatchDialog extends HookConsumerWidget {
 }
 
 class RankingDialog extends ConsumerWidget {
-  const RankingDialog({Key? key}) : super(key: key);
+  const RankingDialog({super.key});
 
   // Color palette
   static const Color dialogBackground = Colors.blue;
@@ -457,8 +458,8 @@ class RankingDialog extends ConsumerWidget {
               customBorder: const CircleBorder(),
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(255, 214, 132, 131),
+                decoration: const BoxDecoration(
+                  color: Color.fromARGB(255, 214, 132, 131),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.close, color: Colors.white, size: 20),
@@ -621,8 +622,9 @@ class RankingDialog extends ConsumerWidget {
                                         loadingBuilder: (BuildContext context,
                                             Widget child,
                                             ImageChunkEvent? loadingProgress) {
-                                          if (loadingProgress == null)
+                                          if (loadingProgress == null) {
                                             return child;
+                                          }
                                           return Center(
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2.0,
@@ -731,7 +733,7 @@ class RankingDialog extends ConsumerWidget {
 }
 
 class SubmitThemeDialog extends HookConsumerWidget {
-  const SubmitThemeDialog({Key? key}) : super(key: key);
+  const SubmitThemeDialog({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -856,7 +858,7 @@ class SubmitThemeDialog extends HookConsumerWidget {
                     ),
                     Padding(
                       padding:
-                          EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+                          const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
                       child: Text(
                         'VS',
                         style: AppTextStyles.bold(

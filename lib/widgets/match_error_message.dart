@@ -1,10 +1,11 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 
 class MatchErrorMessage extends StatelessWidget {
   final String message;
 
-  const MatchErrorMessage({Key? key, required this.message}) : super(key: key);
+  const MatchErrorMessage({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {

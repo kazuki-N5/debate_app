@@ -1,4 +1,4 @@
-import 'dart:ui';
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously, camel_case_types
 
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/app_config_service.dart';
@@ -90,7 +90,7 @@ class start_errornotifier extends StateNotifier {
                             checkColor: buttonTextColor, // チェックマークの色
                             activeColor:
                                 buttonBackgroundColor, // チェックボックスの背景色 (アクティブ時)
-                            side: MaterialStateBorderSide.resolveWith(
+                            side: WidgetStateBorderSide.resolveWith(
                               (states) => const BorderSide(
                                   color: textColor, width: 2), // ボーダーの色と太さ
                             ),
@@ -232,7 +232,7 @@ class start_errornotifier extends StateNotifier {
                   borderRadius: BorderRadius.circular(12.0), // ボタンも角丸に
                 ),
               ),
-              icon: Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
+              icon: const Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
               label: Text(
                 'やり直す',
                 style: AppTextStyles.bold(
@@ -300,7 +300,7 @@ class start_errornotifier extends StateNotifier {
                   borderRadius: BorderRadius.circular(12.0), // ボタンも角丸に
                 ),
               ),
-              icon: Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
+              icon: const Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
               label: Text(
                 '再試行',
                 style: AppTextStyles.bold(
@@ -366,7 +366,7 @@ class start_errornotifier extends StateNotifier {
                   borderRadius: BorderRadius.circular(12.0),
                 ),
               ),
-              icon: Icon(Icons.arrow_forward, // 右矢印アイコンに変更
+              icon: const Icon(Icons.arrow_forward, // 右矢印アイコンに変更
                   color: buttonTextColor,
                   size: 22.0),
               label: Text(

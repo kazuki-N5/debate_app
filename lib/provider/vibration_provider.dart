@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 // lib/services/vibration_service.dart (新規作成)
 import 'package:debate_project/provider/setting_provider.dart'; // settingsProvider のパス
 import 'package:flutter/foundation.dart';

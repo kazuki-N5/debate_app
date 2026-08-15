@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:debate_project/adsence/ad_mbanner_provider.dart';
 import 'package:debate_project/adsence/ad_provider.dart'; // adNotifierProvider がここにあると仮定
@@ -29,6 +30,8 @@ import 'dart:ui' as ui;
 import 'package:path_provider/path_provider.dart';
 
 class FinishPage extends HookConsumerWidget {
+  const FinishPage({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vibration = ref.read(vibrationServiceProvider);
@@ -71,7 +74,7 @@ class FinishPage extends HookConsumerWidget {
       );
     }
 
-    void _showErrorDialog(BuildContext context) {
+    void showErrorDialog(BuildContext context) {
       const Color dialogBackgroundColor = Color(0xFF42A5F5);
       const Color textColor = Colors.white;
       const Color buttonTextColor =
@@ -117,7 +120,7 @@ class FinishPage extends HookConsumerWidget {
                     borderRadius: BorderRadius.circular(12.0), // ボタンも角丸に
                   ),
                 ),
-                icon: Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
+                icon: const Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
                 label: Text(
                   'やり直す',
                   style: AppTextStyles.bold(
@@ -134,7 +137,7 @@ class FinishPage extends HookConsumerWidget {
                     }
                     router.go('/home');
                   } catch (e) {
-                    _showErrorDialog(context);
+                    showErrorDialog(context);
                   }
                   // 再試行コールバックを実行
                 },
@@ -276,7 +279,7 @@ class FinishPage extends HookConsumerWidget {
 
           await Share.shareXFiles(
             [XFile(file.path)],
-            text: '$shareText',
+            text: shareText,
             subject: 'ディベート結果',
             sharePositionOrigin: rect,
           );
@@ -362,7 +365,7 @@ class FinishPage extends HookConsumerWidget {
               borderRadius: BorderRadius.circular(16.0),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   spreadRadius: 2,
                 ),
@@ -400,8 +403,8 @@ class FinishPage extends HookConsumerWidget {
                                     offset: const Offset(0, 6),
                                     child: Row(
                                       children: [
-                                        Image(
-                                          image: const AssetImage(
+                                        const Image(
+                                          image: AssetImage(
                                               'assets/images/trofie.png'),
                                           width: 24,
                                           height: 24,
@@ -441,8 +444,8 @@ class FinishPage extends HookConsumerWidget {
                                   offset: const Offset(0, 6),
                                   child: Row(
                                     children: [
-                                      Image(
-                                        image: const AssetImage(
+                                      const Image(
+                                        image: AssetImage(
                                             'assets/images/trofie.png'),
                                         width: 24,
                                         height: 24,
@@ -486,7 +489,7 @@ class FinishPage extends HookConsumerWidget {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),
@@ -502,8 +505,8 @@ class FinishPage extends HookConsumerWidget {
                                   fontSize: 14,
                                 ),
                               ),
-                              Image(
-                                image: const AssetImage(
+                              const Image(
+                                image: AssetImage(
                                     'assets/images/trofie.png'),
                                 width: 16,
                                 height: 16,
@@ -546,7 +549,7 @@ class FinishPage extends HookConsumerWidget {
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
+                            color: Colors.blue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12.0),
                           ),
                           child: Column(
@@ -650,7 +653,7 @@ class FinishPage extends HookConsumerWidget {
                                         }
                                         router.go('/home');
                                       } catch (e) {
-                                        _showErrorDialog(context);
+                                        showErrorDialog(context);
                                       }
                                     },
                               style: OutlinedButton.styleFrom(
@@ -711,7 +714,6 @@ class FinishPage extends HookConsumerWidget {
 
 class _ShareableResultCard extends StatelessWidget {
   const _ShareableResultCard({
-    Key? key,
     required this.result,
     this.points,
     this.bonus,
@@ -721,7 +723,7 @@ class _ShareableResultCard extends StatelessWidget {
     this.opponentScore,
     this.myName = 'あなた',
     this.opponentName,
-  }) : super(key: key);
+  });
 
   final String result;
   final String? points;
@@ -770,8 +772,8 @@ class _ShareableResultCard extends StatelessWidget {
                               offset: const Offset(0, 4),
                               child: Row(
                                 children: [
-                                  Image(
-                                    image: const AssetImage(
+                                  const Image(
+                                    image: AssetImage(
                                         'assets/images/trofie.png'),
                                     width: 18,
                                     height: 18,
@@ -806,8 +808,8 @@ class _ShareableResultCard extends StatelessWidget {
                             offset: const Offset(0, 4),
                             child: Row(
                               children: [
-                                Image(
-                                  image: const AssetImage(
+                                const Image(
+                                  image: AssetImage(
                                       'assets/images/trofie.png'),
                                   width: 18,
                                   height: 18,
@@ -848,7 +850,7 @@ class _ShareableResultCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -864,8 +866,8 @@ class _ShareableResultCard extends StatelessWidget {
                             fontSize: 12,
                           ),
                         ),
-                        Image(
-                          image: const AssetImage('assets/images/trofie.png'),
+                        const Image(
+                          image: AssetImage('assets/images/trofie.png'),
                           width: 14,
                           height: 14,
                         ),
@@ -898,7 +900,7 @@ class _ShareableResultCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
+              color: Colors.blue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12.0),
             ),
             child: Column(

@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -9,11 +10,11 @@ class TrophyCountAnimation extends HookWidget {
   final Duration baseDurationPerUnit;
 
   const TrophyCountAnimation({
-    Key? key,
+    super.key,
     required this.targetTrophy,
     this.startTrophy,
     this.baseDurationPerUnit = const Duration(milliseconds: 150),
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -83,12 +84,12 @@ class TrophyCountAnimation extends HookWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.white.withOpacity(0.8 * glowPower),
+                  color: Colors.white.withValues(alpha: 0.8 * glowPower),
                   blurRadius: 8 * glowPower,
                   spreadRadius: 1 * glowPower,
                 ),
                 BoxShadow(
-                  color: Colors.white.withOpacity(0.4 * glowPower),
+                  color: Colors.white.withValues(alpha: 0.4 * glowPower),
                   blurRadius: 15 * glowPower,
                 ),
               ],

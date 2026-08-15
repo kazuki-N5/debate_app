@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously, depend_on_referenced_packages, empty_catches
 import 'dart:async';
 import 'dart:developer';
 import 'package:debate_project/modes/mathing.dart';
@@ -245,7 +246,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     }
 
     state = MatchingRoom();
-    log('${state}');
+    log('$state');
     final appstate = await ref.read(appStateProvider.notifier).loadVersion();
     if (appstate == AppStatus.error) {
       log('エラーが発生しました');
@@ -336,7 +337,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     Future.microtask(() => ref.invalidate(matchRecordsProvider));
     if (isdisposed) return;
     try {
-      _subscription = await supabase
+      _subscription = supabase
           .channel('room-updates:$roomId')
           .onPostgresChanges(
               event: PostgresChangeEvent.all,

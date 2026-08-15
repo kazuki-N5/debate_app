@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:developer';
 import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -29,7 +30,7 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
   final Ref _ref;
 
   // コンストラクタでRefを受け取り、初期状態と初期化処理の呼び出し
-  AppStateNotifier(this._ref) : super(AppStatus.loading) {}
+  AppStateNotifier(this._ref) : super(AppStatus.loading);
 
   SupabaseClient get supabase => _ref.read(supabaseProvider);
   Future<String> chackAppVersion() async {
@@ -38,7 +39,7 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
       return '${packageInfo.version}+${packageInfo.buildNumber}';
     } catch (e) {
       print('AppConfigの取得に失敗しました: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -50,7 +51,7 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
 
       await prefs.setString('thisappversionkey', version);
     } catch (e) {
-      throw e;
+      rethrow;
     }
   }
 
@@ -62,7 +63,7 @@ class AppStateNotifier extends StateNotifier<AppStatus> {
       return version;
     } catch (e) {
       // エラーが発生した場合は、呼び出し元にエラーをスロー
-      throw e;
+      rethrow;
     }
   }
 

@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,7 +22,7 @@ class NotificationService {
     showBadge: false, // バッジ（ドット）を表示しないよう修正
   );
 
-  NotificationService(Ref _ref); // RiverpodのRefを受け取るが現在は未使用
+  NotificationService(Ref ref); // RiverpodのRefを受け取るが現在は未使用
 
   /// 通知の初期化設定 (iOS/Android共通)
   Future<void> initialize() async {

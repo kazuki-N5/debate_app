@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:async';
 import 'dart:developer';
 import 'package:debate_project/adsence/ad_mbanner_provider.dart';
@@ -125,7 +126,7 @@ class GamePage extends HookConsumerWidget {
       final clientTime = DateTime.now();
       final timeOffset = serverTime.difference(clientTime);
 
-      gametimer.value = Timer.periodic(Duration(seconds: 1), (timer) async {
+      gametimer.value = Timer.periodic(const Duration(seconds: 1), (timer) async {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
 
@@ -173,7 +174,7 @@ class GamePage extends HookConsumerWidget {
         final clientTime = DateTime.now();
         final timeOffset = serverTime.difference(clientTime);
 
-        finishtimer.value = Timer.periodic(Duration(seconds: 1), (timer) async {
+        finishtimer.value = Timer.periodic(const Duration(seconds: 1), (timer) async {
           final estimatedServerTime = DateTime.now().add(timeOffset);
           final fiinishcount =
               deadline.difference(estimatedServerTime).inSeconds.abs();
@@ -292,7 +293,7 @@ class GamePage extends HookConsumerWidget {
                         flex: 1,
                         child: Center(
                           child: Container(
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                                 horizontal: 15, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.grey[200],
@@ -309,7 +310,7 @@ class GamePage extends HookConsumerWidget {
                                       ? Colors.red
                                       : Colors.grey[800],
                                 ),
-                                SizedBox(width: 5), // アイコンとテキストの間隔
+                                const SizedBox(width: 5), // アイコンとテキストの間隔
                                 Text(
                                   countdown.value != null
                                       ? formatTime(countdown.value!)
@@ -348,7 +349,7 @@ class GamePage extends HookConsumerWidget {
                                     ? () {
                                         showDialog(
                                           context: context,
-                                          builder: (context) => Dialog(),
+                                          builder: (context) => const Dialog(),
                                         );
                                       }
                                     : null,
@@ -366,7 +367,7 @@ class GamePage extends HookConsumerWidget {
                                       ? () {
                                           showDialog(
                                             context: context,
-                                            builder: (context) => Dialog(),
+                                            builder: (context) => const Dialog(),
                                           );
                                         }
                                       : null,
@@ -415,7 +416,7 @@ class GamePage extends HookConsumerWidget {
                     width: MediaQuery.of(context).size.width * 0.9,
                     margin:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.grey[200],
                       borderRadius: BorderRadius.circular(20),
@@ -600,7 +601,7 @@ class GamePage extends HookConsumerWidget {
             Positioned.fill(
               // 背景を薄白くし、下のウィジェットへのタップ操作をブロックする
               child: Container(
-                color: Colors.white.withOpacity(0.4),
+                color: Colors.white.withValues(alpha: 0.4),
                 child: Center(
                   // FadeTransitionを使って画像を点滅させる
                   child: FadeTransition(
@@ -628,11 +629,11 @@ class GamePage extends HookConsumerWidget {
                   padding:
                       const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
                   decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(0.9),
+                    color: Colors.redAccent.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -661,7 +662,7 @@ class GamePage extends HookConsumerWidget {
 }
 
 class Dialog extends ConsumerWidget {
-  const Dialog({Key? key}) : super(key: key); // コンストラクタを追加
+  const Dialog({super.key}); // コンストラクタを追加
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -686,7 +687,7 @@ class Dialog extends ConsumerWidget {
           children: [
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                minimumSize: Size(200, 50),
+                minimumSize: const Size(200, 50),
                 backgroundColor: Colors.blue,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -701,10 +702,10 @@ class Dialog extends ConsumerWidget {
             const SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                minimumSize: Size(200, 50),
+                minimumSize: const Size(200, 50),
                 backgroundColor: isUserFinished! ? Colors.white : Colors.blue,
                 side: isUserFinished
-                    ? BorderSide(color: Colors.black, width: 1)
+                    ? const BorderSide(color: Colors.black, width: 1)
                     : null,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -730,7 +731,7 @@ class Dialog extends ConsumerWidget {
                 ),
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
               '${(room.player1_finish == true ? 1 : 0) + (room.player2_finish == true ? 1 : 0)}/2',
               style: AppTextStyles.bold(

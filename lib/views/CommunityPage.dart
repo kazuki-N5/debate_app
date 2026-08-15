@@ -6,7 +6,6 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/views/bbs/BbsTimelineView.dart';
-import 'package:debate_project/widgets/bbs_applying_banner.dart';
 
 class CommunityPage extends HookConsumerWidget {
   const CommunityPage({super.key});
@@ -47,7 +46,6 @@ class CommunityPage extends HookConsumerWidget {
         ),
         body: Column(
           children: [
-            const BbsApplyingBanner(),
             Expanded(
               child: TabBarView(
                 children: [

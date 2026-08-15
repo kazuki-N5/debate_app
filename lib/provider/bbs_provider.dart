@@ -367,6 +367,7 @@ class BbsGuestNotifier extends StateNotifier<BbsRoomState?> {
                 // 拒否された、または別の人がchallengerになった
                 state = BbsRoomState(roomId: roomId, challengerId: null, player2Id: null);
                 _stopListening();
+                ref.read(matchErrorServiceProvider).showMatchEndMessage('申し込んだルームのホストに拒否されました', 0.85);
               }
             })
         .subscribe();

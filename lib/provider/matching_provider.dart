@@ -235,6 +235,15 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     });
   }
 
+  Future<void> joinBbsRoom(String roomId) async {
+    await delete();
+    state = MatchingRoom(roomId: roomId);
+    await fetchmatchupdate(); // 部屋の完全なデータを取得（player2Id等がセットされる）
+    router.go('/wait');
+    WidgetsBinding.instance.addObserver(this);
+    await waitForMatch(roomId);
+  }
+
   Future<void> findMatch(
       String password, String theme, String choice1, String choice2) async {
     final userId = ref.read(currentUserIdProvider);

@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 // ファイル名: provider/ad_notifier.dart
 import 'dart:async';
 import 'package:debate_project/adsence/ad_helper.dart'; // AdHelperのimportを仮定
@@ -48,18 +49,18 @@ class AdNotifier extends StateNotifier<bool> {
     // 初回3回 (カウントが0, 1, 2 の時) は表示しない
     if (count < 3) {
       debugPrint(
-          'Interstitial Ad Logic: Count ${count}. Not showing (first 3).');
+          'Interstitial Ad Logic: Count $count. Not showing (first 3).');
       return false;
     }
     // 3回目以降 (カウントが 3, 4, 5... の時) は2回に1回（交互に）表示
     // (count - 3) が 0, 1, 2, 3... と増えるため、% 2 で判定
     if ((count - 3) % 2 == 0) {
       debugPrint(
-          'Interstitial Ad Logic: Count ${count}. Showing (alternating).');
+          'Interstitial Ad Logic: Count $count. Showing (alternating).');
       return true;
     } else {
       debugPrint(
-          'Interstitial Ad Logic: Count ${count}. Not showing (alternating).');
+          'Interstitial Ad Logic: Count $count. Not showing (alternating).');
       return false;
     }
   }

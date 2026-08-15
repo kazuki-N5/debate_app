@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/modes/history.dart';
 import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -10,7 +11,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HistoryPage extends HookConsumerWidget {
-  const HistoryPage({Key? key}) : super(key: key);
+  const HistoryPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -121,9 +122,8 @@ class _MatchHistoryItem extends HookConsumerWidget {
   final MatchRecordDisplay record;
 
   const _MatchHistoryItem({
-    Key? key,
     required this.record,
-  }) : super(key: key);
+  });
 
   @override
   // --- 変更箇所 START ---
@@ -165,7 +165,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
     // Widget _buildReportButton(BuildContext popoverContext) { ... }
     // --- 変更箇所 END ---
 
-    Widget _buildAvatarImage() {
+    Widget buildAvatarImage() {
       if (opponentAvatarUrl != null && opponentAvatarUrl.isNotEmpty) {
         return CircleAvatar(
           radius: avatarRadius,
@@ -176,7 +176,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
         return CircleAvatar(
           radius: avatarRadius,
           backgroundColor: Colors.blueGrey[300],
-          child: Icon(
+          child: const Icon(
             Icons.person,
             size: avatarRadius * 1.2,
             color: Colors.white,
@@ -185,7 +185,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
       }
     }
 
-    Widget _buildOpponentAvatar() {
+    Widget buildOpponentAvatar() {
       return Builder(
         builder: (avatarContext) {
           return InkWell(
@@ -239,7 +239,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
                                   Text(
                                     '${record.opponentName}さんをブロックしますか？\nブロックすると、このユーザーとの履歴は表示されなくなり、マッチングしなくなります。', // 説明を修正
                                     style: AppTextStyles.notoSans(
-                                      color: Colors.black.withOpacity(0.8),
+                                      color: Colors.black.withValues(alpha: 0.8),
                                       fontSize: 15,
                                     ),
                                   ),
@@ -316,8 +316,8 @@ class _MatchHistoryItem extends HookConsumerWidget {
                                     dialogNavigator.pop();
                                     // ユーザーにエラーを通知
                                     scaffoldMessenger.showSnackBar(
-                                      SnackBar(
-                                        content: const Text('ブロック処理に失敗しました。'),
+                                      const SnackBar(
+                                        content: Text('ブロック処理に失敗しました。'),
                                         backgroundColor: Colors.red,
                                       ),
                                     );
@@ -347,7 +347,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
                 ],
               );
             },
-            child: _buildAvatarImage(),
+            child: buildAvatarImage(),
           );
         },
       );
@@ -401,7 +401,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
                         ),
                       ),
                     const SizedBox(width: 12),
-                    _buildOpponentAvatar(),
+                    buildOpponentAvatar(),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(

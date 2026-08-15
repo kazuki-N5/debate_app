@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:developer';
 
 import 'package:debate_project/modes/users.dart';
@@ -13,7 +14,7 @@ final otherUserProvider =
 });
 
 class OtherUserNotifier extends StateNotifier<Users> {
-  OtherUserNotifier(this._ref) : super(Users(id: '', name: '', trophy: 0));
+  OtherUserNotifier(this._ref) : super(const Users(id: '', name: '', trophy: 0));
   final Ref _ref;
   SupabaseClient get supabase => _ref.read(supabaseProvider);
   Future<void> fetchOtherUser(String id) async {
@@ -36,12 +37,11 @@ class OtherUserNotifier extends StateNotifier<Users> {
     } catch (e) {
       // ここでエラーをキャッチ
       print('データの取得に失敗しました: $e');
-      // ignore: use_build_context_synchronously
-      router.go('/home');
+            router.go('/home');
     }
   }
 
   void clear() {
-    state = Users(id: '', name: '', trophy: 0);
+    state = const Users(id: '', name: '', trophy: 0);
   }
 }

@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
@@ -8,7 +9,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';// hooks_riverpodをイン�
 
 // HookConsumerWidgetに変更
 class TransferPage extends HookConsumerWidget {
-  const TransferPage({Key? key}) : super(key: key);
+  const TransferPage({super.key});
 
   // ユーザーが後で実装するためのプレースホルダーメソッド
 
@@ -129,7 +130,7 @@ class TransferPage extends HookConsumerWidget {
                               if (context.mounted) {
                                
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('データ送信に失敗しました。')),
+                                  const SnackBar(content: Text('データ送信に失敗しました。')),
                                 );
                               }
                               print(
@@ -179,11 +180,10 @@ class TransferPage extends HookConsumerWidget {
                                       "Data transfer completed successfully.")) {
                                 router.go('/');
                               }
-                              ;
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
+                                  const SnackBar(
                                       content:
                                           Text('エラーが発生しました')),
                                 );
@@ -226,7 +226,7 @@ class TransferPage extends HookConsumerWidget {
         if (isLoading.value)
           Container(
             // ★ 薄い白で画面全体を覆う
-            color: Colors.white.withOpacity(0.3),
+            color: Colors.white.withValues(alpha: 0.3),
             child: const Center(
               child: CircularProgressIndicator(), // くるくるマーク
             ),
@@ -254,7 +254,7 @@ class TransferPage extends HookConsumerWidget {
         borderRadius: BorderRadius.circular(20.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             spreadRadius: 3,
             blurRadius: 7,
             offset: const Offset(0, 3),
@@ -331,9 +331,9 @@ class TransferPage extends HookConsumerWidget {
                 ),
                 elevation: 5,
                 disabledForegroundColor:
-                    Colors.white.withOpacity(0.7), // 無効時のテキスト色
+                    Colors.white.withValues(alpha: 0.7), // 無効時のテキスト色
                 disabledBackgroundColor:
-                    Colors.blueAccent.withOpacity(0.5), // 無効時の背景色
+                    Colors.blueAccent.withValues(alpha: 0.5), // 無効時の背景色
               ),
               child: Text(
                 buttonText,

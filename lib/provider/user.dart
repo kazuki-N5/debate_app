@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:io';
 
 import 'package:debate_project/modes/transfer_model.dart';
@@ -24,8 +25,8 @@ final userProvider = StateNotifierProvider<UserNotifier, Users>((ref) {
 
 class UserNotifier extends StateNotifier<Users> {
   UserNotifier(this._ref)
-      : super(Users(
-            id: '', name: '', trophy: 0, win: 0, lose: 0, avatar_url: null)) {}
+      : super(const Users(
+            id: '', name: '', trophy: 0, win: 0, lose: 0, avatar_url: null));
   final Ref _ref;
   SupabaseClient get supabase => _ref.read(supabaseProvider);
   Future<void> signinandname() async {
@@ -77,7 +78,7 @@ class UserNotifier extends StateNotifier<Users> {
       // ローカルDBがリセットされてユーザーが存在しない場合などのためのフォールバック
       print('セッションをクリアして再試行を促します...');
       await supabase.auth.signOut();
-      throw e;
+      rethrow;
     }
   }
 
@@ -117,12 +118,12 @@ class UserNotifier extends StateNotifier<Users> {
       throw Exception('User not found');
     } catch (e) {
       print('エラー: $e');
-      throw e;
+      rethrow;
     }
   }
 
   final picker = ImagePicker();
-  final uuid = Uuid();
+  const uuid = Uuid();
 
   Future<void> updateAvatar() async {
     final currentUser = state;
@@ -212,7 +213,7 @@ class UserNotifier extends StateNotifier<Users> {
       await supabase.storage.from('avatars').uploadBinary(
             path, // ストレージ内のパス
             compressedBytes, // 圧縮後のバイトデータを使用
-            fileOptions: FileOptions(
+            fileOptions: const FileOptions(
               // contentType: 'image/jpeg', // 圧縮でJPEGに統一した場合など、MIMEタイプを指定可能
               upsert: false, // 同じパスが存在する場合、上書きしない (ユニークなパスなので通常不要)
             ),

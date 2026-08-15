@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'chat.freezed.dart';

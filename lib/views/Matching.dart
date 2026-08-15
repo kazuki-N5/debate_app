@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -67,7 +68,7 @@ class MatchingPage extends HookConsumerWidget {
                         child: Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Column(
@@ -180,7 +181,7 @@ class BlinkingMatchingIndicator extends HookWidget {
 }
 
 class BattleTransitionScreen2 extends HookConsumerWidget {
-  const BattleTransitionScreen2({Key? key}) : super(key: key);
+  const BattleTransitionScreen2({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -199,7 +200,7 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
       duration: const Duration(milliseconds: 4000),
     );
 
-    void _showErrorDialog(BuildContext context) {
+    void showErrorDialog(BuildContext context) {
       const Color dialogBackgroundColor = Color(0xFF42A5F5);
       const Color textColor = Colors.white;
       const Color buttonTextColor =
@@ -245,7 +246,7 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
                     borderRadius: BorderRadius.circular(12.0), // ボタンも角丸に
                   ),
                 ),
-                icon: Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
+                icon: const Icon(Icons.refresh, color: buttonTextColor, size: 22.0),
                 label: Text(
                   'やり直す',
                   style: AppTextStyles.bold(
@@ -260,7 +261,7 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
 
                     router.go('/home');
                   } catch (e) {
-                    _showErrorDialog(context);
+                    showErrorDialog(context);
                   }
                   // 再試行コールバックを実行
                 },
@@ -402,7 +403,7 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
             await ref.read(userProvider.notifier).fetchUser(userId);
             router.go('/home');
           } catch (e) {
-            _showErrorDialog(context);
+            showErrorDialog(context);
           }
         } else {
           log('相手が退出したため再マッチング');

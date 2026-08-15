@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/modes/chat.dart';
 import 'package:debate_project/modes/history.dart';
 import 'package:debate_project/provider/user.dart';
@@ -17,14 +18,14 @@ import '../provider/supabase_provider.dart';
 class ChatHistoryPage extends HookConsumerWidget {
   final MatchRecordDisplay record;
 
-  const ChatHistoryPage({Key? key, required this.record}) : super(key: key);
+  const ChatHistoryPage({super.key, required this.record});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUserId = ref.read(currentUserIdProvider);
     final myurl = ref.read(userProvider).avatar_url;
 
-    Future<List<Chat>> _fetchMessages(String roomId) async {
+    Future<List<Chat>> fetchMessages(String roomId) async {
       final supabase = ref.read(supabaseProvider);
       try {
         final List<Map<String, dynamic>> data = await supabase
@@ -46,7 +47,7 @@ class ChatHistoryPage extends HookConsumerWidget {
 
     // useMemoized を使ってFutureをキャッシュし、不要な再取得を防ぐ
     final messagesFuture = useMemoized(
-      () => _fetchMessages(record.roomid),
+      () => fetchMessages(record.roomid),
       [record.roomid], // record.roomid が変わらない限り、このFutureは再生成されない
     );
     // useFuture を使ってFutureの状態を監視する

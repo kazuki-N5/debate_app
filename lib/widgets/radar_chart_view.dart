@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:debate_project/modes/debate_scores.dart';
@@ -12,13 +13,13 @@ class RadarChartView extends StatefulWidget {
   final bool isStatic; // 静止画キャプチャ用（アニメーションなし）
 
   const RadarChartView({
-    Key? key,
+    super.key,
     required this.myScore,
     this.opponentScore,
     this.myName = 'あなた',
     this.opponentName,
     this.isStatic = false,
-  }) : super(key: key);
+  });
 
   @override
   State<RadarChartView> createState() => _RadarChartViewState();
@@ -82,10 +83,10 @@ class _RadarChartViewState extends State<RadarChartView>
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.06),
+        color: Colors.blue.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.blue.withOpacity(0.18),
+          color: Colors.blue.withValues(alpha: 0.18),
           width: 1.2,
         ),
       ),
@@ -107,7 +108,7 @@ class _RadarChartViewState extends State<RadarChartView>
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.blue.withOpacity(0.3),
+                  color: Colors.blue.withValues(alpha: 0.3),
                   blurRadius: 6,
                   offset: const Offset(0, 3),
                 ),
@@ -198,7 +199,7 @@ class _RadarChartViewState extends State<RadarChartView>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.4),
+                color: color.withValues(alpha: 0.4),
                 blurRadius: 3,
                 offset: const Offset(0, 1),
               ),
@@ -246,12 +247,12 @@ class _RadarChartPainter extends CustomPainter {
 
     // --- 1. グリッド背景の同心多角形 (20%, 40%, 60%, 80%, 100%) ---
     final gridPaint = Paint()
-      ..color = Colors.grey.withOpacity(0.25)
+      ..color = Colors.grey.withValues(alpha: 0.25)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
     final gridFillPaint = Paint()
-      ..color = Colors.white.withOpacity(0.6)
+      ..color = Colors.white.withValues(alpha: 0.6)
       ..style = PaintingStyle.fill;
 
     // 外枠背景の塗りつぶし
@@ -290,7 +291,7 @@ class _RadarChartPainter extends CustomPainter {
 
     // --- 2. 軸線（中心から各頂点への直線） ---
     final axisPaint = Paint()
-      ..color = Colors.grey.withOpacity(0.3)
+      ..color = Colors.grey.withValues(alpha: 0.3)
       ..strokeWidth = 1.0;
 
     for (int i = 0; i < count; i++) {
@@ -309,8 +310,8 @@ class _RadarChartPainter extends CustomPainter {
         values: opponentValues!,
         angleStep: angleStep,
         startAngle: startAngle,
-        fillColor: Colors.deepOrange.withOpacity(0.2 * progress),
-        strokeColor: Colors.deepOrange.withOpacity(0.85),
+        fillColor: Colors.deepOrange.withValues(alpha: 0.2 * progress),
+        strokeColor: Colors.deepOrange.withValues(alpha: 0.85),
         pointColor: Colors.deepOrange[600]!,
         isDashed: true,
       );
@@ -324,7 +325,7 @@ class _RadarChartPainter extends CustomPainter {
       values: myValues,
       angleStep: angleStep,
       startAngle: startAngle,
-      fillColor: Colors.blue.withOpacity(0.35 * progress),
+      fillColor: Colors.blue.withValues(alpha: 0.35 * progress),
       strokeColor: Colors.blue[700]!,
       pointColor: Colors.blue[800]!,
       isDashed: false,

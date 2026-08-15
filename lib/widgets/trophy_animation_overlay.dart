@@ -1,0 +1,1 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously, deprecated_member_use, no_leading_underscores_for_local_identifiers, non_constant_identifier_names, camel_case_types

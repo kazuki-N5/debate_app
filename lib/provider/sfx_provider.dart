@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:audioplayers/audioplayers.dart';
 import 'package:debate_project/provider/setting_provider.dart'; // 必要に応じてパスを調整
 import 'package:flutter/foundation.dart';

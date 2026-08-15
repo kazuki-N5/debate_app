@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 /// ブロスタ風のトロフィー計算システム（格差ボーナス対応）
 class BrawlStarsRating {
   static const int underdogThreshold = 200; // 格差ボーナスと判定するレート差

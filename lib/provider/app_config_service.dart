@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 // lib/providers/app_config_state_notifier.dart
 import 'dart:io' show Platform; // Platform判定のためにインポート// モデルのパスを確認してください
 import 'package:debate_project/modes/app_config_model.dart';

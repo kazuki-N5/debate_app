@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously, deprecated_member_use
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:developer';
@@ -18,6 +19,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class ChosePage extends HookConsumerWidget {
+  const ChosePage({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final roomnotifier = ref.watch(matchingRoomProvider.notifier);
@@ -82,7 +85,7 @@ class ChosePage extends HookConsumerWidget {
       print('また始まってる');
       bool hasChoiceBeenUpdated = false;
       log('【DEBUG】ChosePage: Timer start. deadline: $deadline');
-      timerRef.value = Timer.periodic(Duration(seconds: 1), (timer) async {
+      timerRef.value = Timer.periodic(const Duration(seconds: 1), (timer) async {
         final estimatedServerTime = DateTime.now().add(timeOffset);
         final diff = deadline.difference(estimatedServerTime).inSeconds;
         if (diff >= 0) {
@@ -169,7 +172,7 @@ class ChosePage extends HookConsumerWidget {
         }
         showerror.value = true;
         // 2秒後に非表示
-        Future.delayed(Duration(seconds: 2), () {
+        Future.delayed(const Duration(seconds: 2), () {
           showerror.value = false;
         });
       }
@@ -178,7 +181,7 @@ class ChosePage extends HookConsumerWidget {
 
     // アニメーション表示中の場合
     if (next.value) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: Colors.blue, // または任意の背景色
         body: BattleTransitionScreen(),
       );
@@ -194,7 +197,7 @@ class ChosePage extends HookConsumerWidget {
         automaticallyImplyLeading: false,
         title: Center(
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.grey[200],
               borderRadius: BorderRadius.circular(16),
@@ -207,7 +210,7 @@ class ChosePage extends HookConsumerWidget {
                     color: secondsLeft.value != null && secondsLeft.value! <= 3
                         ? Colors.red
                         : Colors.grey[800]),
-                SizedBox(width: 5),
+                const SizedBox(width: 5),
                 Text(
                   secondsLeft.value != null
                       ? formatTime(secondsLeft.value!)
@@ -231,7 +234,7 @@ class ChosePage extends HookConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text(room.theme!,
                       textAlign: TextAlign.center,
                       style: AppTextStyles.bold(
@@ -270,7 +273,7 @@ class ChosePage extends HookConsumerWidget {
                     )),
                 const SizedBox(height: 30),
                 AnimatedOpacity(
-                  duration: Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 300),
                   opacity: showerror.value ? 1.0 : 0.0,
                   child: Text(
                     '選択が被りました',
@@ -295,21 +298,21 @@ Widget _buildChoiceButton({
   required VoidCallback? onPressed,
   required Color activeColor,
 }) {
-  return Container(
+  return SizedBox(
     height: 200,
     width: 120,
     child: GestureDetector(
       onTapDown: (_) => onPressed?.call(),
       child: AnimatedContainer(
-        duration: Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: isSelected ? activeColor.withOpacity(0.3) : Colors.black26,
+              color: isSelected ? activeColor.withValues(alpha: 0.3) : Colors.black26,
               blurRadius: isSelected ? 15 : 8,
-              offset: isSelected ? Offset(0, 8) : Offset(0, 4),
+              offset: isSelected ? const Offset(0, 8) : const Offset(0, 4),
               spreadRadius: isSelected ? 2 : 0,
             ),
           ],
@@ -335,7 +338,7 @@ Widget _buildChoiceButton({
 }
 
 class BattleTransitionScreen extends HookConsumerWidget {
-  const BattleTransitionScreen({Key? key}) : super(key: key);
+  const BattleTransitionScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

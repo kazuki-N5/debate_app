@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 class MatchRecordDisplay {
   final String roomid;
   final String resultString; // "勝利" or "敗北"

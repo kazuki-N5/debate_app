@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously, non_constant_identifier_names
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'users.freezed.dart';

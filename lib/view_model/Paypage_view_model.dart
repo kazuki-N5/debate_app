@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:io';
 import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:flutter/foundation.dart';

@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -104,7 +105,7 @@ class PayPage extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(
                             vertical: 16, horizontal: 24),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -165,7 +166,7 @@ class PayPage extends ConsumerWidget {
                         'お支払いは、購入確認時にAppleアカウントに請求されます。サブスクリプションは、現在の期間が終了する24時間前までにキャンセルされない限り、自動的に更新されます。',
                         textAlign: TextAlign.center,
                         style: AppTextStyles.notoSans(
-                            color: Colors.white.withOpacity(0.8), fontSize: 12),
+                            color: Colors.white.withValues(alpha: 0.8), fontSize: 12),
                       ),
                       const SizedBox(height: 16),
                       Row(

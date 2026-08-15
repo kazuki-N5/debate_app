@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:io';
 import 'package:debate_project/provider/setting_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart'; 
@@ -10,7 +11,6 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:url_launcher/url_launcher.dart';
 // SoundServiceとSfxAssetsを使う場合はインポート
@@ -56,7 +56,7 @@ class SettingPage extends HookConsumerWidget {
       context: context,
       builder: (BuildContext dialogContext) {
         // ダイアログの内容は別のStatefulWidgetに委譲
-        return BugReportDialogContent();
+        return const BugReportDialogContent();
       },
     );
   }
@@ -74,7 +74,7 @@ class SettingPage extends HookConsumerWidget {
     const double bottomPadding = 20.0;
     const double adBannerHeight = 60.0;
 
-    Future<void> _handleDataTransfer(BuildContext context) async {
+    Future<void> handleDataTransfer(BuildContext context) async {
       router.push('/transfer');
     }
 
@@ -91,7 +91,7 @@ class SettingPage extends HookConsumerWidget {
       body: Stack(
         children: [
           ListView(
-            padding: EdgeInsets.fromLTRB(16.0, 0.0, 16.0,
+            padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0,
                 bottomButtonAreaHeight + bottomPadding + adBannerHeight),
             children: [
               // --- 音量設定セクション ---
@@ -140,7 +140,7 @@ class SettingPage extends HookConsumerWidget {
               _buildListTile(
                 icon: Icons.sync_alt,
                 title: 'データ引き継ぎ',
-                onTap: () => _handleDataTransfer(context),
+                onTap: () => handleDataTransfer(context),
               ),
               const SizedBox(height: 10), // セクション間のスペース
 
@@ -254,7 +254,7 @@ class SettingPage extends HookConsumerWidget {
             Switch(
               value: isOn,
               onChanged: onToggleChanged,
-              activeColor: Colors.blue.shade700,
+              activeThumbColor: Colors.blue.shade700,
             ),
           ],
         ),
@@ -273,7 +273,7 @@ class SettingPage extends HookConsumerWidget {
         title: Text(title, style: AppTextStyles.notoSans(fontSize: 16)),
         value: value,
         onChanged: onChanged,
-        activeColor: Colors.blue.shade700,
+        activeThumbColor: Colors.blue.shade700,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
       ),
@@ -314,7 +314,7 @@ class BugReportDialogContent extends HookConsumerWidget {
     final bugController = useTextEditingController();
     final isSending = useState(false);
     // 非同期処理後にウィジェットが破棄されていないか確認するためのフック
-    final isMounted = useIsMounted();
+    final isMounted = context.mounted;
     final supabase = ref.read(supabaseProvider);
 
     final userId = ref.read(currentUserIdProvider);
@@ -402,7 +402,7 @@ class BugReportDialogContent extends HookConsumerWidget {
               Text(
                 '発生したバグの内容と、再現手順を詳しく教えてください。\n欲しい機能を教えて下さい。',
                 style: AppTextStyles.notoSans(
-                  color: Colors.black.withOpacity(0.8),
+                  color: Colors.black.withValues(alpha: 0.8),
                   fontSize: 15,
                 ),
               ),

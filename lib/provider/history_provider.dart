@@ -1,3 +1,4 @@
+// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 // lib/provider/history_provider.dart (またはプロバイダが定義されているファイル)
 
 import 'package:debate_project/modes/history.dart';

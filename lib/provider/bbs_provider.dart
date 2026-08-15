@@ -384,4 +384,26 @@ class BbsGuestNotifier extends StateNotifier<BbsRoomState?> {
     _stopListening();
     super.dispose();
   }
+
+  Future<String?> cancelApplication() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return 'ユーザーが認証されていません';
+
+    try {
+      final response = await supabase.rpc('cancel_bbs_application', params: {
+        'p_user_id': userId,
+      });
+
+      if (response['success'] == true) {
+        state = null;
+        _stopListening();
+        return null;
+      } else {
+        return 'キャンセルの失敗: ${response['error']}';
+      }
+    } catch (e) {
+      log('cancelApplication error: $e');
+      return 'エラーが発生しました';
+    }
+  }
 }

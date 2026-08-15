@@ -145,6 +145,9 @@ class CommunityPage extends HookConsumerWidget {
                   );
                 },
               ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {

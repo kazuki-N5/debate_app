@@ -313,8 +313,6 @@ class BugReportDialogContent extends HookConsumerWidget {
     // これによりinitStateやdisposeが不要になります
     final bugController = useTextEditingController();
     final isSending = useState(false);
-    // 非同期処理後にウィジェットが破棄されていないか確認するためのフック
-    final isMounted = context.mounted;
     final supabase = ref.read(supabaseProvider);
 
     final userId = ref.read(currentUserIdProvider);
@@ -360,17 +358,16 @@ class BugReportDialogContent extends HookConsumerWidget {
           'bug_description': bugDescription,
         });
 
-        if (!isMounted()) return;
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('バグ報告を送信しました。ご協力ありがとうございます！')),
         );
         Navigator.of(context).pop();
       } catch (e) {
         // エラーが発生した場合も考慮します
-        if (!isMounted()) return;
+        if (!context.mounted) return;
       } finally {
-        // mountedチェックは useIsMounted フックで行います
-        if (isMounted()) {
+        if (context.mounted) {
           isSending.value = false;
         }
       }

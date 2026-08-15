@@ -14,7 +14,8 @@ class CommunityPage extends HookConsumerWidget {
     final bbsRooms = ref.watch(bbsListProvider);
     final bbsListNotifier = ref.read(bbsListProvider.notifier);
     final currentUserId = ref.watch(currentUserIdProvider);
-    
+    final guestState = ref.watch(bbsGuestProvider);
+
     useEffect(() {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         bbsListNotifier.fetchRooms();
@@ -32,17 +33,48 @@ class CommunityPage extends HookConsumerWidget {
         backgroundColor: Colors.blueAccent,
         elevation: 0,
       ),
-      body: RefreshIndicator(
-        onRefresh: bbsListNotifier.fetchRooms,
-        child: bbsRooms.isEmpty
-            ? Center(
-                child: Text(
-                  '現在募集中のルームはありません',
-                  style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 16),
-                ),
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
+      body: Column(
+        children: [
+          if (guestState != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: Colors.orangeAccent,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '現在応募中...',
+                    style: AppTextStyles.bold(color: Colors.white, fontSize: 16),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.orange,
+                    ),
+                    onPressed: () async {
+                      final error = await ref.read(bbsGuestProvider.notifier).cancelApplication();
+                      if (error != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+                      }
+                    },
+                    child: Text('やっぱやめる', style: AppTextStyles.bold()),
+                  )
+                ],
+              ),
+            ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: bbsListNotifier.fetchRooms,
+              child: bbsRooms.isEmpty
+                  ? Center(
+                      child: Text(
+                        '現在募集中のルームはありません',
+                        style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 16),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
                 itemCount: bbsRooms.length,
                 itemBuilder: (context, index) {
                   final room = bbsRooms[index];

@@ -349,6 +349,9 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
         // -------------------------------------------------------------
       } else {
         log('マッチングエラー: ${result['error']}');
+        if (result['error'] == 'ALREADY_APPLYING_BBS') {
+          ref.read(matchErrorServiceProvider).showMatchEndMessage('現在応募中のルームがあります。\nまずはキャンセルしてください', 0.85);
+        }
         ref.read(friendmatchProvider.notifier).state = false;
       }
     } catch (e) {

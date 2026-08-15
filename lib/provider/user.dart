@@ -123,7 +123,7 @@ class UserNotifier extends StateNotifier<Users> {
   }
 
   final picker = ImagePicker();
-  const uuid = Uuid();
+  final uuid = const Uuid();
 
   Future<void> updateAvatar() async {
     final currentUser = state;

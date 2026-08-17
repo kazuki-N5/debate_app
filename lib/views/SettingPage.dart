@@ -119,6 +119,15 @@ class SettingPage extends HookConsumerWidget {
               ),
               const SizedBox(height: 10), // セクション間のスペース
 
+              // --- 通知セクション ---
+              _buildSectionTitle('通知'),
+              _buildListTile(
+                icon: Icons.notifications,
+                title: '通知設定',
+                onTap: () => router.push('/notification_settings'),
+              ),
+              const SizedBox(height: 10), // セクション間のスペース
+
               // --- 「サポート＆その他」セクション (変更なし) ---
               _buildSectionTitle('サポート＆その他'),
               _buildListTile(

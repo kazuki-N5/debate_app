@@ -8,9 +8,10 @@ class AppNotification {
   final String id;
   final String userId; // 通知を受け取るユーザー
   final String actorId; // 通知を発生させたユーザー
-  final String type; // like_post / like_comment / follow / reply_comment
+  final String type; // like_post / like_comment / follow / reply_comment / comment
   final String? postId;
   final String? commentId;
+  final int count; // いいね集約時の件数 (1=単発)
   final bool isRead;
   final DateTime createdAt;
 
@@ -26,6 +27,7 @@ class AppNotification {
     required this.type,
     this.postId,
     this.commentId,
+    this.count = 1,
     this.isRead = false,
     required this.createdAt,
     this.actor,
@@ -59,6 +61,7 @@ class AppNotification {
       type: map['type'] as String,
       postId: map['post_id'] as String?,
       commentId: map['comment_id'] as String?,
+      count: (map['count'] as num?)?.toInt() ?? 1,
       isRead: map['is_read'] as bool? ?? false,
       createdAt: DateTime.parse(map['created_at'] as String).toLocal(),
       actor: actor,
@@ -74,6 +77,7 @@ class AppNotification {
     String? type,
     String? postId,
     String? commentId,
+    int? count,
     bool? isRead,
     DateTime? createdAt,
     Users? actor,
@@ -87,6 +91,7 @@ class AppNotification {
       type: type ?? this.type,
       postId: postId ?? this.postId,
       commentId: commentId ?? this.commentId,
+      count: count ?? this.count,
       isRead: isRead ?? this.isRead,
       createdAt: createdAt ?? this.createdAt,
       actor: actor ?? this.actor,

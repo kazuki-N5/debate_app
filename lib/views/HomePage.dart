@@ -815,65 +815,11 @@ class HomePage extends HookConsumerWidget {
                                             children: [
                                               GestureDetector(
                                                 onTap: () {
-                                                  showDialog(
-                                                    context: context,
-                                                    barrierColor: Colors
-                                                        .transparent, // 背景を暗くしない
-                                                    builder: (context) {
-                                                      return Dialog(
-                                                        backgroundColor:
-                                                            Colors.blue,
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(15),
-                                                          side:
-                                                              const BorderSide(
-                                                                  color: Colors
-                                                                      .white,
-                                                                  width: 2),
-                                                        ),
-                                                        child: Container(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .all(20),
-                                                          child: Column(
-                                                            mainAxisSize:
-                                                                MainAxisSize
-                                                                    .min,
-                                                            children: [
-                                                              Text(
-                                                                '通知について',
-                                                                style:
-                                                                    AppTextStyles
-                                                                        .bold(
-                                                                  color: Colors
-                                                                      .white,
-                                                                  fontSize: 18,
-                                                                ),
-                                                              ),
-                                                              const SizedBox(
-                                                                  height: 15),
-                                                              Text(
-                                                                '誰かがマッチングを開始したときに通知を受け取ることができます。\n\n※対戦者が非常に多い時間帯などは、通知が停止する場合があります。',
-                                                                style:
-                                                                    AppTextStyles
-                                                                        .notoSans(
-                                                                  color: Colors
-                                                                      .white,
-                                                                  fontSize: 15,
-                                                                ),
-                                                                textAlign:
-                                                                    TextAlign
-                                                                        .center,
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      );
-                                                    },
-                                                  );
+                                                  ref
+                                                      .read(soundServiceProvider)
+                                                      .playSfx(SfxAssets.normal);
+                                                  context.push(
+                                                      '/notification_settings');
                                                 },
                                                 child: const Padding(
                                                   padding: EdgeInsets.only(
@@ -893,7 +839,16 @@ class HomePage extends HookConsumerWidget {
                                                 color: Colors.white,
                                                 size: 28,
                                               ),
-                                              const SizedBox(width: 4),
+                                              const SizedBox(width: 6),
+                                              const Text(
+                                                'プッシュ通知',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
                                               CupertinoSwitch(
                                                 value:
                                                     user.is_notification_enabled ??

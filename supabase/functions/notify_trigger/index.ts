@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     // 受信者のFCMトークンを取得 (通知ONかつトークン保有者のみ)
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("fcm_token")
+      .select("fcm_token, notification_settings(like_enabled, comment_enabled, follow_enabled)")
       .eq("id", user_id)
       .eq("is_notification_enabled", true)
       .not("fcm_token", "is", null)
@@ -61,6 +61,15 @@ Deno.serve(async (req) => {
     if (!user?.fcm_token) {
       return new Response(
         JSON.stringify({ message: "No target (disabled or no token)." }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // カテゴリ別設定チェック (プッシュ通知の細かいON/OFF。設定行がなければON扱い)
+    const settings = user?.notification_settings?.[0];
+    if (!isCategoryEnabled(type, settings)) {
+      return new Response(
+        JSON.stringify({ message: "No target (category disabled)." }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
@@ -174,7 +183,7 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
   // 受信者のFCMトークンを一括取得 (通知ONかつトークン保有者のみ)
   const { data: targetUsers, error: usersError } = await supabase
     .from("users")
-    .select("id, fcm_token")
+    .select("id, fcm_token, notification_settings(dm_enabled, open_chat_enabled)")
     .in("id", receiverIds)
     .eq("is_notification_enabled", true)
     .not("fcm_token", "is", null);
@@ -183,12 +192,22 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
     return { message: "No targets (disabled or no token)." };
   }
 
+  // カテゴリ別設定チェック (DM / オプチャ。設定行がなければON扱い)
+  const filteredUsers = targetUsers.filter((u) => {
+    const s = u.notification_settings?.[0];
+    if (type === "dm") return s?.dm_enabled !== false;
+    return s?.open_chat_enabled !== false;
+  });
+  if (filteredUsers.length === 0) {
+    return { message: "No targets (category disabled)." };
+  }
+
   const accessToken = await getAccessToken();
 
   // FCMトークンの重複排除して送信
   const uniqueTokens = new Set();
   let successCount = 0;
-  for (const user of targetUsers) {
+  for (const user of filteredUsers) {
     if (!user.fcm_token || uniqueTokens.has(user.fcm_token)) continue;
     uniqueTokens.add(user.fcm_token);
     const sent = await sendFcm(accessToken, user.fcm_token, title, messageBody, type);
@@ -201,6 +220,23 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
     body: messageBody,
     counts: { success: successCount, total: uniqueTokens.size },
   };
+}
+
+/** カテゴリ別のプッシュ通知設定を判定 (設定行がなければON扱い) */
+function isCategoryEnabled(type, settings) {
+  if (!settings) return true;
+  switch (type) {
+    case "like_post":
+    case "like_comment":
+      return settings.like_enabled !== false;
+    case "comment":
+    case "reply_comment":
+      return settings.comment_enabled !== false;
+    case "follow":
+      return settings.follow_enabled !== false;
+    default:
+      return true;
+  }
 }
 
 /** 通知種別に応じたタイトル・本文 (個別通知用) */
@@ -225,6 +261,11 @@ function buildMessage(type, actorName) {
       return {
         title: "返信が来ました",
         body: `${actorName} さんがあなたのコメントに返信しました`,
+      };
+    case "comment":
+      return {
+        title: "コメントが来ました",
+        body: `${actorName} さんがあなたのポストにコメントしました`,
       };
     default:
       return { title: "新しい通知", body: actorName };

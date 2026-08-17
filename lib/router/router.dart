@@ -12,6 +12,7 @@ import 'package:debate_project/views/NamePage.dart';
 import 'package:debate_project/views/NamePage_change.dart';
 import 'package:debate_project/views/PayPage.dart';
 import 'package:debate_project/views/SettingPage.dart';
+import 'package:debate_project/views/NotificationSettingsPage.dart';
 import 'package:debate_project/views/TransferPage.dart';
 import 'package:debate_project/views/WaittransferPage.dart';
 import 'package:debate_project/views/UserProfilePage.dart';
@@ -67,6 +68,10 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/setting',
       pageBuilder: (context, state) => NoTransitionPage(child: const SettingPage(), key: state.pageKey),
+    ),
+    GoRoute(
+      path: '/notification_settings',
+      pageBuilder: (context, state) => NoTransitionPage(child: const NotificationSettingsPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/history',

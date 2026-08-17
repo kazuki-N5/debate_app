@@ -33,11 +33,25 @@ class NotificationNotifier
       return;
     }
 
-    // 新着通知のRealtime購読 (user_id が自分宛ての insert のみ)
+    // 新着通知のRealtime購読 (user_id が自分宛ての insert / update のみ)
+    //   insert: 新しい通知行 / update: いいね集約の件数加算 を即時反映
     _channel = supabase
         .channel('notifications-user-$myId')
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: myId,
+          ),
+          callback: (payload) {
+            fetchNotifications();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
           schema: 'public',
           table: 'notifications',
           filter: PostgresChangeFilter(

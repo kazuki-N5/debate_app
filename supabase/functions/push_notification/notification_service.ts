@@ -67,7 +67,7 @@ import serviceAccount from "./service-account.json" with {
    * 通知を全対象ユーザーに送信
    */ async sendMatchWaitingNotification(roomId, hostUserId) {
     // 送信先ユーザーを取得 (自分以外、通知有効、FCMトークンあり)
-    const { data: targetUsers, error: usersError } = await this.supabase.from("users").select("id, fcm_token").neq("id", hostUserId).eq("is_notification_enabled", true).not("fcm_token", "is", null);
+    const { data: targetUsers, error: usersError } = await this.supabase.from("users").select("id, fcm_token, notification_settings(match_waiting_enabled)").neq("id", hostUserId).eq("is_notification_enabled", true).not("fcm_token", "is", null);
     if (usersError) throw usersError;
     if (!targetUsers || targetUsers.length === 0) {
       return {
@@ -77,9 +77,12 @@ import serviceAccount from "./service-account.json" with {
     }
     // アクセストークン取得
     const accessToken = await this.getAccessToken();
-    // FCMトークンの重複排除
+    // FCMトークンの重複排除 (カテゴリ設定OFFのユーザーは除外)
     const uniqueTokens = new Set();
     const uniqueTargetUsers = targetUsers.filter((u)=>{
+      if (u.notification_settings?.[0]?.match_waiting_enabled === false) {
+        return false;
+      }
       if (!u.fcm_token || uniqueTokens.has(u.fcm_token)) {
         return false;
       }

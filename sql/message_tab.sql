@@ -13,12 +13,23 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id    UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,   -- 通知を受け取るユーザー
     actor_id   UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,   -- 通知を発生させたユーザー
-    type       TEXT NOT NULL CHECK (type IN ('like_post','like_comment','follow','reply_comment')),
+    type       TEXT NOT NULL CHECK (type IN ('like_post','like_comment','follow','reply_comment','comment')),
     post_id    UUID REFERENCES public.bbs_posts(id) ON DELETE CASCADE,        -- 関連ポスト
     comment_id UUID REFERENCES public.bbs_comments(id) ON DELETE CASCADE,     -- 関連コメント
+    count      INT NOT NULL DEFAULT 1,                                        -- いいね集約時の件数 (1=単発)
+    actor_ids  UUID[] NOT NULL DEFAULT '{}',                                  -- 集約内のいいね主一覧 (重複カウント防止)
     is_read    BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- 既存DBのCHECK制約にも 'comment' を追加（冪等・再実行安全）
+ALTER TABLE public.notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE public.notifications ADD CONSTRAINT notifications_type_check
+    CHECK (type IN ('like_post','like_comment','follow','reply_comment','comment'));
+
+-- 既存DBにいいね集約用カラムを追加（冪等）
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS count INT NOT NULL DEFAULT 1;
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS actor_ids UUID[] NOT NULL DEFAULT '{}';
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user_created
     ON public.notifications (user_id, created_at DESC);
@@ -95,34 +106,56 @@ CREATE POLICY user_follows_delete_own
 --        フォロー通知のみ、フォロー解除で削除する。
 -- ------------------------------------------------------------
 
--- 3-1. ポストへのいいね → like_post 通知
+-- 3-1. ポストへのいいね → like_post 通知 (同一対象は未読バッチに集約)
+--      例: 2件いいね → 「2件」の行 (未読) → 既読 → さらに3件 → 新しい「3件」の行
 CREATE OR REPLACE FUNCTION public.notify_bbs_post_like()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_owner UUID;
+DECLARE v_owner UUID; v_batch_id UUID; v_actors UUID[]; v_is_new BOOLEAN;
 BEGIN
     SELECT user_id INTO v_owner FROM public.bbs_posts WHERE id = NEW.post_id;
     IF v_owner IS NOT NULL AND v_owner <> NEW.user_id THEN
-        -- 同じ人からの同じ対象への通知は一度削除して最新化（連続いいねの重複防止）
-        DELETE FROM public.notifications
-        WHERE user_id = v_owner AND actor_id = NEW.user_id
-          AND type = 'like_post' AND post_id = NEW.post_id;
-        INSERT INTO public.notifications (user_id, actor_id, type, post_id)
-        VALUES (v_owner, NEW.user_id, 'like_post', NEW.post_id);
+        -- 最新の「未読」バッチを探す (既読になったら次のいいねで新しいバッチ行になる)
+        SELECT id, actor_ids INTO v_batch_id, v_actors
+        FROM public.notifications
+        WHERE user_id = v_owner AND type = 'like_post' AND post_id = NEW.post_id
+          AND is_read = false
+        ORDER BY created_at DESC LIMIT 1;
 
-        -- FCMプッシュ通知: Edge Function を呼び出し
+        IF v_batch_id IS NULL THEN
+            -- 初回 or 前バッチが既読 → 新しいバッチ行 (count=1)
+            INSERT INTO public.notifications (user_id, actor_id, type, post_id, count, actor_ids)
+            VALUES (v_owner, NEW.user_id, 'like_post', NEW.post_id, 1, ARRAY[NEW.user_id]);
+            v_is_new := true;
+        ELSIF NOT (NEW.user_id = ANY(v_actors)) THEN
+            -- 未読バッチに追加 (件数+1・最新のいいね主を actor に・一覧先頭へ)
+            UPDATE public.notifications
+            SET count = count + 1,
+                actor_ids = actor_ids || NEW.user_id,
+                actor_id = NEW.user_id,
+                created_at = now()
+            WHERE id = v_batch_id;
+            v_is_new := true;
+        ELSE
+            -- 同じ人からの再いいね → 件数もFCMも送らない (連打スパム防止)
+            v_is_new := false;
+        END IF;
+
+        -- FCMプッシュ通知: 新規いいねのみ送信
         -- (URL は環境に合わせて置換。NOTIFY_SECRET 未設定なら x-notify-secret ヘッダー行を削除)
-        PERFORM net.http_post(
-            url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
-            headers := jsonb_build_object(
-                'Content-Type', 'application/json',
-                'x-notify-secret', 'YOUR_NOTIFY_SECRET'
-            ),
-            body := jsonb_build_object(
-                'user_id', v_owner,
-                'type', 'like_post',
-                'actor_name', (SELECT name FROM public.users WHERE id = NEW.user_id)
-            )
-        );
+        IF v_is_new THEN
+            PERFORM net.http_post(
+                url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+                headers := jsonb_build_object(
+                    'Content-Type', 'application/json',
+                    'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+                ),
+                body := jsonb_build_object(
+                    'user_id', v_owner,
+                    'type', 'like_post',
+                    'actor_name', (SELECT name FROM public.users WHERE id = NEW.user_id)
+                )
+            );
+        END IF;
     END IF;
     RETURN NEW;
 END $$;
@@ -132,33 +165,55 @@ CREATE TRIGGER trg_notify_bbs_post_like
 AFTER INSERT ON public.bbs_likes
 FOR EACH ROW EXECUTE FUNCTION public.notify_bbs_post_like();
 
--- 3-2. コメントへのいいね → like_comment 通知
+-- 3-2. コメントへのいいね → like_comment 通知 (同一対象は未読バッチに集約)
 CREATE OR REPLACE FUNCTION public.notify_bbs_comment_like()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_owner UUID; v_post_id UUID;
+DECLARE v_owner UUID; v_post_id UUID; v_batch_id UUID; v_actors UUID[]; v_is_new BOOLEAN;
 BEGIN
     SELECT user_id, post_id INTO v_owner, v_post_id
     FROM public.bbs_comments WHERE id = NEW.comment_id;
     IF v_owner IS NOT NULL AND v_owner <> NEW.user_id THEN
-        DELETE FROM public.notifications
-        WHERE user_id = v_owner AND actor_id = NEW.user_id
-          AND type = 'like_comment' AND comment_id = NEW.comment_id;
-        INSERT INTO public.notifications (user_id, actor_id, type, post_id, comment_id)
-        VALUES (v_owner, NEW.user_id, 'like_comment', v_post_id, NEW.comment_id);
+        -- 最新の「未読」バッチを探す
+        SELECT id, actor_ids INTO v_batch_id, v_actors
+        FROM public.notifications
+        WHERE user_id = v_owner AND type = 'like_comment' AND comment_id = NEW.comment_id
+          AND is_read = false
+        ORDER BY created_at DESC LIMIT 1;
 
-        -- FCMプッシュ通知: Edge Function を呼び出し
-        PERFORM net.http_post(
-            url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
-            headers := jsonb_build_object(
-                'Content-Type', 'application/json',
-                'x-notify-secret', 'YOUR_NOTIFY_SECRET'
-            ),
-            body := jsonb_build_object(
-                'user_id', v_owner,
-                'type', 'like_comment',
-                'actor_name', (SELECT name FROM public.users WHERE id = NEW.user_id)
-            )
-        );
+        IF v_batch_id IS NULL THEN
+            -- 初回 or 前バッチが既読 → 新しいバッチ行 (count=1)
+            INSERT INTO public.notifications (user_id, actor_id, type, post_id, comment_id, count, actor_ids)
+            VALUES (v_owner, NEW.user_id, 'like_comment', v_post_id, NEW.comment_id, 1, ARRAY[NEW.user_id]);
+            v_is_new := true;
+        ELSIF NOT (NEW.user_id = ANY(v_actors)) THEN
+            -- 未読バッチに追加
+            UPDATE public.notifications
+            SET count = count + 1,
+                actor_ids = actor_ids || NEW.user_id,
+                actor_id = NEW.user_id,
+                created_at = now()
+            WHERE id = v_batch_id;
+            v_is_new := true;
+        ELSE
+            -- 同じ人からの再いいね → 件数もFCMも送らない (連打スパム防止)
+            v_is_new := false;
+        END IF;
+
+        -- FCMプッシュ通知: 新規いいねのみ送信
+        IF v_is_new THEN
+            PERFORM net.http_post(
+                url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+                headers := jsonb_build_object(
+                    'Content-Type', 'application/json',
+                    'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+                ),
+                body := jsonb_build_object(
+                    'user_id', v_owner,
+                    'type', 'like_comment',
+                    'actor_name', (SELECT name FROM public.users WHERE id = NEW.user_id)
+                )
+            );
+        END IF;
     END IF;
     RETURN NEW;
 END $$;
@@ -168,19 +223,20 @@ CREATE TRIGGER trg_notify_bbs_comment_like
 AFTER INSERT ON public.bbs_comment_likes
 FOR EACH ROW EXECUTE FUNCTION public.notify_bbs_comment_like();
 
--- 3-3. コメントへの返信 → reply_comment 通知
---      (parent_comment_id が入っているコメントが「返信」)
+-- 3-3. コメント通知 (返信 → reply_comment / ポストへのコメント → comment)
+--      (parent_comment_id が入っているコメントが「返信」、入っていないのが「ポストへのコメント」)
 --      post_id は親コメント由来を使用し、ポスト不整合を防ぐ
 CREATE OR REPLACE FUNCTION public.notify_comment_reply()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_parent_owner UUID; v_parent_post_id UUID;
+DECLARE v_target_owner UUID; v_post_id UUID;
 BEGIN
     IF NEW.parent_comment_id IS NOT NULL THEN
-        SELECT user_id, post_id INTO v_parent_owner, v_parent_post_id
+        -- 返信: 親コメントの作者に通知
+        SELECT user_id, post_id INTO v_target_owner, v_post_id
         FROM public.bbs_comments WHERE id = NEW.parent_comment_id;
-        IF v_parent_owner IS NOT NULL AND v_parent_owner <> NEW.user_id THEN
+        IF v_target_owner IS NOT NULL AND v_target_owner <> NEW.user_id THEN
             INSERT INTO public.notifications (user_id, actor_id, type, post_id, comment_id)
-            VALUES (v_parent_owner, NEW.user_id, 'reply_comment', v_parent_post_id, NEW.id);
+            VALUES (v_target_owner, NEW.user_id, 'reply_comment', v_post_id, NEW.id);
 
             -- FCMプッシュ通知: Edge Function を呼び出し
             PERFORM net.http_post(
@@ -190,8 +246,29 @@ BEGIN
                     'x-notify-secret', 'YOUR_NOTIFY_SECRET'
                 ),
                 body := jsonb_build_object(
-                    'user_id', v_parent_owner,
+                    'user_id', v_target_owner,
                     'type', 'reply_comment',
+                    'actor_name', (SELECT name FROM public.users WHERE id = NEW.user_id)
+                )
+            );
+        END IF;
+    ELSE
+        -- トップレベルコメント: ポストの作者に通知
+        SELECT user_id INTO v_target_owner FROM public.bbs_posts WHERE id = NEW.post_id;
+        IF v_target_owner IS NOT NULL AND v_target_owner <> NEW.user_id THEN
+            INSERT INTO public.notifications (user_id, actor_id, type, post_id, comment_id)
+            VALUES (v_target_owner, NEW.user_id, 'comment', NEW.post_id, NEW.id);
+
+            -- FCMプッシュ通知: Edge Function を呼び出し
+            PERFORM net.http_post(
+                url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+                headers := jsonb_build_object(
+                    'Content-Type', 'application/json',
+                    'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+                ),
+                body := jsonb_build_object(
+                    'user_id', v_target_owner,
+                    'type', 'comment',
                     'actor_name', (SELECT name FROM public.users WHERE id = NEW.user_id)
                 )
             );
@@ -314,38 +391,8 @@ BEGIN
         GROUP BY m.room_id;
 END $$;
 
--- 5-2. オプチャ一覧: 参加中ルーム・最新メッセージ を1クエリで返す
-CREATE OR REPLACE FUNCTION public.get_open_chat_inbox(p_user_id UUID)
-RETURNS TABLE(
-    room                   JSONB,
-    last_message           TEXT,
-    last_message_user_name TEXT,
-    last_message_at        TIMESTAMPTZ
-)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-    IF p_user_id IS DISTINCT FROM auth.uid() THEN
-        RAISE EXCEPTION 'Not allowed';
-    END IF;
-    RETURN QUERY
-        SELECT
-            to_jsonb(ocr.*),
-            x.content,
-            xu.name,
-            x.created_at
-        FROM public.open_chat_rooms ocr
-        LEFT JOIN LATERAL (
-            SELECT content, user_id, created_at
-            FROM public.open_chat_messages
-            WHERE room_id = ocr.id
-            ORDER BY created_at DESC LIMIT 1
-        ) x ON true
-        LEFT JOIN public.users xu ON xu.id = x.user_id
-        WHERE EXISTS (
-            SELECT 1 FROM public.open_chat_members ocm
-            WHERE ocm.room_id = ocr.id AND ocm.user_id = p_user_id
-        );
-END $$;
+-- 5-2. オプチャ一覧RPC: 「7. オプチャの未読管理」にて unread_count 対応版を定義
+--      (CREATE OR REPLACE は戻り値の型を変更できないため、ここでは定義しない)
 
 
 -- ------------------------------------------------------------
@@ -418,7 +465,8 @@ BEGIN
     WHERE room_id = p_room_id AND user_id = auth.uid();
 END $$;
 
--- オプチャ一覧RPCを未読数対応に更新
+-- オプチャ一覧RPCを未読数対応に更新 (戻り値の型が変わるため、先に DROP してから再作成)
+DROP FUNCTION IF EXISTS public.get_open_chat_inbox(uuid);
 CREATE OR REPLACE FUNCTION public.get_open_chat_inbox(p_user_id UUID)
 RETURNS TABLE(
     room                   JSONB,
@@ -460,3 +508,58 @@ END $$;
 
 -- 検証用: 通知テーブルが正しく作られたか確認
 -- SELECT * FROM public.notifications ORDER BY created_at DESC LIMIT 10;
+
+-- ------------------------------------------------------------
+-- 8. 通知カテゴリ別設定 (プッシュ通知の細かいON/OFF)
+--    ※ アプリ内通知(notifications)には影響しない。
+--       プッシュ(FCM)送信時に Edge Function 側で
+--       is_notification_enabled(マスター) とカテゴリ設定の両方を判定する。
+--       → カテゴリONでもマスターOFFならプッシュは送られない。
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.notification_settings (
+    user_id               UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
+    like_enabled          BOOLEAN NOT NULL DEFAULT true,   -- いいね (like_post / like_comment)
+    comment_enabled       BOOLEAN NOT NULL DEFAULT true,   -- コメント・返信 (comment / reply_comment)
+    follow_enabled        BOOLEAN NOT NULL DEFAULT true,   -- フォロー
+    dm_enabled            BOOLEAN NOT NULL DEFAULT true,   -- DM
+    open_chat_enabled     BOOLEAN NOT NULL DEFAULT true,   -- オプチャ
+    match_waiting_enabled BOOLEAN NOT NULL DEFAULT true,   -- 対戦待ち
+    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- RLS: 自分自身の設定のみ参照・挿入・更新できる
+ALTER TABLE public.notification_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS notification_settings_select_own ON public.notification_settings;
+CREATE POLICY notification_settings_select_own
+    ON public.notification_settings FOR SELECT
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS notification_settings_insert_own ON public.notification_settings;
+CREATE POLICY notification_settings_insert_own
+    ON public.notification_settings FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS notification_settings_update_own ON public.notification_settings;
+CREATE POLICY notification_settings_update_own
+    ON public.notification_settings FOR UPDATE
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+-- 既存ユーザー分を初期化（全カテゴリON。マスター is_notification_enabled とは独立）
+INSERT INTO public.notification_settings (user_id)
+SELECT id FROM public.users
+ON CONFLICT (user_id) DO NOTHING;
+
+-- 新規ユーザー作成時に設定行を自動生成
+CREATE OR REPLACE FUNCTION public.handle_new_notification_settings()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    INSERT INTO public.notification_settings (user_id) VALUES (NEW.id) ON CONFLICT DO NOTHING;
+    RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_new_notification_settings ON public.users;
+CREATE TRIGGER trg_new_notification_settings
+AFTER INSERT ON public.users
+FOR EACH ROW EXECUTE FUNCTION public.handle_new_notification_settings();

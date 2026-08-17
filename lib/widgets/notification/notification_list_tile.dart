@@ -21,13 +21,19 @@ class NotificationListTile extends StatelessWidget {
   String get _actionText {
     switch (notification.type) {
       case 'like_post':
-        return 'あなたのポストにいいねしました';
+        return notification.count > 1
+            ? '${notification.count}件のいいねが来ました'
+            : 'あなたのポストにいいねしました';
       case 'like_comment':
-        return 'あなたのコメントにいいねしました';
+        return notification.count > 1
+            ? '${notification.count}件のいいねが来ました'
+            : 'あなたのコメントにいいねしました';
       case 'follow':
         return 'あなたをフォローしました';
       case 'reply_comment':
         return 'あなたのコメントに返信しました';
+      case 'comment':
+        return 'あなたのポストにコメントしました';
       default:
         return '新しい通知があります';
     }
@@ -42,6 +48,7 @@ class NotificationListTile extends StatelessWidget {
       case 'follow':
         return (Icons.person_add, const Color(0xFF1D9BF0));
       case 'reply_comment':
+      case 'comment':
         return (Icons.chat_bubble, const Color(0xFF00BA7C));
       default:
         return (Icons.notifications, Colors.blueGrey);

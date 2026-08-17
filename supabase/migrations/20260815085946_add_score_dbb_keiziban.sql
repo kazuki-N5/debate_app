@@ -363,16 +363,15 @@ CREATE FUNCTION public.increment_comment_likes_count (
 )
   RETURNS void
   LANGUAGE plpgsql
+  SECURITY DEFINER
   AS $function$
 BEGIN
-  UPDATE bbs_comments SET likes_count = likes_count + 1 WHERE id = p_comment_id;
+  UPDATE bbs_comments SET likes_count = COALESCE(likes_count, 0) + 1 WHERE id = p_comment_id;
 END;
 $function$;
 
 GRANT ALL ON FUNCTION public.increment_comment_likes_count(uuid) TO anon;
-
 GRANT ALL ON FUNCTION public.increment_comment_likes_count(uuid) TO authenticated;
-
 GRANT ALL ON FUNCTION public.increment_comment_likes_count(uuid) TO service_role;
 
 CREATE FUNCTION public.increment_likes_count (
@@ -380,16 +379,15 @@ CREATE FUNCTION public.increment_likes_count (
 )
   RETURNS void
   LANGUAGE plpgsql
+  SECURITY DEFINER
   AS $function$
 BEGIN
-  UPDATE bbs_posts SET likes_count = likes_count + 1 WHERE id = post_id;
+  UPDATE bbs_posts SET likes_count = COALESCE(likes_count, 0) + 1 WHERE id = post_id;
 END;
 $function$;
 
 GRANT ALL ON FUNCTION public.increment_likes_count(uuid) TO anon;
-
 GRANT ALL ON FUNCTION public.increment_likes_count(uuid) TO authenticated;
-
 GRANT ALL ON FUNCTION public.increment_likes_count(uuid) TO service_role;
 
 CREATE FUNCTION public.increment_replies_count (
@@ -397,6 +395,7 @@ CREATE FUNCTION public.increment_replies_count (
 )
   RETURNS void
   LANGUAGE plpgsql
+  SECURITY DEFINER
   AS $function$
 BEGIN
   UPDATE bbs_posts SET replies_count = replies_count + 1 WHERE id = p_post_id;

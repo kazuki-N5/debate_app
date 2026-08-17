@@ -25,6 +25,8 @@ mixin _$Users {
   bool? get status => throw _privateConstructorUsedError;
   String? get fcm_token => throw _privateConstructorUsedError;
   bool? get is_notification_enabled => throw _privateConstructorUsedError;
+  String? get bio => throw _privateConstructorUsedError;
+  String? get header_url => throw _privateConstructorUsedError;
 
   /// Create a copy of Users
   /// with the given fields replaced by the non-null parameter values.
@@ -46,7 +48,9 @@ abstract class $UsersCopyWith<$Res> {
       String? avatar_url,
       bool? status,
       String? fcm_token,
-      bool? is_notification_enabled});
+      bool? is_notification_enabled,
+      String? bio,
+      String? header_url});
 }
 
 /// @nodoc
@@ -73,6 +77,8 @@ class _$UsersCopyWithImpl<$Res, $Val extends Users>
     Object? status = freezed,
     Object? fcm_token = freezed,
     Object? is_notification_enabled = freezed,
+    Object? bio = freezed,
+    Object? header_url = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -111,6 +117,14 @@ class _$UsersCopyWithImpl<$Res, $Val extends Users>
           ? _value.is_notification_enabled
           : is_notification_enabled // ignore: cast_nullable_to_non_nullable
               as bool?,
+      bio: freezed == bio
+          ? _value.bio
+          : bio // ignore: cast_nullable_to_non_nullable
+              as String?,
+      header_url: freezed == header_url
+          ? _value.header_url
+          : header_url // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -131,7 +145,9 @@ abstract class _$$UsersImplCopyWith<$Res> implements $UsersCopyWith<$Res> {
       String? avatar_url,
       bool? status,
       String? fcm_token,
-      bool? is_notification_enabled});
+      bool? is_notification_enabled,
+      String? bio,
+      String? header_url});
 }
 
 /// @nodoc
@@ -156,6 +172,8 @@ class __$$UsersImplCopyWithImpl<$Res>
     Object? status = freezed,
     Object? fcm_token = freezed,
     Object? is_notification_enabled = freezed,
+    Object? bio = freezed,
+    Object? header_url = freezed,
   }) {
     return _then(_$UsersImpl(
       id: null == id
@@ -194,6 +212,14 @@ class __$$UsersImplCopyWithImpl<$Res>
           ? _value.is_notification_enabled
           : is_notification_enabled // ignore: cast_nullable_to_non_nullable
               as bool?,
+      bio: freezed == bio
+          ? _value.bio
+          : bio // ignore: cast_nullable_to_non_nullable
+              as String?,
+      header_url: freezed == header_url
+          ? _value.header_url
+          : header_url // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -210,7 +236,9 @@ class _$UsersImpl implements _Users {
       this.avatar_url,
       this.status,
       this.fcm_token,
-      this.is_notification_enabled});
+      this.is_notification_enabled,
+      this.bio,
+      this.header_url});
 
   @override
   final String id;
@@ -230,10 +258,14 @@ class _$UsersImpl implements _Users {
   final String? fcm_token;
   @override
   final bool? is_notification_enabled;
+  @override
+  final String? bio;
+  @override
+  final String? header_url;
 
   @override
   String toString() {
-    return 'Users(id: $id, name: $name, trophy: $trophy, win: $win, lose: $lose, avatar_url: $avatar_url, status: $status, fcm_token: $fcm_token, is_notification_enabled: $is_notification_enabled)';
+    return 'Users(id: $id, name: $name, trophy: $trophy, win: $win, lose: $lose, avatar_url: $avatar_url, status: $status, fcm_token: $fcm_token, is_notification_enabled: $is_notification_enabled, bio: $bio, header_url: $header_url)';
   }
 
   @override
@@ -253,12 +285,15 @@ class _$UsersImpl implements _Users {
                 other.fcm_token == fcm_token) &&
             (identical(
                     other.is_notification_enabled, is_notification_enabled) ||
-                other.is_notification_enabled == is_notification_enabled));
+                other.is_notification_enabled == is_notification_enabled) &&
+            (identical(other.bio, bio) || other.bio == bio) &&
+            (identical(other.header_url, header_url) ||
+                other.header_url == header_url));
   }
 
   @override
   int get hashCode => Object.hash(runtimeType, id, name, trophy, win, lose,
-      avatar_url, status, fcm_token, is_notification_enabled);
+      avatar_url, status, fcm_token, is_notification_enabled, bio, header_url);
 
   /// Create a copy of Users
   /// with the given fields replaced by the non-null parameter values.
@@ -279,7 +314,9 @@ abstract class _Users implements Users {
       final String? avatar_url,
       final bool? status,
       final String? fcm_token,
-      final bool? is_notification_enabled}) = _$UsersImpl;
+      final bool? is_notification_enabled,
+      final String? bio,
+      final String? header_url}) = _$UsersImpl;
 
   @override
   String get id;
@@ -299,6 +336,10 @@ abstract class _Users implements Users {
   String? get fcm_token;
   @override
   bool? get is_notification_enabled;
+  @override
+  String? get bio;
+  @override
+  String? get header_url;
 
   /// Create a copy of Users
   /// with the given fields replaced by the non-null parameter values.

@@ -501,7 +501,7 @@ class GamePage extends HookConsumerWidget {
                               Expanded(
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: Colors.grey[100],
+                                    color: const Color(0xFFF3F3F3),
                                     borderRadius: BorderRadius.circular(25),
                                     border:
                                         Border.all(color: Colors.grey[300]!),
@@ -545,7 +545,7 @@ class GamePage extends HookConsumerWidget {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 4, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: Colors.grey[100],
+                                        color: const Color(0xFFF3F3F3),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
                                             color: Colors.grey[300]!),

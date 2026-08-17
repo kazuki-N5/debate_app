@@ -8,6 +8,7 @@ class BbsComment {
   final String content;
   final DateTime createdAt;
   final int likesCount;
+  final String? imageUrl;
   
   // JOIN用
   final Users? user;
@@ -22,6 +23,7 @@ class BbsComment {
     required this.content,
     required this.createdAt,
     this.likesCount = 0,
+    this.imageUrl,
     this.user,
     this.isLikedByMe = false,
     this.replies = const [],
@@ -36,6 +38,7 @@ class BbsComment {
       content: map['content'] as String,
       createdAt: DateTime.parse(map['created_at'] as String).toLocal(),
       likesCount: map['likes_count'] as int? ?? 0,
+      imageUrl: map['image_url'] as String?,
       user: user,
       isLikedByMe: isLikedByMe,
       replies: replies,
@@ -50,6 +53,7 @@ class BbsComment {
     String? content,
     DateTime? createdAt,
     int? likesCount,
+    String? imageUrl,
     Users? user,
     bool? isLikedByMe,
     List<BbsComment>? replies,
@@ -62,6 +66,7 @@ class BbsComment {
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
       likesCount: likesCount ?? this.likesCount,
+      imageUrl: imageUrl ?? this.imageUrl,
       user: user ?? this.user,
       isLikedByMe: isLikedByMe ?? this.isLikedByMe,
       replies: replies ?? this.replies,

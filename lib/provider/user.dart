@@ -295,6 +295,103 @@ class UserNotifier extends StateNotifier<Users> {
     }
   }
 
+  Future<void> updateHeader() async {
+    final currentUser = state;
+    if (currentUser.id.isEmpty) {
+      print('ユーザーIDがありません。ヘッダーを更新できません。');
+      return;
+    }
+
+    final String? oldHeaderUrl = currentUser.header_url;
+
+    try {
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile == null) {
+        print('画像選択がキャンセルされました。');
+        return;
+      }
+
+      final cropper = ImageCropper();
+      final CroppedFile? croppedFile = await cropper.cropImage(
+        sourcePath: pickedFile.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'ヘッダー画像を切り抜く',
+            toolbarColor: Colors.blueAccent,
+            toolbarWidgetColor: Colors.white,
+            cropStyle: CropStyle.rectangle,
+            initAspectRatio: CropAspectRatioPreset.ratio16x9,
+            lockAspectRatio: false,
+            statusBarColor: Colors.blueAccent,
+          ),
+          IOSUiSettings(
+            title: 'ヘッダー画像を切り抜く',
+            aspectRatioLockEnabled: false,
+            resetAspectRatioEnabled: false,
+            cropStyle: CropStyle.rectangle,
+            doneButtonTitle: '完了',
+            cancelButtonTitle: 'キャンセル',
+          ),
+        ],
+      );
+
+      if (croppedFile == null) {
+        print('画像クロップがキャンセルされました。');
+        return;
+      }
+
+      final File imageFile = File(croppedFile.path);
+      final Uint8List? compressedBytes = await FlutterImageCompress.compressWithFile(
+        imageFile.absolute.path,
+        minWidth: 800,
+        minHeight: 450,
+        quality: 85,
+      );
+
+      if (compressedBytes == null || compressedBytes.isEmpty) {
+        throw Exception('画像の圧縮に失敗しました。');
+      }
+
+      final fileExtension = pickedFile.path.split('.').last.toLowerCase();
+      // アバター画像と同じバケットを使い、ファイル名で区別する
+      final path = 'avatars/${currentUser.id}/header_${uuid.v4()}.$fileExtension';
+
+      await supabase.storage.from('avatars').uploadBinary(
+        path,
+        compressedBytes,
+        fileOptions: const FileOptions(upsert: false),
+      );
+
+      final imageUrl = supabase.storage.from('avatars').getPublicUrl(path);
+      if (imageUrl.isEmpty) {
+        throw Exception('Failed to get public URL');
+      }
+
+      await supabase.from('users').update({'header_url': imageUrl}).eq('id', currentUser.id);
+
+      if (oldHeaderUrl != null && oldHeaderUrl.isNotEmpty) {
+        try {
+          final Uri? oldUri = Uri.tryParse(oldHeaderUrl);
+          if (oldUri != null && oldUri.pathSegments.length > 4) {
+            final bucketNameIndex = oldUri.pathSegments.indexOf('avatars');
+            if (bucketNameIndex != -1 && bucketNameIndex < oldUri.pathSegments.length - 1) {
+              final oldPath = oldUri.pathSegments.sublist(bucketNameIndex + 1).join('/');
+              if (oldPath.isNotEmpty) {
+                await supabase.storage.from('avatars').remove([oldPath]);
+              }
+            }
+          }
+        } catch (e) {
+          print('古いヘッダーの削除に失敗しました: $e');
+        }
+      }
+
+      await fetchUser(currentUser.id);
+    } catch (e, st) {
+      print('ヘッダー更新中のエラー: $e\n$st');
+    }
+  }
+
   Future<void> updateName(Users user, String name) async {
     // user パラメータはここでは直接使用されていないようですが、
     // 他の箇所で使用するために残している場合はそのままにしてください。

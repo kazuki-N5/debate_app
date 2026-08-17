@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>オープンチャット機能 実装プラン（改訂版）</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f9fafb;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+    .plan-content {
+      flex: 1;
+      min-width: 300px;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    h1 {
+      color: #2c3e50;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+      margin-top: 0;
+    }
+    h2 {
+      color: #2980b9;
+      margin-top: 30px;
+      border-left: 5px solid #3498db;
+      padding-left: 10px;
+    }
+    h3 {
+      color: #34495e;
+    }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 8px; }
+    .badge {
+      background-color: #e74c3c;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 5px;
+    }
+    
+    /* モックアッププレビュー用スタイル */
+    .mockup-panel {
+      width: 320px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .phone-mockup {
+      background-color: #fff;
+      border-radius: 30px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      border: 8px solid #2c3e50;
+      overflow: hidden;
+      height: 500px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .mockup-header {
+      background-color: #3498db;
+      color: white;
+      text-align: center;
+      padding: 15px;
+      font-weight: bold;
+    }
+    .chat-list { flex: 1; overflow-y: auto; background: #f5f6fa; }
+    .chat-item { display: flex; padding: 12px; border-bottom: 1px solid #dcdde1; background: #fff; }
+    .chat-icon { width: 45px; height: 45px; border-radius: 50%; background: #f1c40f; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 20px; border: 1px solid #ddd; }
+    .chat-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+    .chat-title { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+    
+    /* ダイアログモックアップ */
+    .dialog-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .dialog-box {
+      background: white;
+      width: 80%;
+      border-radius: 15px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    .dialog-icon {
+      width: 60px; height: 60px; border-radius: 50%; background: #2ecc71;
+      margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 30px;
+    }
+    .btn-join {
+      background: #2ecc71; color: white; border: none; padding: 10px 20px;
+      border-radius: 20px; font-weight: bold; width: 100%; margin-top: 15px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  
+  <div class="plan-content">
+    <h1>コミュニティ「オープンチャット」機能 実装プラン（改訂版）</h1>
+    <p>LINEのオープンチャットのように、管理者（指揮官）権限、アイコン設定、参加確認ダイアログを備えた本格的なチャット機能を実装します。</p>
+
+    <h2>1. 追加・強化される機能</h2>
+    <ul>
+      <li><strong>ルームのアイコン設定</strong>: ルーム作成時にアイコン画像を設定可能に。</li>
+      <li><strong>入室前ダイアログ</strong>: ルーム一覧からタップした際、アイコンや詳細情報を確認して「参加する」を選ぶダイアログを表示。</li>
+      <li><strong>メンバー管理と管理者権限</strong>: 
+        <ul>
+          <li>ルーム作成者は「管理者」となり、メンバーを削除（キック）できる権限を持つ。</li>
+          <li>チャット画面から「メンバー一覧」を開き、管理ができるようにする。</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>2. データベース設計（Supabase）</h2>
+    <p>新たに3つのテーブル構成とし、権限管理やアイコン情報を追加します。</p>
+    
+    <h3>2-1. <code>open_chat_rooms</code>（ルーム管理）</h3>
+    <ul>
+      <li><code>id</code> (uuid, primary key)</li>
+      <li><code>name</code> (text) - ルーム名</li>
+      <li><code>description</code> (text) - ルームの説明文</li>
+      <li><code>icon_url</code> (text) - アイコン画像のURL <span class="badge">NEW</span></li>
+      <li><code>owner_id</code> (uuid, FK) - 管理者（指揮官）のユーザーID</li>
+      <li><code>created_at</code> (timestamp)</li>
+    </ul>
+
+    <h3>2-2. <code>open_chat_members</code>（メンバー・権限管理）<span class="badge">NEW</span></h3>
+    <ul>
+      <li><code>id</code> (uuid, primary key)</li>
+      <li><code>room_id</code> (uuid, FK) - ルームID</li>
+      <li><code>user_id</code> (uuid, FK) - ユーザーID</li>
+      <li><code>role</code> (text) - 'admin' (管理者) または 'member' (一般)</li>
+      <li><code>joined_at</code> (timestamp)</li>
+    </ul>
+
+    <h3>2-3. <code>open_chat_messages</code>（メッセージ管理）</h3>
+    <ul>
+      <li><code>id</code> (uuid, primary key)</li>
+      <li><code>room_id</code> (uuid, FK)</li>
+      <li><code>user_id</code> (uuid, FK)</li>
+      <li><code>content</code> (text)</li>
+      <li><code>created_at</code> (timestamp)</li>
+    </ul>
+
+    <h2>3. アプリ側の実装（Flutter）</h2>
+    
+    <h3>3.1 オープンチャット作成画面 (<code>CreateOpenChatView.dart</code>)</h3>
+    <ul>
+      <li>ルーム名、説明文の入力に加え、<strong>アイコン画像を選択・アップロード</strong>（Supabase Storage等を利用）できるUI。</li>
+    </ul>
+
+    <h3>3.2 参加確認ダイアログ</h3>
+    <ul>
+      <li>一覧でルームをタップした際、<code>JoinOpenChatDialog</code> を表示。</li>
+      <li>未参加の場合は「参加する」ボタンを押し、<code>open_chat_members</code> に自分のデータを追加してからチャット画面へ遷移する。</li>
+    </ul>
+
+    <h3>3.3 チャット画面とメンバー管理 (<code>OpenChatRoomView.dart</code> & <code>OpenChatMembersView.dart</code>)</h3>
+    <ul>
+      <li>チャット画面の右上に「メンバー」ボタンを配置。</li>
+      <li>自分が <code>role == 'admin'</code> の場合、メンバー一覧から特定のユーザーを「削除（キック）」できるボタンを表示。</li>
+      <li>キックされたユーザーは <code>open_chat_members</code> から削除され、チャットに入室できなくなる。</li>
+    </ul>
+  </div>
+
+  <div class="mockup-panel">
+    <!-- モックアップ1: 入室ダイアログ -->
+    <div class="phone-mockup">
+      <div class="mockup-header">ｵｰﾌﾟﾝﾁｬｯﾄ 一覧</div>
+      <div class="chat-list">
+        <div class="chat-item">
+          <div class="chat-icon" style="background:#2ecc71;">🔥</div>
+          <div class="chat-info"><div class="chat-title">ポケモン対戦 考察部屋</div></div>
+        </div>
+      </div>
+      
+      <!-- オーバーレイ ダイアログ -->
+      <div class="dialog-overlay">
+        <div class="dialog-box">
+          <div class="dialog-icon">🔥</div>
+          <h3 style="margin:0 0 5px;">ポケモン対戦 考察部屋</h3>
+          <p style="font-size:12px; color:#666; margin-bottom:15px;">メンバー: 42人</p>
+          <p style="font-size:13px; text-align:left; background:#f9f9f9; padding:10px; border-radius:8px;">
+            次の環境について楽しく考察しましょう！初心者も大歓迎です。
+          </p>
+          <button class="btn-join">参加する</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

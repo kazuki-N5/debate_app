@@ -6,9 +6,15 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/views/bbs/BbsTimelineView.dart';
+import 'package:debate_project/views/open_chat/OpenChatRoomsView.dart';
+import 'package:debate_project/widgets/fast_page_scroll_physics.dart';
+import 'package:debate_project/widgets/keep_alive_page.dart';
+import 'package:go_router/go_router.dart';
+import 'package:debate_project/utils/date_formatter.dart';
 
 class CommunityPage extends HookConsumerWidget {
-  const CommunityPage({super.key});
+  final PageController? parentPageController;
+  const CommunityPage({super.key, this.parentPageController});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,36 +29,97 @@ class CommunityPage extends HookConsumerWidget {
       return null;
     }, []);
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: Colors.blue[50], // 背景色
+    final tabController = useTabController(initialLength: 3);
+
+    useEffect(() {
+      void listener() {
+        if (tabController.indexIsChanging) {
+          FocusManager.instance.primaryFocus?.unfocus();
+        }
+      }
+      tabController.addListener(listener);
+      return () => tabController.removeListener(listener);
+    }, [tabController]);
+
+    return Scaffold(
+        resizeToAvoidBottomInset: false,
+        backgroundColor: const Color(0xFFF3F3F3), // 背景色
+        floatingActionButton: Builder(
+          builder: (context) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 70.0),
+              child: FloatingActionButton(
+                heroTag: null, // Heroアニメーションを無効化
+                onPressed: () {
+                  final index = tabController.index;
+                  if (index == 0) {
+                    _showCreateRoomDialog(context, ref);
+                  } else if (index == 1) {
+                    context.push('/bbsPostCreate');
+                  } else if (index == 2) {
+                    context.push('/createOpenChat');
+                  }
+                },
+                backgroundColor: Colors.blue,
+                shape: const CircleBorder(),
+                child: const Icon(Icons.add, color: Colors.white, size: 28),
+              ),
+            );
+          }
+        ),
         appBar: AppBar(
           title: Text(
             'コミュニティ',
             style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
           ),
-          backgroundColor: Colors.blueAccent,
+          backgroundColor: Colors.blue,
+          iconTheme: const IconThemeData(color: Colors.white),
           elevation: 0,
-          bottom: const TabBar(
+          bottom: TabBar(
+            controller: tabController,
+            onTap: (_) => FocusManager.instance.primaryFocus?.unfocus(),
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
             indicatorColor: Colors.white,
+            dividerColor: Colors.white30,
             tabs: [
               Tab(text: '対戦募集'),
               Tab(text: '掲示板'),
+              Tab(text: 'オープンチャット'),
             ],
           ),
         ),
         body: Column(
           children: [
             Expanded(
-              child: TabBarView(
-                children: [
+              child: Builder(
+                builder: (context) {
+                  return NotificationListener<OverscrollNotification>(
+                    onNotification: (OverscrollNotification notification) {
+                      // インデックス2(オープンチャット)で右から左へスワイプしたとき(overscroll > 0)
+                      if (tabController.index == 2 && notification.overscroll > 0) {
+                        if (parentPageController != null && (parentPageController!.page ?? 0) < 1) {
+                          parentPageController!.animateToPage(
+                            1,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOutCubic,
+                          );
+                        }
+                        return true;
+                      }
+                      return false;
+                    },
+                    child: TabBarView(
+                      controller: tabController,
+                      physics: const FastPageScrollPhysics(parent: ClampingScrollPhysics()),
+                      children: [
                   // 対戦募集タブ
-                  Scaffold(
-                    backgroundColor: Colors.transparent,
-                    body: RefreshIndicator(
+                  // RepaintBoundary: タブ切替中もこのページのレイヤーをキャッシュしてカクつきを防ぐ
+                  RepaintBoundary(
+                    child: KeepAlivePage(
+                      child: Scaffold(
+                      backgroundColor: Colors.white,
+                      body: RefreshIndicator(
               onRefresh: bbsListNotifier.fetchRooms,
               child: bbsRooms.isEmpty
                   ? Center(
@@ -62,16 +129,22 @@ class CommunityPage extends HookConsumerWidget {
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 8,
+                        bottom: MediaQuery.of(context).padding.bottom + 80,
+                      ),
                 itemCount: bbsRooms.length,
                 itemBuilder: (context, index) {
                   final room = bbsRooms[index];
                   return Card(
-                    elevation: 2,
-                    margin: const EdgeInsets.only(bottom: 16),
+                    color: const Color(0xFFF3F3F3),
+                    elevation: 0, // フラットなカードデザイン
+                    margin: const EdgeInsets.only(bottom: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(12.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -79,16 +152,24 @@ class CommunityPage extends HookConsumerWidget {
                             builder: (context) {
                               final hostName = room.hostUser?.name ?? '名無し';
                               final hostAvatar = room.hostUser?.avatar_url;
-                              final dateStr = '${room.createdAt.month.toString().padLeft(2, '0')}/${room.createdAt.day.toString().padLeft(2, '0')} ${room.createdAt.hour.toString().padLeft(2, '0')}:${room.createdAt.minute.toString().padLeft(2, '0')}';
+                              final dateStr = DateFormatter.formatBbsDate(room.createdAt);
                               
                               return Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
+                                padding: const EdgeInsets.only(bottom: 8.0),
                                 child: Row(
                                   children: [
-                                    CircleAvatar(
-                                      backgroundImage: hostAvatar != null && hostAvatar.isNotEmpty ? NetworkImage(hostAvatar) : null,
-                                      child: hostAvatar == null || hostAvatar.isEmpty ? const Icon(Icons.person, size: 20) : null,
-                                      radius: 16,
+                                    GestureDetector(
+                                      onTap: () {
+                                        context.push('/userProfile', extra: room.player1Id);
+                                      },
+                                      child: CircleAvatar(
+                                        backgroundImage: hostAvatar != null && hostAvatar.isNotEmpty
+                                            // 表示サイズ(radius16=32px)に縮小デコードしてカクつきを抑える
+                                            ? ResizeImage(NetworkImage(hostAvatar), width: 96)
+                                            : null,
+                                        child: hostAvatar == null || hostAvatar.isEmpty ? const Icon(Icons.person, size: 20) : null,
+                                        radius: 16,
+                                      ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -107,24 +188,24 @@ class CommunityPage extends HookConsumerWidget {
                           ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
                                 child: Text(
                                   room.theme.isEmpty ? 'テーマなし' : room.theme,
                                   style: AppTextStyles.bold(fontSize: 18),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               if (room.hasPassword)
                                 const Icon(Icons.lock, color: Colors.orange, size: 20),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 4),
                           Text(
                             '選択肢: ${room.choice1} vs ${room.choice2}',
                             style: AppTextStyles.notoSans(fontSize: 14, color: Colors.black87),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           Align(
                             alignment: Alignment.centerRight,
                             child: room.player1Id == currentUserId
@@ -164,22 +245,24 @@ class CommunityPage extends HookConsumerWidget {
                 },
               ),
                     ),
-                    floatingActionButton: FloatingActionButton.extended(
-                      onPressed: () {
-                        _showCreateRoomDialog(context, ref);
-                      },
-                      backgroundColor: Colors.orangeAccent,
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: Text('新規募集', style: AppTextStyles.bold(color: Colors.white)),
                     ),
                   ),
+                  ),
                   // 掲示板タブ
-                  const BbsTimelineView(),
+                  const RepaintBoundary(
+                    child: KeepAlivePage(child: BbsTimelineView()),
+                  ),
+                  // オープンチャットタブ
+                  const RepaintBoundary(
+                    child: KeepAlivePage(child: OpenChatRoomsView()),
+                  ),
                 ],
               ),
-            ),
-          ],
-        ),
+             );
+            },
+           ),
+          ),
+        ],
       ),
     );
   }

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画像送信機能の設計と実装プラン</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        h3 {
+            border-bottom: none;
+            color: #34495e;
+            margin-top: 20px;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .code-block {
+            background-color: #272822;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: Consolas, Monaco, monospace;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+        .alert {
+            padding: 15px;
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>画像送信機能の設計と実装プラン</h1>
+        <p>掲示板（ポスト・返信）、オープンチャット、DM機能において画像送信を可能にするためのデータベースおよびアプリ側の設計書です。</p>
+
+        <div class="alert">
+            <strong>重要:</strong> 以前と同様に、データベースに新しいカラムを追加するためのSQLコードをSupabaseのSQL Editorで実行していただく必要があります。
+        </div>
+
+        <h2>1. データベース（Supabase）の設計変更</h2>
+        <p>各テーブルに画像URLを保存するためのカラムを追加します。</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>対象テーブル</th>
+                    <th>追加カラム名</th>
+                    <th>データ型</th>
+                    <th>概要</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>bbs_posts</code></td>
+                    <td><code>image_urls</code></td>
+                    <td><code>TEXT[]</code> (配列)</td>
+                    <td>ポストの画像（最大4枚まで）のURLリストを保存。</td>
+                </tr>
+                <tr>
+                    <td><code>bbs_comments</code></td>
+                    <td><code>image_url</code></td>
+                    <td><code>TEXT</code></td>
+                    <td>返信の画像（最大1枚）のURLを保存。</td>
+                </tr>
+                <tr>
+                    <td><code>open_chat_messages</code></td>
+                    <td><code>image_url</code></td>
+                    <td><code>TEXT</code></td>
+                    <td>オプチャのメッセージ画像（最大1枚）のURLを保存。</td>
+                </tr>
+                <tr>
+                    <td><code>dm_messages</code></td>
+                    <td><code>image_url</code></td>
+                    <td><code>TEXT</code></td>
+                    <td>DMのメッセージ画像（最大1枚）のURLを保存。</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Storage (画像保存用バケット)</h3>
+        <ul>
+            <li><code>bbs_images</code>: 掲示板のポストおよび返信の画像を保存するバケットを新設（または既存利用）。</li>
+            <li><code>chat_images</code>: DMやオープンチャットのチャット画像を保存するバケットを新設（または既存利用）。</li>
+        </ul>
+
+        <h2>2. アプリ（Flutter）側の実装設計</h2>
+        
+        <h3>2.1 掲示板ポスト（最大4枚）</h3>
+        <ul>
+            <li><strong>UI実装:</strong> <code>BbsPostCreatePage</code> に画像選択アイコン（<code>ImagePicker.pickMultiImage</code>を使用）を配置し、選択された画像（最大4枚まで許可）のサムネイルを表示します。</li>
+            <li><strong>送信ロジック:</strong> ポスト作成時に選択された画像をSupabase Storageにアップロードし、取得したURLのリスト（List&lt;String&gt;）を <code>bbs_posts</code> の <code>image_urls</code> にインサートします。</li>
+            <li><strong>表示UI:</strong> <code>BbsTimelinePage</code> およびポスト詳細画面で、<code>image_urls</code> が存在する場合、1枚〜4枚に応じたグリッドレイアウト（Twitter風）で画像を表示します。</li>
+        </ul>
+
+        <h3>2.2 掲示板の返信（最大1枚）</h3>
+        <ul>
+            <li><strong>UI実装:</strong> <code>BbsCommentPage</code> のコメント入力欄の横に画像アイコンを追加し、<code>ImagePicker.pickImage</code> で画像を1枚選択できるようにします。</li>
+            <li><strong>送信ロジック:</strong> コメント送信時、画像があればStorageにアップロードして <code>image_url</code> を <code>bbs_comments</code> にインサートします。</li>
+            <li><strong>表示UI:</strong> 返信一覧の各アイテム内で、テキストの下に画像を大きく表示します。</li>
+        </ul>
+
+        <h3>2.3 オープンチャット & DM（メッセージとして1枚送信）</h3>
+        <ul>
+            <li><strong>UI実装:</strong> <code>OpenChatRoomView</code> および <code>DmRoomPage</code> の入力欄（TextField）の左側または右側に写真アイコン（📷）を追加します。</li>
+            <li><strong>送信ロジック:</strong>
+                <ol>
+                    <li>アイコンをタップして画像を選択。</li>
+                    <li>選択直後に（テキストなしでも）またはテキストと一緒に送信ボタンを押した際に、画像をStorageにアップロード。</li>
+                    <li>取得したURLを <code>image_url</code> として <code>open_chat_messages</code> / <code>dm_messages</code> にインサートします。</li>
+                </ol>
+            </li>
+            <li><strong>表示UI:</strong> <code>MessageBubble</code> 内に画像表示領域を追加します。<code>image_url</code> がある場合、吹き出し内に角丸で画像を表示します。画像タップでフルスクリーン表示（Heroアニメーション等）できるとUXが向上します。</li>
+        </ul>
+
+        <h2>3. 実行するSQLコード（準備用）</h2>
+        <div class="code-block">
+<pre><code>-- bbs_posts テーブルに画像配列カラムを追加
+ALTER TABLE public.bbs_posts ADD COLUMN IF NOT EXISTS image_urls TEXT[];
+
+-- bbs_comments テーブルに画像カラムを追加
+ALTER TABLE public.bbs_comments ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- open_chat_messages テーブルに画像カラムを追加
+ALTER TABLE public.open_chat_messages ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- dm_messages テーブルに画像カラムを追加
+ALTER TABLE public.dm_messages ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- ※ 掲示板一覧・返信一覧のRPC関数（get_bbs_posts_with_status等）を修正し、
+-- 新しいカラムもSELECT結果に含めるように再定義します（実際の作業時にSQLを生成します）。
+</code></pre>
+        </div>
+
+        <h2>4. 実装の進め方</h2>
+        <ol>
+            <li>Supabaseで上記のSQLを実行し、カラムを追加する。またStorageバケットを作成/確認する。</li>
+            <li>Dartのモデル（<code>BbsPost</code>, <code>BbsComment</code>, <code>OpenChatMessage</code>, <code>DmMessage</code>）を更新し、新しいフィールドを追加する。</li>
+            <li>Providerクラス（送信ロジック）を更新し、Storageへのアップロードとインサート処理を実装する。</li>
+            <li>各UI（作成画面、タイムライン画面、チャット画面）を更新し、画像選択ボタンと表示用のウィジェットを組み込む。</li>
+        </ol>
+    </div>
+</body>
+</html>

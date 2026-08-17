@@ -2,6 +2,7 @@ import 'package:debate_project/modes/bbs_post.dart';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 
 final bbsTimelineProvider = StateNotifierProvider<BbsTimelineNotifier, AsyncValue<List<BbsPost>>>((ref) {
   return BbsTimelineNotifier(ref);
@@ -20,30 +21,16 @@ class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
       final supabase = _ref.read(supabaseProvider);
       final currentUserId = _ref.read(currentUserIdProvider);
 
-      // 投稿一覧を取得 (新しい順)
-      final response = await supabase
-          .from('bbs_posts')
-          .select('*, users(*)')
-          .order('created_at', ascending: false)
-          .limit(50); // 一旦50件まで
+      // 投稿一覧を取得 (新しい順、いいねフラグ付き)
+      final response = await supabase.rpc('get_bbs_posts_with_status', params: {
+        'p_user_id': currentUserId,
+      });
 
       List<BbsPost> posts = [];
       for (var item in response) {
         final userData = item['users'];
         final user = userData != null ? Users.fromMap(userData) : null;
-        
-        bool isLiked = false;
-        if (currentUserId != null) {
-          // いいね状態を取得
-          final likeRes = await supabase
-              .from('bbs_likes')
-              .select('id')
-              .eq('post_id', item['id'])
-              .eq('user_id', currentUserId)
-              .maybeSingle();
-          isLiked = likeRes != null;
-        }
-
+        final isLiked = item['is_liked_by_me'] ?? false;
         posts.add(BbsPost.fromMap(item, user: user, isLikedByMe: isLiked));
       }
 
@@ -53,7 +40,7 @@ class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
     }
   }
 
-  Future<void> addPost(String content) async {
+  Future<void> addPost(String content, {List<String>? imageUrls}) async {
     final currentUserId = _ref.read(currentUserIdProvider);
     if (currentUserId == null || content.trim().isEmpty) return;
 
@@ -62,11 +49,12 @@ class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
       await supabase.from('bbs_posts').insert({
         'user_id': currentUserId,
         'content': content.trim(),
+        if (imageUrls != null && imageUrls.isNotEmpty) 'image_urls': imageUrls,
       });
       // 投稿後、リストを再取得
       await fetchPosts();
     } catch (e) {
-      print('addPost error: $e');
+      debugPrint('addPost error: $e');
       rethrow;
     }
   }
@@ -100,17 +88,30 @@ class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
             .from('bbs_likes')
             .delete()
             .match({'post_id': post.id, 'user_id': currentUserId});
-        await supabase.rpc('decrement_likes_count', params: {'post_id': post.id});
+        // トリガーで自動カウント更新されるためRPC呼び出しは削除
       } else {
         await supabase
             .from('bbs_likes')
             .insert({'post_id': post.id, 'user_id': currentUserId});
-        await supabase.rpc('increment_likes_count', params: {'post_id': post.id});
+        // トリガーで自動カウント更新されるためRPC呼び出しは削除
       }
     } catch (e) {
-      print('toggleLike error: $e');
+      debugPrint('toggleLike error: $e');
       // エラー時は再取得して同期
       await fetchPosts();
+    }
+  }
+
+  void incrementReplyCountLocally(String postId) {
+    if (state is AsyncData) {
+      final posts = state.value!;
+      final newPosts = posts.map((p) {
+        if (p.id == postId) {
+          return p.copyWith(repliesCount: p.repliesCount + 1);
+        }
+        return p;
+      }).toList();
+      state = AsyncValue.data(newPosts);
     }
   }
 }

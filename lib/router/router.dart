@@ -14,6 +14,14 @@ import 'package:debate_project/views/PayPage.dart';
 import 'package:debate_project/views/SettingPage.dart';
 import 'package:debate_project/views/TransferPage.dart';
 import 'package:debate_project/views/WaittransferPage.dart';
+import 'package:debate_project/views/UserProfilePage.dart';
+import 'package:debate_project/modes/bbs_post.dart';
+import 'package:debate_project/views/bbs/BbsPostDetailView.dart';
+import 'package:debate_project/views/bbs/BbsPostCreateView.dart';
+import 'package:debate_project/modes/open_chat.dart';
+import 'package:debate_project/views/open_chat/OpenChatRoomView.dart';
+import 'package:debate_project/views/open_chat/OpenChatCreateRoomPage.dart';
+import 'package:debate_project/views/open_chat/OpenChatPreviewPage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -36,7 +44,9 @@ final GoRouter router = GoRouter(
 
     GoRoute(
       path: '/home',
-      pageBuilder: (context, state) => NoTransitionPage(child: const HomePage(), key: state.pageKey),
+      pageBuilder: (context, state) => NoTransitionPage(
+          child: HeroControllerScope.none(child: const HomePage()),
+          key: state.pageKey),
     ),
     GoRoute(
       path: '/game',
@@ -87,6 +97,57 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/pay',
       pageBuilder: (context, state) => NoTransitionPage(child: const PayPage(), key: state.pageKey),
+    ),
+    GoRoute(
+      path: '/createOpenChat',
+      pageBuilder: (context, state) => NoTransitionPage(child: const OpenChatCreateRoomPage(), key: state.pageKey),
+    ),
+    GoRoute(
+      path: '/open_chat_preview',
+      pageBuilder: (context, state) {
+        final room = state.extra as OpenChatRoom;
+        return NoTransitionPage(
+          child: OpenChatPreviewPage(room: room),
+          key: state.pageKey,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/userProfile',
+      pageBuilder: (context, state) {
+        final userId = state.extra as String;
+        return NoTransitionPage(
+          child: HeroControllerScope.none(child: UserProfilePage(userId: userId)),
+          key: state.pageKey,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/bbsPostCreate',
+      pageBuilder: (context, state) => NoTransitionPage(
+        child: const BbsPostCreateView(),
+        key: state.pageKey,
+      ),
+    ),
+    GoRoute(
+      path: '/bbsPostDetail',
+      pageBuilder: (context, state) {
+        final post = state.extra as BbsPost;
+        return NoTransitionPage(
+          child: HeroControllerScope.none(child: BbsPostDetailView(post: post)),
+          key: state.pageKey,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/openChatRoom',
+      pageBuilder: (context, state) {
+        final room = state.extra as OpenChatRoom;
+        return NoTransitionPage(
+          child: HeroControllerScope.none(child: OpenChatRoomView(room: room)),
+          key: state.pageKey,
+        );
+      },
     ),
   ],
 );

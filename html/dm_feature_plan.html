@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DM機能 実装計画</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+            border-left: 4px solid #3498db;
+            padding-left: 10px;
+        }
+        h3 {
+            color: #34495e;
+        }
+        pre {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #eee;
+            padding: 2px 4px;
+            border-radius: 3px;
+            color: #d35400;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            color: inherit;
+        }
+        .step {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>ダイレクトメッセージ (DM) 機能 実装計画</h1>
+    
+    <div class="step">
+        <h2>1. 概要</h2>
+        <p>ユーザーがプロフィール画面から「メールアイコン」をタップした際に、そのユーザーとの1対1のチャット（DM）画面を開き、メッセージの送受信を行えるようにします。</p>
+    </div>
+
+    <div class="step">
+        <h2>2. データベース設計 (Supabase SQL)</h2>
+        <p>1対1のチャットを実現するため、ルーム(部屋)、ルームメンバー、メッセージの3つのテーブルを作成します。</p>
+        
+        <h3>2.1. テーブル定義</h3>
+        <pre><code class="language-sql">-- 1. DMルームテーブル
+CREATE TABLE public.dm_rooms (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 2. DMルームメンバーテーブル (誰がどのルームに参加しているか)
+CREATE TABLE public.dm_room_members (
+    room_id UUID REFERENCES public.dm_rooms(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (room_id, user_id)
+);
+
+-- 3. DMメッセージテーブル
+CREATE TABLE public.dm_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id UUID REFERENCES public.dm_rooms(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    is_read BOOLEAN NOT NULL DEFAULT false
+);</code></pre>
+
+        <h3>2.2. RPC (ストアドプロシージャ) の作成</h3>
+        <p>「すでに相手とのルームが存在すればそのIDを返し、なければ新しくルームを作成してIDを返す」便利な関数を作成します。</p>
+        <pre><code class="language-sql">CREATE OR REPLACE FUNCTION get_or_create_dm_room(other_user_id UUID)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_my_id UUID;
+    v_room_id UUID;
+BEGIN
+    -- 自分のユーザーIDを取得
+    v_my_id := auth.uid();
+    
+    IF v_my_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- 既に1対1のルームが存在するか確認
+    SELECT r.id INTO v_room_id
+    FROM dm_rooms r
+    JOIN dm_room_members m1 ON r.id = m1.room_id AND m1.user_id = v_my_id
+    JOIN dm_room_members m2 ON r.id = m2.room_id AND m2.user_id = other_user_id
+    LIMIT 1;
+
+    -- 存在しなければ作成
+    IF v_room_id IS NULL THEN
+        INSERT INTO dm_rooms DEFAULT VALUES RETURNING id INTO v_room_id;
+        INSERT INTO dm_room_members (room_id, user_id) VALUES (v_room_id, v_my_id);
+        INSERT INTO dm_room_members (room_id, user_id) VALUES (v_room_id, other_user_id);
+    END IF;
+
+    RETURN v_room_id;
+END;
+$$;</code></pre>
+
+        <h3>2.3. RLS (Row Level Security) の設定</h3>
+        <p>自分が参加しているルームの情報やメッセージのみを取得・追加できるようにセキュリティルールを設定します。</p>
+    </div>
+
+    <div class="step">
+        <h2>3. Flutterアプリ側の実装設計</h2>
+        
+        <h3>3.1. プロフィール画面の改修 (lib/views/UserProfilePage.dart)</h3>
+        <p>メールアイコン（<code>Icon(Icons.mail_outline)</code>）の <code>onPressed</code> に処理を追加します。</p>
+        <ul>
+            <li>タップ時に <code>Supabase.instance.client.rpc('get_or_create_dm_room', params: {'other_user_id': userId})</code> を呼び出し、対象の <code>roomId</code> を取得。</li>
+            <li>取得した <code>roomId</code> と <code>userId</code>（相手）を引数にして <code>DmRoomPage</code> へ画面遷移（Navigator.push）。</li>
+        </ul>
+
+        <h3>3.2. チャット画面の作成 (lib/views/DmRoomPage.dart)</h3>
+        <p>1対1のチャット画面を新規作成します。</p>
+        <ul>
+            <li><strong>ヘッダー:</strong> 相手のユーザー名とアイコンを表示。</li>
+            <li><strong>メッセージリスト:</strong> <code>Supabase.instance.client.from('dm_messages').stream(...)</code> を用いて、リアルタイムにメッセージを購読（StreamBuilder または Riverpod の StreamProvider）。</li>
+            <li><strong>入力フォーム:</strong> 下部にテキストフィールドと送信ボタン。送信時に <code>dm_messages</code> テーブルへ insert。</li>
+        </ul>
+
+        <h3>3.3. 状態管理 / プロバイダー (lib/provider/dm_provider.dart 等)</h3>
+        <p>メッセージ送信処理や、Streamプロバイダーを定義して、Viewとロジックを分離します。</p>
+    </div>
+
+    <div class="step">
+        <h2>4. 今後のステップ</h2>
+        <ol>
+            <li>SupabaseコンソールのSQLエディタ等で上記SQLを実行し、テーブルとRPCを作成する。</li>
+            <li>Flutter側で必要なプロバイダー・ViewModelを作成する。</li>
+            <li>チャット画面のUI（<code>DmRoomPage.dart</code>）を作成する。</li>
+            <li><code>UserProfilePage.dart</code> のボタンから遷移できるように組み込む。</li>
+        </ol>
+    </div>
+</body>
+</html>

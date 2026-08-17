@@ -7,6 +7,7 @@ class BbsPost {
   final DateTime createdAt;
   final int likesCount;
   final int repliesCount;
+  final List<String>? imageUrls;
   
   // JOIN用
   final Users? user;
@@ -19,11 +20,18 @@ class BbsPost {
     required this.createdAt,
     this.likesCount = 0,
     this.repliesCount = 0,
+    this.imageUrls,
     this.user,
     this.isLikedByMe = false,
   });
 
   factory BbsPost.fromMap(Map<String, dynamic> map, {Users? user, bool isLikedByMe = false}) {
+    List<String>? parsedImageUrls;
+    if (map['image_urls'] != null) {
+      // JSONB array or Postgres text array coming as List<dynamic>
+      parsedImageUrls = List<String>.from(map['image_urls']);
+    }
+
     return BbsPost(
       id: map['id'] as String,
       userId: map['user_id'] as String,
@@ -31,6 +39,7 @@ class BbsPost {
       createdAt: DateTime.parse(map['created_at'] as String).toLocal(),
       likesCount: map['likes_count'] as int? ?? 0,
       repliesCount: map['replies_count'] as int? ?? 0,
+      imageUrls: parsedImageUrls,
       user: user,
       isLikedByMe: isLikedByMe,
     );
@@ -43,6 +52,7 @@ class BbsPost {
     DateTime? createdAt,
     int? likesCount,
     int? repliesCount,
+    List<String>? imageUrls,
     Users? user,
     bool? isLikedByMe,
   }) {
@@ -53,6 +63,7 @@ class BbsPost {
       createdAt: createdAt ?? this.createdAt,
       likesCount: likesCount ?? this.likesCount,
       repliesCount: repliesCount ?? this.repliesCount,
+      imageUrls: imageUrls ?? this.imageUrls,
       user: user ?? this.user,
       isLikedByMe: isLikedByMe ?? this.isLikedByMe,
     );

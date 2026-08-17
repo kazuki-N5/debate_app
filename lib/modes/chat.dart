@@ -13,6 +13,7 @@ class Chat with _$Chat {
     required String senderId,
     required String content,
     required DateTime createdAt,
+    String? imageUrl,
   }) = _Chat;
 
   factory Chat.fromMap(Map<String, dynamic> map) {
@@ -22,6 +23,7 @@ class Chat with _$Chat {
       roomId: map['room_id'].toString(),
       content: map['content'],
       senderId: map['sender_id'].toString(),
+      imageUrl: map['image_url']?.toString(),
     );
   }
 

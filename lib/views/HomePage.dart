@@ -9,6 +9,7 @@ import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/notification_provider.dart';
+import 'package:debate_project/provider/notification_settings_provider.dart';
 import 'package:debate_project/provider/sfx_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
@@ -850,9 +851,12 @@ class HomePage extends HookConsumerWidget {
                                               ),
                                               const SizedBox(width: 8),
                                               CupertinoSwitch(
-                                                value:
-                                                    user.is_notification_enabled ??
-                                                        false,
+                                                value: ref
+                                                        .watch(
+                                                            notificationSettingsProvider)
+                                                        .valueOrNull
+                                                        ?.isNotificationEnabled ??
+                                                    false,
                                                 onChanged: (value) {
                                                   // プロバイダーを通じてDBを更新
                                                   ref

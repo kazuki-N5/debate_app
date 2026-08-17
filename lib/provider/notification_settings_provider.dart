@@ -4,7 +4,7 @@ import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// プッシュ通知のカテゴリ別設定を管理するProvider
+/// プッシュ通知の設定 (マスター + カテゴリ別) を管理するProvider
 final notificationSettingsProvider =
     StateNotifierProvider<NotificationSettingsNotifier,
         AsyncValue<NotificationSettingsModel>>((ref) {
@@ -14,13 +14,23 @@ final notificationSettingsProvider =
 class NotificationSettingsNotifier
     extends StateNotifier<AsyncValue<NotificationSettingsModel>> {
   final Ref _ref;
-  NotificationSettingsNotifier(this._ref)
-      : super(const AsyncValue.loading());
+  NotificationSettingsNotifier(this._ref) : super(const AsyncValue.loading()) {
+    _init();
+  }
 
   String? get _userId => _ref.read(currentUserIdProvider);
   SupabaseClient get _supabase => _ref.read(supabaseProvider);
 
-  /// 設定を読み込む (行がなければ全ONで作成して保存)
+  Future<void> _init() async {
+    final userId = _userId;
+    if (userId == null) {
+      state = const AsyncValue.data(NotificationSettingsModel());
+      return;
+    }
+    await load();
+  }
+
+  /// 設定を読み込む (行がなければ既定値で作成して保存)
   Future<void> load() async {
     final userId = _userId;
     if (userId == null) return;
@@ -34,7 +44,7 @@ class NotificationSettingsNotifier
           ? NotificationSettingsModel.fromMap(res)
           : const NotificationSettingsModel();
       if (res == null) {
-        // 行がない場合 (新規ユーザー対策) は全ONで作成
+        // 行がない場合 (新規ユーザー対策) は既定値で作成
         await _supabase.from('notification_settings').upsert({
           'user_id': userId,
           ...model.toMap(),
@@ -47,14 +57,25 @@ class NotificationSettingsNotifier
     }
   }
 
+  /// マスター (プッシュ全体) のON/OFFを更新 (楽観的更新 + DB upsert)
+  Future<void> setMaster(bool value) async {
+    await _update('is_notification_enabled', value,
+        (m) => m.copyWith(isNotificationEnabled: value));
+  }
+
   /// カテゴリのON/OFFを更新 (楽観的更新 + DB upsert)
   Future<void> setCategory(String column, bool value) async {
+    await _update(column, value, (m) => _apply(column, value, m));
+  }
+
+  Future<void> _update(
+      String column, bool value, NotificationSettingsModel Function(NotificationSettingsModel) apply) async {
     final userId = _userId;
     if (userId == null) return;
     final current = state.valueOrNull;
     if (current == null) return;
 
-    final updated = _apply(column, value, current);
+    final updated = apply(current);
     state = AsyncValue.data(updated);
 
     try {

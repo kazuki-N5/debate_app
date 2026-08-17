@@ -48,6 +48,7 @@ app.*.map.json
 key.jks
 supabase/functions/service-account.json
 supabase/functions/push_notification/service-account.json
+supabase/functions/*/service-account.json
 
 # Flutter Demon user preferences (not tracked)
 .fdemon/settings.local.toml

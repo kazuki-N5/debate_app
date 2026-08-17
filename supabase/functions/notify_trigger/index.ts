@@ -278,9 +278,11 @@ function truncate(text, length = 30) {
 /** Google Auth を使用して FCM のアクセストークンを取得 */
 function getAccessToken() {
   return new Promise((resolve, reject) => {
+    // private_key の改行エスケープを正規化 (JSONによって \n が残るケースへの防御)
+    const privateKey = serviceAccount.private_key.replace(/\\n/g, "\n");
     const jwtClient = new JWT({
       email: serviceAccount.client_email,
-      key: serviceAccount.private_key,
+      key: privateKey,
       scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
     });
     jwtClient.authorize((err, tokens) => {

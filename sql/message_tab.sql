@@ -517,15 +517,23 @@ END $$;
 --       → カテゴリONでもマスターOFFならプッシュは送られない。
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.notification_settings (
-    user_id               UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
-    like_enabled          BOOLEAN NOT NULL DEFAULT true,   -- いいね (like_post / like_comment)
-    comment_enabled       BOOLEAN NOT NULL DEFAULT true,   -- コメント・返信 (comment / reply_comment)
-    follow_enabled        BOOLEAN NOT NULL DEFAULT true,   -- フォロー
-    dm_enabled            BOOLEAN NOT NULL DEFAULT true,   -- DM
-    open_chat_enabled     BOOLEAN NOT NULL DEFAULT true,   -- オプチャ
-    match_waiting_enabled BOOLEAN NOT NULL DEFAULT true,   -- 対戦待ち
-    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+    user_id                 UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
+    is_notification_enabled BOOLEAN NOT NULL DEFAULT false, -- マスター (ホームのトグル。プッシュ全体のON/OFF)
+    like_enabled            BOOLEAN NOT NULL DEFAULT true,   -- いいね (like_post / like_comment)
+    comment_enabled         BOOLEAN NOT NULL DEFAULT true,   -- コメント・返信 (comment / reply_comment)
+    follow_enabled          BOOLEAN NOT NULL DEFAULT true,   -- フォロー
+    dm_enabled              BOOLEAN NOT NULL DEFAULT true,   -- DM
+    open_chat_enabled       BOOLEAN NOT NULL DEFAULT true,   -- オプチャ
+    match_waiting_enabled   BOOLEAN NOT NULL DEFAULT true,   -- 対戦待ち
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- 既存DB: マスター列を追加し、users の現在値を引き継ぐ (冪等)
+ALTER TABLE public.notification_settings ADD COLUMN IF NOT EXISTS is_notification_enabled BOOLEAN NOT NULL DEFAULT false;
+UPDATE public.notification_settings ns
+SET is_notification_enabled = COALESCE(u.is_notification_enabled, false)
+FROM public.users u
+WHERE ns.user_id = u.id;
 
 -- RLS: 自分自身の設定のみ参照・挿入・更新できる
 ALTER TABLE public.notification_settings ENABLE ROW LEVEL SECURITY;
@@ -563,3 +571,81 @@ DROP TRIGGER IF EXISTS trg_new_notification_settings ON public.users;
 CREATE TRIGGER trg_new_notification_settings
 AFTER INSERT ON public.users
 FOR EACH ROW EXECUTE FUNCTION public.handle_new_notification_settings();
+
+-- ------------------------------------------------------------
+-- 9. データ引き継ぎ時に通知設定(マスター+カテゴリ)も移行する
+--    (complete_data_transfer_v2 の上書き版。マスターは notification_settings に移行済み)
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION "public"."complete_data_transfer_v2"("p_transfer_id" "text", "p_password" "text", "p_receiver_id" "uuid") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$DECLARE
+    v_transfer_record public.transfer%ROWTYPE;
+    v_sender_user_data public.users%ROWTYPE;
+BEGIN
+    -- 移行情報を取得
+    SELECT * INTO v_transfer_record
+    FROM public.transfer
+    WHERE id = p_transfer_id
+      AND password = p_password
+      AND delete_at > now()
+      AND receive_id IS NULL;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Invalid transfer ID, password, expired, or already used.';
+    END IF;
+    -- 移行情報の更新
+    UPDATE public.transfer SET receive_id = p_receiver_id WHERE id = v_transfer_record.id;
+    -- 送信者（移行元）のデータを取得
+    SELECT * INTO v_sender_user_data FROM public.users WHERE id = v_transfer_record.send_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Sender user not found.';
+    END IF;
+    -- 受信者（移行先）を更新
+    UPDATE public.users
+    SET
+        win = v_sender_user_data.win,
+        lose = v_sender_user_data.lose,
+        trophy = v_sender_user_data.trophy,
+        created_at = v_sender_user_data.created_at
+    WHERE id = p_receiver_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Receiver user not found.';
+    END IF;
+    -- 通知設定（マスター + カテゴリ）を引き継ぐ
+    INSERT INTO public.notification_settings (
+        user_id, is_notification_enabled,
+        like_enabled, comment_enabled, follow_enabled,
+        dm_enabled, open_chat_enabled, match_waiting_enabled
+    )
+    SELECT
+        p_receiver_id, ns.is_notification_enabled,
+        ns.like_enabled, ns.comment_enabled, ns.follow_enabled,
+        ns.dm_enabled, ns.open_chat_enabled, ns.match_waiting_enabled
+    FROM public.notification_settings ns
+    WHERE ns.user_id = v_transfer_record.send_id
+    ON CONFLICT (user_id) DO UPDATE SET
+        is_notification_enabled = EXCLUDED.is_notification_enabled,
+        like_enabled = EXCLUDED.like_enabled,
+        comment_enabled = EXCLUDED.comment_enabled,
+        follow_enabled = EXCLUDED.follow_enabled,
+        dm_enabled = EXCLUDED.dm_enabled,
+        open_chat_enabled = EXCLUDED.open_chat_enabled,
+        match_waiting_enabled = EXCLUDED.match_waiting_enabled,
+        updated_at = now();
+    -- 送信者（移行元）を初期化：通知関連もリセット
+    UPDATE public.users
+    SET
+        win = 0,
+        lose = 0,
+        trophy = 0,
+        status = true,
+        created_at = now(),
+        fcm_token = NULL                -- ★通知IDを削除
+    WHERE id = v_transfer_record.send_id;
+    UPDATE public.notification_settings
+    SET is_notification_enabled = false -- ★マスターをOFFに
+    WHERE user_id = v_transfer_record.send_id;
+    RETURN 'Data transfer completed successfully.';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE;
+END;$$;

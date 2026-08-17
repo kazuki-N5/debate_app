@@ -1,6 +1,7 @@
 // ignore_for_file: file_names
-/// プッシュ通知のカテゴリ別設定 (notification_settings テーブル対応)
+/// プッシュ通知の設定 (notification_settings テーブル対応)
 class NotificationSettingsModel {
+  final bool isNotificationEnabled; // マスター (プッシュ全体のON/OFF)
   final bool likeEnabled; // いいね (like_post / like_comment)
   final bool commentEnabled; // コメント・返信 (comment / reply_comment)
   final bool followEnabled; // フォロー
@@ -9,6 +10,7 @@ class NotificationSettingsModel {
   final bool matchWaitingEnabled; // 対戦待ち
 
   const NotificationSettingsModel({
+    this.isNotificationEnabled = false,
     this.likeEnabled = true,
     this.commentEnabled = true,
     this.followEnabled = true,
@@ -19,6 +21,7 @@ class NotificationSettingsModel {
 
   factory NotificationSettingsModel.fromMap(Map<String, dynamic> map) {
     return NotificationSettingsModel(
+      isNotificationEnabled: map['is_notification_enabled'] as bool? ?? false,
       likeEnabled: map['like_enabled'] as bool? ?? true,
       commentEnabled: map['comment_enabled'] as bool? ?? true,
       followEnabled: map['follow_enabled'] as bool? ?? true,
@@ -29,6 +32,7 @@ class NotificationSettingsModel {
   }
 
   Map<String, dynamic> toMap() => {
+        'is_notification_enabled': isNotificationEnabled,
         'like_enabled': likeEnabled,
         'comment_enabled': commentEnabled,
         'follow_enabled': followEnabled,
@@ -38,6 +42,7 @@ class NotificationSettingsModel {
       };
 
   NotificationSettingsModel copyWith({
+    bool? isNotificationEnabled,
     bool? likeEnabled,
     bool? commentEnabled,
     bool? followEnabled,
@@ -46,6 +51,8 @@ class NotificationSettingsModel {
     bool? matchWaitingEnabled,
   }) {
     return NotificationSettingsModel(
+      isNotificationEnabled:
+          isNotificationEnabled ?? this.isNotificationEnabled,
       likeEnabled: likeEnabled ?? this.likeEnabled,
       commentEnabled: commentEnabled ?? this.commentEnabled,
       followEnabled: followEnabled ?? this.followEnabled,

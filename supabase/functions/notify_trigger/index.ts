@@ -49,12 +49,11 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
     );
 
-    // 受信者のFCMトークンを取得 (通知ONかつトークン保有者のみ)
+    // 受信者のFCMトークンを取得 (トークン保有者のみ)
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("fcm_token, notification_settings(like_enabled, comment_enabled, follow_enabled)")
+      .select("fcm_token, notification_settings(is_notification_enabled, like_enabled, comment_enabled, follow_enabled)")
       .eq("id", user_id)
-      .eq("is_notification_enabled", true)
       .not("fcm_token", "is", null)
       .maybeSingle();
     if (userError) throw userError;
@@ -65,11 +64,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // カテゴリ別設定チェック (プッシュ通知の細かいON/OFF。設定行がなければON扱い)
+    // マスター + カテゴリ別設定チェック (プッシュ通知の細かいON/OFF。設定行がなければON扱い)
     const settings = user?.notification_settings?.[0];
-    if (!isCategoryEnabled(type, settings)) {
+    if (!isPushEnabled(type, settings)) {
       return new Response(
-        JSON.stringify({ message: "No target (category disabled)." }),
+        JSON.stringify({ message: "No target (notification disabled)." }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
@@ -180,21 +179,21 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
     return { message: "No targets." };
   }
 
-  // 受信者のFCMトークンを一括取得 (通知ONかつトークン保有者のみ)
+  // 受信者のFCMトークンを一括取得 (トークン保有者のみ)
   const { data: targetUsers, error: usersError } = await supabase
     .from("users")
-    .select("id, fcm_token, notification_settings(dm_enabled, open_chat_enabled)")
+    .select("id, fcm_token, notification_settings(is_notification_enabled, dm_enabled, open_chat_enabled)")
     .in("id", receiverIds)
-    .eq("is_notification_enabled", true)
     .not("fcm_token", "is", null);
   if (usersError) throw usersError;
   if (!targetUsers || targetUsers.length === 0) {
     return { message: "No targets (disabled or no token)." };
   }
 
-  // カテゴリ別設定チェック (DM / オプチャ。設定行がなければON扱い)
+  // マスター + カテゴリ別設定チェック (DM / オプチャ。設定行がなければON扱い)
   const filteredUsers = targetUsers.filter((u) => {
     const s = u.notification_settings?.[0];
+    if (s?.is_notification_enabled === false) return false; // マスターOFF
     if (type === "dm") return s?.dm_enabled !== false;
     return s?.open_chat_enabled !== false;
   });
@@ -222,9 +221,10 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
   };
 }
 
-/** カテゴリ別のプッシュ通知設定を判定 (設定行がなければON扱い) */
-function isCategoryEnabled(type, settings) {
+/** マスター + カテゴリ別のプッシュ通知設定を判定 (設定行がなければON扱い) */
+function isPushEnabled(type, settings) {
   if (!settings) return true;
+  if (settings.is_notification_enabled === false) return false; // マスターOFF
   switch (type) {
     case "like_post":
     case "like_comment":

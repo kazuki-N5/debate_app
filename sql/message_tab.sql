@@ -347,5 +347,116 @@ BEGIN
         );
 END $$;
 
+
+-- ------------------------------------------------------------
+-- 6. DM / オプチャ のプッシュ通知 (FCM)
+--    notifications テーブルには記録せず、Edge Function 経由でプッシュ通知のみ送る
+-- ------------------------------------------------------------
+
+-- 6-1. DM新着 → 相手にプッシュ通知
+CREATE OR REPLACE FUNCTION public.notify_dm_message()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    PERFORM net.http_post(
+        url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+        headers := jsonb_build_object(
+            'Content-Type', 'application/json',
+            'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+        ),
+        body := jsonb_build_object(
+            'type', 'dm',
+            'room_id', NEW.room_id,
+            'sender_id', NEW.sender_id
+        )
+    );
+    RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_notify_dm_message ON public.dm_messages;
+CREATE TRIGGER trg_notify_dm_message
+AFTER INSERT ON public.dm_messages
+FOR EACH ROW EXECUTE FUNCTION public.notify_dm_message();
+
+-- 6-2. オプチャ新着 → 参加者全員にプッシュ通知
+CREATE OR REPLACE FUNCTION public.notify_open_chat_message()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    PERFORM net.http_post(
+        url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+        headers := jsonb_build_object(
+            'Content-Type', 'application/json',
+            'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+        ),
+        body := jsonb_build_object(
+            'type', 'open_chat',
+            'room_id', NEW.room_id,
+            'sender_id', NEW.user_id
+        )
+    );
+    RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_notify_open_chat_message ON public.open_chat_messages;
+CREATE TRIGGER trg_notify_open_chat_message
+AFTER INSERT ON public.open_chat_messages
+FOR EACH ROW EXECUTE FUNCTION public.notify_open_chat_message();
+
+-- ------------------------------------------------------------
+-- 7. オプチャの未読管理 (メンバー単位 last_read_at)
+-- ------------------------------------------------------------
+ALTER TABLE public.open_chat_members ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_open_chat_messages_room_created
+    ON public.open_chat_messages (room_id, created_at DESC);
+
+-- オプチャ既読化: 自分のメンバー行の最終既読時刻を更新
+CREATE OR REPLACE FUNCTION public.mark_open_chat_room_read(p_room_id UUID)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    UPDATE public.open_chat_members
+    SET last_read_at = now()
+    WHERE room_id = p_room_id AND user_id = auth.uid();
+END $$;
+
+-- オプチャ一覧RPCを未読数対応に更新
+CREATE OR REPLACE FUNCTION public.get_open_chat_inbox(p_user_id UUID)
+RETURNS TABLE(
+    room                   JSONB,
+    last_message           TEXT,
+    last_message_user_name TEXT,
+    last_message_at        TIMESTAMPTZ,
+    unread_count           BIGINT
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+    IF p_user_id IS DISTINCT FROM auth.uid() THEN
+        RAISE EXCEPTION 'Not allowed';
+    END IF;
+    RETURN QUERY
+        SELECT
+            to_jsonb(ocr.*),
+            x.content,
+            xu.name,
+            x.created_at,
+            (SELECT count(*) FROM public.open_chat_messages ocmsg
+              WHERE ocmsg.room_id = ocr.id AND ocmsg.user_id <> p_user_id
+                AND ocmsg.created_at > COALESCE(
+                    (SELECT lr.last_read_at FROM public.open_chat_members lr
+                     WHERE lr.room_id = ocr.id AND lr.user_id = p_user_id),
+                    '-infinity'::timestamptz))
+        FROM public.open_chat_rooms ocr
+        LEFT JOIN LATERAL (
+            SELECT content, user_id, created_at
+            FROM public.open_chat_messages
+            WHERE room_id = ocr.id
+            ORDER BY created_at DESC LIMIT 1
+        ) x ON true
+        LEFT JOIN public.users xu ON xu.id = x.user_id
+        WHERE EXISTS (
+            SELECT 1 FROM public.open_chat_members ocm
+            WHERE ocm.room_id = ocr.id AND ocm.user_id = p_user_id
+        );
+END $$;
+
 -- 検証用: 通知テーブルが正しく作られたか確認
 -- SELECT * FROM public.notifications ORDER BY created_at DESC LIMIT 10;

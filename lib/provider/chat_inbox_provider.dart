@@ -173,6 +173,7 @@ final chatInboxProvider =
         lastMessageAt: r['last_message_at'] != null
             ? DateTime.parse(r['last_message_at'] as String).toLocal()
             : null,
+        unreadCount: (r['unread_count'] as num?)?.toInt() ?? 0,
         openChatRoom: room,
       ));
     }
@@ -258,6 +259,25 @@ class MarkDmRead {
       await _supabase.rpc('mark_dm_room_read', params: {'p_room_id': roomId});
     } catch (e) {
       print('markDmRead error: $e');
+    }
+  }
+}
+
+/// オプチャルームを開いたときに既読化するヘルパー
+final markOpenChatReadProvider = Provider<MarkOpenChatRead>((ref) {
+  return MarkOpenChatRead(ref.read(supabaseProvider));
+});
+
+class MarkOpenChatRead {
+  final SupabaseClient _supabase;
+  MarkOpenChatRead(this._supabase);
+
+  Future<void> call(String roomId) async {
+    try {
+      await _supabase
+          .rpc('mark_open_chat_room_read', params: {'p_room_id': roomId});
+    } catch (e) {
+      print('markOpenChatRead error: $e');
     }
   }
 }

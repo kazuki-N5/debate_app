@@ -115,6 +115,9 @@ class MessagePage extends HookConsumerWidget {
         ),
       );
     } else if (item.openChatRoom != null) {
+      // ルームを開く前に既読化して未読バッジを更新
+      ref.read(markOpenChatReadProvider)(item.roomId);
+      ref.invalidate(chatInboxProvider);
       context.push('/openChatRoom', extra: item.openChatRoom);
     }
   }

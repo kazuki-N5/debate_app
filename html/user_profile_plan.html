@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ユーザープロフィール機能の実装計画</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            border-bottom: 2px solid #eaecef;
+            padding-bottom: 0.3em;
+            color: #24292e;
+        }
+        h2 {
+            border-bottom: 1px solid #eaecef;
+            padding-bottom: 0.3em;
+            margin-top: 1.5em;
+            color: #24292e;
+        }
+        h3 {
+            margin-top: 1.2em;
+            color: #24292e;
+        }
+        .alert {
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #d73a49;
+            background-color: #ffeef0;
+            border-radius: 4px;
+        }
+        .alert-title {
+            font-weight: bold;
+            color: #d73a49;
+            margin-bottom: 10px;
+        }
+        .alert-info {
+            border-left-color: #0366d6;
+            background-color: #f1f8ff;
+        }
+        .alert-info .alert-title {
+            color: #0366d6;
+        }
+        code {
+            background-color: #f6f8fa;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 85%;
+        }
+        ul, ol {
+            padding-left: 20px;
+        }
+        .status-modify { color: #dbab09; font-weight: bold; }
+        .status-new { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>ユーザープロフィール機能の実装計画</h1>
+    
+    <p>履歴画面やコミュニティ画面、掲示板からユーザーのアイコンをタップした際に、該当ユーザーのプロフィールを表示し、これまでの掲示板への投稿などを確認できるようにする機能の実装計画です。</p>
+
+    <h2>1. ユーザーレビューが必要な事項</h2>
+
+    <div class="alert">
+        <div class="alert-title">IMPORTANT: データベースのカラム追加について</div>
+        <p>添付いただいた参考画像のようなUI（ヘッダー画像、自己紹介文、画像付きの投稿など）を完全に再現するためには、現在のデータベース（Supabase）のテーブル構造にいくつかカラムを追加する必要があります。</p>
+        <p><strong>以下のカラムを <code>users</code> テーブルや <code>bbs_posts</code> テーブルに追加して良いか、ご確認をお願いします。</strong></p>
+        <ul>
+            <li><code>users</code> テーブルに追加:
+                <ul>
+                    <li><code>bio</code> (text): 自己紹介文（例：「業者じゃないよ」）</li>
+                    <li><code>header_url</code> (text): ヘッダー背景画像のURL</li>
+                </ul>
+            </li>
+            <li><code>bbs_posts</code> テーブルに追加:
+                <ul>
+                    <li><code>image_url</code> (text): 投稿に添付された画像のURL（※現在テキスト投稿のみ対応しているため）</li>
+                </ul>
+            </li>
+        </ul>
+        <p>※もし今回はデータベースの変更を行わず、UIのみ構築してダミーデータ（固定の背景画像や自己紹介文）を表示するだけであれば、その旨お知らせください。</p>
+    </div>
+
+    <h2>2. 提案する変更内容</h2>
+
+    <h3>画面遷移の実装</h3>
+    <p>アイコンをタップした際に新しいプロフィール画面に遷移するように、以下のファイル内の <code>CircleAvatar</code> コンポーネントを <code>GestureDetector</code> や <code>InkWell</code> でラップし、画面遷移処理を追加します。</p>
+    <ul>
+        <li><span class="status-modify">[MODIFY]</span> <code>lib/views/HistoryPage.dart</code></li>
+        <li><span class="status-modify">[MODIFY]</span> <code>lib/views/CommunityPage.dart</code></li>
+        <li><span class="status-modify">[MODIFY]</span> <code>lib/views/bbs/BbsTimelineView.dart</code></li>
+        <li><span class="status-modify">[MODIFY]</span> <code>lib/views/bbs/BbsPostDetailView.dart</code></li>
+    </ul>
+
+    <h3>プロフィール画面の新規作成</h3>
+    <p>添付いただいたUIデザインに基づく、新しいプロフィール画面コンポーネントを作成します。</p>
+    <ul>
+        <li><span class="status-new">[NEW]</span> <code>lib/views/UserProfilePage.dart</code>
+            <ul>
+                <li><strong>ヘッダー部分</strong>: <code>SliverAppBar</code> または <code>Stack</code> を用いて、上部に背景画像、その下に被さるようにアバター画像を配置します。</li>
+                <li><strong>プロフィール情報部分</strong>: ユーザー名、ユーザーID、自己紹介文を表示し、右側にメッセージやいいね等のアイコンボタンを配置します。</li>
+                <li><strong>タブバー部分</strong>: <code>DefaultTabController</code> と <code>TabBar</code> を使用して、「投稿」「リプライ」「メディア」の3つのタブを作成します。</li>
+                <li><strong>投稿リスト部分</strong>: <code>TabBarView</code> の中に、特定のユーザーのBBS投稿一覧を表示するリストビューを作成します。</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>プロバイダーとモデルの修正・追加</h3>
+    <p>特定のユーザーのBBS投稿一覧を取得するためのロジックと、ユーザー情報を取得するロジックを実装します。</p>
+    <ul>
+        <li><span class="status-new">[NEW]</span> <code>lib/provider/user_profile_provider.dart</code>
+            <ul>
+                <li>特定の <code>userId</code> を引数に取り、そのユーザーのプロフィール情報と、そのユーザーが投稿したBBSの投稿一覧を取得する Provider を作成します。</li>
+            </ul>
+        </li>
+        <li><span class="status-modify">[MODIFY]</span> <code>lib/modes/users.dart</code>
+            <ul>
+                <li><code>bio</code> や <code>header_url</code> がデータベースに追加される場合、モデルクラスにプロパティを追加し、パース処理を更新します。</li>
+            </ul>
+        </li>
+        <li><span class="status-modify">[MODIFY]</span> <code>lib/modes/bbs_post.dart</code>
+            <ul>
+                <li>画像付き投稿をサポートする場合、<code>image_url</code> プロパティを追加します。</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h2>3. 検証計画</h2>
+
+    <h3>手動検証</h3>
+    <ol>
+        <li>履歴画面、コミュニティ画面、BBS画面でアバターアイコンをタップし、該当ユーザーのプロフィール画面へ遷移することを確認する。</li>
+        <li>プロフィール画面に、選択したユーザーの名前、ID、アバター画像が正しく表示されることを確認する。</li>
+        <li>（カラムを追加した場合）自己紹介文とヘッダー画像が正しく表示されることを確認する。</li>
+        <li>「投稿」タブに、そのユーザーが過去に投稿したBBSの一覧が表示されることを確認する。</li>
+    </ol>
+
+    <div class="alert alert-info">
+        <div class="alert-title">NOTE</div>
+        <p>上記の「データベースへのカラム追加」について、ご判断（追加する、もしくはUIのガワだけダミーで作成する）をお知らせください。問題なければこの計画で実装を進めます。</p>
+    </div>
+
+</body>
+</html>

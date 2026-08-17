@@ -1,6 +1,7 @@
 // ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:developer';
 
+import 'package:circle_nav_bar/circle_nav_bar.dart';
 import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/app_config_service.dart';
@@ -26,8 +27,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:debate_project/provider/bbs_provider.dart';
 import 'package:debate_project/views/CommunityPage.dart';
+import 'package:debate_project/views/MessagePage.dart';
 
-// 広告関連のインポートを追加
+import 'package:debate_project/widgets/keep_alive_page.dart';
 import 'package:debate_project/widgets/trophy_count_animation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:showcaseview/showcaseview.dart';
@@ -40,7 +42,9 @@ class HomePage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pageController = usePageController(initialPage: 1);
+    final currentIndex = useState<int>(1); // 初期値をホーム(1)に変更
+    // 一度訪れたタブだけをビルドして保持する(遅延マウントで起動時・切替時の負荷を軽減)
+    final visitedTabs = useState<Set<int>>({1}); // ホーム(1)は最初から表示
     final isMatching = useState<bool>(false);
     // 元の notificationEnabled (useState) は削除し、userProvider の値を直接使用するように変更
 
@@ -59,7 +63,8 @@ class HomePage extends HookConsumerWidget {
             return StatefulBuilder(
               builder: (ctx, setState) {
                 return AlertDialog(
-                  title: Text('申し込みがありました', style: AppTextStyles.bold(fontSize: 18)),
+                  title: Text('申し込みがありました',
+                      style: AppTextStyles.bold(fontSize: 18)),
                   content: isLoading
                       ? const SizedBox(
                           height: 50,
@@ -71,7 +76,9 @@ class HomePage extends HookConsumerWidget {
                       TextButton(
                         onPressed: () {
                           Navigator.pop(ctx);
-                          ref.read(bbsHostProvider.notifier).approveChallenger(false);
+                          ref
+                              .read(bbsHostProvider.notifier)
+                              .approveChallenger(false);
                         },
                         child: const Text('いいえ'),
                       ),
@@ -81,13 +88,16 @@ class HomePage extends HookConsumerWidget {
                           setState(() {
                             isLoading = true;
                           });
-                          final success = await ref.read(bbsHostProvider.notifier).approveChallenger(true);
+                          final success = await ref
+                              .read(bbsHostProvider.notifier)
+                              .approveChallenger(true);
                           if (!success) {
                             setState(() {
                               isLoading = false;
                             });
                             if (ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('承認に失敗しました')));
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                  const SnackBar(content: Text('承認に失敗しました')));
                             }
                           }
                           // 成功時はダイアログは開いたまま(ぐるぐる状態)で、下のリスナーで画面遷移する
@@ -106,7 +116,10 @@ class HomePage extends HookConsumerWidget {
       if (previous?.player2Id == null && next?.player2Id != null) {
         Navigator.of(context, rootNavigator: true).pop(); // ダイアログを閉じる
         if (next?.roomId != null) {
-          ref.read(matchingRoomProvider.notifier).joinBbsRoom(next!.roomId!).then((_) {
+          ref
+              .read(matchingRoomProvider.notifier)
+              .joinBbsRoom(next!.roomId!)
+              .then((_) {
             router.go('/wait');
           });
         }
@@ -115,13 +128,18 @@ class HomePage extends HookConsumerWidget {
 
     ref.listen<BbsRoomState?>(bbsGuestProvider, (previous, next) async {
       if (previous?.challengerId != null && next?.player2Id != null) {
-         if (next?.roomId != null) {
-           await ref.read(matchingRoomProvider.notifier).joinBbsRoom(next!.roomId!);
-         }
-         ref.read(bbsGuestProvider.notifier).clearState();
-         router.go('/wait');
-      } else if (previous?.challengerId != null && next?.challengerId == null && next?.player2Id == null) {
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('申し込みが拒否されました')));
+        if (next?.roomId != null) {
+          await ref
+              .read(matchingRoomProvider.notifier)
+              .joinBbsRoom(next!.roomId!);
+        }
+        ref.read(bbsGuestProvider.notifier).clearState();
+        router.go('/wait');
+      } else if (previous?.challengerId != null &&
+          next?.challengerId == null &&
+          next?.player2Id == null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('申し込みが拒否されました')));
       }
     });
 
@@ -412,541 +430,684 @@ class HomePage extends HookConsumerWidget {
     double bigicon = 290;
 
     // --- メインのbuildメソッド ---
-    return ShowCaseWidget(onFinish: () async {
-      final prefs = await SharedPreferences.getInstance();
-      // チュートリアルが完了したことを保存し、次回以降は表示しないようにする
-      await prefs.setBool('hasSeenProfileIconTutorial', true);
-    }, builder: (context) {
-      return Stack(
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      extendBody: true,
+      body: Stack(
         children: [
-          PageView(
-        controller: pageController,
-        children: [
-          const CommunityPage(),
-          Scaffold(
-            resizeToAvoidBottomInset: false,
-            body: Container(
-              color: Colors.blue,
-              child: Stack(
-                children: [
-              // 背景レイヤー：ヘッダーとフッターのみをSafeAreaで囲みます
-              SafeArea(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // トップセクション (ヘッダー)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(21, 25, 21, 21),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // プロフィール画像とユーザー情報
-                          Row(
+          IndexedStack(
+            index: currentIndex.value,
+            children: [
+              // 初回タップ時までビルドしない(遅延マウント)
+              visitedTabs.value.contains(0)
+                  ? const KeepAlivePage(child: CommunityPage())
+                  : const SizedBox.shrink(), // 0: コミュニティ
+              ShowCaseWidget(
+                onFinish: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  // チュートリアルが完了したことを保存し、次回以降は表示しないようにする
+                  await prefs.setBool('hasSeenProfileIconTutorial', true);
+                },
+                builder: (context) {
+                  return Scaffold(
+                  resizeToAvoidBottomInset: false,
+                  body: Container(
+                    color: Colors.blue,
+                    child: Stack(
+                      children: [
+                        // 背景レイヤー：ヘッダーとフッターのみをSafeAreaで囲みます
+                        SafeArea(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // プロフィール画像
-                              Showcase(
-                                key: profileIconKey,
-                                description: 'アイコンが変更できます',
-                                tooltipBackgroundColor: Colors.blueAccent,
-                                textColor: Colors.white,
-                                targetBorderRadius: BorderRadius.circular(50),
-                                overlayOpacity: 0.5,
-                                child: InkWell(
-                                  onTap: isMatching.value
-                                      ? () {}
-                                      : () async {
-                                          toggleBoolean();
-                                          await ref
-                                              .read(userProvider.notifier)
-                                              .updateAvatar();
-                                          toggleBoolean();
-                                        },
-                                  borderRadius: BorderRadius.circular(25),
-                                  enableFeedback: false,
-                                  child: Container(
-                                    width: 50,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[300], // アイコンの背景色
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                          color: Colors.white, width: 2),
-                                    ),
-                                    child: ClipOval(
-                                      child: user.avatar_url != null &&
-                                              user.avatar_url!.isNotEmpty
-                                          ? Image.network(
-                                              user.avatar_url!,
-                                              fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (context, error, stackTrace) {
-                                                print('画像読み込みエラー: $error');
-                                                return Icon(
-                                                  Icons.person, // 人物を表すアイコン
-                                                  color: Colors.grey[600],
-                                                  size: 30,
-                                                );
-                                              },
-                                            )
-                                          : Icon(
-                                              Icons.person, // アバターがない場合の初期アイコン
-                                              color: Colors.grey[600],
-                                              size: 30,
+                              // トップセクション (ヘッダー)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(21, 25, 21, 21),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // プロフィール画像とユーザー情報
+                                    Row(
+                                      children: [
+                                        // プロフィール画像
+                                        Showcase(
+                                          key: profileIconKey,
+                                          description: 'アイコンが変更できます',
+                                          tooltipBackgroundColor:
+                                              Colors.blueAccent,
+                                          textColor: Colors.white,
+                                          targetBorderRadius:
+                                              BorderRadius.circular(50),
+                                          overlayOpacity: 0.5,
+                                          child: InkWell(
+                                            onTap: isMatching.value
+                                                ? () {}
+                                                : () async {
+                                                    toggleBoolean();
+                                                    await ref
+                                                        .read(userProvider
+                                                            .notifier)
+                                                        .updateAvatar();
+                                                    // 非同期処理中にWidgetが破棄されることがあるため、
+                                                    // 破棄されていたら再びトグルしない("used after being disposed"対策)
+                                                    if (context.mounted) {
+                                                      toggleBoolean();
+                                                    }
+                                                  },
+                                            borderRadius:
+                                                BorderRadius.circular(25),
+                                            enableFeedback: false,
+                                            child: Container(
+                                              width: 50,
+                                              height: 50,
+                                              decoration: BoxDecoration(
+                                                color: Colors
+                                                    .grey[300], // アイコンの背景色
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                    color: Colors.white,
+                                                    width: 2),
+                                              ),
+                                              child: ClipOval(
+                                                child: user.avatar_url !=
+                                                            null &&
+                                                        user.avatar_url!
+                                                            .isNotEmpty
+                                                    ? Image.network(
+                                                        user.avatar_url!,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (context,
+                                                            error, stackTrace) {
+                                                          print(
+                                                              '画像読み込みエラー: $error');
+                                                          return Icon(
+                                                            Icons
+                                                                .person, // 人物を表すアイコン
+                                                            color: Colors.grey[600],
+                                                            size: 30,
+                                                          );
+                                                        },
+                                                      )
+                                                    : Icon(
+                                                        Icons
+                                                            .person, // アバターがない場合の初期アイコン
+                                                        color: Colors.grey[600],
+                                                        size: 30,
+                                                      ),
+                                              ),
                                             ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(width: 10),
-                              // 名前とトロフィー数
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      context.push('/name2');
-                                    },
-                                    child: Text(
-                                      user.name!,
-                                      style: AppTextStyles.bold(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                  Row(
-                                    children: [
-                                      Image(
-                                        image: const AssetImage(
-                                            'assets/images/trofie.png'), // 画像パスを指定
-                                        width: a, // サイズ調整
-                                        height: a,
-                                      ),
-                                      const SizedBox(width: 1),
-                                      TrophyCountAnimation(
-                                        targetTrophy: user.trophy,
-                                        startTrophy:
-                                            lastTrophy, // nullなら現在の値が使われる
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          // 設定アイコンと履歴アイコン
-                          Column(
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.settings,
-                                  color: Colors.white70,
-                                  size: 40,
-                                ),
-                                onPressed: () {
-                                  ref
-                                      .read(soundServiceProvider)
-                                      .playSfx(SfxAssets.normal);
-                                  context.push('/setting');
-                                },
-                                enableFeedback: false,
-                              ),
-                              const SizedBox(height: 7),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.history,
-                                  color: Colors.white70,
-                                  size: 40,
-                                ),
-                                onPressed: () {
-                                  ref
-                                      .read(soundServiceProvider)
-                                      .playSfx(SfxAssets.normal);
-                                  router.push('/history');
-                                },
-                                enableFeedback: false,
-                              ),
-                              const SizedBox(height: 0),
-                              GestureDetector(
-                                onTap: () {
-                                  showDialog(
-                                    context: context,
-                                    barrierDismissible: true,
-                                    barrierColor: Colors.transparent, // 背景を透明に
-                                    builder: (BuildContext context) {
-                                      return Dialog(
-                                        backgroundColor: Colors.blue,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(15),
-                                          side: const BorderSide(
-                                              color: Colors.white,
-                                              width: 2), // 白い縁取り
-                                        ),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(20),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start, // 左寄せ
-                                            children: [
-                                              Text(
-                                                '<ルール>',
-                                                style: AppTextStyles.bold(
-                                                  color: Colors.white,
-                                                  fontSize: 18,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 15),
-                                              Text(
-                                                "論破する\n20秒以上アプリを離れると負けになります。",
-                                                style: AppTextStyles.notoSans(
-                                                  color: Colors.white,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 15),
-                                              Text(
-                                                '<判定基準>',
-                                                style: AppTextStyles.bold(
-                                                  color: Colors.white,
-                                                  fontSize: 18,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 15),
-                                              Text(
-                                                '見る人がどっちに納得するかAIで判定',
-                                                style: AppTextStyles.notoSans(
-                                                  color: Colors.white,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                            ],
                                           ),
                                         ),
-                                      );
-                                    },
-                                  );
-                                },
-                                child: Image.asset(
-                                  'assets/images/rule.png',
-                                  width: 70,
-                                  height: 70,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              const SizedBox(
-                                  height: 7), // 他のボタンとの間隔に合わせる (必要に応じて調整してください)
-                              GestureDetector(
-                                onTap: () {
-                                  showDialog(
-                                    context: context,
-                                    barrierDismissible: true,
-                                    barrierColor:
-                                        Colors.transparent, // 背景を暗くしない
-                                    builder: (BuildContext dialogContext) {
-                                      // dialogContext を使うことで、元の context と区別する
-                                      return const RankingDialog();
-                                    },
-                                  );
-                                },
-                                child: Image.asset(
-                                  'assets/images/trofie.png', // ここに新しい画像のアセットパスを指定してください
-                                  // 例として 'assets/images/rule.png' を再利用する場合はそのように変更
-                                  width: 45,
-                                  height: 45,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              const SizedBox(height: 7),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.add_circle_outline,
-                                  color: Color.fromRGBO(255, 255, 255, 0.702),
-                                  size: 40,
-                                ),
-                                onPressed: () {
-                                  // 効果音の再生処理はそのまま残します
-                                  ref
-                                      .read(soundServiceProvider)
-                                      .playSfx(SfxAssets.normal);
 
-                                  // 画面遷移の代わりにダイアログを表示します
-                                  showDialog(
-                                    context: context,
-                                    barrierColor:
-                                        Colors.transparent, // 背景を暗くしない
-                                    // barrierDismissibleをfalseにすると、ダイアログの外側をタップしても閉じなくなります（任意）
-                                    // barrierDismissible: false,
-                                    builder: (BuildContext dialogContext) {
-                                      // 先ほど作成したダイアログウィジェットを返します
-                                      return const SubmitThemeDialog();
-                                    },
-                                  );
-                                },
-                                enableFeedback: false, // 触覚フィードバックの無効化もそのまま
-                              ),
-                              const SizedBox(height: 7),
-
-                              GestureDetector(
-                                onTap: () {
-                                  // dialogContext を使うことで、元の context と区別する
-                                  router.push('/pay');
-                                },
-                                child: Image.asset(
-                                  'assets/images/adbrock.png', // ここに新しい画像のアセットパスを指定してください
-                                  // 例として 'assets/images/rule.png' を再利用する場合はそのように変更
-                                  width: 40,
-                                  height: 40,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // フッター（ボタンと広告）
-                    Column(
-                      children: [
-                        // 下部のボタン
-                        Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            children: [
-                              // 通知設定セクション（UIのみ）
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      showDialog(
-                                        context: context,
-                                        barrierColor:
-                                            Colors.transparent, // 背景を暗くしない
-                                        builder: (context) {
-                                          return Dialog(
-                                            backgroundColor: Colors.blue,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(15),
-                                              side: const BorderSide(
+                                        const SizedBox(width: 10),
+                                        // 名前とトロフィー数
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            GestureDetector(
+                                              onTap: () {
+                                                context.push('/name2');
+                                              },
+                                              child: Text(
+                                                user.name!,
+                                                style: AppTextStyles.bold(
                                                   color: Colors.white,
-                                                  width: 2),
-                                            ),
-                                            child: Container(
-                                              padding: const EdgeInsets.all(20),
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    '通知について',
-                                                    style: AppTextStyles.bold(
-                                                      color: Colors.white,
-                                                      fontSize: 18,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 15),
-                                                  Text(
-                                                    '誰かがマッチングを開始したときに通知を受け取ることができます。\n\n※対戦者が非常に多い時間帯などは、通知が停止する場合があります。',
-                                                    style:
-                                                        AppTextStyles.notoSans(
-                                                      color: Colors.white,
-                                                      fontSize: 15,
-                                                    ),
-                                                    textAlign: TextAlign.center,
-                                                  ),
-                                                ],
+                                                  fontSize: 16,
+                                                ),
                                               ),
                                             ),
-                                          );
-                                        },
-                                      );
-                                    },
-                                    child: const Padding(
-                                      padding: EdgeInsets.only(
-                                          right: 2,
-                                          left: 10,
-                                          top: 10,
-                                          bottom: 10),
-                                      child: Icon(
-                                        Icons.info_outline,
-                                        color: Colors.white,
-                                        size: 18,
+                                            Row(
+                                              children: [
+                                                Image(
+                                                  image: const AssetImage(
+                                                      'assets/images/trofie.png'), // 画像パスを指定
+                                                  width: a, // サイズ調整
+                                                  height: a,
+                                                ),
+                                                const SizedBox(width: 1),
+                                                TrophyCountAnimation(
+                                                  targetTrophy: user.trophy,
+                                                  startTrophy:
+                                                      lastTrophy, // nullなら現在の値が使われる
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    // 設定アイコンと履歴アイコン
+                                    Column(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.settings,
+                                            color: Colors.white70,
+                                            size: 40,
+                                          ),
+                                          onPressed: () {
+                                            ref
+                                                .read(soundServiceProvider)
+                                                .playSfx(SfxAssets.normal);
+                                            context.push('/setting');
+                                          },
+                                          enableFeedback: false,
+                                        ),
+                                        const SizedBox(height: 7),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.history,
+                                            color: Colors.white70,
+                                            size: 40,
+                                          ),
+                                          onPressed: () {
+                                            ref
+                                                .read(soundServiceProvider)
+                                                .playSfx(SfxAssets.normal);
+                                            router.push('/history');
+                                          },
+                                          enableFeedback: false,
+                                        ),
+                                        const SizedBox(height: 0),
+                                        GestureDetector(
+                                          onTap: () {
+                                            showDialog(
+                                              context: context,
+                                              barrierDismissible: true,
+                                              barrierColor:
+                                                  Colors.transparent, // 背景を透明に
+                                              builder: (BuildContext context) {
+                                                return Dialog(
+                                                  backgroundColor: Colors.blue,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            15),
+                                                    side: const BorderSide(
+                                                        color: Colors.white,
+                                                        width: 2), // 白い縁取り
+                                                  ),
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                            20),
+                                                    child: Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start, // 左寄せ
+                                                      children: [
+                                                        Text(
+                                                          '<ルール>',
+                                                          style: AppTextStyles
+                                                              .bold(
+                                                            color: Colors.white,
+                                                            fontSize: 18,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                            height: 15),
+                                                        Text(
+                                                          "論破する\n20秒以上アプリを離れると負けになります。",
+                                                          style: AppTextStyles
+                                                              .notoSans(
+                                                            color: Colors.white,
+                                                            fontSize: 16,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                            height: 15),
+                                                        Text(
+                                                          '<判定基準>',
+                                                          style: AppTextStyles
+                                                              .bold(
+                                                            color: Colors.white,
+                                                            fontSize: 18,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                            height: 15),
+                                                        Text(
+                                                          '見る人がどっちに納得するかAIで判定',
+                                                          style: AppTextStyles
+                                                              .notoSans(
+                                                            color: Colors.white,
+                                                            fontSize: 16,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            );
+                                          },
+                                          child: Image.asset(
+                                            'assets/images/rule.png',
+                                            width: 70,
+                                            height: 70,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 0), // パディングを追加したため間隔を調整
+                                        GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap: () {
+                                            showDialog(
+                                              context: context,
+                                              barrierDismissible: true,
+                                              barrierColor: Colors
+                                                  .transparent, // 背景を暗くしない
+                                              builder:
+                                                  (BuildContext dialogContext) {
+                                                // dialogContext を使うことで、元の context と区別する
+                                                return const RankingDialog();
+                                              },
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(10),
+                                            child: Image.asset(
+                                              'assets/images/trofie.png', // ここに新しい画像のアセットパスを指定してください
+                                              // 例として 'assets/images/rule.png' を再利用する場合はそのように変更
+                                              width: 45,
+                                              height: 45,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 0), // パディングを追加したため間隔を調整
+                                        GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap: () {
+                                            // 効果音の再生処理はそのまま残します
+                                            ref
+                                                .read(soundServiceProvider)
+                                                .playSfx(SfxAssets.normal);
+
+                                            // 画面遷移の代わりにダイアログを表示します
+                                            showDialog(
+                                              context: context,
+                                              barrierColor: Colors
+                                                  .transparent, // 背景を暗くしない
+                                              // barrierDismissibleをfalseにすると、ダイアログの外側をタップしても閉じなくなります（任意）
+                                              // barrierDismissible: false,
+                                              builder:
+                                                  (BuildContext dialogContext) {
+                                                // 先ほど作成したダイアログウィジェットを返します
+                                                return const SubmitThemeDialog();
+                                              },
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(10),
+                                            child: const Icon(
+                                              Icons.add_circle_outline,
+                                              color: Color.fromRGBO(255, 255, 255, 0.702),
+                                              size: 40,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 0), // パディングを追加したため間隔を調整
+
+                                        GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap: () {
+                                            // dialogContext を使うことで、元の context と区別する
+                                            router.push('/pay');
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(10),
+                                            child: Image.asset(
+                                              'assets/images/adbrock.png', // ここに新しい画像のアセットパスを指定してください
+                                              // 例として 'assets/images/rule.png' を再利用する場合はそのように変更
+                                              width: 40,
+                                              height: 40,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // フッター（ボタンと広告）
+                              Column(
+                                children: [
+                                  // 下部のボタン
+                                  Padding(
+                                    padding: const EdgeInsets.all(20.0),
+                                    child: Column(
+                                      children: [
+                                        // 通知設定セクション（UIのみ）
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            GestureDetector(
+                                              onTap: () {
+                                                showDialog(
+                                                  context: context,
+                                                  barrierColor: Colors
+                                                      .transparent, // 背景を暗くしない
+                                                  builder: (context) {
+                                                    return Dialog(
+                                                      backgroundColor:
+                                                          Colors.blue,
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(15),
+                                                        side: const BorderSide(
+                                                            color: Colors.white,
+                                                            width: 2),
+                                                      ),
+                                                      child: Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(20),
+                                                        child: Column(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
+                                                          children: [
+                                                            Text(
+                                                              '通知について',
+                                                              style:
+                                                                  AppTextStyles
+                                                                      .bold(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 18,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                                height: 15),
+                                                            Text(
+                                                              '誰かがマッチングを開始したときに通知を受け取ることができます。\n\n※対戦者が非常に多い時間帯などは、通知が停止する場合があります。',
+                                                              style:
+                                                                  AppTextStyles
+                                                                      .notoSans(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 15,
+                                                              ),
+                                                              textAlign:
+                                                                  TextAlign
+                                                                      .center,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                );
+                                              },
+                                              child: const Padding(
+                                                padding: EdgeInsets.only(
+                                                    right: 2,
+                                                    left: 10,
+                                                    top: 10,
+                                                    bottom: 10),
+                                                child: const Icon(
+                                                  Icons.info_outline,
+                                                  color: Colors.white,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ),
+                                            const Icon(
+                                              Icons.notifications,
+                                              color: Colors.white,
+                                              size: 28,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            CupertinoSwitch(
+                                              value:
+                                                  user.is_notification_enabled ??
+                                                      false,
+                                              onChanged: (value) {
+                                                // プロバイダーを通じてDBを更新
+                                                ref
+                                                    .read(userProvider.notifier)
+                                                    .updateNotificationStatus(
+                                                        context, value);
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        // フレンドと対戦ボタン
+                                        Container(
+                                          width: double.infinity,
+                                          margin:
+                                              const EdgeInsets.only(bottom: 16),
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              // 新しいカスタムダイアログを表示
+                                              showDialog(
+                                                context: context,
+                                                barrierColor: Colors
+                                                    .transparent, // 背景を暗くしない
+                                                // ダイアログ外タップで閉じないようにする (任意)
+                                                barrierDismissible:
+                                                    true, // キーボード外タップで閉じたいのでtrueのまま
+                                                builder:
+                                                    (BuildContext context) {
+                                                  // FriendMatchDialogが必要とするプロバイダーがあればここで渡すこともできるが、
+                                                  // 通常はFriendMatchDialog自身のビルドコンテキストからref経由で取得する
+                                                  return const FriendMatchDialog();
+                                                },
+                                              );
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 16),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              enableFeedback: false,
+                                            ),
+                                            child: Text(
+                                              'フレンドと対戦 / 部屋作成', // ボタンテキスト変更
+                                              style: AppTextStyles.notoSans(
+                                                color: Colors.blue,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+
+                                        // ゲーム開始ボタン
+                                        SizedBox(
+                                          // ContainerをSizedBoxに変更 (子にElevatedButtonしかないため)
+                                          width: double.infinity,
+                                          child: ElevatedButton(
+                                            onPressed: isMatching.value ||
+                                                    friendmatch
+                                                ? () {
+                                                    log("isMatching.value: ${isMatching.value.toString()}");
+                                                    log("friendmatch: ${friendmatch.toString()}");
+                                                    ref
+                                                        .read(
+                                                            soundServiceProvider)
+                                                        .playSfx(SfxAssets.go);
+                                                    vibration.vibrateShort();
+                                                  }
+                                                : () async {
+                                                    toggleBoolean();
+                                                    friendmatchnotifier.state =
+                                                        true;
+                                                    ref
+                                                        .read(
+                                                            soundServiceProvider)
+                                                        .playSfx(SfxAssets.go);
+                                                    vibration.vibrateShort();
+                                                    // findMatchの呼び出しは変更なし
+                                                    await ref
+                                                        .read(
+                                                            matchingRoomProvider
+                                                                .notifier)
+                                                        .findMatch(
+                                                            '', '', '', '');
+                                                    // 非同期処理中にWidgetが破棄されることがあるため、
+                                                    // 破棄されていたら再びトグルしない("used after being disposed"対策)
+                                                    if (context.mounted) {
+                                                      toggleBoolean();
+                                                    }
+                                                    friendmatchnotifier.state =
+                                                        false;
+                                                  },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.white,
+                                              disabledBackgroundColor:
+                                                  Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 16),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              enableFeedback: false,
+                                            ),
+                                            child: Text(
+                                              'ランダムマッチ', // ボタンテキストを修正 ('a' -> 'ランダムマッチ'など)
+                                              style: AppTextStyles.notoSans(
+                                                color: Colors.blue,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // --- バナー広告表示エリア ---
+                                  if (ref
+                                          .watch(inAppPurchaseManagerProvider)
+                                          .isSubscribed ==
+                                      false)
+                                    if (bannerAd != null)
+                                      Container(
+                                        alignment:
+                                            Alignment.center, // 広告を水平方向に中央揃え
+                                        width: bannerAd.size.width.toDouble(),
+                                        height: bannerAd.size.height.toDouble(),
+                                        child: AdWidget(
+                                            ad: bannerAd), // ロードされた広告ウィジェット
+                                      )
+                                    else
+                                      // オプション: ロード中や失敗時にプレースホルダーを表示
+                                      Container(
+                                        height: AdSize.banner.height
+                                            .toDouble(), // 広告の高さ分のスペースを確保
+                                        color: Colors.blue, // プレースホルダーの背景色
                                       ),
-                                    ),
-                                  ),
-                                  const Icon(
-                                    Icons.notifications,
-                                    color: Colors.white,
-                                    size: 28,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  CupertinoSwitch(
-                                    value:
-                                        user.is_notification_enabled ?? false,
-                                    onChanged: (value) {
-                                      // プロバイダーを通じてDBを更新
-                                      ref
-                                          .read(userProvider.notifier)
-                                          .updateNotificationStatus(
-                                              context, value);
-                                    },
-                                  ),
+                                  // --- バナー広告表示エリア 終了 ---
                                 ],
-                              ),
-                              const SizedBox(height: 8),
-                              // フレンドと対戦ボタン
-                              Container(
-                                width: double.infinity,
-                                margin: const EdgeInsets.only(bottom: 16),
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    // 新しいカスタムダイアログを表示
-                                    showDialog(
-                                      context: context,
-                                      barrierColor:
-                                          Colors.transparent, // 背景を暗くしない
-                                      // ダイアログ外タップで閉じないようにする (任意)
-                                      barrierDismissible:
-                                          true, // キーボード外タップで閉じたいのでtrueのまま
-                                      builder: (BuildContext context) {
-                                        // FriendMatchDialogが必要とするプロバイダーがあればここで渡すこともできるが、
-                                        // 通常はFriendMatchDialog自身のビルドコンテキストからref経由で取得する
-                                        return const FriendMatchDialog();
-                                      },
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    enableFeedback: false,
-                                  ),
-                                  child: Text(
-                                    'フレンドと対戦 / 部屋作成', // ボタンテキスト変更
-                                    style: AppTextStyles.notoSans(
-                                      color: Colors.blue,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              // ゲーム開始ボタン
-                              SizedBox(
-                                // ContainerをSizedBoxに変更 (子にElevatedButtonしかないため)
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: isMatching.value || friendmatch
-                                      ? () {
-                                          log("isMatching.value: ${isMatching.value.toString()}");
-                                          log("friendmatch: ${friendmatch.toString()}");
-                                          ref
-                                              .read(soundServiceProvider)
-                                              .playSfx(SfxAssets.go);
-                                          vibration.vibrateShort();
-                                        }
-                                      : () async {
-                                           toggleBoolean();
-                                           friendmatchnotifier.state = true;
-                                           ref
-                                               .read(soundServiceProvider)
-                                               .playSfx(SfxAssets.go);
-                                           vibration.vibrateShort();
-                                           // findMatchの呼び出しは変更なし
-                                           await ref
-                                               .read(
-                                                   matchingRoomProvider.notifier)
-                                               .findMatch('', '', '', '');
-                                           toggleBoolean();
-                                           friendmatchnotifier.state = false;
-
-                                        },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    disabledBackgroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    enableFeedback: false,
-                                  ),
-                                  child: Text(
-                                    'ランダムマッチ', // ボタンテキストを修正 ('a' -> 'ランダムマッチ'など)
-                                    style: AppTextStyles.notoSans(
-                                      color: Colors.blue,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                ),
                               ),
                             ],
                           ),
                         ),
 
-                        // --- バナー広告表示エリア ---
-                        if (ref
-                                .watch(inAppPurchaseManagerProvider)
-                                .isSubscribed ==
-                            false)
-                          if (bannerAd != null)
-                            Container(
-                              alignment: Alignment.center, // 広告を水平方向に中央揃え
-                              width: bannerAd.size.width.toDouble(),
-                              height: bannerAd.size.height.toDouble(),
-                              child: AdWidget(ad: bannerAd), // ロードされた広告ウィジェット
-                            )
-                          else
-                            // オプション: ロード中や失敗時にプレースホルダーを表示
-                            Container(
-                              height: AdSize.banner.height
-                                  .toDouble(), // 広告の高さ分のスペースを確保
-                              color: Colors.blue, // プレースホルダーの背景色
+                        // 前景レイヤー：画面の中央に画像を配置
+                        IgnorePointer(
+                          child: Center(
+                            child: Transform.translate(
+                              offset: const Offset(0, -100), // さらに上に配置をずらす
+                              child: SizedBox(
+                                width: bigicon,
+                                height: bigicon,
+                                child: const Image(
+                                  image: AssetImage(
+                                      'assets/images/debateimage_v2.png'),
+                                ),
+                              ),
                             ),
-                        // --- バナー広告表示エリア 終了 ---
+                          ),
+                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-
-              // 前景レイヤー：画面の中央に画像を配置
-              Center(
-                child: SizedBox(
-                  width: bigicon,
-                  height: bigicon,
-                  child: const Image(
-                    image: AssetImage('assets/images/debateimage_v2.png'),
                   ),
-                ),
-              ),
-            ],
+                );
+              },
+            ),
+            // 初回タップ時までビルドしない(遅延マウント)
+            visitedTabs.value.contains(2)
+                ? const KeepAlivePage(child: MessagePage())
+                : const SizedBox.shrink(), // 2: メッセージ
+          ],
+        ),
+        const Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            child: BbsApplyingBanner(),
           ),
         ),
-      ),
+      ],
+    ),
+    bottomNavigationBar: Container(
+      color: Colors.transparent, // 隙間を透明にする
+      // RepaintBoundary: ナビバーの毎フレーム描画(影のblur)を他UIから分離してカクつきを防ぐ
+      child: RepaintBoundary(
+        child: CircleNavBar(
+          activeIcons: const [
+            Icon(Icons.people, color: Colors.blue),
+            Icon(Icons.home, color: Colors.blue),
+            Icon(Icons.message, color: Colors.blue),
           ],
-          ),
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: BbsApplyingBanner(),
+          inactiveIcons: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.people, color: currentIndex.value == 0 ? Colors.blue : Colors.grey),
+                Text("コミュニティ", style: TextStyle(color: currentIndex.value == 0 ? Colors.blue : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+              ],
             ),
-          ),
-        ],
-      );
-    });
+            const Icon(Icons.home), // 非アクティブ状態
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.message, color: currentIndex.value == 2 ? Colors.blue : Colors.grey),
+                Text("メッセージ", style: TextStyle(color: currentIndex.value == 2 ? Colors.blue : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ],
+          color: const Color(0xFFF3F3F3), // 背景を少しだけグレーに(アプリ全体の背景色と統一)
+          circleColor: const Color(0xFFF3F3F3),
+          height: 60,
+          circleWidth: 60,
+          activeIndex: currentIndex.value,
+          onTap: (index) {
+            FocusManager.instance.primaryFocus?.unfocus();
+            visitedTabs.value = {...visitedTabs.value, index}; // 訪れたタブを保持対象にする
+            currentIndex.value = index;
+          },
+          tabCurve: Curves.easeInOut, // 丸が移動するアニメーション
+          // 影は不要(カクつきの原因にもなる)ので消す: elevation 0 で影の描画自体がスキップされる
+          shadowColor: Colors.transparent,
+          elevation: 0,
+        ),
+      ),
+    ),
+  );
   }
 }
 

@@ -415,7 +415,7 @@ class BugReportDialogContent extends HookConsumerWidget {
                   hintText: '例: ○○の画面で○○をするとアプリがクラッシュする...',
                   hintStyle: AppTextStyles.notoSans(color: Colors.grey[500]),
                   filled: true,
-                  fillColor: Colors.grey[100],
+                  fillColor: const Color(0xFFF3F3F3),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.0),
                     borderSide: BorderSide.none,

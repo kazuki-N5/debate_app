@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ポスト詳細モックアップ</title>
+  <style>
+    :root {
+      --primary-color: #1d9bf0;
+      --text-main: #0f1419;
+      --text-sub: #536471;
+      --border-color: #eff3f4;
+      --bg-color: #ffffff;
+      --blue-text: #1d9bf0;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f7f9f9;
+      color: var(--text-main);
+    }
+
+    /* スマホサイズのコンテナ */
+    .app-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: var(--bg-color);
+      min-height: 100vh;
+      border-left: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
+      position: relative;
+      padding-bottom: 60px; /* 入力エリア分 */
+    }
+
+    /* ヘッダー */
+    .header {
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      height: 53px;
+      position: sticky;
+      top: 0;
+      background-color: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      z-index: 10;
+    }
+    .header .icon-back {
+      font-size: 20px;
+      margin-right: 20px;
+      cursor: pointer;
+    }
+    .header h1 {
+      font-size: 20px;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    /* 投稿内容エリア */
+    .post-container {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background-color: #ccc;
+      margin-right: 12px;
+      object-fit: cover;
+    }
+    .user-details {
+      display: flex;
+      flex-direction: column;
+    }
+    .user-name {
+      font-weight: bold;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .user-id {
+      color: var(--text-sub);
+      font-size: 15px;
+    }
+    
+    .post-content {
+      font-size: 17px;
+      line-height: 1.5;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+
+    .post-meta {
+      color: var(--text-sub);
+      font-size: 15px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 16px;
+    }
+
+    .post-actions {
+      display: flex;
+      justify-content: space-around;
+      color: var(--text-sub);
+      font-size: 15px;
+    }
+    .action-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    /* コメント欄 */
+    .comments-header {
+      padding: 12px 16px;
+      font-size: 15px;
+      color: var(--text-sub);
+      font-weight: bold;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .comment-item {
+      display: flex;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .comment-item.indented {
+      padding-left: 56px; /* 1階層分のインデント */
+    }
+
+    .comment-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #ddd;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+    
+    .comment-body {
+      flex: 1;
+    }
+    .comment-user-info {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+    .comment-name {
+      font-weight: bold;
+      font-size: 15px;
+    }
+    .comment-id, .comment-time {
+      color: var(--text-sub);
+      font-size: 15px;
+    }
+    .comment-text {
+      font-size: 15px;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+    
+    /* メンションのスタイル */
+    .mention {
+      color: var(--blue-text);
+      text-decoration: none;
+    }
+
+    .comment-actions {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-sub);
+      font-size: 13px;
+      max-width: 300px;
+    }
+    .comment-actions .action-item {
+      gap: 4px;
+    }
+
+    /* 入力エリア */
+    .reply-input-area {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      max-width: 600px;
+      background-color: var(--bg-color);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      box-sizing: border-box;
+    }
+    .reply-input-area .avatar {
+      width: 32px;
+      height: 32px;
+      margin-right: 12px;
+    }
+    
+    /* ContentEditableを使ったリッチ入力欄（青字メンション対応） */
+    .input-box {
+      flex: 1;
+      min-height: 20px;
+      max-height: 100px;
+      overflow-y: auto;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      line-height: 1.4;
+      padding: 8px 0;
+    }
+    .input-box[contenteditable]:empty::before {
+      content: "返信をポスト";
+      color: var(--text-sub);
+    }
+    .input-actions {
+      display: flex;
+      gap: 16px;
+      color: var(--primary-color);
+      margin-left: 12px;
+    }
+
+    /* 説明エリア (画面外に表示する用) */
+    .explanation {
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 16px;
+      background: #e8f5e9;
+      border-radius: 8px;
+      color: #2e7d32;
+      line-height: 1.6;
+    }
+    .explanation h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    .explanation code {
+      background: #c8e6c9;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 実装の説明 -->
+  <div class="explanation">
+    <h2>現状のコメント管理と今回の実装方針</h2>
+    <p>
+      <b>現状の管理：</b><br>
+      <code>BbsComment</code> モデル（lib/modes/bbs_comment.dart）を見ると、コメントには <code>postId</code>（親の投稿ID）と <code>parentCommentId</code>（親コメントのID）が含まれています。<br>
+      また、<code>List&lt;BbsComment&gt; replies</code> というプロパティを持っており、木構造（親が子を持つ階層構造）としてデータを取得・管理できる状態です。
+    </p>
+    <p>
+      <b>今回の実装方針（UI）：</b><br>
+      1. 最上位のコメント（投稿への直接の返信）はインデントなし。<br>
+      2. 1階層目のコメントに対する返信（子）はインデントして表示。<br>
+      3. それ以降（孫など）への返信も、子は作らず2と同じインデント階層にフラットに並べます。<br>
+      4. 各コメント下部の「返信」ボタンを押すと、入力欄に <code><span class="mention">@ユーザー名</span></code> が青色で挿入されます。<br>
+    </p>
+  </div>
+
+  <div class="app-container">
+    <!-- ヘッダー -->
+    <div class="header">
+      <div class="icon-back">←</div>
+      <h1>ポスト</h1>
+    </div>
+
+    <!-- メインポスト -->
+    <div class="post-container">
+      <div class="user-info">
+        <img class="avatar" src="https://via.placeholder.com/48" alt="avatar">
+        <div class="user-details">
+          <div class="user-name">炎鎖🔥 - Bonochin - <span style="color:#1d9bf0;">✔</span></div>
+          <div class="user-id">@super_bonochin</div>
+        </div>
+      </div>
+      <div class="post-content">これは本当に環境によると思うんだけど、自分はITの世界で、しかもかなり技術に寄った世界で15年以上生活してるけど、仕事の文脈で「プログラミング」っていう言葉を職場で聞いたことが一回もないんだよね。
+さらに言えば自分は手を動かすタイプの人間だけど、それでもプライベートを含めても『プログラミング』なる言葉を使う場面も無いし、そんな言葉が使われる場面にも遭遇しない。
+もしかしてITの外側でしか使われてないのではないか？とすら思ってるけど、そんなこともないのかな。</div>
+      <div class="post-meta">
+        2026年08月16日 9:35 午後 · <b>8,749</b> 表示
+      </div>
+      <div class="post-actions">
+        <div class="action-item">💬 5</div>
+        <div class="action-item">🔁</div>
+        <div class="action-item">🤍 42</div>
+        <div class="action-item">🔖 5</div>
+        <div class="action-item">🔗</div>
+      </div>
+    </div>
+
+    <!-- コメントヘッダー -->
+    <div class="comments-header">最新 ∨</div>
+
+    <!-- コメント1 (最上位) -->
+    <div class="comment-item">
+      <img class="comment-avatar" src="https://via.placeholder.com/40" alt="avatar">
+      <div class="comment-body">
+        <div class="comment-user-info">
+          <span class="comment-name">花岡貴子 takako hanaoka</span>
+          <span style="color:#1d9bf0;">✔</span>
+          <span class="comment-id">@takako_h</span>
+          <span class="comment-time">· 20分</span>
+        </div>
+        <div class="comment-text">情報処理工学科で学びましたが、学校では「プログラミング」という言葉を聞きましたが、現場では主語なしとか「コード」とか言ってた記憶あります。大昔ですが。</div>
+        <div class="comment-actions">
+          <div class="action-item reply-btn" data-username="takako_h">💬</div>
+          <div class="action-item">🔁</div>
+          <div class="action-item">🤍 134</div>
+          <div class="action-item">📊</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- コメント2 (最上位) -->
+    <div class="comment-item">
+      <img class="comment-avatar" src="https://via.placeholder.com/40" alt="avatar">
+      <div class="comment-body">
+        <div class="comment-user-info">
+          <span class="comment-name">backyarD_D</span>
+          <span style="color:#1d9bf0;">✔</span>
+          <span class="comment-id">@backyarD_D</span>
+          <span class="comment-time">· 40分</span>
+        </div>
+        <div class="comment-text">よかった......同じ感覚の人がいた......。私が仕事</div>
+        <div class="comment-actions">
+          <div class="action-item reply-btn" data-username="backyarD_D">💬</div>
+          <div class="action-item">🔁</div>
+          <div class="action-item">🤍 10</div>
+          <div class="action-item">📊</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- コメント3 (子階層：コメント2への返信) -->
+    <div class="comment-item indented">
+      <img class="comment-avatar" src="https://via.placeholder.com/40" alt="avatar">
+      <div class="comment-body">
+        <div class="comment-user-info">
+          <span class="comment-name">エンジニアA</span>
+          <span class="comment-id">@eng_a</span>
+          <span class="comment-time">· 10分</span>
+        </div>
+        <div class="comment-text">
+          <a href="#" class="mention">@backyarD_D</a> 確かに周りも「実装する」とか「コード書く」って言いますね。
+        </div>
+        <div class="comment-actions">
+          <!-- 子階層にも返信ボタンを用意 -->
+          <div class="action-item reply-btn" data-username="eng_a">💬</div>
+          <div class="action-item">🔁</div>
+          <div class="action-item">🤍 2</div>
+          <div class="action-item">📊</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- コメント4 (孫階層：コメント3への返信だけど同じ階層(インデント)で表示) -->
+    <div class="comment-item indented">
+      <img class="comment-avatar" src="https://via.placeholder.com/40" alt="avatar">
+      <div class="comment-body">
+        <div class="comment-user-info">
+          <span class="comment-name">通りすがり</span>
+          <span class="comment-id">@tourisugari</span>
+          <span class="comment-time">· 2分</span>
+        </div>
+        <div class="comment-text">
+          <a href="#" class="mention">@eng_a</a> ですね。プログラミングという単語はスクールとか教育現場のイメージが強いです。
+        </div>
+        <div class="comment-actions">
+          <div class="action-item reply-btn" data-username="tourisugari">💬</div>
+          <div class="action-item">🔁</div>
+          <div class="action-item">🤍 1</div>
+          <div class="action-item">📊</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 下部入力エリア -->
+    <div class="reply-input-area">
+      <img class="avatar" src="https://via.placeholder.com/32" alt="avatar">
+      <!-- divでcontenteditableにしてメンションの青色表現を可能に -->
+      <div class="input-box" id="replyInput" contenteditable="true"></div>
+      <div class="input-actions">
+        <span>📷</span>
+        <span>GIF</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 返信ボタンを押したときの処理
+    document.querySelectorAll('.reply-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const username = e.currentTarget.getAttribute('data-username');
+        const inputBox = document.getElementById('replyInput');
+        
+        // メンション用のHTML（青色にする）を挿入
+        const mentionHtml = `<span class="mention">@${username}</span>&nbsp;`;
+        
+        // すでに入力がある場合は末尾に追加するか、最初に入れるか。
+        // 今回は「最初にメンションし」という要望なので中身をリセットして追加する例。
+        inputBox.innerHTML = mentionHtml;
+        
+        // フォーカスを末尾に移動
+        inputBox.focus();
+        
+        // カーソルを末尾に合わせる処理
+        if (typeof window.getSelection !== "undefined" && typeof document.createRange !== "undefined") {
+            const range = document.createRange();
+            range.selectNodeContents(inputBox);
+            range.collapse(false);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

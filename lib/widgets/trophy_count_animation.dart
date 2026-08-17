@@ -8,12 +8,14 @@ class TrophyCountAnimation extends HookWidget {
   final int targetTrophy;
   final int? startTrophy; // 開始時の数値を外部から指定可能にする
   final Duration baseDurationPerUnit;
+  final Color textColor;
 
   const TrophyCountAnimation({
     super.key,
     required this.targetTrophy,
     this.startTrophy,
     this.baseDurationPerUnit = const Duration(milliseconds: 150),
+    this.textColor = Colors.white,
   });
 
   @override
@@ -100,7 +102,7 @@ class TrophyCountAnimation extends HookWidget {
           child: Text(
             displayValue.toString(),
             style: AppTextStyles.bold(
-              color: Colors.white,
+              color: textColor,
               fontSize: 16,
             ),
           ),

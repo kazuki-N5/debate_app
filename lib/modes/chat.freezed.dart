@@ -22,6 +22,7 @@ mixin _$Chat {
   String get senderId => throw _privateConstructorUsedError;
   String get content => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
+  String? get imageUrl => throw _privateConstructorUsedError;
 
   /// Create a copy of Chat
   /// with the given fields replaced by the non-null parameter values.
@@ -39,7 +40,8 @@ abstract class $ChatCopyWith<$Res> {
       String roomId,
       String senderId,
       String content,
-      DateTime createdAt});
+      DateTime createdAt,
+      String? imageUrl});
 }
 
 /// @nodoc
@@ -62,6 +64,7 @@ class _$ChatCopyWithImpl<$Res, $Val extends Chat>
     Object? senderId = null,
     Object? content = null,
     Object? createdAt = null,
+    Object? imageUrl = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -84,6 +87,10 @@ class _$ChatCopyWithImpl<$Res, $Val extends Chat>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime,
+      imageUrl: freezed == imageUrl
+          ? _value.imageUrl
+          : imageUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -100,7 +107,8 @@ abstract class _$$ChatImplCopyWith<$Res> implements $ChatCopyWith<$Res> {
       String roomId,
       String senderId,
       String content,
-      DateTime createdAt});
+      DateTime createdAt,
+      String? imageUrl});
 }
 
 /// @nodoc
@@ -120,6 +128,7 @@ class __$$ChatImplCopyWithImpl<$Res>
     Object? senderId = null,
     Object? content = null,
     Object? createdAt = null,
+    Object? imageUrl = freezed,
   }) {
     return _then(_$ChatImpl(
       id: null == id
@@ -142,6 +151,10 @@ class __$$ChatImplCopyWithImpl<$Res>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime,
+      imageUrl: freezed == imageUrl
+          ? _value.imageUrl
+          : imageUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -154,7 +167,8 @@ class _$ChatImpl implements _Chat {
       required this.roomId,
       required this.senderId,
       required this.content,
-      required this.createdAt});
+      required this.createdAt,
+      this.imageUrl});
 
 // コンストラクタも大文字
   @override
@@ -168,10 +182,12 @@ class _$ChatImpl implements _Chat {
   final String content;
   @override
   final DateTime createdAt;
+  @override
+  final String? imageUrl;
 
   @override
   String toString() {
-    return 'Chat(id: $id, roomId: $roomId, senderId: $senderId, content: $content, createdAt: $createdAt)';
+    return 'Chat(id: $id, roomId: $roomId, senderId: $senderId, content: $content, createdAt: $createdAt, imageUrl: $imageUrl)';
   }
 
   @override
@@ -185,12 +201,14 @@ class _$ChatImpl implements _Chat {
                 other.senderId == senderId) &&
             (identical(other.content, content) || other.content == content) &&
             (identical(other.createdAt, createdAt) ||
-                other.createdAt == createdAt));
+                other.createdAt == createdAt) &&
+            (identical(other.imageUrl, imageUrl) ||
+                other.imageUrl == imageUrl));
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, roomId, senderId, content, createdAt);
+  int get hashCode => Object.hash(
+      runtimeType, id, roomId, senderId, content, createdAt, imageUrl);
 
   /// Create a copy of Chat
   /// with the given fields replaced by the non-null parameter values.
@@ -207,7 +225,8 @@ abstract class _Chat implements Chat {
       required final String roomId,
       required final String senderId,
       required final String content,
-      required final DateTime createdAt}) = _$ChatImpl;
+      required final DateTime createdAt,
+      final String? imageUrl}) = _$ChatImpl;
 
 // コンストラクタも大文字
   @override
@@ -220,6 +239,8 @@ abstract class _Chat implements Chat {
   String get content;
   @override
   DateTime get createdAt;
+  @override
+  String? get imageUrl;
 
   /// Create a copy of Chat
   /// with the given fields replaced by the non-null parameter values.

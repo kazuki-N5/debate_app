@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>データベース構成図 (DM & オープンチャット)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9fafb;
+        }
+        h1 {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 10px;
+            color: #1e3a8a;
+        }
+        h2 {
+            margin-top: 40px;
+            color: #1d4ed8;
+            border-left: 4px solid #3b82f6;
+            padding-left: 10px;
+        }
+        h3 {
+            color: #4b5563;
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+        }
+        .fk {
+            color: #ea580c;
+            font-size: 0.9em;
+        }
+        .pk {
+            color: #16a34a;
+            font-weight: bold;
+        }
+        .type {
+            color: #6b7280;
+            font-family: monospace;
+        }
+        .note {
+            background-color: #dbeafe;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2563eb;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>データベース構成図 (DM & オープンチャット)</h1>
+
+    <div class="note">
+        <p>ダイレクトメッセージ（1対1）とオープンチャット（多対多・グループ）のデータベース設計の比較資料です。両者とも基本構成は似ていますが、メタデータの有無や権限管理の仕組みに違いがあります。</p>
+    </div>
+
+    <!-- DM (ダイレクトメッセージ) -->
+    <h2>1. ダイレクトメッセージ (DM) のデータベース構成</h2>
+    <p>1対1のプライベートなやり取りを前提としたシンプルな構成です。ルーム自体には名前やアイコンがなく、属しているメンバーによって定義されます。</p>
+
+    <h3>dm_rooms テーブル</h3>
+    <p>DMのルーム（会話のスレッド）を管理するテーブル。2人のユーザー間の会話をまとめる箱の役割。</p>
+    <table>
+        <tr><th>カラム名</th><th>型</th><th>制約・属性</th><th>説明</th></tr>
+        <tr><td><span class="pk">id</span></td><td><span class="type">uuid</span></td><td>PRIMARY KEY</td><td>ルームの一意のID</td></tr>
+        <tr><td>created_at</td><td><span class="type">timestamptz</span></td><td>NOT NULL, DEFAULT now()</td><td>作成日時</td></tr>
+    </table>
+
+    <h3>dm_room_members テーブル</h3>
+    <p>誰がどのDMルームに参加しているかを管理する中間テーブル。通常、1つのルームに対して2行（自分と相手）が存在します。</p>
+    <table>
+        <tr><th>カラム名</th><th>型</th><th>制約・属性</th><th>説明</th></tr>
+        <tr><td><span class="pk">room_id</span></td><td><span class="type">uuid</span></td><td>PRIMARY KEY, <span class="fk">FK (dm_rooms.id)</span></td><td>ルームID</td></tr>
+        <tr><td><span class="pk">user_id</span></td><td><span class="type">uuid</span></td><td>PRIMARY KEY, <span class="fk">FK (users.id)</span></td><td>ユーザーID</td></tr>
+        <tr><td>created_at</td><td><span class="type">timestamptz</span></td><td>NOT NULL, DEFAULT now()</td><td>参加日時</td></tr>
+    </table>
+
+    <h3>dm_messages テーブル</h3>
+    <p>DMルーム内で送信されたメッセージを保存するテーブル。未読・既読の管理機能（is_read）が含まれています。</p>
+    <table>
+        <tr><th>カラム名</th><th>型</th><th>制約・属性</th><th>説明</th></tr>
+        <tr><td><span class="pk">id</span></td><td><span class="type">uuid</span></td><td>PRIMARY KEY</td><td>メッセージの一意のID</td></tr>
+        <tr><td>room_id</td><td><span class="type">uuid</span></td><td><span class="fk">FK (dm_rooms.id)</span></td><td>紐づくルームのID</td></tr>
+        <tr><td>sender_id</td><td><span class="type">uuid</span></td><td><span class="fk">FK (users.id)</span></td><td>送信者のユーザーID</td></tr>
+        <tr><td>content</td><td><span class="type">text</span></td><td>NOT NULL</td><td>メッセージ本文</td></tr>
+        <tr><td>created_at</td><td><span class="type">timestamptz</span></td><td>NOT NULL, DEFAULT now()</td><td>送信日時</td></tr>
+        <tr><td>is_read</td><td><span class="type">boolean</span></td><td>NOT NULL, DEFAULT false</td><td>既読フラグ</td></tr>
+    </table>
+
+
+    <!-- オープンチャット -->
+    <h2>2. オープンチャット のデータベース構成</h2>
+    <p>不特定多数のユーザーが参加できるグループチャット機能です。ルーム自体に名前やアイコンがあり、管理者(admin)と一般メンバー(member)の権限の違いが存在します。</p>
+
+    <h3>open_chat_rooms テーブル</h3>
+    <p>オープンチャットのルームそのものを管理するテーブル。ルームのメタデータ（名前、説明、アイコン、所有者）を保持します。</p>
+    <table>
+        <tr><th>カラム名</th><th>型</th><th>制約・属性</th><th>説明</th></tr>
+        <tr><td><span class="pk">id</span></td><td><span class="type">uuid</span></td><td>PRIMARY KEY</td><td>ルームの一意のID</td></tr>
+        <tr><td>name</td><td><span class="type">text</span></td><td>NOT NULL</td><td>ルーム名</td></tr>
+        <tr><td>description</td><td><span class="type">text</span></td><td></td><td>ルームの説明文</td></tr>
+        <tr><td>icon_url</td><td><span class="type">text</span></td><td></td><td>ルームのアイコン画像URL</td></tr>
+        <tr><td>owner_id</td><td><span class="type">uuid</span></td><td>NOT NULL, <span class="fk">FK (users.id)</span></td><td>ルームの所有者（作成者）のユーザーID</td></tr>
+        <tr><td>created_at</td><td><span class="type">timestamptz</span></td><td>DEFAULT now()</td><td>作成日時</td></tr>
+    </table>
+
+    <h3>open_chat_members テーブル</h3>
+    <p>オープンチャットの参加メンバーを管理するテーブル。ロール（権限）の概念があり、管理者によるキック処理などが可能です。</p>
+    <table>
+        <tr><th>カラム名</th><th>型</th><th>制約・属性</th><th>説明</th></tr>
+        <tr><td><span class="pk">id</span></td><td><span class="type">uuid</span></td><td>PRIMARY KEY</td><td>メンバー登録の一意のID</td></tr>
+        <tr><td>room_id</td><td><span class="type">uuid</span></td><td>NOT NULL, <span class="fk">FK (open_chat_rooms.id)</span></td><td>参加しているルームID</td></tr>
+        <tr><td>user_id</td><td><span class="type">uuid</span></td><td>NOT NULL, <span class="fk">FK (users.id)</span></td><td>参加しているユーザーのID</td></tr>
+        <tr><td>role</td><td><span class="type">text</span></td><td>DEFAULT 'member', CHECK ('admin', 'member')</td><td>権限（'admin' または 'member'）</td></tr>
+        <tr><td>joined_at</td><td><span class="type">timestamptz</span></td><td>DEFAULT now()</td><td>参加日時</td></tr>
+    </table>
+    <p style="font-size: 0.9em; color: #666;">※制約として <code>UNIQUE(room_id, user_id)</code> が設定されており、同じルームへの重複参加を防いでいます。</p>
+
+    <h3>open_chat_messages テーブル</h3>
+    <p>オープンチャット内で送信されたメッセージを保存するテーブル。DMのような個別未読管理（is_read）は各メッセージ行にはありません。</p>
+    <table>
+        <tr><th>カラム名</th><th>型</th><th>制約・属性</th><th>説明</th></tr>
+        <tr><td><span class="pk">id</span></td><td><span class="type">uuid</span></td><td>PRIMARY KEY</td><td>メッセージの一意のID</td></tr>
+        <tr><td>room_id</td><td><span class="type">uuid</span></td><td>NOT NULL, <span class="fk">FK (open_chat_rooms.id)</span></td><td>紐づくルームのID</td></tr>
+        <tr><td>user_id</td><td><span class="type">uuid</span></td><td>NOT NULL, <span class="fk">FK (users.id)</span></td><td>送信者のユーザーID</td></tr>
+        <tr><td>content</td><td><span class="type">text</span></td><td>NOT NULL</td><td>メッセージ本文</td></tr>
+        <tr><td>created_at</td><td><span class="type">timestamptz</span></td><td>DEFAULT now()</td><td>送信日時</td></tr>
+    </table>
+
+    <!-- 構成の比較まとめ -->
+    <h2>3. DMとオープンチャットの主な違い</h2>
+    <ul>
+        <li><strong>ルームのプロパティ:</strong> DMルーム（<code>dm_rooms</code>）は名前やアイコンを持ちませんが、オープンチャット（<code>open_chat_rooms</code>）は名前、説明、アイコン、所有者情報を持ちます。</li>
+        <li><strong>権限の概念:</strong> オープンチャット（<code>open_chat_members</code>）には <code>role</code>（admin/member）が存在し、管理者によるキック等が可能です。DMにはロールの概念はありません。</li>
+        <li><strong>既読管理:</strong> DMのメッセージ（<code>dm_messages</code>）には <code>is_read</code> フラグがあり、相手が読んだかどうかを追跡しますが、オープンチャットのメッセージテーブルにはありません。</li>
+        <li><strong>プライマリキーの違い:</strong> DMのメンバーテーブル（<code>dm_room_members</code>）は <code>(room_id, user_id)</code> の複合主キーを使用していますが、オープンチャット（<code>open_chat_members</code>）は独自の <code>id</code> を主キーとし、<code>(room_id, user_id)</code> にUNIQUE制約をかけています。</li>
+    </ul>
+
+</body>
+</html>

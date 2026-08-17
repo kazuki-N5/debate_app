@@ -331,6 +331,7 @@ class FinishPage extends HookConsumerWidget {
                           height: 48.0, // 高さを指定
                           width: 48.0,
                           child: FloatingActionButton(
+                            heroTag: null, // Heroアニメーションを無効化
                             shape: const CircleBorder(),
                             backgroundColor: Colors.white,
                             // ★★★ 取得したContextを渡して関数を呼び出す ★★★

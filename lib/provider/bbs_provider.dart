@@ -110,7 +110,7 @@ class BbsListNotifier extends StateNotifier<List<BbsRoomInfo>> {
   }
 }
 
-final bbsHostProvider = StateNotifierProvider<BbsHostNotifier, BbsRoomState?>((ref) {
+final bbsHostProvider = StateNotifierProvider.autoDispose<BbsHostNotifier, BbsRoomState?>((ref) {
   return BbsHostNotifier(ref);
 });
 
@@ -280,7 +280,7 @@ class BbsHostNotifier extends StateNotifier<BbsRoomState?> {
 }
 
 
-final bbsGuestProvider = StateNotifierProvider<BbsGuestNotifier, BbsRoomState?>((ref) {
+final bbsGuestProvider = StateNotifierProvider.autoDispose<BbsGuestNotifier, BbsRoomState?>((ref) {
   return BbsGuestNotifier(ref);
 });
 

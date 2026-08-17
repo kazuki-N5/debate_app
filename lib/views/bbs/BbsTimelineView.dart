@@ -1,10 +1,18 @@
+// ignore_for_file: file_names
+
 import 'package:debate_project/modes/bbs_post.dart';
 import 'package:debate_project/provider/bbs_timeline_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:debate_project/views/bbs/BbsPostDetailView.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:debate_project/utils/date_formatter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:debate_project/widgets/full_screen_image_viewer.dart';
 
 class BbsTimelineView extends HookConsumerWidget {
   const BbsTimelineView({super.key});
@@ -14,8 +22,8 @@ class BbsTimelineView extends HookConsumerWidget {
     final timelineAsync = ref.watch(bbsTimelineProvider);
     ref.watch(currentUserIdProvider);
 
-    return Scaffold(
-      backgroundColor: Colors.blue[50],
+        return Scaffold(
+      backgroundColor: Colors.white,
       body: timelineAsync.when(
         data: (posts) {
           if (posts.isEmpty) {
@@ -27,10 +35,15 @@ class BbsTimelineView extends HookConsumerWidget {
             );
           }
           return RefreshIndicator(
-            onRefresh: () => ref.read(bbsTimelineProvider.notifier).fetchPosts(),
+            onRefresh: () =>
+                ref.read(bbsTimelineProvider.notifier).fetchPosts(),
             child: ListView.separated(
+              padding: EdgeInsets.only(
+                top: 4,
+                bottom: MediaQuery.of(context).padding.bottom + 80,
+              ),
               itemCount: posts.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
+              separatorBuilder: (context, index) => Divider(height: 1, thickness: 1, color: Colors.grey[200]),
               itemBuilder: (context, index) {
                 final post = posts[index];
                 return BbsPostWidget(post: post);
@@ -39,163 +52,316 @@ class BbsTimelineView extends HookConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('エラーが発生しました: $e')),
+        error: (e, st) => Center(child: Text('エラーが発生しました')),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showCreatePostDialog(context, ref);
-        },
-        backgroundColor: Colors.blueAccent,
-        child: const Icon(Icons.edit, color: Colors.white),
-      ),
-    );
-  }
-
-  void _showCreatePostDialog(BuildContext context, WidgetRef ref) {
-    final textController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('新規投稿', style: AppTextStyles.bold(fontSize: 18)),
-          content: TextField(
-            controller: textController,
-            maxLines: 5,
-            decoration: const InputDecoration(
-              hintText: 'いまどうしてる？',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('キャンセル'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
-              onPressed: () async {
-                final content = textController.text;
-                if (content.trim().isEmpty) return;
-                Navigator.pop(context);
-                try {
-                  await ref.read(bbsTimelineProvider.notifier).addPost(content);
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('投稿に失敗しました: $e')));
-                  }
-                }
-              },
-              child: const Text('投稿する', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
     );
   }
 }
 
+
 class BbsPostWidget extends ConsumerWidget {
   final BbsPost post;
-  
+
   const BbsPostWidget({super.key, required this.post});
+
+  static bool _isNavigating = false;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // ▼ ここを一箇所変えれば、すべてのアイコンのサイズがまとめて変わります ▼
+    const double iconSize = 15.0;
+
     final user = post.user;
     final userName = user?.name ?? '名無し';
     final userAvatar = user?.avatar_url;
 
-    // mm/dd hh:mm の形式にする簡易フォーマット
-    final dateStr = '${post.createdAt.month.toString().padLeft(2, '0')}/${post.createdAt.day.toString().padLeft(2, '0')} ${post.createdAt.hour.toString().padLeft(2, '0')}:${post.createdAt.minute.toString().padLeft(2, '0')}';
+    final dateStr = DateFormatter.formatBbsDate(post.createdAt);
 
     return InkWell(
       onTap: () {
+        if (_isNavigating) return;
+        _isNavigating = true;
         // 詳細画面へ遷移
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => BbsPostDetailView(post: post),
-          ),
-        );
+        context.push(
+          '/bbsPostDetail',
+          extra: post,
+        ).then((_) => _isNavigating = false);
       },
       child: Container(
         color: Colors.white,
-        padding: const EdgeInsets.all(16),
-        child: Column(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ヘッダー: アイコン、名前、日時
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundImage: userAvatar != null && userAvatar.isNotEmpty ? NetworkImage(userAvatar) : null,
-                  child: userAvatar == null || userAvatar.isEmpty ? const Icon(Icons.person) : null,
-                  radius: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
+            // ヘッダー: アイコン
+            GestureDetector(
+              onTap: () {
+                context.push(
+                  '/userProfile',
+                  extra: post.userId,
+                );
+              },
+              child: CircleAvatar(
+                radius: 20,
+                backgroundImage:
+                    userAvatar != null && userAvatar.isNotEmpty
+                        // 表示サイズ(radius20=40px)に縮小デコードしてカクつきを抑える
+                        ? ResizeImage(NetworkImage(userAvatar), width: 120)
+                        : null,
+                child: userAvatar == null || userAvatar.isEmpty
+                    ? const Icon(CupertinoIcons.person)
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // コンテンツ
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 名前、時間
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(userName, style: AppTextStyles.bold(fontSize: 16)),
-                      Text(dateStr, style: AppTextStyles.notoSans(fontSize: 12, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.more_horiz, color: Colors.grey),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // 本文
-            Text(
-              post.content,
-              style: AppTextStyles.notoSans(fontSize: 15),
-            ),
-            const SizedBox(height: 16),
-            // アクションボタン群 (ブックマーク、コメント、いいね、シェア)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.bookmark_border, color: Colors.grey, size: 20),
-                    const SizedBox(width: 4),
-                    Text('0', style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 14)),
-                  ],
-                ),
-                Row(
-                  children: [
-                    const Icon(Icons.chat_bubble_outline, color: Colors.grey, size: 20),
-                    const SizedBox(width: 4),
-                    Text('${post.repliesCount}', style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 14)),
-                  ],
-                ),
-                InkWell(
-                  onTap: () {
-                    ref.read(bbsTimelineProvider.notifier).toggleLike(post);
-                  },
-                  child: Row(
-                    children: [
-                      Icon(
-                        post.isLikedByMe ? Icons.favorite : Icons.favorite_border,
-                        color: post.isLikedByMe ? Colors.pink : Colors.grey,
-                        size: 20,
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                userName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: Colors.black87,
+                                  height: 1.2, // 高さを抑えて上揃えを合わせる
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text('・ $dateStr',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF536471), // アイコンと同じ少し濃いグレー
+                                  height: 1.2,
+                                )),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 4),
-                      Text('${post.likesCount}', style: AppTextStyles.notoSans(color: post.isLikedByMe ? Colors.pink : Colors.grey, fontSize: 14)),
+                      GestureDetector(
+                        onTap: () {},
+                        child: const Icon(CupertinoIcons.ellipsis, color: Color(0xFF536471), size: iconSize),
+                      ),
                     ],
                   ),
-                ),
-                const Icon(Icons.share, color: Colors.grey, size: 20),
-              ],
-            )
+                  const SizedBox(height: 2),
+                  // 本文
+                  if (post.content.isNotEmpty)
+                    Text(
+                      post.content,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Colors.black87,
+                        height: 1.4,
+                      ),
+                    ),
+                  if (post.imageUrls != null && post.imageUrls!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _buildImageGrid(context, post.imageUrls!),
+                  ],
+                  const SizedBox(height: 8),
+                  // アクションボタン群
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // 左側のボタン群（リプライ、いいね）
+                      Row(
+                        children: [
+                          // リプライ
+                          Row(
+                            children: [
+                              SvgPicture.asset(
+                                'assets/images/icons/tweeticon/reply.svg',
+                                width: iconSize,
+                                height: iconSize,
+                                colorFilter: const ColorFilter.mode(Color(0xFF536471), BlendMode.srcIn),
+                              ),
+                              const SizedBox(width: 4),
+                              Text('${post.repliesCount}',
+                                  style: const TextStyle(color: Color(0xFF536471), fontSize: 13)),
+                            ],
+                          ),
+                          const SizedBox(width: 48), // アイコン間の間隔
+                          // いいね
+                          InkWell(
+                            onTap: () {
+                              ref.read(bbsTimelineProvider.notifier).toggleLike(post);
+                            },
+                            child: Row(
+                              children: [
+                                post.isLikedByMe
+                                    ? const Icon(CupertinoIcons.heart_fill, color: Colors.pink, size: iconSize)
+                                    : SvgPicture.asset(
+                                        'assets/images/icons/tweeticon/heart.svg',
+                                        width: iconSize,
+                                        height: iconSize,
+                                        colorFilter: const ColorFilter.mode(Color(0xFF536471), BlendMode.srcIn),
+                                      ),
+                                const SizedBox(width: 4),
+                                Text('${post.likesCount}',
+                                    style: TextStyle(
+                                        color: post.isLikedByMe
+                                            ? Colors.pink
+                                            : const Color(0xFF536471),
+                                        fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      // 右側のボタン群（ブックマーク & シェア）
+                      const Row(
+                        children: [
+                          Icon(CupertinoIcons.bookmark,
+                              color: Color(0xFF536471), size: 16),
+                          SizedBox(width: 16),
+                          Icon(CupertinoIcons.share, color: Color(0xFF536471), size: 16),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildImageGrid(BuildContext context, List<String> imageUrls) {
+    if (imageUrls.isEmpty) return const SizedBox.shrink();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[200]!),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: _buildGrid(context, imageUrls),
+      ),
+    );
+  }
+
+  Widget _buildGrid(BuildContext context, List<String> imageUrls) {
+    if (imageUrls.length == 1) {
+      return GestureDetector(
+        onTap: () => _showFullScreen(context, imageUrls, 0),
+        child: CachedNetworkImage(
+          imageUrl: imageUrls[0],
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: 200,
+          memCacheWidth: 1000, // 表示サイズでデコードしてカクつきを抑える
+          fadeInDuration: Duration.zero, // ふわ〜っと出るフェードを無効化してパッと表示
+          fadeOutDuration: Duration.zero,
+          placeholder: (context, url) => Container(color: Colors.grey[300]),
+          errorWidget: (context, url, error) => const Icon(Icons.error),
+        ),
+      );
+    } else if (imageUrls.length == 2) {
+      return SizedBox(
+        height: 200,
+        child: Row(
+          children: [
+            Expanded(child: _buildImage(imageUrls[0], onTap: () => _showFullScreen(context, imageUrls, 0))),
+            const SizedBox(width: 2),
+            Expanded(child: _buildImage(imageUrls[1], onTap: () => _showFullScreen(context, imageUrls, 1))),
+          ],
+        ),
+      );
+    } else if (imageUrls.length == 3) {
+      return SizedBox(
+        height: 200,
+        child: Row(
+          children: [
+            Expanded(child: _buildImage(imageUrls[0])),
+            const SizedBox(width: 2),
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(child: _buildImage(imageUrls[1], onTap: () => _showFullScreen(context, imageUrls, 1))),
+                  const SizedBox(height: 2),
+                  Expanded(child: _buildImage(imageUrls[2], onTap: () => _showFullScreen(context, imageUrls, 2))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // 4枚
+      return SizedBox(
+        height: 200,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(child: _buildImage(imageUrls[0], onTap: () => _showFullScreen(context, imageUrls, 0))),
+                  const SizedBox(height: 2),
+                  Expanded(child: _buildImage(imageUrls[2], onTap: () => _showFullScreen(context, imageUrls, 2))),
+                ],
+              ),
+            ),
+            const SizedBox(width: 2),
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(child: _buildImage(imageUrls[1], onTap: () => _showFullScreen(context, imageUrls, 1))),
+                  const SizedBox(height: 2),
+                  Expanded(child: _buildImage(imageUrls[3], onTap: () => _showFullScreen(context, imageUrls, 3))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildImage(String url, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: CachedNetworkImage(
+        imageUrl: url,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        memCacheWidth: 600, // 表示サイズでデコードしてカクつきを抑える
+        fadeInDuration: Duration.zero, // ふわ〜っと出るフェードを無効化してパッと表示
+        fadeOutDuration: Duration.zero,
+          placeholder: (context, url) => Container(color: Colors.grey[300]),
+        errorWidget: (context, url, error) => const Icon(Icons.error),
+      ),
+    );
+  }
+
+
+  void _showFullScreen(BuildContext context, List<String> imageUrls, int index) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FullScreenImageViewer(
+          imageUrls: imageUrls,
+          initialIndex: index,
+        ),
+      ),
+    );
+  }
 }
+
+

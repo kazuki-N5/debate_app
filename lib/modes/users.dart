@@ -15,6 +15,8 @@ class Users with _$Users {
     bool? status,
     String? fcm_token,
     bool? is_notification_enabled,
+    String? bio,
+    String? header_url,
   }) = _Users;
 
   factory Users.fromMap(Map<String, dynamic> map) {
@@ -28,6 +30,8 @@ class Users with _$Users {
        status: map['status'] as bool?,
        fcm_token: map['fcm_token']?.toString(),
        is_notification_enabled: map['is_notification_enabled'] as bool? ?? false,
+       bio: map['bio']?.toString(),
+       header_url: map['header_url']?.toString(),
     );
   }
 }

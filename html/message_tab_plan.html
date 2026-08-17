@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メッセージタブ 構成設計 &amp; モック画面</title>
+<style>
+  :root {
+    --blue: #1d9bf0;
+    --blue-dark: #1a8cd8;
+    --border: #e6e6e6;
+    --text: #0f1419;
+    --sub: #536471;
+    --bg: #f0f3f5;
+    --red-badge: #f91880;
+    --green: #00ba7c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    line-height: 1.7;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    background: #f5f7fa;
+  }
+  .page-header {
+    background: linear-gradient(135deg, #1d9bf0, #0e6bb8);
+    color: #fff;
+    padding: 28px 24px 24px;
+    border-bottom: 4px solid #0e6bb8;
+  }
+  .page-header h1 { margin: 0; font-size: 26px; }
+  .page-header p { margin: 8px 0 0; opacity: .92; font-size: 14px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  h2 {
+    color: #0e6bb8;
+    border-left: 5px solid #1d9bf0;
+    padding-left: 12px;
+    margin: 48px 0 18px;
+    font-size: 21px;
+  }
+  h3 { color: #334; font-size: 16px; margin: 28px 0 10px; }
+  p, li { font-size: 14px; }
+  code {
+    background: #eef3f7;
+    border: 1px solid #dbe4ec;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12.5px;
+    color: #0e6bb8;
+  }
+
+  /* ---- 構成図 ---- */
+  .tree {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .tree .root {
+    display: inline-block;
+    background: #1d9bf0;
+    color: #fff;
+    font-weight: 700;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+  }
+  .tree ul { list-style: none; padding-left: 22px; margin: 8px 0 0; border-left: 2px dashed #bcd8ee; }
+  .tree li { margin: 6px 0; position: relative; font-size: 13.5px; }
+  .tree li::before {
+    content: ''; position: absolute; left: -22px; top: 10px;
+    width: 14px; height: 0; border-top: 2px solid #bcd8ee;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 10.5px;
+    border-radius: 10px;
+    padding: 1px 8px;
+    margin-left: 6px;
+    vertical-align: 1px;
+    font-weight: 600;
+  }
+  .tag-new { background: #ffecf2; color: var(--red-badge); border: 1px solid #fbb8d2; }
+  .tag-exist { background: #e8f7ef; color: var(--green); border: 1px solid #a9e4c8; }
+  .tag-todo { background: #fff4e0; color: #c77800; border: 1px solid #f3d9a5; }
+  .tag-req { background: #ffe9e3; color: #d13400; border: 1px solid #f5b8a8; }
+
+  /* ---- モック端末 ---- */
+  .mock-area {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin: 20px 0;
+  }
+  .device {
+    width: 360px;
+    background: #fff;
+    border-radius: 28px;
+    border: 8px solid #2b2f36;
+    box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .device .notch {
+    background: #2b2f36;
+    height: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .device .notch::before { content: ''; width: 90px; height: 6px; background: #111; border-radius: 4px; }
+  .device .screen { background: #fff; min-height: 640px; display: flex; flex-direction: column; }
+
+  /* 端末内 AppBar */
+  .appbar {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+  }
+  .appbar .title { font-size: 17px; font-weight: 800; color: var(--text); }
+  .appbar .icons { display: flex; gap: 14px; color: var(--blue); }
+  .appbar .icons .icon-btn { position: relative; font-size: 20px; }
+
+  /* セグメントタブ（通知 / DM） */
+  .seg {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+  .seg button {
+    flex: 1;
+    border: none;
+    background: #fff;
+    padding: 12px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--sub);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: .15s;
+  }
+  .seg button.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .seg button .count-badge {
+    background: var(--red-badge); color: #fff;
+    font-size: 10px; border-radius: 10px;
+    padding: 0 5px; margin-left: 4px;
+    vertical-align: 1px;
+  }
+
+  /* リストアイテム */
+  .list { flex: 1; overflow-y: auto; max-height: 560px; }
+  .item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f2f2f2;
+    cursor: pointer;
+    transition: background .1s;
+  }
+  .item:hover { background: #f7f9fa; }
+  .item.unread { background: #f0f7ff; }
+  .avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7cc4f8, #1d9bf0);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 16px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .avatar.small { width: 34px; height: 34px; font-size: 13px; }
+  .avatar .on {
+    position: absolute; right: -1px; bottom: -1px;
+    width: 12px; height: 12px; background: var(--green);
+    border: 2px solid #fff; border-radius: 50%;
+  }
+  .avatar .notif-icon {
+    position: absolute; right: -6px; bottom: -6px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; border: 2px solid #fff;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .item-body { flex: 1; min-width: 0; }
+  .item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .item-top .name { font-weight: 700; font-size: 14px; color: var(--text); }
+  .item-top .time { font-size: 11px; color: var(--sub); white-space: nowrap; }
+  .item-body .action { font-size: 13px; color: var(--text); }
+  .item-body .action .accent { font-weight: 700; }
+  .item-body .preview { font-size: 12.5px; color: var(--sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .quoted {
+    background: #f2f5f7;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--sub);
+  }
+  .quoted .q-user { font-weight: 700; color: var(--blue); }
+  .heart {
+    display: inline-block;
+    color: var(--red-badge);
+    font-size: 13px;
+  }
+
+  /* 通知種別アイコン */
+  .n-heart  { background: #f91880; }
+  .n-follow { background: #1d9bf0; }
+  .n-reply  { background: #00ba7c; }
+  .n-chat   { background: #ff9900; }
+
+  /* ボトムナビ */
+  .bottom-nav {
+    display: flex;
+    border-top: 1px solid var(--border);
+    background: #fff;
+    padding: 6px 0 4px;
+  }
+  .bottom-nav .nav-item {
+    flex: 1; text-align: center;
+    font-size: 10px; color: var(--sub);
+    padding: 2px 0;
+  }
+  .bottom-nav .nav-item .ic { font-size: 19px; display: block; }
+  .bottom-nav .nav-item.active { color: var(--blue); }
+
+  /* モック説明カード */
+  .mock-note {
+    flex: 1;
+    min-width: 280px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .mock-note h4 { margin: 0 0 8px; color: #0e6bb8; font-size: 14px; }
+  .mock-note ul { margin: 0; padding-left: 18px; }
+  .mock-note li { font-size: 12.5px; margin: 4px 0; }
+
+  /* テーブル */
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #eef6fd; color: #0e6bb8; white-space: nowrap; }
+  .ok { color: var(--green); font-weight: 700; }
+  .ng { color: #d13400; font-weight: 700; }
+
+  /* フロー */
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .flow .box {
+    border: 2px solid #1d9bf0; color: #0e6bb8;
+    background: #f0f7ff; border-radius: 8px;
+    padding: 6px 12px; font-size: 12.5px; font-weight: 600;
+  }
+  .flow .box.gray { border-color: #b0bcc6; color: #5b6b7a; background: #f5f7f9; }
+  .flow .box.green { border-color: #00ba7c; color: #007a50; background: #e8f7ef; }
+  .flow .arrow { color: #b0bcc6; font-weight: 800; }
+  .note-box {
+    background: #fffbe8;
+    border: 1px solid #f0e3a8;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: #6b5d00;
+    margin: 10px 0;
+  }
+  .section-gap { margin-top: 40px; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>📱 メッセージタブ 構成設計 &amp; モック画面</h1>
+  <p>「通知」と「メッセージ（DM / オプチャ）」を1つのタブに統合した画面の設計案・モック・実装ロードマップ</p>
+</div>
+
+<main>
+
+  <!-- ========== 1. 概要 ========== -->
+  <h2>1. 概要と方針</h2>
+  <div class="tree">
+    <span class="root">📩 メッセージタブ（MessagePage 改修）</span>
+    <ul>
+      <li><b>セグメント①：通知</b>
+        <span class="tag tag-req">必須</span>
+        <ul>
+          <li>ポスト / 返信コメントの<b>いいね</b>通知 <span class="tag tag-req">必須</span></li>
+          <li><b>フォロー</b>通知 <span class="tag tag-req">必須</span></li>
+          <li>コメントに対する<b>返信</b>の通知 <span class="tag tag-req">必須</span></li>
+        </ul>
+      </li>
+      <li><b>セグメント②：メッセージ</b>
+        <span class="tag tag-req">必須</span>
+        <ul>
+          <li><b>DM</b> 一覧・表示 <span class="tag tag-req">必須</span> <span class="tag tag-exist">DmRoomPage 既存</span></li>
+          <li><b>オプチャ</b> メッセージ <span class="tag tag-req">必須</span> <span class="tag tag-exist">OpenChatRoomView 既存</span></li>
+        </ul>
+      </li>
+      <li>未読バッジ（タブ・セグメント・アイコン） <span class="tag tag-todo">実装必要</span></li>
+      <li>リアルタイム反映（Supabase Realtime） <span class="tag tag-todo">実装必要</span></li>
+    </ul>
+  </div>
+
+  <div class="note-box">
+    💡 <b>設計方針：</b>既存の <code>NotificationPage</code> と <code>MessagePage</code> は仮実装のままなので、<b>メッセージタブ1画面に「通知」と「メッセージ（DM・オプチャ）」のセグメント切替を統合</b>します。
+    通知の各項目をタップすると既存の <code>BbsPostDetailView</code>（ポスト詳細）・<code>UserProfilePage</code>（フォロー）・<code>DmRoomPage</code>（DM）・<code>OpenChatRoomView</code>（オプチャ）へ遷移します。
+  </div>
+
+  <!-- ========== 2. 画面構成 ========== -->
+  <h2>2. 画面構成（ワイヤーフレーム）</h2>
+  <h3>2-1. 通知セグメント（タブを開いたときの初期表示）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">
+          <span class="title">メッセージ</span>
+          <div class="icons">
+            <span class="icon-btn" title="設定">⚙️</span>
+          </div>
+        </div>
+        <div class="seg">
+          <button class="active">通知 <span class="count-badge">6</span></button>
+          <button>メッセージ <span class="count-badge">3</span></button>
+        </div>
+        <div class="list">
+
+          <!-- 返信通知 -->
+          <div class="item unread">
+            <div class="avatar"><span>🐱</span><span class="notif-icon n-reply">💬</span></div>
+            <div class="item-body">
+              <div class="item-top"><span class="name">ねこ太郎</span><span class="time">2分前</span></div>
+              <div class="action"><span class="accent">@あなた</span> に返信しました</div>
+              <div class="quoted"><span class="q-user">あなた</span> 「この議論、結構白熱してきたね」</div>
+              <div class="preview">そうだね！でも根拠をもう少し…</div>
+            </div>
+          </div>
+
+          <!-- いいね通知（ポスト） -->
+          <div class="item unread">
+            <div class="avatar"><span>🦊</span><span class="notif-icon n-heart">❤️</span></div>
+            <div class="item-body">
+              <div class="item-top"><span class="name">きつねさん</span><span class="time">15分前</span></div>
+              <div class="action"><span class="accent">あなたのポスト</span> にいいねしました <span class="heart">♥ 12</span></div>
+              <div class="quoted"><span class="q-user">あなた</span> 「バランス調整の件、自分は弱体化より環境把握が先だと思う」</div>
+            </div>
+          </div>
+
+          <!-- フォロー通知 -->
+          <div class="item unread">
+            <div class="avatar"><span>🐻</span><span class="notif-icon n-follow">＋</span></div>
+            <div class="item-body">
+              <div class="item-top"><span class="name">くまのすけ</span><span class="time">1時間前</span></div>
+              <div class="action"><span class="accent">あなたをフォロー</span> しました</div>
+              <div class="preview">フォローありがとう！プロフィールを見る →</div>
+            </div>
+          </div>
+
+          <!-- いいね通知（返信コメント） -->
+          <div class="item">
+            <div class="avatar"><span>🦉</span><span class="notif-icon n-heart">❤️</span></div>
+            <div class="item-body">
+              <div class="item-top"><span class="name">ふくろう博士</span><span class="time">昨日</span></div>
+              <div class="action"><span class="accent">あなたのコメント</span> にいいねしました</div>
+              <div class="quoted"><span class="q-user">あなた</span> 「統計的にはn=30だと有意差は出にくいですね」</div>
+            </div>
+          </div>
+
+          <!-- 返信通知（コメントへの返信） -->
+          <div class="item">
+            <div class="avatar"><span>🐰</span><span class="notif-icon n-reply">💬</span></div>
+            <div class="item-body">
+              <div class="item-top"><span class="name">うさぎっち</span><span class="time">昨日</span></div>
+              <div class="action"><span class="accent">あなたのコメント</span> に返信しました</div>
+              <div class="quoted"><span class="q-user">あなた</span> 「それってどのソースの情報ですか？」</div>
+              <div class="preview">公式パッチノートの6月更新分です！</div>
+            </div>
+          </div>
+
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item">🏠<span class="ic"></span>ホーム</div>
+          <div class="nav-item active">💬<span class="ic"></span>メッセージ</div>
+          <div class="nav-item">👥<span class="ic"></span>コミュニティ</div>
+          <div class="nav-item">🏆<span class="ic"></span>ランキング</div>
+          <div class="nav-item">👤<span class="ic"></span>マイページ</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-note">
+      <h4>🔔 通知セグメントの仕様</h4>
+      <ul>
+        <li><b>初期表示は「通知」</b>。未読があればバッジ「6」表示</li>
+        <li>通知アイコン（💬=返信 / ❤️=いいね / ＋=フォロー）で種別をひと目で判別</li>
+        <li><b>いいね通知</b>：ポスト・返信コメント両方に対応（種別フィールドで区別）</li>
+        <li><b>フォロー通知</b>：相手のプロフィールへ遷移</li>
+        <li><b>返信通知</b>：元コメントの引用表示 → タップでポスト詳細へ</li>
+        <li>未読は背景色 + 太字で強調。開封で既読化</li>
+        <li>「すべて既読にする」ボタン（未実装）</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>2-2. メッセージセグメント（DM + オプチャ統合リスト）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">
+          <span class="title">メッセージ</span>
+          <div class="icons">
+            <span class="icon-btn">✏️</span>
+          </div>
+        </div>
+        <div class="seg">
+          <button>通知 <span class="count-badge">6</span></button>
+          <button class="active">メッセージ <span class="count-badge">3</span></button>
+        </div>
+        <div class="list">
+
+          <!-- DM -->
+          <div class="item unread">
+            <div class="avatar"><span>🐶</span><span class="on"></span></div>
+            <div class="item-body">
+              <div class="item-top"><span class="name">いぬまる</span><span class="time">3分前</span></div>
+              <div class="preview"><b>DM</b> 次のマッチ、いつ空いてる？</div>
+            </div>
+          </div>
+
+          <!-- オプチャ -->
+          <div class="item unread">
+            <div class="avatar" style="border-radius:12px;background:linear-gradient(135deg,#ff9900,#ff5e00);"><span>💬</span></div>
+            <div class="item-body">
+              <div class="item-top"><span class="name">【オプチャ】クラロワ談義部屋</span><span class="time">8分前</span></div>
+              <div class="preview"><b>たかし</b> このデッキ強くない？</div>
+            </div>
+          </div>
+
+          <!-- DM -->
+          <div class="item">
+            <div class="avatar"><span>🐧</span></div>
+            <div class="item-body">
+              <div class="item-top"><span class="name">ぺんぎん</span><span class="time">2時間前</span></div>
+              <div class="preview"><b>DM</b> 記事見たよ、面白かった！</div>
+            </div>
+          </div>
+
+          <!-- オプチャ -->
+          <div class="item">
+            <div class="avatar" style="border-radius:12px;background:linear-gradient(135deg,#7c4df0,#4d1df0);"><span>🎮</span></div>
+            <div class="item-body">
+              <div class="item-top"><span class="name">【オプチャ】大会情報共有</span><span class="time">昨日</span></div>
+              <div class="preview"><b>運営</b> 今週末の大会エントリー受付中です</div>
+            </div>
+          </div>
+
+          <!-- DM -->
+          <div class="item">
+            <div class="avatar"><span>🦁</span></div>
+            <div class="item-body">
+              <div class="item-top"><span class="name">ライオン王</span><span class="time">3日前</span></div>
+              <div class="preview"><b>DM</b> ランキング1位おめでとう🎉</div>
+            </div>
+          </div>
+
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item">🏠<span class="ic"></span>ホーム</div>
+          <div class="nav-item active">💬<span class="ic"></span>メッセージ</div>
+          <div class="nav-item">👥<span class="ic"></span>コミュニティ</div>
+          <div class="nav-item">🏆<span class="ic"></span>ランキング</div>
+          <div class="nav-item">👤<span class="ic"></span>マイページ</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-note">
+      <h4>💬 メッセージセグメントの仕様</h4>
+      <ul>
+        <li><b>DM と オプチャ を1リストに統合</b>（最新順ソート）</li>
+        <li>オプチャはアイコンを角丸四角 + 部屋名に<b>【オプチャ】</b>プレフィックスで区別</li>
+        <li>プレビューに発言者名を表示（<code>たかし: このデッキ強くない？</code>）</li>
+        <li>DMはオンライン状態ドット（🟢）を表示</li>
+        <li>タップで <code>DmRoomPage</code> / <code>OpenChatRoomView</code> へ遷移</li>
+        <li>✏️アイコン：DM作成（ユーザー選択） <span class="tag tag-todo">未実装</span></li>
+      </ul>
+      <h4 style="margin-top:14px;">🔀 切替案（代替）</h4>
+      <ul>
+        <li><b>A案（採用）</b>：通知とメッセージを1画面でセグメント切替</li>
+        <li>B案：DMタブ・オプチャタブ・通知タブの3タブ構成（工数大）</li>
+        <li>C案：通知は別画面のまま、メッセージタブはDM+オプチャのみ（通知が2画面に散る）</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ========== 3. 通知データ設計 ========== -->
+  <h2>3. 通知のデータ設計（Supabase）</h2>
+
+  <h3>3-1. notifications テーブル（新規）</h3>
+  <table>
+    <tr><th>カラム</th><th>型</th><th>説明</th></tr>
+    <tr><td>id</td><td>uuid PK</td><td>通知ID</td></tr>
+    <tr><td>user_id</td><td>uuid FK → users</td><td><b>通知を受け取るユーザー</b></td></tr>
+    <tr><td>actor_id</td><td>uuid FK → users</td><td>通知を発生させたユーザー（いいねした人 etc.）</td></tr>
+    <tr><td>type</td><td>text</td><td><code>like_post</code> / <code>like_comment</code> / <code>follow</code> / <code>reply_comment</code> / <code>dm</code> / <code>open_chat</code></td></tr>
+    <tr><td>post_id</td><td>uuid FK → bbs_posts</td><td>関連ポスト（いいね・返信時）</td></tr>
+    <tr><td>comment_id</td><td>uuid FK → bbs_comments</td><td>関連コメント（返信・コメントいいね時）</td></tr>
+    <tr><td>room_id</td><td>uuid FK</td><td>DMルーム or オプチャルームID</td></tr>
+    <tr><td>is_read</td><td>bool</td><td>既読フラグ（未読件数バッジに使用）</td></tr>
+    <tr><td>created_at</td><td>timestamptz</td><td>作成日時</td></tr>
+  </table>
+
+  <div class="note-box">
+    ⚠️ <b>いいね・返信は重複排除を検討：</b>同じ相手から同じ対象への連続いいねは最新1件にマージ（<code>UNIQUE (user_id, actor_id, type, post_id/comment_id)</code> + upsert）しないと通知が大量に積み上がります。
+  </div>
+
+  <h3>3-2. 通知発生タイミング（どこで insert するか）</h3>
+  <table>
+    <tr><th>操作</th><th>通知 type</th><th>受け取りユーザー</th><th>挿入場所</th></tr>
+    <tr><td>ポストにいいね</td><td><code>like_post</code></td><td>ポスト投稿者</td><td>いいね処理のトランザクション内</td></tr>
+    <tr><td>コメントにいいね</td><td><code>like_comment</code></td><td>コメント投稿者</td><td>同上</td></tr>
+    <tr><td>フォロー</td><td><code>follow</code></td><td>フォローされた人</td><td>フォロー処理内</td></tr>
+    <tr><td>コメントへの返信</td><td><code>reply_comment</code></td><td>元コメント投稿者</td><td>返信コメント作成時</td></tr>
+    <tr><td>DM送信</td><td><code>dm</code></td><td>受信者</td><td>dm_messages insert時</td></tr>
+    <tr><td>オプチャ発言</td><td><code>open_chat</code></td><td>部屋参加者（他）</td><td>open_chat_messages insert時</td></tr>
+  </table>
+
+  <div class="flow" style="margin-top:14px;">
+    <span class="box">いいね/返信/フォロー操作</span>
+    <span class="arrow">→</span>
+    <span class="box">notifications に insert</span>
+    <span class="arrow">→</span>
+    <span class="box green">Supabase Realtime 購読</span>
+    <span class="arrow">→</span>
+    <span class="box gray">メッセージタブに即時反映＋バッジ更新</span>
+  </div>
+
+  <!-- ========== 4. メッセージ（DM/オプチャ）統合 ========== -->
+  <h2>4. メッセージ一覧の統合設計</h2>
+  <p>DM（<code>dm_rooms</code>）とオプチャ（<code>open_chat_rooms</code>）はテーブルが異なるため、一覧画面では2つのStreamを <b>マージして最新順ソート</b> します。</p>
+  <div class="flow">
+    <span class="box">dm_provider（DMルーム一覧）</span>
+    <span class="arrow">＋</span>
+    <span class="box">open_chat_provider（参加ルーム一覧）</span>
+    <span class="arrow">→</span>
+    <span class="box green">統合リスト（最新メッセージ順）</span>
+  </div>
+
+  <table style="margin-top:14px;">
+    <tr><th></th><th>DM</th><th>オプチャ</th></tr>
+    <tr><td>既存画面</td><td class="ok">DmRoomPage.dart あり</td><td class="ok">OpenChatRoomView.dart あり</td></tr>
+    <tr><td>一覧取得</td><td><code>dm_provider.dart</code></td><td><code>open_chat_provider.dart</code></td></tr>
+    <tr><td>一覧での見分け</td><td>丸アイコン・オンライン表示</td><td>角丸四角アイコン・【オプチャ】表記</td></tr>
+    <tr><td>未読管理</td><td><code>is_read</code> フラグ</td><td>最終既読メッセージID（要検討）</td></tr>
+  </table>
+
+  <!-- ========== 5. 画面遷移 ========== -->
+  <h2>5. 画面遷移マップ</h2>
+  <div class="flow">
+    <span class="box">通知：いいね / 返信</span>
+    <span class="arrow">→</span>
+    <span class="box">BbsPostDetailView（ポスト詳細）</span>
+  </div>
+  <div class="flow" style="margin-top:8px;">
+    <span class="box">通知：フォロー</span>
+    <span class="arrow">→</span>
+    <span class="box">UserProfilePage（相手プロフィール）</span>
+  </div>
+  <div class="flow" style="margin-top:8px;">
+    <span class="box">メッセージ：DM</span>
+    <span class="arrow">→</span>
+    <span class="box">DmRoomPage</span>
+  </div>
+  <div class="flow" style="margin-top:8px;">
+    <span class="box">メッセージ：オプチャ</span>
+    <span class="arrow">→</span>
+    <span class="box">OpenChatRoomView</span>
+  </div>
+
+  <!-- ========== 6. 実装ロードマップ ========== -->
+  <h2 class="section-gap">6. 実装ロードマップ</h2>
+  <table>
+    <tr><th>#</th><th>タスク</th><th>対象ファイル</th><th>状態</th></tr>
+    <tr><td>1</td><td>notifications テーブル作成 + RLS</td><td>Supabase SQL</td><td class="ng">未着手</td></tr>
+    <tr><td>2</td><td>通知 insert 処理（いいね/返信/フォロー）</td><td>bbs_comment_provider / bbs_timeline_provider 等</td><td class="ng">未着手</td></tr>
+    <tr><td>3</td><td>通知一覧 Provider（Realtime購読）</td><td><code>provider/notification_service.dart</code> 改修</td><td class="ng">未着手</td></tr>
+    <tr><td>4</td><td>MessagePage をセグメント切替UIに改修</td><td><code>lib/views/MessagePage.dart</code></td><td class="ng">仮実装</td></tr>
+    <tr><td>5</td><td>通知リストUI（種別アイコン・引用表示・既読化）</td><td>MessagePage 内 Widget 分割</td><td class="ng">未着手</td></tr>
+    <tr><td>6</td><td>DM + オプチャ統合一覧</td><td><code>provider/dm_provider.dart</code> / open_chat_provider</td><td class="ng">未着手</td></tr>
+    <tr><td>7</td><td>タブ・セグメント未読バッジ連携</td><td>custom_circle_nav_bar / MessagePage</td><td class="ng">未着手</td></tr>
+    <tr><td>8</td><td>NotificationPage の役割整理（統合 or 削除）</td><td><code>lib/views/NotificationPage.dart</code></td><td class="ng">要判断</td></tr>
+  </table>
+
+  <h3>推奨ファイル構成（MessagePage 内）</h3>
+  <pre style="background:#282c34;color:#abb2bf;padding:14px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6;"><code>lib/views/MessagePage.dart            ← セグメント切替 + 統合リスト
+lib/widgets/notification/
+  notification_list_tile.dart        ← 通知1件（種別アイコン/引用/既読）
+  notification_icon.dart             ← 💬 ❤️ ＋ 種別アイコン
+  dm_list_tile.dart                  ← DM・オプチャ共通タイル
+lib/provider/notification_provider.dart ← 通知一覧・未読管理・既読化
+lib/provider/chat_inbox_provider.dart   ← DM+オプチャ統合一覧</code></pre>
+
+
+  <!-- ========== 7. 実装状況 / SQL実行手順 ========== -->
+  <h2 class="section-gap">7. 実装状況 &amp; SQL実行手順</h2>
+
+  <h3>7-1. 実装済みファイル</h3>
+  <table>
+    <tr><th>ファイル</th><th>内容</th></tr>
+    <tr><td><code>sql/message_tab.sql</code></td><td class="ok">notifications / user_follows テーブル・RLS・通知自動生成トリガー・DM既読化RPC</td></tr>
+    <tr><td><code>lib/modes/app_notification.dart</code></td><td class="ok">通知モデル（actor / post / comment をJOIN保持）</td></tr>
+    <tr><td><code>lib/provider/notification_provider.dart</code></td><td class="ok">通知一覧・Realtime購読・既読化・未読件数</td></tr>
+    <tr><td><code>lib/provider/chat_inbox_provider.dart</code></td><td class="ok">DM+オプチャ統合一覧・DM既読化</td></tr>
+    <tr><td><code>lib/provider/follow_provider.dart</code></td><td class="ok">フォロー状態取得・フォロー/解除</td></tr>
+    <tr><td><code>lib/widgets/notification/notification_list_tile.dart</code></td><td class="ok">通知1件タイル（種別バッジ・引用・未読表示）</td></tr>
+    <tr><td><code>lib/widgets/notification/chat_inbox_list_tile.dart</code></td><td class="ok">DM/オプチャ共通タイル</td></tr>
+    <tr><td><code>lib/views/MessagePage.dart</code></td><td class="ok">セグメント切替UIに全面改修（通知 ⇄ メッセージ）</td></tr>
+    <tr><td><code>lib/views/UserProfilePage.dart</code></td><td class="ok">フォローボタン実装（❤️でフォロー状態表示・toggle）</td></tr>
+  </table>
+
+  <h3>7-2. ⚠️ 事前に Supabase で SQL を実行してください</h3>
+  <div class="note-box">
+    通知テーブル・フォローテーブル・通知自動生成トリガーは Supabase 側に存在しないため、
+    先に <code>sql/message_tab.sql</code> を実行しないとアプリ側の通知一覧が動きません。<br>
+    <b>手順：</b>Supabase ダッシュボード → SQL Editor → <code>sql/message_tab.sql</code> の内容を貼り付け → <b>Run</b>
+  </div>
+
+  <h3>7-3. 通知の自動生成ルール（アプリ側コード変更不要）</h3>
+  <table>
+    <tr><th>操作</th><th>通知 type</th><th>生成場所</th></tr>
+    <tr><td>ポストにいいね / いいね解除</td><td><code>like_post</code> / 削除</td><td>bbs_likes の INSERT/DELETE トリガー</td></tr>
+    <tr><td>コメントにいいね / いいね解除</td><td><code>like_comment</code> / 削除</td><td>bbs_comment_likes の INSERT/DELETE トリガー</td></tr>
+    <tr><td>コメントへの返信</td><td><code>reply_comment</code></td><td>bbs_comments の INSERT トリガー（parent_comment_id ありのみ）</td></tr>
+    <tr><td>フォロー / 解除</td><td><code>follow</code> / 削除</td><td>user_follows の INSERT/DELETE トリガー</td></tr>
+  </table>
+  <div class="note-box">
+    💡 同じ相手からの連続いいねは、通知を一度削除してから再生成するため重複しません（再いいねで最新化）。
+  </div>
+
+  <h3>7-4. 動作確認手順</h3>
+  <ol>
+    <li>SQL実行後、アプリを再ビルドしてメッセージタブを開く</li>
+    <li>自分のポスト/コメントに別アカウントでいいね → 通知タブに即時反映（Realtime）</li>
+    <li>自分のコメントに返信 → reply_comment 通知</li>
+    <li>プロフィール画面の❤️ボタンでフォロー → follow 通知</li>
+    <li>DM・オプチャのやり取りがメッセージタブに一覧表示される</li>
+  </ol>
+
+</main>
+</body>
+</html>

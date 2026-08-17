@@ -9,6 +9,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:debate_project/views/UserProfilePage.dart';
 
 class HistoryPage extends HookConsumerWidget {
   const HistoryPage({super.key});
@@ -191,6 +192,16 @@ class _MatchHistoryItem extends HookConsumerWidget {
           return InkWell(
             customBorder: const CircleBorder(),
             onTap: () {
+              if (opponentid != null) {
+                Navigator.push(
+                  avatarContext,
+                  MaterialPageRoute(
+                    builder: (context) => UserProfilePage(userId: opponentid),
+                  ),
+                );
+              }
+            },
+            onLongPress: () {
               final navigator = Navigator.of(avatarContext);
 
               showCustomPopover(

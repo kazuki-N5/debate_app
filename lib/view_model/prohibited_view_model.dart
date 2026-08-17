@@ -7,6 +7,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:popover/popover.dart';
 // Riverpodのimportを追加
 import 'package:supabase_flutter/supabase_flutter.dart'; // SupabaseClientの型のためにimportを追加
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:debate_project/widgets/full_screen_image_viewer.dart';
 
 // プロジェクトのパスに合わせて調整してください
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -224,12 +226,48 @@ class MessageBubble extends HookConsumerWidget {
                 color: isUserMessage ? const Color(0xff95eb7c) : Colors.white,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Text(
-                chat.content,
-                style: AppTextStyles.notoSans(
-                  color: Colors.black,
-                  fontSize: 15,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (chat.imageUrl != null)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: chat.content.isNotEmpty ? 4.0 : 0.0),
+                      child: GestureDetector(
+                        // タップで画像を拡大表示
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FullScreenImageViewer(
+                                imageUrls: [chat.imageUrl!],
+                                initialIndex: 0,
+                              ),
+                            ),
+                          );
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: CachedNetworkImage(
+                            imageUrl: chat.imageUrl!,
+                            fit: BoxFit.cover,
+                            memCacheWidth: 900, // 表示サイズでデコードしてカクつきを抑える
+                            fadeInDuration: Duration.zero, // ふわ〜っと出るフェードを無効化してパッと表示
+                            fadeOutDuration: Duration.zero,
+                            placeholder: (context, url) => Container(height: 150, color: Colors.grey[300]),
+                            errorWidget: (context, url, error) => const Icon(Icons.error),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (chat.content.isNotEmpty)
+                    Text(
+                      chat.content,
+                      style: AppTextStyles.notoSans(
+                        color: Colors.black,
+                        fontSize: 15,
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

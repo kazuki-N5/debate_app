@@ -29,6 +29,9 @@ workflows:
       xcode: latest
       cocoapods: default
     scripts:
+      - name: Disable Swift Package Manager (google_mobile_ads requires CocoaPods)
+        script: |
+          flutter config --no-enable-swift-package-manager
       - name: Create .env from Codemagic environment variables
         # .env is gitignored, so it must be recreated during the build.
         # The values come from the Codemagic environment variables above.

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>データベース現状レポート（レスバ機能）</title>
+<style>
+  :root {
+    --blue: #1d9bf0;
+    --border: #e6e6e6;
+    --text: #0f1419;
+    --sub: #536471;
+    --green: #00ba7c;
+    --red: #d13400;
+    --orange: #c77800;
+    --purple: #7856ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    line-height: 1.7;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    background: #f5f7fa;
+  }
+  .page-header {
+    background: linear-gradient(135deg, #1d9bf0, #0e6bb8);
+    color: #fff;
+    padding: 28px 24px 24px;
+    border-bottom: 4px solid #0e6bb8;
+  }
+  .page-header h1 { margin: 0; font-size: 25px; }
+  .page-header p { margin: 8px 0 0; opacity: .92; font-size: 14px; }
+  main { max-width: 1050px; margin: 0 auto; padding: 24px 20px 60px; }
+  h2 {
+    color: #0e6bb8;
+    border-left: 5px solid #1d9bf0;
+    padding-left: 12px;
+    margin: 46px 0 16px;
+    font-size: 20px;
+  }
+  h3 { color: #334; font-size: 15.5px; margin: 26px 0 8px; }
+  p, li { font-size: 14px; }
+  code {
+    background: #eef3f7;
+    border: 1px solid #dbe4ec;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12.5px;
+    color: #0e6bb8;
+    font-family: Consolas, Menlo, monospace;
+  }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 12.5px; margin: 10px 0; }
+  th, td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: #eef6fd; color: #0e6bb8; white-space: nowrap; }
+  .note-box {
+    background: #fffbe8;
+    border: 1px solid #f0e3a8;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: #6b5d00;
+    margin: 10px 0;
+  }
+  .info-box {
+    background: #eef6fd;
+    border: 1px solid #cfe4f7;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: #0e4a7a;
+    margin: 10px 0;
+  }
+  .ok { color: var(--green); font-weight: 700; }
+  .ng { color: var(--red); font-weight: 700; }
+  .warn { color: var(--orange); font-weight: 700; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 12px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .card .title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+  .badge {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 1px 8px;
+    margin-left: 6px;
+  }
+  .badge.ok { background: #e8f7ef; color: var(--green); border: 1px solid #a9e4c8; }
+  .badge.warn { background: #fff4e0; color: var(--orange); border: 1px solid #f3d9a5; }
+  .badge.info { background: #eef6fd; color: #0e6bb8; border: 1px solid #cfe4f7; }
+  .small { font-size: 12px; color: var(--sub); }
+  .section-gap { margin-top: 36px; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>🗄️ データベース現状レポート（レスバ機能）</h1>
+  <p>調査日時: 2026-08-18 22:10 頃 ／ 調査方法: REST API（anonキー）+ RPC 経由で 192.168.11.52 の Supabase を直接確認</p>
+</div>
+
+<main>
+
+  <!-- ===== 1. 結論 ===== -->
+  <h2>1. 結論サマリ</h2>
+  <div class="card">
+    <div class="title"><span class="ok">✅ レスバ送信はDBに記録されるようになった</span></div>
+    <p style="margin:0;">
+      <code>battle_invites</code> にテストデータ（ポスト型レスバ）が保存されていることを確認。
+      前回の「対戦中と誤判定されて送れない」問題（<code>is_user_in_battle</code> の判定バグ）は
+      <b>修正済み・適用済み</b>で、ユーザー状態も <code>proposing</code>（提案中）に変わっている。
+    </p>
+  </div>
+  <div class="card">
+    <div class="title"><span class="warn">⚠️ rooms_v2 に未終了ルームが 1000件超 蓄積</span></div>
+    <p style="margin:0;">
+      <code>rooms_v2</code> の <code>winner IS NULL</code>（進行中扱い）が 1000件以上。
+      この中のプレイヤーは「対戦中」判定となり<b>レスバ送信がブロックされる</b>。大半はテスト放置の残骸と見られる。
+    </p>
+  </div>
+  <div class="card">
+    <div class="title"><span class="info">📌 battle_invite_applications は 0件（応募フロー未テスト）</span></div>
+    <p style="margin:0;">
+      ポスト型レスバの「⚔️ 応じる → 承認 → バトル開始」の一連のフローはまだデータが無い。
+      次に検証すべき項目。
+    </p>
+  </div>
+
+  <!-- ===== 2. テーブル別の状態 ===== -->
+  <h2>2. テーブル別の現状</h2>
+
+  <h3>2.1 battle_invites（レスバ本体）— 2件（anon可視）+ DM推定3件</h3>
+  <p>
+    マイグレーション適用済み（テーブル存在）。REST(anon)で見えるのは post/comment 型のみ。
+    ユーザー状態 RPC の <code>pending_sender_count = 5</code> との差分から、
+    <b>DM型レスバが約3件（anon不可視・当事者専用）</b>存在すると推定される。
+  </p>
+  <table>
+    <tr><th>ID</th><th>送信者</th><th>種類</th><th>テーマ</th><th>選択肢</th><th>状態</th><th>作成日時</th></tr>
+    <tr>
+      <td><code>d548c918…</code></td><td>ななまの</td><td>post</td><td>はんかんさんさ</td><td>なんかん vs なわかわ</td><td><b>pending</b>（募集中）</td><td>8/18 22:08</td>
+    </tr>
+    <tr>
+      <td><code>dc3ca718…</code></td><td>ななまの</td><td>post</td><td>ななやならやさわさ</td><td>さやさん vs かやか</td><td>cancelled（取下げ）</td><td>8/18 22:07</td>
+    </tr>
+  </table>
+  <p class="small">※ 上の表は anon キーで見える範囲。DM型（attach_type='dm'）は RLS により当事者2名しか見えず、anon では不可視。</p>
+  <div class="note-box">
+    📎 ポスト「はんかんさんさ」（<code>c6547035…</code>）が 8/18 22:08 に作成され、<code>battle_invites.d548c918</code> の
+    <code>attach_id</code> と一致 → <b>ポスト ↔ レスバの紐付けは正しく保存されている</b>。
+  </div>
+
+  <h3>2.2 battle_invite_applications（応募）— 0件</h3>
+  <p>まだ誰も「⚔️ 応じる」をしていない。応募→承認→rooms_v2 作成のフローは未検証。</p>
+
+  <h3>2.3 rooms_v2（バトルルーム）— winner IS NULL が 1000件超 <span class="badge warn">要注意</span></h3>
+  <table>
+    <tr><th>状態</th><th>件数</th><th>説明</th></tr>
+    <tr><td>winner IS NULL 合計</td><td><b>1000件超</b>（limit 1000 で打ち切り）</td><td>進行中・または放置された未終了ルーム</td></tr>
+    <tr><td>うち player2 確定（真の対戦中）</td><td>1000件超（同上）</td><td>このプレイヤーは「対戦中」判定 → レスバ送信ブロック</td></tr>
+    <tr><td>8/18 18:58 の募集中ルーム<br>（<code>5809823f…</code>「男女の友情は成立するか」is_bbs=true）</td><td><b>削除済み</b></td><td>誤判定の原因だった募集中ルームは存在しない</td></tr>
+  </table>
+  <div class="info-box">
+    ⚙️ <b>「対戦中」判定の現在の定義（修正適用済み）:</b>
+    <code>(player1_id = 自分 OR player2_id = 自分) AND player2_id IS NOT NULL AND winner IS NULL</code>
+    → 募集中ルームではブロックされない。ただし<b>相手確定済みの放置ルーム</b>はブロック対象のまま。
+  </div>
+  <div class="note-box">
+    🧹 未終了ルームの大量蓄積は、テストで対戦を途中放棄した結果と見られる。
+    該当ユーザー（特に <b>ちんこ</b> が多数のルームを保有）は、以後レスバ送信が「対戦中のため送信できません」になる可能性が高い。
+    <b>掃除（DELETE）の要否は要確認。</b>
+  </div>
+
+  <h3>2.4 users（主要なテストユーザー）</h3>
+  <table>
+    <tr><th>ユーザー名</th><th>ユーザーID</th><th>トロフィー</th><th>備考</th></tr>
+    <tr><td><b>ななまの</b></td><td><code>0a57b392-…</code></td><td>0</td><td>今回のレスバテストユーザー（post 2件 + DM 3件推定を送信）</td></tr>
+    <tr><td>ちんこ</td><td><code>26c68e04-…</code></td><td>329</td><td>未終了ルームを大量に保有（レスバブロック対象になり得る）</td></tr>
+    <tr><td>enn教🦄🏐✨</td><td><code>64a1cf9c-…</code></td><td>0</td><td>テスト対戦相手として頻出</td></tr>
+    <tr><td>マンクス犬ゆき</td><td><code>b4505c00-…</code></td><td>63</td><td>テスト対戦相手として頻出</td></tr>
+  </table>
+
+  <!-- ===== 3. 状態の遷移 ===== -->
+  <h2>3. 時系列（修正前 → 修正後）</h2>
+  <table>
+    <tr><th>時点</th><th>状態</th><th>battle_invites</th><th>ユーザー状態 RPC の結果</th></tr>
+    <tr>
+      <td>修正前（8/18 19時台〜）</td>
+      <td class="ng">対戦中と誤判定</td>
+      <td>0件（送信すべてブロック）</td>
+      <td><code>state: "battle"</code>（募集中ルーム 5809823f を対戦中と誤判定）</td>
+    </tr>
+    <tr>
+      <td>修正適用後（8/18 22時台）</td>
+      <td class="ok">正常</td>
+      <td>2件 + DM推定3件</td>
+      <td><code>state: "proposing"</code>（提案中・pending 5件）</td>
+    </tr>
+  </table>
+  <div class="note-box">
+    💡 修正内容: <code>is_user_in_battle</code> に <code>player2_id IS NOT NULL</code>（相手確定）条件を追加。
+    募集中ルームを「対戦中」と誤判定しないようにした（マイグレーション <code>20260818100000_fix_is_user_in_battle.sql</code>）。
+  </div>
+
+  <!-- ===== 4. 残課題 ===== -->
+  <h2>4. 残課題・次にやること</h2>
+  <table>
+    <tr><th>#</th><th>課題</th><th>重要度</th><th>対応</th></tr>
+    <tr><td>1</td><td>アプリ側での表示確認（ポスト詳細のレスバカード / DMのカード / 返信スレッドの承諾UI）</td><td>高</td><td>修正適用後の最新ビルドで再確認。DBにはデータが入っているため表示される見込み</td></tr>
+    <tr><td>2</td><td>応募フロー（⚔️ 応じる → 投稿者承認 → rooms_v2 作成 → バトル）の検証</td><td>高</td><td>battle_invite_applications にデータが無いため、一連のフローを通しでテストする</td></tr>
+    <tr><td>3</td><td>rooms_v2 の未終了ルーム 1000件超の掃除</td><td>中</td><td>放置ルームの DELETE（対象ルームの選定は要確認）※対戦中のユーザーのレスバブロック解消に有効</td></tr>
+    <tr><td>4</td><td>「ちんこ」等の大量未終了ルーム保有ユーザーの扱い</td><td>中</td><td>上記と同様。放置ルームを消せばレスバ送信可能になる</td></tr>
+    <tr><td>5</td><td>DM型レスバのデータ確認（anonでは不可視のため当事者アカウントで確認）</td><td>低</td><td>「ななまの」アカウントで get_resba / アプリ表示を確認</td></tr>
+  </table>
+
+  <!-- ===== 5. 適用済みマイグレーション ===== -->
+  <h2>5. 関連マイグレーション（作成済み・適用状況）</h2>
+  <table>
+    <tr><th>ファイル</th><th>内容</th><th>適用状況</th></tr>
+    <tr><td><code>20260818090000_create_battle_invites.sql</code></td><td>battle_invites / battle_invite_applications 作成、RPC一式、RLS、通知トリガー、rooms_v2 連携</td><td><b>適用済み</b>（テーブル存在を確認）</td></tr>
+    <tr><td><code>20260818100000_fix_is_user_in_battle.sql</code></td><td>「対戦中」判定の修正（player2 IS NOT NULL 追加）</td><td><b>適用済み</b>（ユーザー状態が proposing に変化したことから確認）</td></tr>
+  </table>
+
+  <div class="section-gap"></div>
+  <div class="info-box">
+    📎 関連資料: <a href="resba_plan.html">resba_plan.html</a>（レスバ機能 設計・要件定義）・
+    <a href="database_schema.html">database_schema.html</a>（DB設計）
+  </div>
+
+</main>
+</body>
+</html>

@@ -11,6 +11,11 @@ class AppNotification {
   final String type; // like_post / like_comment / follow / reply_comment / comment
   final String? postId;
   final String? commentId;
+
+  /// レスバ通知（resba_invite / resba_accepted / resba_declined）の対象 battle_invites のID
+  final String? inviteId;
+  /// 返信通知の対象コメントにレスバが付いているか（「⚔️ レスバ付き」表示用）
+  final bool hasResba;
   final int count; // いいね集約時の件数 (1=単発)
   final bool isRead;
   final DateTime createdAt;
@@ -27,6 +32,8 @@ class AppNotification {
     required this.type,
     this.postId,
     this.commentId,
+    this.inviteId,
+    this.hasResba = false,
     this.count = 1,
     this.isRead = false,
     required this.createdAt,
@@ -61,6 +68,8 @@ class AppNotification {
       type: map['type'] as String,
       postId: map['post_id'] as String?,
       commentId: map['comment_id'] as String?,
+      inviteId: map['invite_id'] as String?,
+      hasResba: map['has_resba'] as bool? ?? false,
       count: (map['count'] as num?)?.toInt() ?? 1,
       isRead: map['is_read'] as bool? ?? false,
       createdAt: DateTime.parse(map['created_at'] as String).toLocal(),
@@ -77,6 +86,8 @@ class AppNotification {
     String? type,
     String? postId,
     String? commentId,
+    String? inviteId,
+    bool? hasResba,
     int? count,
     bool? isRead,
     DateTime? createdAt,
@@ -91,6 +102,8 @@ class AppNotification {
       type: type ?? this.type,
       postId: postId ?? this.postId,
       commentId: commentId ?? this.commentId,
+      inviteId: inviteId ?? this.inviteId,
+      hasResba: hasResba ?? this.hasResba,
       count: count ?? this.count,
       isRead: isRead ?? this.isRead,
       createdAt: createdAt ?? this.createdAt,

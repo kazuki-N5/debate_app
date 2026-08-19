@@ -12,6 +12,7 @@ class BbsPost {
   // JOIN用
   final Users? user;
   final bool isLikedByMe;
+  final bool hasResba;
 
   BbsPost({
     required this.id,
@@ -23,6 +24,7 @@ class BbsPost {
     this.imageUrls,
     this.user,
     this.isLikedByMe = false,
+    this.hasResba = false,
   });
 
   factory BbsPost.fromMap(Map<String, dynamic> map, {Users? user, bool isLikedByMe = false}) {
@@ -42,6 +44,7 @@ class BbsPost {
       imageUrls: parsedImageUrls,
       user: user,
       isLikedByMe: isLikedByMe,
+      hasResba: map['has_resba'] as bool? ?? false,
     );
   }
 
@@ -55,6 +58,7 @@ class BbsPost {
     List<String>? imageUrls,
     Users? user,
     bool? isLikedByMe,
+    bool? hasResba,
   }) {
     return BbsPost(
       id: id ?? this.id,
@@ -66,6 +70,7 @@ class BbsPost {
       imageUrls: imageUrls ?? this.imageUrls,
       user: user ?? this.user,
       isLikedByMe: isLikedByMe ?? this.isLikedByMe,
+      hasResba: hasResba ?? this.hasResba,
     );
   }
 }

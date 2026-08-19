@@ -127,8 +127,18 @@ class ChosePage extends HookConsumerWidget {
             String message = '通信エラーが発生しました';
             if (myChoice == null) {
               message = 'あなたが選択しませんでした';
+              // 自分が選択しなかった → 相手の勝ち（勝敗を確定して「対戦中」が残るのを防ぐ）
+              final opponentId =
+                  isPlayer1 ? latestRoom.player2Id : latestRoom.player1Id;
+              if (opponentId != null) {
+                await roomnotifier.win(latestRoom, opponentId);
+              }
             } else if (opponentChoice == null) {
               message = '相手が選択しませんでした';
+              // 相手が選択しなかった → 自分の勝ち（勝敗を確定）
+              if (user != null) {
+                await roomnotifier.win(latestRoom, user);
+              }
             }
 
             if (context.mounted) {

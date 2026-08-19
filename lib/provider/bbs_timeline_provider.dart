@@ -40,19 +40,21 @@ class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
     }
   }
 
-  Future<void> addPost(String content, {List<String>? imageUrls}) async {
+  /// ポストを追加し、新しいポストのIDを返す（レスバ添付時に使用）
+  Future<String?> addPost(String content, {List<String>? imageUrls}) async {
     final currentUserId = _ref.read(currentUserIdProvider);
-    if (currentUserId == null || content.trim().isEmpty) return;
+    if (currentUserId == null || content.trim().isEmpty) return null;
 
     try {
       final supabase = _ref.read(supabaseProvider);
-      await supabase.from('bbs_posts').insert({
+      final response = await supabase.from('bbs_posts').insert({
         'user_id': currentUserId,
         'content': content.trim(),
         if (imageUrls != null && imageUrls.isNotEmpty) 'image_urls': imageUrls,
-      });
+      }).select('id').single();
       // 投稿後、リストを再取得
       await fetchPosts();
+      return response['id'] as String?;
     } catch (e) {
       debugPrint('addPost error: $e');
       rethrow;
@@ -99,6 +101,20 @@ class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
       debugPrint('toggleLike error: $e');
       // エラー時は再取得して同期
       await fetchPosts();
+    }
+  }
+
+  /// ポストにレスバが付いたことをローカル反映する（再取得なしで「レスバ付き」バッジを即時表示）
+  void markPostHasResba(String postId) {
+    if (state is AsyncData) {
+      final posts = state.value!;
+      final newPosts = posts.map((p) {
+        if (p.id == postId) {
+          return p.copyWith(hasResba: true);
+        }
+        return p;
+      }).toList();
+      state = AsyncValue.data(newPosts);
     }
   }
 

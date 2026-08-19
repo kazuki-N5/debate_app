@@ -1,7 +1,9 @@
 // ignore_for_file: file_names
 import 'package:debate_project/modes/app_notification.dart';
+import 'package:debate_project/modes/bbs_post.dart';
 import 'package:debate_project/provider/chat_inbox_provider.dart';
 import 'package:debate_project/provider/notification_provider.dart';
+import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/views/DmRoomPage.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/widgets/notification/chat_inbox_list_tile.dart';
@@ -56,8 +58,6 @@ class MessagePage extends HookConsumerWidget {
                     onRefresh: () => ref
                         .read(notificationProvider.notifier)
                         .fetchNotifications(),
-                    onMarkAllRead: () =>
-                        ref.read(notificationProvider.notifier).markAllRead(),
                     onLoadMore: () =>
                         ref.read(notificationProvider.notifier).loadMore(),
                   )
@@ -73,8 +73,8 @@ class MessagePage extends HookConsumerWidget {
   }
 
   /// 通知タップ時の画面遷移
-  void _openNotification(
-      BuildContext context, WidgetRef ref, AppNotification n) {
+  Future<void> _openNotification(
+      BuildContext context, WidgetRef ref, AppNotification n) async {
     // 開いた通知は既読化
     ref.read(notificationProvider.notifier).markRead(n.id);
 
@@ -82,12 +82,80 @@ class MessagePage extends HookConsumerWidget {
       case 'follow':
         context.push('/userProfile', extra: n.actorId);
         break;
+      case 'resba_invite':
+      case 'resba_accepted':
+      case 'resba_declined':
+        if (n.inviteId != null) {
+          context.push(
+            '/resbaRequest',
+            extra: (inviteId: n.inviteId, notification: n),
+          );
+          break;
+        }
+        // 旧データ（invite_id なし）: ポスト添付なら詳細へ、それ以外は開けない
+        if (n.post != null) {
+          context.push('/bbsPostDetail', extra: n.post);
+        } else if (n.postId != null) {
+          // JOINで投稿データが取れなかった場合、直接DBから取得
+          try {
+            final supabase = ref.read(supabaseProvider);
+            final response = await supabase
+                .from('bbs_posts')
+                .select('*, users!bbs_posts_user_id_fkey(*)')
+                .eq('id', n.postId!)
+                .maybeSingle();
+            if (response != null && context.mounted) {
+              final post = BbsPost.fromMap(response);
+              context.push('/bbsPostDetail', extra: post);
+            } else if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('投稿が見つかりませんでした')),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('投稿の取得に失敗しました')),
+              );
+            }
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('このレスバは見つかりませんでした')),
+          );
+        }
+        break;
       case 'like_post':
       case 'like_comment':
       case 'reply_comment':
+      case 'comment':
         if (n.post != null) {
           context.push('/bbsPostDetail', extra: n.post);
-        } else if (n.postId == null) {
+        } else if (n.postId != null) {
+          // JOINで投稿データが取れなかった場合、直接DBから取得
+          try {
+            final supabase = ref.read(supabaseProvider);
+            final response = await supabase
+                .from('bbs_posts')
+                .select('*, users!bbs_posts_user_id_fkey(*)')
+                .eq('id', n.postId!)
+                .maybeSingle();
+            if (response != null && context.mounted) {
+              final post = BbsPost.fromMap(response);
+              context.push('/bbsPostDetail', extra: post);
+            } else if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('投稿が見つかりませんでした')),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('投稿の取得に失敗しました')),
+              );
+            }
+          }
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('投稿が見つかりませんでした')),
           );
@@ -215,14 +283,12 @@ class _NotificationList extends StatefulWidget {
   final AsyncValue<List<AppNotification>> notificationsAsync;
   final void Function(AppNotification) onTapNotification;
   final Future<void> Function() onRefresh;
-  final VoidCallback onMarkAllRead;
   final Future<void> Function()? onLoadMore;
 
   const _NotificationList({
     required this.notificationsAsync,
     required this.onTapNotification,
     required this.onRefresh,
-    required this.onMarkAllRead,
     this.onLoadMore,
   });
 
@@ -263,18 +329,14 @@ class _NotificationListState extends State<_NotificationList> {
             text: '通知はまだありません',
           );
         }
-        final hasUnread = notifications.any((n) => !n.isRead);
         return RefreshIndicator(
           onRefresh: widget.onRefresh,
           child: ListView.builder(
             controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: notifications.length + (hasUnread ? 1 : 0),
+            itemCount: notifications.length,
             itemBuilder: (context, index) {
-              if (hasUnread && index == 0) {
-                return _MarkAllReadBar(onTap: widget.onMarkAllRead);
-              }
-              final n = notifications[hasUnread ? index - 1 : index];
+              final n = notifications[index];
               return NotificationListTile(
                 notification: n,
                 onTap: () => widget.onTapNotification(n),
@@ -341,38 +403,6 @@ class _MessageList extends StatelessWidget {
   }
 }
 
-/// 「すべて既読にする」バー
-class _MarkAllReadBar extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _MarkAllReadBar({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        color: const Color(0xFFF0F7FF),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.done_all, size: 16, color: Color(0xFF1D9BF0)),
-            const SizedBox(width: 6),
-            Text(
-              'すべて既読にする',
-              style: AppTextStyles.bold(
-                fontSize: 12.5,
-                color: const Color(0xFF1D9BF0),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// 空状態・エラー状態の共通表示
 class _EmptyMessage extends StatelessWidget {

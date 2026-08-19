@@ -5,7 +5,10 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:debate_project/provider/bbs_timeline_provider.dart';
 import 'package:debate_project/provider/image_upload_provider.dart';
+import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/provider/user.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/resba_attach_sheet.dart';
 
 class BbsPostCreateView extends StatefulHookConsumerWidget {
   const BbsPostCreateView({super.key});
@@ -19,6 +22,7 @@ class _BbsPostCreateViewState extends ConsumerState<BbsPostCreateView> {
   final FocusNode focusNode = FocusNode();
   List<File> selectedImages = [];
   bool isUploading = false;
+  ResbaAttachment? resbaAttachment; // ⚔️ レスバ添付（写真を付けるのと同じ感覚）
 
   @override
   void dispose() {
@@ -46,7 +50,25 @@ class _BbsPostCreateViewState extends ConsumerState<BbsPostCreateView> {
         );
       }
 
-      await ref.read(bbsTimelineProvider.notifier).addPost(content, imageUrls: imageUrls);
+      final postId = await ref.read(bbsTimelineProvider.notifier).addPost(content, imageUrls: imageUrls);
+
+      // レスバを付ける（ポストにレスバが付く）
+      final attachment = resbaAttachment;
+      if (attachment != null && postId != null) {
+        final result = await ref.read(resbaActionsProvider).createPostResba(
+              postId: postId,
+              theme: attachment.theme,
+              choice1: attachment.choice1,
+              choice2: attachment.choice2,
+            );
+        if (result.error != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.error!)));
+        } else {
+          // タイムラインの「レスバ付き」バッジを即時反映（再ロード不要にする）
+          ref.read(bbsTimelineProvider.notifier).markPostHasResba(postId);
+        }
+      }
+
       if (mounted) context.pop();
     } catch (e) {
       if (mounted) {
@@ -150,6 +172,36 @@ class _BbsPostCreateViewState extends ConsumerState<BbsPostCreateView> {
               ),
             ),
             const Divider(height: 1),
+            if (resbaAttachment != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF8FF),
+                    border: Border.all(color: const Color(0xFF7856FF)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('⚔️', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'レスバ: ${resbaAttachment!.theme}',
+                          style: AppTextStyles.bold(fontSize: 12.5, color: const Color(0xFF7856FF)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => resbaAttachment = null),
+                        child: const Icon(Icons.close, size: 16, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
               child: Row(
@@ -163,6 +215,19 @@ class _BbsPostCreateViewState extends ConsumerState<BbsPostCreateView> {
                         setState(() {
                           selectedImages.addAll(images);
                         });
+                      }
+                    },
+                  ),
+                  // ⚔️ レスバを付ける（写真を付けるのと同じ操作感）
+                  IconButton(
+                    icon: const Text('⚔️', style: TextStyle(fontSize: 22, color: Color(0xFF7856FF))),
+                    onPressed: isUploading ? null : () async {
+                      final attachment = await showResbaAttachSheet(
+                        context,
+                        presetTheme: textController.text.trim(),
+                      );
+                      if (attachment != null) {
+                        setState(() => resbaAttachment = attachment);
                       }
                     },
                   ),

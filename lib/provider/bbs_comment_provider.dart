@@ -84,19 +84,22 @@ class BbsCommentNotifier extends StateNotifier<AsyncValue<List<BbsComment>>> {
     }
   }
 
-  Future<void> addComment(String content, {String? parentCommentId, String? imageUrl}) async {
+  /// コメントを追加し、新しいコメントのIDを返す（レスバ添付時に使用）
+  /// [allowEmpty] = true なら本文が空でも作成する（レスバだけの送信に対応）
+  Future<String?> addComment(String content, {String? parentCommentId, String? imageUrl, bool allowEmpty = false}) async {
     final currentUserId = _ref.read(currentUserIdProvider);
-    if (currentUserId == null || content.trim().isEmpty) return;
+    if (currentUserId == null) return null;
+    if (content.trim().isEmpty && !allowEmpty) return null;
 
     try {
       final supabase = _ref.read(supabaseProvider);
-      await supabase.from('bbs_comments').insert({
+      final response = await supabase.from('bbs_comments').insert({
         'post_id': postId,
         'user_id': currentUserId,
         'parent_comment_id': parentCommentId,
         'content': content.trim(),
         if (imageUrl != null) 'image_url': imageUrl,
-      });
+      }).select('id').single();
       // 投稿後、コメント数を増やす
       await supabase.rpc('increment_replies_count', params: {'p_post_id': postId});
       
@@ -106,6 +109,7 @@ class BbsCommentNotifier extends StateNotifier<AsyncValue<List<BbsComment>>> {
       }
       
       await fetchComments();
+      return response['id'] as String?;
     } catch (e) {
       debugPrint('addComment error: $e');
       rethrow;

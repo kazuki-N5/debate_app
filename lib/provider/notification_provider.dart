@@ -23,6 +23,12 @@ class NotificationNotifier
 
   NotificationNotifier(this._ref) : super(const AsyncValue.loading()) {
     _init();
+    // ユーザーIDが後から確定した場合(起動直後はnullの場合がある)に再初期化
+    _ref.listen<String?>(currentUserIdProvider, (prev, next) {
+      if (prev == null && next != null) {
+        _init();
+      }
+    });
   }
 
   Future<void> _init() async {

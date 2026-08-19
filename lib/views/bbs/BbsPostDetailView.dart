@@ -1,11 +1,16 @@
 import 'dart:io';
 import 'package:debate_project/modes/bbs_comment.dart';
 import 'package:debate_project/modes/bbs_post.dart';
+import 'package:debate_project/modes/resba_invite.dart';
 import 'package:debate_project/provider/bbs_comment_provider.dart';
 import 'package:debate_project/provider/bbs_timeline_provider.dart';
 import 'package:debate_project/provider/image_upload_provider.dart';
+import 'package:debate_project/provider/resba_provider.dart';
+import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/views/bbs/BbsTimelineView.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/resba_attach_sheet.dart';
+import 'package:debate_project/widgets/resba_card.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -46,6 +51,17 @@ class BbsPostDetailView extends HookConsumerWidget {
     final selectedImage = useState<File?>(null);
     final isUploading = useState(false);
 
+    // レスバ添付用のステート（写真を添付する感覚）
+    final resbaAttachment = useState<ResbaAttachment?>(null);
+
+    // このポスト（+コメント）に付いたレスバ
+    final resbasAsync = ref.watch(postResbaProvider(post.id));
+    final resbas = resbasAsync.valueOrNull ?? const <ResbaInvite>[];
+
+    void refreshResba() {
+      ref.invalidate(postResbaProvider(post.id));
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -61,11 +77,24 @@ class BbsPostDetailView extends HookConsumerWidget {
               onRefresh: () async {
                 await ref.read(bbsTimelineProvider.notifier).fetchPosts();
                 await ref.read(bbsCommentProvider(post.id).notifier).fetchComments();
+                // ポストに付いたレスバ（⚔️）も再読み込みする
+                ref.invalidate(postResbaProvider(post.id));
+                try {
+                  await ref.read(postResbaProvider(post.id).notifier).fetch();
+                } catch (_) {
+                  // 取得失敗時は表示を更新せずに継続（リフレッシュを妨げない）
+                }
               },
               child: ListView(
                 children: [
                   // 親の投稿
                   BbsPostWidget(post: currentPost),
+                  // ポストに付いたレスバ
+                  _PostResbaSection(
+                    post: currentPost,
+                    resbas: resbas.where((r) => r.attachType == 'post' && r.attachId == currentPost.id).toList(),
+                    onChanged: refreshResba,
+                  ),
                   const Divider(height: 1),
                   // コメント欄のヘッダー
                   Padding(
@@ -102,6 +131,8 @@ class BbsPostDetailView extends HookConsumerWidget {
                             comments[index], 
                             replyingToCommentId, 
                             replyingToUserName,
+                            resbas,
+                            refreshResba,
                             (String commentId, String userName, bool useMention) {
                               replyingToCommentId.value = commentId;
                               replyingToUserName.value = userName;
@@ -175,6 +206,19 @@ class BbsPostDetailView extends HookConsumerWidget {
                           }
                         },
                       ),
+                      // ⚔️ レスバを添付（写真を付けるのと同じ操作感）
+                      IconButton(
+                        icon: const Text('⚔️', style: TextStyle(fontSize: 20, color: Color(0xFF7856FF))),
+                        onPressed: isUploading.value ? null : () async {
+                          final attachment = await showResbaAttachSheet(
+                            context,
+                            presetTheme: commentController.text.trim(),
+                          );
+                          if (attachment != null) {
+                            resbaAttachment.value = attachment;
+                          }
+                        },
+                      ),
                       Expanded(
                         child: Container(
                           decoration: BoxDecoration(
@@ -234,7 +278,7 @@ class BbsPostDetailView extends HookConsumerWidget {
                         constraints: const BoxConstraints(),
                         onPressed: isUploading.value ? null : () async {
                           final text = commentController.text;
-                          if (text.trim().isEmpty && selectedImage.value == null) return;
+                          if (text.trim().isEmpty && selectedImage.value == null && resbaAttachment.value == null) return;
                           
                           isUploading.value = true;
                           try {
@@ -248,11 +292,30 @@ class BbsPostDetailView extends HookConsumerWidget {
                               );
                             }
 
-                            await ref.read(bbsCommentProvider(post.id).notifier).addComment(text, parentCommentId: replyingToCommentId.value, imageUrl: uploadedUrl);
+                            final commentId = await ref.read(bbsCommentProvider(post.id).notifier).addComment(text, parentCommentId: replyingToCommentId.value, imageUrl: uploadedUrl, allowEmpty: resbaAttachment.value != null);
+
+                            // レスバ添付: 返信先の相手にレスバが届く
+                            final attachment = resbaAttachment.value;
+                            if (attachment != null && commentId != null) {
+                              final result = await ref.read(resbaActionsProvider).attachToComment(
+                                commentId: commentId,
+                                theme: attachment.theme,
+                                choice1: attachment.choice1,
+                                choice2: attachment.choice2,
+                              );
+                              if (result.error != null && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.error!)));
+                              }
+                            }
+
                             commentController.clear();
                             replyingToCommentId.value = null;
                             replyingToUserName.value = null;
                             selectedImage.value = null;
+                            resbaAttachment.value = null;
+                            if (attachment != null) {
+                              ref.invalidate(postResbaProvider(post.id));
+                            }
                             if (!context.mounted) return;
                             focusNode.unfocus(); // キーボードを閉じる
                           } catch (e) {
@@ -303,6 +366,38 @@ class BbsPostDetailView extends HookConsumerWidget {
                         ],
                       ),
                     ),
+                  if (resbaAttachment.value != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0, left: 48.0, bottom: 8.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFAF8FF),
+                          border: Border.all(color: const Color(0xFF7856FF)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Text('⚔️', style: TextStyle(fontSize: 16)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'レスバ: ${resbaAttachment.value!.theme}',
+                                style: AppTextStyles.bold(fontSize: 12.5, color: const Color(0xFF7856FF)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                resbaAttachment.value = null;
+                              },
+                              child: const Icon(Icons.close, size: 16, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -318,6 +413,8 @@ class BbsPostDetailView extends HookConsumerWidget {
     BbsComment comment, 
     ValueNotifier<String?> replyingToCommentId, 
     ValueNotifier<String?> replyingToUserName,
+    List<ResbaInvite> resbas,
+    VoidCallback onResbaChanged,
     Function(String, String, bool) onReplyTap,
   ) {
     return _CommentThreadWidget(
@@ -325,7 +422,85 @@ class BbsPostDetailView extends HookConsumerWidget {
       comment: comment,
       replyingToCommentId: replyingToCommentId,
       replyingToUserName: replyingToUserName,
+      resbas: resbas,
+      onResbaChanged: onResbaChanged,
       onReplyTap: onReplyTap,
+    );
+  }
+}
+
+/// ポストに付いたレスバ（投稿者のみ作成可・見た人は応じられる）
+class _PostResbaSection extends HookConsumerWidget {
+  final BbsPost post;
+  final List<ResbaInvite> resbas;
+  final VoidCallback onChanged;
+
+  const _PostResbaSection({
+    required this.post,
+    required this.resbas,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final myId = ref.read(currentUserIdProvider);
+    // pending（募集中） / accepted（対戦中） / finished（対戦終了・観戦ログ閲覧用）を表示
+    final activeResbas = resbas
+        .where((r) => r.isPending || r.isAccepted || r.status == 'finished')
+        .toList();
+    final hasPendingByMe = activeResbas.any((r) => r.isSender && r.isPending);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final invite in activeResbas)
+            ResbaCard(invite: invite, onChanged: onChanged),
+          // 投稿者にのみ「レスバを付ける」ボタン
+          if (myId == post.userId && !hasPendingByMe)
+            InkWell(
+              onTap: () async {
+                final attachment = await showResbaAttachSheet(
+                  context,
+                  presetTheme: post.content.length > 60
+                      ? post.content.substring(0, 60)
+                      : post.content,
+                );
+                if (attachment == null || !context.mounted) return;
+                final result = await ref
+                    .read(resbaActionsProvider)
+                    .createPostResba(
+                      postId: post.id,
+                      theme: attachment.theme,
+                      choice1: attachment.choice1,
+                      choice2: attachment.choice2,
+                    );
+                if (result.error != null && context.mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text(result.error!)));
+                } else {
+                  // タイムラインに戻ったときに「レスバ付き」バッジが付くようローカル反映
+                  ref.read(bbsTimelineProvider.notifier).markPostHasResba(post.id);
+                }
+                onChanged();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7856FF).withValues(alpha: 0.08),
+                  border: Border.all(color: const Color(0xFF7856FF).withValues(alpha: 0.6)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '⚔️ このポストにレスバを付ける',
+                  style: AppTextStyles.bold(fontSize: 13, color: const Color(0xFF7856FF)),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -335,6 +510,8 @@ class _CommentThreadWidget extends HookConsumerWidget {
   final BbsComment comment;
   final ValueNotifier<String?> replyingToCommentId;
   final ValueNotifier<String?> replyingToUserName;
+  final List<ResbaInvite> resbas;
+  final VoidCallback onResbaChanged;
   final Function(String, String, bool) onReplyTap;
 
   const _CommentThreadWidget({
@@ -342,8 +519,25 @@ class _CommentThreadWidget extends HookConsumerWidget {
     required this.comment,
     required this.replyingToCommentId,
     required this.replyingToUserName,
+    required this.resbas,
+    required this.onResbaChanged,
     required this.onReplyTap,
   });
+
+  /// コメントに付いたアクティブなレスバカード
+  /// （対戦中・終了後の観戦ログ閲覧カードも含む）
+  List<Widget> _resbaCardsFor(String attachId) {
+    return resbas
+        .where((r) =>
+            r.attachType == 'comment' &&
+            r.attachId == attachId &&
+            (r.isPending || r.isAccepted || r.status == 'finished'))
+        .map((r) => Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: ResbaCard(invite: r, onChanged: onResbaChanged),
+            ))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -414,6 +608,14 @@ class _CommentThreadWidget extends HookConsumerWidget {
                       const SizedBox(height: 8),
                       _ReplyImageToggle(imageUrl: comment.imageUrl!),
                     ],
+                    if (comment.hasResba) ...[
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: ResbaBadge(text: 'レスバ付き'),
+                      ),
+                    ],
+                    ..._resbaCardsFor(comment.id),
                     const SizedBox(height: 6),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -547,6 +749,14 @@ class _CommentThreadWidget extends HookConsumerWidget {
                                 const SizedBox(height: 8),
                                 _ReplyImageToggle(imageUrl: reply.imageUrl!),
                               ],
+                              if (reply.hasResba) ...[
+                                const SizedBox(height: 6),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: ResbaBadge(text: 'レスバ付き'),
+                                ),
+                              ],
+                              ..._resbaCardsFor(reply.id),
                               const SizedBox(height: 4),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,

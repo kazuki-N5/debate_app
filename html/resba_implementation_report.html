@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レスバ機能 実装まとめ・エッジケース解説</title>
+<style>
+  :root {
+    --blue: #1d9bf0;
+    --border: #e6e6e6;
+    --text: #0f1419;
+    --sub: #536471;
+    --green: #00ba7c;
+    --red: #d13400;
+    --orange: #c77800;
+    --purple: #7856ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    line-height: 1.7;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    background: #f5f7fa;
+  }
+  .page-header {
+    background: linear-gradient(135deg, #1d9bf0, #0e6bb8);
+    color: #fff;
+    padding: 28px 24px 24px;
+    border-bottom: 4px solid #0e6bb8;
+  }
+  .page-header h1 { margin: 0; font-size: 25px; }
+  .page-header p { margin: 8px 0 0; opacity: .92; font-size: 14px; }
+  main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
+  h2 {
+    color: #0e6bb8;
+    border-left: 5px solid #1d9bf0;
+    padding-left: 12px;
+    margin: 48px 0 16px;
+    font-size: 20px;
+  }
+  h3 { color: #334; font-size: 15.5px; margin: 26px 0 8px; }
+  p, li { font-size: 14px; }
+  code {
+    background: #eef3f7;
+    border: 1px solid #dbe4ec;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12.5px;
+    color: #0e6bb8;
+    font-family: Consolas, Menlo, monospace;
+  }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 12.5px; margin: 10px 0; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #eef6fd; color: #0e6bb8; white-space: nowrap; }
+  .ok { color: var(--green); font-weight: 700; }
+  .ng { color: var(--red); font-weight: 700; }
+  .warn { color: var(--orange); font-weight: 700; }
+  .note-box {
+    background: #fffbe8;
+    border: 1px solid #f0e3a8;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: #6b5d00;
+    margin: 10px 0;
+  }
+  .info-box {
+    background: #eef6fd;
+    border: 1px solid #cfe4f7;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: #0e4a7a;
+    margin: 10px 0;
+  }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 10px 0; }
+  .flow .box {
+    border: 2px solid #1d9bf0; color: #0e6bb8;
+    background: #f0f7ff; border-radius: 8px;
+    padding: 6px 12px; font-size: 12.5px; font-weight: 600;
+  }
+  .flow .box.gray { border-color: #b0bcc6; color: #5b6b7a; background: #f5f7f9; }
+  .flow .box.green { border-color: #00ba7c; color: #007a50; background: #e8f7ef; }
+  .flow .box.purple { border-color: #7856ff; color: #5b3fd6; background: #f1ebff; }
+  .flow .arrow { color: #b0bcc6; font-weight: 800; }
+  .section-gap { margin-top: 36px; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>⚔️ レスバ機能 実装まとめ・エッジケース解説</h1>
+  <p>ポスト / 返信 / DM に「レスバ」を付けて対戦する機能の実装全体像と、アプリを閉じたとき・途中でやめたとき等の詳細な挙動</p>
+</div>
+
+<main>
+
+  <!-- ===== 1. 概要 ===== -->
+  <h2>1. 実装した機能の全体像</h2>
+  <div class="flow">
+    <span class="box">コンテンツにレスバを付ける<br><small>ポスト / 返信 / DM</small></span>
+    <span class="arrow">→</span>
+    <span class="box">相手が承諾 or 応募者を承認<br><small>全画面ダイアログ / 応募中バナー</small></span>
+    <span class="arrow">→</span>
+    <span class="box purple">rooms_v2 で試合開始<br><small>両者 /wait へ自動遷移</small></span>
+    <span class="arrow">→</span>
+    <span class="box gray">試合終了<br><small>勝敗確定・レスバは finished</small></span>
+  </div>
+
+  <table>
+    <tr><th>機能</th><th>説明</th></tr>
+    <tr><td><b>レスバの作成</b></td><td>ポスト作成時・返信入力欄（📷の隣に⚔️）・DM入力欄（📷の隣に⚔️）からテーマ/選択肢を設定して送信。<b>本文が空でもレスバだけ送信可</b></td></tr>
+    <tr><td><b>指名型（返信 / DM）</b></td><td>相手が最初から決まっている（返信先・DMの相手）。相手に「⚔️ レスバが届きました」→ 承諾/拒否</td></tr>
+    <tr><td><b>募集型（ポスト）</b></td><td>誰でも「⚔️ 応じる」。応募者はホストの全画面ダイアログに1件ずつ表示 → 承認/拒否</td></tr>
+    <tr><td><b>ホストの全画面ダイアログ</b></td><td>応募が来た瞬間に「⚔️ 申し込みが来ました」（応募者名・テーマ）を表示。<b>閉じる操作不可</b>（はい・いいえを押すまで残る）</td></tr>
+    <tr><td><b>応募中バナー</b></td><td>アプリ画面上部に常駐（タブ切替と無関係に固定）。「⚔️ 申し込み中（◯◯さんのレスバ）」+ 取り消すボタン</td></tr>
+    <tr><td><b>拒否されたとき</b></td><td>バナーが「⚔️ 拒否されました」（黒背景・白文字）に変わり <b>0.8秒で自動消去</b></td></tr>
+    <tr><td><b>応募の入れ替え</b></td><td>応募中に別のレスバへ応じようとすると「今の応募を取り消して入れ替えますか？」→ はい/いいえ</td></tr>
+    <tr><td><b>マイレスバ</b></td><td>ホーム右上の⚔️アイコンから一覧表示（募集中/履歴タブ）。取り下げ・削除・対戦へ戻る</td></tr>
+    <tr><td><b>試合への自動遷移</b></td><td>承諾・承認された瞬間、両者がRealtimeで検知して /wait へ（送信者はリスナー、相手はダイアログ/カードから直接）</td></tr>
+    <tr><td><b>対戦中判定</b></td><td>「試合は1つだけ」という前提。新しい試合に関わる操作をした瞬間、<b>前の進行中ルームを「負け（相手勝ち）」として確定</b>してから操作を続行（待ち時間ゼロ）</td></tr>
+  </table>
+
+  <!-- ===== 2. データモデル ===== -->
+  <h2>2. データモデル</h2>
+  <div class="flow">
+    <span class="box">bbs_posts / bbs_comments / dm_messages<br><small>コンテンツ</small></span>
+    <span class="arrow">attach_type + attach_id</span>
+    <span class="box purple">battle_invites<br><small>レスバ本体</small></span>
+    <span class="arrow">1─N</span>
+    <span class="box">battle_invite_applications<br><small>応募（ポスト型）</small></span>
+    <span class="arrow">battle_room_id</span>
+    <span class="box gray">rooms_v2<br><small>試合</small></span>
+  </div>
+  <table>
+    <tr><th>テーブル</th><th>主なカラム</th><th>状態</th></tr>
+    <tr><td><b>battle_invites</b></td><td>sender_id / attach_type(post・comment・dm) / attach_id / target_user_id / theme / choice1・2 / status / responder_id / battle_room_id</td><td>pending → accepted / declined / cancelled / finished</td></tr>
+    <tr><td><b>battle_invite_applications</b></td><td>invite_id / applicant_id / status</td><td>pending → accepted / rejected / cancelled（同時1件・重複禁止はDB制約）</td></tr>
+    <tr><td><b>rooms_v2</b></td><td>player1 / player2 / current_theme / winner / is_bbs</td><td>進行中（winner NULL）→ 勝敗確定（A/B/C）</td></tr>
+  </table>
+
+  <!-- ===== 3. エッジケース（重点） ===== -->
+  <h2>3. エッジケース詳細（エラーが起きそうな状況）</h2>
+
+  <h3>3.1 アプリを閉じたとき</h3>
+  <table>
+    <tr><th>閉じたときの状態</th><th>DBに何が残るか</th><th>再開後の挙動</th></tr>
+    <tr>
+      <td><b>試合中に閉じた</b></td>
+      <td>rooms_v2 に進行中ルーム（winner NULL・player2確定）が残る</td>
+      <td>
+        次の「試合に関わる操作」（レスバ送信・応募・ランダム）をした瞬間、<code>is_user_in_battle</code> が<b>前の試合を「負け（相手勝ち）」として確定</b>して解除 → <b>ブロックなしで操作可能</b>。<br>
+        ※ 相手には「勝ち」が入る（アプリを切った方が悪い、という仕様）
+      </td>
+    </tr>
+    <tr>
+      <td><b>応募中に閉じた</b></td>
+      <td>battle_invite_applications の pending が残る</td>
+      <td>再開すると<b>応募中バナーが復活</b>（「⚔️ 申し込み中」）。ホストが承認すれば両者 /wait へ自動遷移。<br>
+        自分で「取り消す」も可能</td>
+    </tr>
+    <tr>
+      <td><b>ホスト（募集中）で閉じた</b></td>
+      <td>battle_invites の pending と、来ていた応募が残る</td>
+      <td>再開時に<b>未対応の応募があれば全画面ダイアログを再表示</b>（アプリ起動時チェック）。ホームの「保留中の応募があります」バナーからも対応可能</td>
+    </tr>
+    <tr>
+      <td><b>相手がレスバを承諾していない状態で閉じた</b></td>
+      <td>battle_invites の pending（相手待ち）が残る</td>
+      <td>再開後も「相手待ち」のまま。マイレスバから<b>取り下げ</b>できる。相手が承諾すれば /wait へ</td>
+    </tr>
+  </table>
+
+  <h3>3.2 途中でやめたとき（取り下げ・キャンセル）</h3>
+  <table>
+    <tr><th>操作</th><th>結果</th><th>相手・画面への影響</th></tr>
+    <tr>
+      <td><b>応募者側が「取り消す」</b>（バナー or カード）</td>
+      <td>応募が <code>cancelled</code> になる</td>
+      <td>バナーが消える。ポスト詳細では<b>「⚔️ 応じる」ボタンが再表示</b>され、再応募できる。ホスト側のダイアログには出ない</td>
+    </tr>
+    <tr>
+      <td><b>ホストが募集を取り下げる</b>（マイレスバ）</td>
+      <td>レスバが <code>cancelled</code> になる</td>
+      <td>応募者側の応募も取り下げ扱いになり、ポスト詳細で再応募可能に（レスバ自体が募集中でなくなるためカードは消える）</td>
+    </tr>
+    <tr>
+      <td><b>送信者が指名型（返信/DM）を取り下げる</b></td>
+      <td>レスバが <code>cancelled</code> になる</td>
+      <td>相手側の「⚔️ レスバが届きました」カードが「取り下げられました」表示になる</td>
+    </tr>
+    <tr>
+      <td><b>レスバ送信後、相手が応答しない</b></td>
+      <td>pending のまま残る</td>
+      <td>マイレスバから<b>いつでも取り下げ可能</b>。自動キャンセルはしない（相手待ちは待つ）</td>
+    </tr>
+  </table>
+
+  <h3>3.3 拒否されたとき</h3>
+  <table>
+    <tr><th>状況</th><th>挙動</th></tr>
+    <tr>
+      <td><b>指名型（返信/DM）の相手が拒否</b></td>
+      <td>レスバが <code>declined</code> に。送信者側のカードが「拒否されました」表示になる</td>
+    </tr>
+    <tr>
+      <td><b>ホストが応募を拒否</b>（全画面ダイアログで「いいえ」）</td>
+      <td>応募が <code>rejected</code> に。応募者側に<b>「⚔️ 拒否されました」バナー</b>が0.8秒表示されて消える。<br>
+        ポスト詳細では<b>応募ボタンが押せない</b>（「拒否されました」表示・再応募不可）</td>
+    </tr>
+  </table>
+
+  <h3>3.4 同時操作（競合）</h3>
+  <table>
+    <tr><th>状況</th><th>結果</th></tr>
+    <tr>
+      <td><b>応募者「取り消す」とホスト「承認」が同時</b></td>
+      <td>DBの<b>行ロック（FOR UPDATE）で直列化</b>。先に来た方だけが有効になり、後から来た方は「受付終了しています」等でエラー（二重処理は起きない）</td>
+    </tr>
+    <tr>
+      <td><b>応募者がランダムマッチ等で対戦中に、ホストが承認</b></td>
+      <td>承認RPCが応募者の対戦状態をチェック。**ただし「解決型」のため、進行中ルームがあれば「負け」に確定して承認が通る**（新しい試合のための前試合破棄）</td>
+    </tr>
+    <tr>
+      <td><b>ホストが対戦中に、相手が承諾</b></td>
+      <td>承諾RPCが送信者の対戦状態をチェック → 進行中ルームがあれば「負け」に確定して承諾が通る（二重試合にはならない）</td>
+    </tr>
+    <tr>
+      <td><b>応募中に別のレスバへ応じる</b></td>
+      <td>「入れ替え確認」ダイアログ → はい: 前の応募を取り消して新応募 / いいえ: 何もしない</td>
+    </tr>
+  </table>
+
+  <h3>3.5 未選択・放置（試合の終了）</h3>
+  <table>
+    <tr><th>状況</th><th>挙動</th></tr>
+    <tr>
+      <td><b>相手が選択（回答）せずタイムアウト</b></td>
+      <td>ChosePage のタイマーが「相手が選択しませんでした」→ <b>自分の勝ち（winner設定）</b>を確定してからホームへ。対戦中が残らない</td>
+    </tr>
+    <tr>
+      <td><b>自分が選択せずタイムアウト</b></td>
+      <td>相手の勝ち（winner設定）→ ホームへ</td>
+    </tr>
+    <tr>
+      <td><b>両者ともアプリを閉じて放置</b></td>
+      <td>cron（5分毎）が<b>3分以上更新の無いルームを引き分け終了</b>（winner='C'）→ 誰も操作しなくても掃除される</td>
+    </tr>
+    <tr>
+      <td><b>アプリを開いた直後</b></td>
+      <td>操作時解決（is_user_in_battle）と cron の両方で、古い進行中ルームは「負け or 引き分け」で処理される</td>
+    </tr>
+  </table>
+
+  <h3>3.6 Realtime・ネットワーク障害</h3>
+  <table>
+    <tr><th>状況</th><th>挙動</th></tr>
+    <tr>
+      <td><b>Realtime未設定</b>（publication未登録）</td>
+      <td>ホストの全画面ダイアログ・応募中バナー・自動遷移が<b>動かない</b>。→ <code>20260818120000_ensure_resba_realtime.sql</code> 適用が必要（battle_invites / battle_invite_applications / rooms_v2 を supabase_realtime に登録）</td>
+    </tr>
+    <tr>
+      <td><b>サーバー接続失敗</b>（AuthRetryableFetchException 等）</td>
+      <td>認証トークン更新やRPC呼び出しが失敗。アプリは通常、エラーSnackBarや状態のまま。サーバー（Supabase）再起動で復旧</td>
+    </tr>
+    <tr>
+      <td><b>RPC呼び出し中の通信断</b></td>
+      <td>応募・承諾などの操作が失敗 → エラーメッセージ表示。DBには書き込まれていない（成功するまで再試行）</td>
+    </tr>
+  </table>
+
+  <!-- ===== 4. エラーコード ===== -->
+  <h2>4. エラーコード一覧</h2>
+  <table>
+    <tr><th>コード</th><th>意味</th><th>フロントの表示</th></tr>
+    <tr><td><code>IN_BATTLE</code></td><td>自分が進行中ルームを持つ</td><td>解決型のため基本的に出ない（前の試合を負けに確定して許可）</td></tr>
+    <tr><td><code>SENDER_IN_BATTLE</code></td><td>送信者（ホスト）が進行中</td><td>同上（解決して許可）</td></tr>
+    <tr><td><code>APPLICANT_IN_BATTLE</code></td><td>応募者が進行中</td><td>同上（解決して許可）</td></tr>
+    <tr><td><code>ALREADY_APPLYING</code></td><td>応募中の応募がある</td><td>「現在応募中のレスバがあります。先にキャンセルしてください」</td></tr>
+    <tr><td><code>INVITE_CLOSED</code></td><td>締切・成立・取消済み</td><td>「このレスバは受付終了しています」</td></tr>
+    <tr><td><code>NOT_TARGET / NOT_HOST</code></td><td>権限外の操作</td><td>操作不可表示</td></tr>
+    <tr><td><code>SELF_INVITE / SELF_APPLY</code></td><td>自分自身への送信</td><td>「自分自身には送信できません」</td></tr>
+    <tr><td><code>NOT_FOUND_OR_UNAUTHORIZED</code></td><td>対象が無い・権限なし</td><td>「失敗しました」</td></tr>
+  </table>
+
+  <!-- ===== 5. トラブルシューティング ===== -->
+  <h2>5. トラブルシューティング（よくある症状と対処）</h2>
+  <table>
+    <tr><th>症状</th><th>原因と対処</th></tr>
+    <tr>
+      <td>試合後にポストが開けない（タップが無視される）</td>
+      <td>ポストカードの連打防止フラグ（_isNavigating）が true のまま残る問題。<b>3秒で自動リセット</b>する保険を実装済み（navigatorKey 復活でも解消）。再発したらアプリ再起動で復旧</td>
+    </tr>
+    <tr>
+      <td>ホストの全画面ダイアログが出ない</td>
+      <td>「Navigator operation requested with a context that does not include a Navigator」→ navigatorKey（Navigator の子孫のcontext）経由に修正済み。それでも出ない場合は <b>publication 未登録</b>を確認（§3.6）</td>
+    </tr>
+    <tr>
+      <td>「対戦中です」と出てレスバを送れない</td>
+      <td>進行中ルームが残っている（旧仕様）。現在は「操作時に前の試合を負けに確定して解除」するため解消。古いデータは cron が掃除</td>
+    </tr>
+    <tr>
+      <td>応募中バナーが表示されない</td>
+      <td>publication 未登録 or ログイン前の初期化タイミング。バナーはログイン後に HomePage 表示で購読開始</td>
+    </tr>
+    <tr>
+      <td>「拒否されました」が出ない</td>
+      <td>rejected 検知の Realtime イベント依存。publication 未登録なら届かない（§3.6 を確認）</td>
+    </tr>
+  </table>
+
+  <!-- ===== 6. 適用済みマイグレーション ===== -->
+  <h2>6. 適用済みマイグレーション一覧（10本）</h2>
+  <table>
+    <tr><th>#</th><th>ファイル</th><th>内容</th></tr>
+    <tr><td>1</td><td><code>20260818090000_create_battle_invites.sql</code></td><td>battle_invites / battle_invite_applications 作成、RPC一式、RLS、通知トリガー</td></tr>
+    <tr><td>2</td><td><code>20260818100000_fix_is_user_in_battle.sql</code></td><td>対戦中判定の修正（player2確定のみ）</td></tr>
+    <tr><td>3</td><td><code>20260818110000_fix_resba_list_functions.sql</code></td><td>DM表示の修正（json || json エラー解消）</td></tr>
+    <tr><td>4</td><td><code>20260818120000_ensure_resba_realtime.sql</code></td><td>Realtime publication 登録（冪等）</td></tr>
+    <tr><td>5</td><td><code>20260818130000_fix_resba_exclusion.sql</code></td><td>排他制御（送信者/応募者チェック）、rooms_v2掃除、応募全取消・保留一覧RPC</td></tr>
+    <tr><td>6</td><td><code>20260818140000_resba_apply_flow.sql</code></td><td>get_my_pending_application（応募中情報）</td></tr>
+    <tr><td>7</td><td><code>20260818150000_resba_my_list.sql</code></td><td>get_my_sent_resbas / delete_resba（マイレスバ）</td></tr>
+    <tr><td>8</td><td><code>20260818160000_fix_stale_battles.sql</code></td><td>放置ルーム対策（15分・引き分け終了cron）</td></tr>
+    <tr><td>9</td><td><code>20260818170000_fix_stale_battles_short.sql</code></td><td>放置判定 15分 → 3分 短縮 + 起動時終了RPC</td></tr>
+    <tr><td>10</td><td><code>20260818180000_resolve_old_battle.sql</code></td><td><b>解決型 is_user_in_battle</b>: 前の試合を「負け（相手勝ち）」として即解除（待ち時間ゼロ）</td></tr>
+  </table>
+
+  <!-- ===== 7. 主な変更ファイル ===== -->
+  <h2>7. 主な変更ファイル（Flutter）</h2>
+  <table>
+    <tr><th>ファイル</th><th>内容</th></tr>
+    <tr><td><code>lib/modes/resba_invite.dart</code></td><td>ResbaInvite / ResbaApplication モデル</td></tr>
+    <tr><td><code>lib/provider/resba_provider.dart</code></td><td>一覧・アクション・マッチリスナー・応募中バナープロバイダ・全画面ダイアログ・解決型RPC呼び出し</td></tr>
+    <tr><td><code>lib/widgets/resba_attach_sheet.dart</code></td><td>テーマ/選択肢入力シート</td></tr>
+    <tr><td><code>lib/widgets/resba_card.dart</code></td><td>状態別カード（承諾/拒否/応じる/取り下げ/承認/拒否されました）</td></tr>
+    <tr><td><code>lib/widgets/resba_applying_banner.dart</code></td><td>応募中常駐バナー（取り消す・拒否されました表示）</td></tr>
+    <tr><td><code>lib/views/MyResbaListPage.dart</code></td><td>マイレスバ一覧（募集中/履歴・取り下げ/削除/対戦へ戻る）</td></tr>
+    <tr><td><code>lib/views/ResbaRequestPage.dart</code></td><td>通知タップからのレスバ詳細（別途追加）</td></tr>
+    <tr><td><code>lib/views/bbs/BbsPostDetailView.dart</code></td><td>返信の⚔️ボタン・レスバカード・承諾/拒否・レスバだけ送信</td></tr>
+    <tr><td><code>lib/views/bbs/BbsPostCreateView.dart</code></td><td>ポスト作成時の⚔️オプション</td></tr>
+    <tr><td><code>lib/views/bbs/BbsTimelineView.dart</code></td><td>⚔️バッジ・ポスト詳細への遷移（連打防止のタイムアウトリセット）</td></tr>
+    <tr><td><code>lib/views/DmRoomPage.dart</code></td><td>DMの⚔️ボタン・レスバ送受信カード</td></tr>
+    <tr><td><code>lib/views/HomePage.dart</code></td><td>⚔️マイレスバアイコン・保留バナー・ランダム前の解決・リスナー起動</td></tr>
+    <tr><td><code>lib/views/ChosePage.dart</code></td><td>未選択時の勝敗確定</td></tr>
+    <tr><td><code>lib/router/router.dart</code></td><td>navigatorKey・/myResbas・/bbsPostDetail ルート</td></tr>
+    <tr><td><code>lib/main.dart</code></td><td>応募中バナーのアプリ全体統合（builder Stack）</td></tr>
+  </table>
+
+  <div class="section-gap"></div>
+  <div class="info-box">
+    📎 関連資料：<a href="resba_plan.html">resba_plan.html</a>（設計）・
+    <a href="resba_spectator_plan.html">resba_spectator_plan.html</a>（観戦設計）・
+    <a href="database_current_state.html">database_current_state.html</a>（DB現状）
+  </div>
+
+</main>
+</body>
+</html>

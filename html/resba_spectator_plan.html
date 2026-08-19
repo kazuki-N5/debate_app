@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レスバ観戦機能（スペクテイター）設計・要件定義書</title>
+<style>
+  :root {
+    --blue: #1d9bf0;
+    --border: #e6e6e6;
+    --text: #0f1419;
+    --sub: #536471;
+    --green: #00ba7c;
+    --red: #f91880;
+    --orange: #ff9900;
+    --purple: #7856ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    line-height: 1.7;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    background: #f5f7fa;
+  }
+  .page-header {
+    background: linear-gradient(135deg, #7856ff, #4a30c4);
+    color: #fff;
+    padding: 28px 24px 24px;
+    border-bottom: 4px solid #4a30c4;
+  }
+  .page-header h1 { margin: 0; font-size: 25px; }
+  .page-header p { margin: 8px 0 0; opacity: .92; font-size: 14px; }
+  main { max-width: 1050px; margin: 0 auto; padding: 24px 20px 60px; }
+  h2 {
+    color: #4a30c4;
+    border-left: 5px solid #7856ff;
+    padding-left: 12px;
+    margin: 48px 0 16px;
+    font-size: 20px;
+  }
+  h3 { color: #334; font-size: 15.5px; margin: 26px 0 8px; }
+  h4 { color: #4a30c4; font-size: 13.5px; margin: 16px 0 6px; }
+  p, li { font-size: 14px; }
+  code {
+    background: #f0edfb;
+    border: 1px solid #ddd6f5;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12.5px;
+    color: #4a30c4;
+    font-family: Consolas, Menlo, monospace;
+  }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 12.5px; margin: 10px 0; }
+  th, td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: #f0edfb; color: #4a30c4; white-space: nowrap; }
+  .pk { color: #16a34a; font-weight: 700; }
+  .fk { color: #ea580c; font-size: .92em; }
+  .note-box {
+    background: #fffbe8;
+    border: 1px solid #f0e3a8;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: #6b5d00;
+    margin: 10px 0;
+  }
+  .info-box {
+    background: #f0edfb;
+    border: 1px solid #ddd6f5;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: #3a2599;
+    margin: 10px 0;
+  }
+  .ok { color: var(--green); font-weight: 700; }
+  .ng { color: #d13400; font-weight: 700; }
+  .warn { color: var(--orange); font-weight: 700; }
+  .tag {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 1px 8px;
+    margin-left: 6px;
+    vertical-align: 1px;
+  }
+  .tag-yes { background: #e8f7ef; color: var(--green); border: 1px solid #a9e4c8; }
+  .tag-no  { background: #ffe9e3; color: #d13400; border: 1px solid #f5b8a8; }
+  .tag-todo { background: #fff4e0; color: #c77800; border: 1px solid #f3d9a5; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 10px 0; }
+  .flow .box {
+    border: 2px solid #7856ff; color: #4a30c4;
+    background: #f4f1ff; border-radius: 8px;
+    padding: 6px 12px; font-size: 12.5px; font-weight: 600;
+  }
+  .flow .box.gray { border-color: #b0bcc6; color: #5b6b7a; background: #f5f7f9; }
+  .flow .box.green { border-color: #00ba7c; color: #007a50; background: #e8f7ef; }
+  .flow .arrow { color: #b0bcc6; font-weight: 800; }
+
+  /* ---- モック ---- */
+  .mock-area { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; margin: 18px 0; }
+  .device {
+    width: 330px; background: #fff; border-radius: 26px;
+    border: 8px solid #2b2f36; box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    overflow: hidden; flex-shrink: 0;
+  }
+  .device .notch { background: #2b2f36; height: 12px; }
+  .device .screen { background: #fff; min-height: 580px; display: flex; flex-direction: column; }
+  .appbar {
+    background: #fff; border-bottom: 1px solid var(--border);
+    padding: 10px 14px; display: flex; align-items: center;
+    justify-content: space-between; font-size: 14px; font-weight: 800; color: var(--text);
+  }
+  .appbar.purple { background: #7856ff; color: #fff; border-bottom: none; }
+  .mock-note { flex: 1; min-width: 280px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+  .mock-note h4 { margin: 0 0 8px; color: #4a30c4; font-size: 14px; }
+  .mock-note ul { margin: 0; padding-left: 18px; }
+  .mock-note li { font-size: 12.5px; margin: 4px 0; }
+  .post-card { border-bottom: 1px solid var(--border); padding: 12px 14px; }
+  .post-card .u { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .avatar-mini {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, #a88cf8, #7856ff);
+    color: #fff; font-weight: 800; font-size: 12px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .post-card .body { font-size: 13.5px; color: var(--text); }
+  .post-card .meta { font-size: 11px; color: var(--sub); margin-top: 6px; }
+  .live-banner {
+    background: #f4f1ff; border: 2px solid #7856ff; border-radius: 12px;
+    padding: 10px 12px; margin: 10px; font-size: 12px;
+  }
+  .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f91880; margin-right: 5px; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  .watch-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 10px; }
+  .watch-card .wtitle { font-weight: 800; font-size: 13.5px; color: var(--text); }
+  .watch-card .wsub { font-size: 11px; color: var(--sub); margin: 2px 0 6px; }
+  .player-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+  .player-row .pname { font-weight: 800; font-size: 12.5px; }
+  .player-row .ptrophy { font-size: 10.5px; color: var(--sub); }
+  .player-row .pstate { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--sub); }
+  .player-row .pstate.done { color: #00ba7c; }
+  .stage {
+    background: #faf8ff; border: 1px dashed #cfc4ff; border-radius: 10px;
+    padding: 10px 12px; margin: 8px 10px; text-align: center;
+    font-size: 12px; color: #4a30c4;
+  }
+  .btn { flex: 1; text-align: center; border-radius: 18px; padding: 7px 0; font-size: 12.5px; font-weight: 700; }
+  .btn.primary { background: #7856ff; color: #fff; }
+  .btn.gray { background: #eef1f3; color: #5b6b7a; }
+  .small { font-size: 12px; color: var(--sub); }
+  .section-gap { margin-top: 36px; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>👁️ レスバ観戦機能（スペクテイター）設計・要件定義書</h1>
+  <p>参加型レスバ（ポスト / 返信 / オプチャ / 対戦募集）のバトルを、第三者（それ以外のユーザー）がリアルタイムで観戦できる機能の設計</p>
+</div>
+
+<main>
+
+  <!-- ===== 1. 概要 ===== -->
+  <h2>1. 概要・コンセプト</h2>
+  <div class="note-box">
+    💡 <b>コンセプト：</b>観戦はレスバ本体と同じ「<b>コンテンツに付随するライブ</b>」。
+    専用の観戦タブ・観戦一覧のような独立画面は作らず、対戦中のコンテンツ（ポスト詳細 / 返信スレッド / オプチャ / 対戦募集カード）に
+    <b>「🔴 ⚔️ ライブ観戦」バナー</b>を付けて導線を提供する。
+  </div>
+  <table>
+    <tr><th>項目</th><th>設計方針</th></tr>
+    <tr><td>観戦対象</td><td>レスバで始まったバトル（rooms_v2）</td></tr>
+    <tr><td>観戦者</td><td>バトルに参加していないユーザー（第三者）</td></tr>
+    <tr><td>表示内容</td><td>対戦者・テーマ・ラウンド経過・両者の回答状態・結果（読み取り専用）</td></tr>
+    <tr><td>リアルタイム性</td><td>Supabase Realtime（rooms_v2 の postgres_changes 購読）</td></tr>
+    <tr><td>観戦者数</td><td>👁 カウンター表示（battle_spectators + キャッシュ列）</td></tr>
+  </table>
+
+  <!-- ===== 2. 対象と公開範囲 ===== -->
+  <h2>2. 対象範囲と公開範囲</h2>
+  <div class="info-box">
+    ✅ <b>公開範囲の原則（確認済み方針）：</b>
+    <ul style="margin:6px 0 0;">
+      <li><b>DM</b> は当事者2名のプライベート → <b>観戦不可</b></li>
+      <li><b>オプチャ</b> はクローズドなコミュニティ → <b>ルームメンバーのみ観戦可</b></li>
+      <li><b>掲示板（ポスト / 返信）</b> は公開 → <b>全員観戦可</b></li>
+      <li><b>対戦募集</b>（既存タブ）は公開 → <b>全員観戦可</b>（統合後）</li>
+    </ul>
+  </div>
+  <table>
+    <tr><th>場所</th><th>観戦</th><th>公開範囲</th><th>エントリ導線</th><th>備考</th></tr>
+    <tr>
+      <td><b>掲示板ポスト</b></td>
+      <td><span class="tag tag-yes">◯</span></td>
+      <td>全員</td>
+      <td>ポスト詳細の「⚔️ ライブ観戦」バナー</td>
+      <td>バトル成立中のみ表示</td>
+    </tr>
+    <tr>
+      <td><b>返信コメント</b></td>
+      <td><span class="tag tag-yes">◯</span></td>
+      <td>全員</td>
+      <td>返信スレッド内の「⚔️ 対戦中」カード</td>
+      <td>ポスト詳細に集約表示</td>
+    </tr>
+    <tr>
+      <td><b>オプチャ</b></td>
+      <td><span class="tag tag-yes">◯</span></td>
+      <td><b>ルームメンバーのみ</b></td>
+      <td>ルーム内「🔴 ⚔️ ルーム内で対戦中」バナー</td>
+      <td>RLS で open_chat_members と照合</td>
+    </tr>
+    <tr>
+      <td><b>対戦募集</b>（既存タブ）</td>
+      <td><span class="tag tag-yes">◯</span></td>
+      <td>全員</td>
+      <td>対戦募集タブの「対戦中（観戦可）」表示</td>
+      <td>新基盤（battle_invites）へ統合後</td>
+    </tr>
+    <tr>
+      <td><b>DM</b></td>
+      <td><span class="tag tag-no">✗</span></td>
+      <td>—</td>
+      <td>なし（観戦機能を提供しない）</td>
+      <td>当事者2名のみ</td>
+    </tr>
+    <tr>
+      <td><b>ランダムマッチ</b></td>
+      <td><span class="tag tag-yes">◯</span></td>
+      <td>全員（ユーザー名・トロフィーが公開される点は認識合わせ）</td>
+      <td>ホームの「👁 観戦できる対戦」一覧</td>
+      <td>ランダム発のバトルは battle_invites に紐付かないため、一覧導線をホームに設置。DM 発は除外</td>
+    </tr>
+  </table>
+  <div class="note-box">
+    ⚠️ <b>設計上の分離：</b>観戦可否は「バトルがどこから始まったか」で決める。
+    <ul style="margin:6px 0 0;">
+      <li><b>レスバ発</b>（post / comment / open_chat / bbs_tab）→ 観戦可（コンテンツにバナーを付随）</li>
+      <li><b>ランダム発</b>（battle_invites に紐付かない rooms_v2 進行バトル）→ 観戦可（ホームに「👁 観戦できる対戦」一覧）</li>
+      <li><b>DM 発</b> → <b>観戦不可</b>（battle_invites.attach_type='dm' を get_watchable_battles で除外）</li>
+    </ul>
+  </div>
+
+  <!-- ===== 3. 体験フロー ===== -->
+  <h2>3. 観戦の体験フロー</h2>
+  <div class="flow">
+    <span class="box">対戦中のバナーをタップ<br><small>ポスト / 返信 / オプチャ / 対戦募集タブ</small></span>
+    <span class="arrow">→</span>
+    <span class="box green">ライブ観戦<br><small>rooms_v2 を Realtime 購読（read-only）</small></span>
+    <span class="arrow">→ バトル終了</span>
+    <span class="box">結果発表<br><small>勝者・スコア・トロフィー変動</small></span>
+    <span class="arrow">→</span>
+    <span class="box gray">元のコンテンツへ戻る<br><small>観戦レコードは自動削除</small></span>
+  </div>
+  <h4>観戦者の状態遷移</h4>
+  <div class="flow">
+    <span class="box gray">フリー</span>
+    <span class="arrow">→ 観戦開始</span>
+    <span class="box">観戦中<br><small>read-only・いつでも退出可</small></span>
+    <span class="arrow">→ 退出 or バトル終了</span>
+    <span class="box gray">フリー</span>
+  </div>
+  <div class="info-box">
+    ✅ <b>観戦者は「対戦中」扱いにしない。</b>観戦中でもレスバ送信・応募・ランダムマッチ参加は可能（読み取り専用のため）。
+    自分が参加中のバトルは観戦対象外（参加画面がそのまま表示される）。
+  </div>
+
+  <!-- ===== 4. UI設計 ===== -->
+  <h2>4. UI 設計（モック）</h2>
+
+  <h3>4.1 観戦エントリ（対戦中バナー）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">← ポスト詳細</div>
+        <div class="post-card">
+          <div class="u">
+            <div class="avatar-mini">A</div>
+            <div><b style="font-size:12.5px;">たろう</b> <span class="tag tag-yes">⚔️ 対戦中</span></div>
+          </div>
+          <div class="body">「AIは人間の仕事を奪う」という意見に反論します。</div>
+          <div class="meta">♥ 12 &nbsp; 💬 5 &nbsp; ⚔️ 対戦中</div>
+        </div>
+        <div class="live-banner">
+          <div style="display:flex; justify-content:space-between;">
+            <span style="font-weight:800; color:#4a30c4;"><span class="live-dot"></span>⚔️ ライブ観戦</span>
+            <span style="font-size:11px; color:var(--sub);">👁 12</span>
+          </div>
+          <div style="font-weight:800; font-size:13px; margin-top:4px;">たろう vs けんた が対戦中</div>
+          <div style="font-size:11px; color:var(--sub); margin-top:2px;">AIは人間の仕事を奪うか？（賛成 vs 反対）</div>
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <div class="btn primary">👁 観戦する</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">← 議論部屋 <span style="font-size:11px; color:var(--sub);">メンバー 24人</span></div>
+        <div class="live-banner">
+          <div style="display:flex; justify-content:space-between;">
+            <span style="font-weight:800; color:#4a30c4;"><span class="live-dot"></span>⚔️ ルーム内で対戦中</span>
+            <span style="font-size:11px; color:var(--sub);">👁 8</span>
+          </div>
+          <div style="font-weight:800; font-size:13px; margin-top:4px;">さくら vs ひろし</div>
+          <div style="font-size:11px; color:var(--sub); margin-top:2px;">おすすめのプログラミング言語は？（Python vs Java）</div>
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <div class="btn primary">👁 観戦する</div>
+          </div>
+        </div>
+        <div style="padding:0 14px; font-size:11.5px; color:var(--sub);">
+          🔒 この観戦はルームメンバーのみに表示されます
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>エントリは<b>コンテンツに付随</b>（ポスト詳細 / 返信スレッド / オプチャ上部 / 対戦募集タブ）。</li>
+        <li>バナーには対戦者・テーマ・<b>観戦者数（👁）</b>を表示。</li>
+        <li>オプチャのバナーは<b>ルームメンバーにのみ表示</b>（RLS で制御）。</li>
+        <li>バトル終了でバナーは「結果発表」表示に切り替わり、しばらく後に消える。</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>4.2 観戦画面（ライブ・読み取り専用）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar purple"><span><span class="live-dot"></span>⚔️ ライブ観戦</span> <span style="font-size:12px;">👁 12</span></div>
+        <div class="watch-card">
+          <div class="wtitle">AIは人間の仕事を奪うか？</div>
+          <div class="wsub">選択肢：賛成 vs 反対 ・ ラウンド 3/5 ・ 残り 0:42</div>
+          <div class="player-row">
+            <div class="avatar-mini">A</div>
+            <div>
+              <div class="pname">たろう</div>
+              <div class="ptrophy">🏆 1200 ・ 賛成側</div>
+            </div>
+            <div class="pstate done">✔ 回答済み</div>
+          </div>
+          <div class="player-row">
+            <div class="avatar-mini">K</div>
+            <div>
+              <div class="pname">けんた</div>
+              <div class="ptrophy">🏆 850 ・ 反対側</div>
+            </div>
+            <div class="pstate">回答中…</div>
+          </div>
+        </div>
+        <div class="stage">📝 たろう：仕事は「置き換え」ではなく「再分配」されるべきだと思います</div>
+        <div class="stage" style="border-color:#00ba7c; color:#007a50;">⏳ けんたの回答をお待ちください…</div>
+        <div style="padding:14px; margin-top:auto;">
+          <div class="btn gray">観戦を終了</div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>読み取り専用。rooms_v2 の <code>postgres_changes</code> を購読（channel: <code>watch-{room_id}</code>）。</li>
+        <li>選択・回答・ラウンド進行・タイマーをリアルタイム更新。</li>
+        <li>観戦者数は battle_spectators の増減を購読して 👁 更新。</li>
+        <li>投票・発言など参加者向け操作は一切なし。</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>4.3 観戦結果発表</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar purple">⚔️ 結果発表</div>
+        <div style="padding:16px 14px; text-align:center;">
+          <div style="font-size:34px;">🏆</div>
+          <div style="font-weight:800; font-size:16px; margin-top:6px;">勝者：たろう</div>
+          <div style="font-size:12px; color:var(--sub); margin-top:4px;">AIは人間の仕事を奪うか？ ・ 3対2</div>
+        </div>
+        <div class="watch-card">
+          <div class="player-row">
+            <div class="avatar-mini">A</div>
+            <div>
+              <div class="pname">たろう <span style="color:#00ba7c;">（勝）</span></div>
+              <div class="ptrophy">🏆 1200 → 1208（+8）</div>
+            </div>
+          </div>
+          <div class="player-row">
+            <div class="avatar-mini">K</div>
+            <div>
+              <div class="pname">けんた</div>
+              <div class="ptrophy">🏆 850 → 846（-4）</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px; margin-top:auto;">
+          <div class="btn primary">元のコンテンツに戻る</div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>rooms_v2.winner 確定で観戦者全員の画面が結果表示へ切り替わる。</li>
+        <li>勝者・スコア・トロフィー変動を表示（既存の結果計算を利用）。</li>
+        <li>観戦レコード（battle_spectators）は自動削除して観戦者数を0に。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== 5. データベース設計 ===== -->
+  <h2>5. データベース設計</h2>
+
+  <h3>5.1 battle_spectators（観戦者）</h3>
+  <table>
+    <tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr>
+    <tr><td class="pk">id</td><td>uuid</td><td>PK, DEFAULT gen_random_uuid()</td><td>観戦レコードID</td></tr>
+    <tr><td>battle_room_id</td><td>uuid</td><td>NOT NULL, <span class="fk">FK rooms_v2.id</span> ON DELETE CASCADE</td><td>観戦対象のバトル</td></tr>
+    <tr><td>user_id</td><td>uuid</td><td>NOT NULL, <span class="fk">FK users.id</span></td><td>観戦者</td></tr>
+    <tr><td>joined_at</td><td>timestamptz</td><td>DEFAULT now()</td><td>観戦開始日時</td></tr>
+  </table>
+  <div class="info-box">
+    <b>制約・インデックス：</b><br>
+    <code>UNIQUE (battle_room_id, user_id)</code> … 同一バトルへの重複観戦防止<br>
+    <code>INDEX (battle_room_id)</code> … 観戦者数カウント・一括退出
+  </div>
+
+  <h3>5.2 rooms_v2 への拡張（ALTER 1列のみ）</h3>
+  <table>
+    <tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr>
+    <tr><td>spectator_count</td><td>int</td><td>NOT NULL DEFAULT 0</td><td>観戦者数のキャッシュ（battle_spectators の INSERT / DELETE トリガーで更新）</td></tr>
+  </table>
+  <div class="note-box">
+    ⚙️ <b>トリガー：</b>battle_spectators の INSERT / DELETE → rooms_v2.spectator_count を加減算。
+    バトル終了時（winner 確定）は観戦者を一括 DELETE して 0 に戻す（または cron で掃除）。
+  </div>
+
+  <h3>5.3 公開範囲の RLS</h3>
+  <table>
+    <tr><th>対象</th><th>RLS 設計</th></tr>
+    <tr>
+      <td>battle_spectators の INSERT</td>
+      <td>RPC <code>join_battle_spectator</code> 経由のみ。公開範囲チェック（下記）をパスした場合のみ登録</td>
+    </tr>
+    <tr>
+      <td>観戦できるバトルの判定</td>
+      <td>RPC <code>get_watchable_battles</code> 内で判定：<br>
+        <code>attach_type = 'dm'</code> は<b>除外</b> ／ <code>open_chat</code> は<b>自分がルームメンバー</b>のみ ／ post・comment・bbs_tab は全員 ／
+        <b>ランダム発（battle_invites に紐付かない進行バトル）はホーム一覧に含める</b>
+      </td>
+    </tr>
+  </table>
+
+  <h3>5.4 RPC 関数一覧（新規）</h3>
+  <table>
+    <tr><th>関数</th><th>引数</th><th>処理</th></tr>
+    <tr><td><code>join_battle_spectator</code></td><td>p_room_id, p_user_id</td><td>対戦中のみ・自分が参加者でないこと・公開範囲チェック → 観戦登録</td></tr>
+    <tr><td><code>leave_battle_spectator</code></td><td>p_room_id, p_user_id</td><td>観戦退出（バトル終了時は一括処理）</td></tr>
+    <tr><td><code>get_spectator_count</code></td><td>p_room_id</td><td>現在の観戦者数を返す</td></tr>
+    <tr><td><code>get_watchable_battles</code></td><td>p_scope_type, p_scope_id, p_user_id</td><td>場所別（ポスト / 返信 / オプチャ / 対戦募集 / <b>ホーム一覧＝ランダム含む</b>）の観戦可能バトル。DM は除外・オプチャはメンバーのみ</td></tr>
+  </table>
+
+  <!-- ===== 6. リアルタイム同期 ===== -->
+  <h2>6. リアルタイム同期（Supabase Realtime）</h2>
+  <table>
+    <tr><th>項目</th><th>設計</th></tr>
+    <tr><td>バトル状態の購読</td><td>rooms_v2 の <code>postgres_changes</code>（channel: <code>watch-{room_id}</code>）。選択・ラウンド・結果をライブ反映</td></tr>
+    <tr><td>観戦者数</td><td>battle_spectators の増減を購読して 👁 を更新</td></tr>
+    <tr><td>バトル終了</td><td>winner 確定イベントで観戦画面 → 結果表示に切り替え、観戦レコードを一括削除</td></tr>
+    <tr><td>対象テーブル</td><td>rooms_v2 / battle_spectators を <code>supabase_realtime</code> publication へ登録（冪等）</td></tr>
+    <tr><td>負荷対策</td><td>観戦者数は COUNT でなく spectator_count キャッシュ列を参照（N+1・過負荷回避）</td></tr>
+  </table>
+
+  <!-- ===== 7. 排他制御・競合処理の設計（試合と募集） ===== -->
+  <h2>7. 排他制御・競合処理の設計（試合と募集）</h2>
+  <div class="info-box">
+    ✅ <b>設計方針：</b>「対戦中かどうか」は<b>サーバー（RPC）が必ず守る</b>。クライアントはUXの確認ダイアログのみ。
+    常時監視（Realtimeでユーザー状態を追跡）はせず、<b>操作したときに RPC が is_user_in_battle で判定</b>する。
+  </div>
+  <div class="info-box">
+    ✅ <b>観戦者の扱い：</b>観戦者は<b>「対戦中」扱いにしない</b>（is_user_in_battle の対象外）。観戦中でもレスバ送信・応募・ランダム参加は可能。
+    自分が参加中のバトルは観戦できない（参加画面が優先）。
+  </div>
+
+  <h3>7.1 「対戦中」判定の定義（共通）</h3>
+  <table>
+    <tr><th>項目</th><th>内容</th></tr>
+    <tr><td>判定条件</td><td><code>(player1_id = 自分 OR player2_id = 自分) AND player2_id IS NOT NULL AND winner IS NULL</code></td></tr>
+    <tr><td>対象外</td><td>募集中（player2 未定）・応募待ち・マッチング待機・<b>観戦中</b> は「対戦中」に含めない</td></tr>
+  </table>
+
+  <h3>7.2 シナリオ別の処理設計</h3>
+  <table>
+    <tr><th>#</th><th>シナリオ</th><th>設計（決定）</th><th>実装箇所</th></tr>
+    <tr>
+      <td>1</td>
+      <td><b>応募中にランダムマッチ参加</b></td>
+      <td><b>許可する</b>。試合中なら、後からホストが承認（承諾）しても RPC が応募者の is_user_in_battle で IN_BATTLE 却下するため二重試合は起きない。<br>
+        ※UX: ランダム開始時に「⚔️ 応募中のレスバを取り消しますか？」ダイアログ（任意・親切機能）</td>
+      <td>HomePage / <code>respond_resba</code>・<code>approve_post_resba</code></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><b>ホスト（募集中）のまま別の試合へ</b></td>
+      <td><b>許可する</b>。対戦中はレスバの新規作成・応募・承諾が RPC でブロックされる。試合終了後に <b>保留中の応募を表示</b>（承認→試合 / 却下）</td>
+      <td>get_my_resba_status / ホームの保留バナー</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><b>対戦中に相手が承諾・承認</b></td>
+      <td><b>RPC が却下（IN_BATTLE）</b>。承諾者（target）と<b>送信者（ホスト）の両方</b>を is_user_in_battle でチェック。どちらかが対戦中なら拒否</td>
+      <td><code>respond_resba</code> / <code>approve_post_resba</code>（先行修正）</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><b>ポストで2個目のレスバ</b></td>
+      <td>作成は<b>可能</b>（複数提案OK）。上限は「送信者の pending レスバ数 ≥ 3 で RECRUITMENT_LIMIT_EXCEEDED」を RPC でチェック（未実装→P0 で追加）。<br>どれか1つが承諾されると他の pending は自動キャンセル</td>
+      <td><code>create_post_resba</code>（先行修正）</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><b>応募中に別のレスバへ応募</b></td>
+      <td><b>拒否（ALREADY_APPLYING）</b>。RPC チェック + 部分ユニークインデックスで DB レベルでも保証</td>
+      <td><code>apply_post_resba</code>（実装済み）</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><b>承諾・承認された瞬間</b></td>
+      <td>送信者の他 pending 提案を<b>自動キャンセル</b>、承諾者の保留応募も<b>自動キャンセル</b>（対戦の二重化防止）</td>
+      <td><code>respond_resba</code> / <code>approve_post_resba</code>（実装済み）</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><b>ランダム待機中に再度ランダム</b></td>
+      <td>既存の join_room_v2 は自分の待機ルームを考慮せず2個目を作る問題あり。P0 で「自分の player2 IS NULL ルームがあれば既存ルームへ参加 or ブロック」を検討（rooms_v2 のゴミ対策）</td>
+      <td><code>join_room_v2</code>（既存・要修正）</td>
+    </tr>
+  </table>
+
+  <h3>7.3 RPC で is_user_in_battle をチェックする箇所（一覧）</h3>
+  <table>
+    <tr><th>RPC</th><th>誰をチェック</th><th>状態</th></tr>
+    <tr><td><code>create_post_resba</code> / <code>attach_resba_to_comment</code> / <code>send_dm_resba</code></td><td>送信者</td><td>実装済み</td></tr>
+    <tr><td><code>apply_post_resba</code></td><td>応募者</td><td>実装済み</td></tr>
+    <tr><td><code>respond_resba</code></td><td>承諾者（target）… <b>＋ 送信者（ホスト）を追加</b></td><td>要修正（P0）</td></tr>
+    <tr><td><code>approve_post_resba</code></td><td>ホスト自身 + <b>応募者を追加</b>（応募者が対戦中なら承認を却下）</td><td>要修正（P0）</td></tr>
+  </table>
+
+  <h3>7.4 エラーコードとフロントの挙動</h3>
+  <table>
+    <tr><th>コード</th><th>意味</th><th>フロントの挙動</th></tr>
+    <tr><td><code>IN_BATTLE</code></td><td>自分（または相手）が対戦中</td><td>「⚔️ 対戦中のため承諾/送信できません」を表示。承諾側のカードは「相手が対戦中」表示に変わる（応募は pending のまま残し、相手の試合終了後にホームで「保留中の応募」として表示）</td></tr>
+    <tr><td><code>ALREADY_APPLYING</code></td><td>応募中のレスバがある</td><td>現在の応募状態を表示しキャンセル導線を提示</td></tr>
+    <tr><td><code>RECRUITMENT_LIMIT_EXCEEDED</code></td><td>pending レスバが上限（3件）</td><td>「募集中のレスバが上限です」を表示</td></tr>
+  </table>
+
+  <h3>7.5 先行修正リスト（P0・観戦導入の前提）</h3>
+  <table>
+    <tr><th>#</th><th>項目</th><th>内容</th><th>状態</th></tr>
+    <tr><td>1</td><td>送信者の対戦中チェック</td><td><code>respond_resba</code> に <code>is_user_in_battle(sender_id)</code>、<code>approve_post_resba</code> に <code>is_user_in_battle(applicant_id)</code> を追加</td><td>未実施</td></tr>
+    <tr><td>2</td><td>レスバの上限</td><td><code>create_post_resba</code> 等に「pending レスバ数 ≥ 3 → RECRUITMENT_LIMIT_EXCEEDED」</td><td>未実施</td></tr>
+    <tr><td>3</td><td>ランダムマッチ確認（UX）</td><td>応募中にランダム開始 → 「応募中のレスバを取り消しますか？」ダイアログ</td><td>未実施</td></tr>
+    <tr><td>4</td><td>保留応募の表示</td><td>試合終了後のホーム復帰時に「保留中の応募があります」バナー → 承認で試合へ / 却下</td><td>未実施</td></tr>
+    <tr><td>5</td><td>rooms_v2 の掃除</td><td>result カラム欠落で削除 cron が動かない問題。winner IS NOT NULL ベースの削除 or result 追加で対処</td><td>未実施（既存問題）</td></tr>
+  </table>
+
+  <!-- ===== 8. エッジケース ===== -->
+  <h2>8. エッジケース</h2>
+  <table>
+    <tr><th>ケース</th><th>挙動</th></tr>
+    <tr><td>自分が参加中のバトル</td><td>観戦対象外（参加画面がそのまま表示される）</td></tr>
+    <tr><td>対戦中の新規観戦</td><td>可能（バトル開始後〜winner 確定前のみ join 可）</td></tr>
+    <tr><td>バトル終了</td><td>観戦画面が結果表示へ切り替わり、観戦者レコードを一括削除</td></tr>
+    <tr><td>オプチャ退出 / 削除</td><td>ルーム由来の観戦は自動退出・レコード削除</td></tr>
+    <tr><td>DM のバトル</td><td>観戦エントリを一切表示しない（get_watchable_battles で除外）</td></tr>
+    <tr><td>ランダム発のバトル</td><td>ホームの「👁 観戦できる対戦」一覧に表示（battle_invites に紐付かない進行バトル）</td></tr>
+    <tr><td>観戦者数の大量変動</td><td>spectator_count キャッシュ列で COUNT 回避（負荷対策）</td></tr>
+    <tr><td>観戦中のユーザー</td><td>read-only なのでレスバ送信・応募・ランダム参加は制限しない（「対戦中」状態に含めない）</td></tr>
+  </table>
+
+  <!-- ===== 9. ロードマップ ===== -->
+  <h2>9. 実装ロードマップ</h2>
+  <table>
+    <tr><th>Phase</th><th>内容</th><th>成果物</th></tr>
+    <tr><td><b>P0</b> 先行修正（観戦の前提）</td><td>送信者の対戦中チェック、ランダムマッチの確認ダイアログ、保留応募の表示、rooms_v2 の掃除対応</td><td>マイグレーション + 画面修正</td></tr>
+    <tr><td><b>P1</b> 観戦基盤</td><td>battle_spectators 作成、rooms_v2.spectator_count 追加、トリガー、RLS、RPC 一式、publication 登録</td><td>マイグレーション + RPC テスト</td></tr>
+    <tr><td><b>P2</b> 観戦画面</td><td>read-only ライブビュー（Realtime 購読）、結果発表画面、観戦者数カウンター</td><td>観戦画面（WatchView）</td></tr>
+    <tr><td><b>P3</b> 観戦導線</td><td>ポスト詳細 / 返信スレッド / オプチャ / 対戦募集タブ に「⚔️ 対戦中」バナー設置、<b>ホームに「👁 観戦できる対戦」一覧（ランダム発含む）</b></td><td>各画面のバナー導線 + ホーム一覧</td></tr>
+    <tr><td><b>P4</b> 拡張（任意）</td><td>観戦中のコメント（応援）、観戦通知</td><td>要検討</td></tr>
+  </table>
+
+  <!-- ===== 10. チェックリスト ===== -->
+  <h2>10. 決定チェックリスト（承認用）</h2>
+  <table>
+    <tr><th>#</th><th>項目</th><th>決定内容</th><th>状態</th></tr>
+    <tr><td>1</td><td>観戦対象</td><td>ポスト / 返信 / オプチャ / 対戦募集 / <b>ランダムマッチ</b> = 観戦あり、<b>DM = なし</b></td><td>☐ 承認</td></tr>
+    <tr><td>2</td><td>公開範囲</td><td>オプチャは<b>ルームメンバーのみ</b>、他は全員（ポストの可視性に準ずる）</td><td>☐ 承認</td></tr>
+    <tr><td>3</td><td>観戦画面</td><td>read-only ライブビュー（rooms_v2 を Realtime 購読）＋結果発表</td><td>☐ 承認</td></tr>
+    <tr><td>4</td><td>観戦者数</td><td>battle_spectators + rooms_v2.spectator_count で表示（👁）</td><td>☐ 承認</td></tr>
+    <tr><td>5</td><td>導線</td><td>専用タブは作らず、対戦中のコンテンツにバナーを付随 + <b>ホームに観戦一覧（ランダム含む）</b></td><td>☐ 承認</td></tr>
+    <tr><td>6</td><td>観戦者の扱い</td><td>「対戦中」扱いにしない（観戦中もレスバ送信・応募・ランダム参加可）</td><td>☐ 承認</td></tr>
+    <tr><td>7</td><td>排他制御</td><td>サーバー（RPC）が必ず守る方式。応募中・募集中のランダム参加は<b>許可</b>（対戦中は RPC が IN_BATTLE で却下）</td><td>☐ 承認</td></tr>
+    <tr><td>8</td><td>先行修正（P0）</td><td>送信者/応募者の対戦中チェック、レスバ上限3件、ランダム確認ダイアログ、保留応募表示、rooms_v2 掃除</td><td>☐ 承認</td></tr>
+  </table>
+
+  <div class="section-gap"></div>
+  <div class="info-box">
+    📎 関連資料：<a href="resba_plan.html">resba_plan.html</a>（レスバ本体の設計）・
+    <a href="database_current_state.html">database_current_state.html</a>（DB現状レポート）
+  </div>
+
+</main>
+</body>
+</html>

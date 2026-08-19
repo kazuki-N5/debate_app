@@ -14,6 +14,7 @@ class BbsComment {
   final Users? user;
   final bool isLikedByMe;
   final List<BbsComment> replies;
+  final bool hasResba;
 
   BbsComment({
     required this.id,
@@ -27,6 +28,7 @@ class BbsComment {
     this.user,
     this.isLikedByMe = false,
     this.replies = const [],
+    this.hasResba = false,
   });
 
   factory BbsComment.fromMap(Map<String, dynamic> map, {Users? user, bool isLikedByMe = false, List<BbsComment> replies = const []}) {
@@ -42,6 +44,7 @@ class BbsComment {
       user: user,
       isLikedByMe: isLikedByMe,
       replies: replies,
+      hasResba: map['has_resba'] as bool? ?? false,
     );
   }
 
@@ -57,6 +60,7 @@ class BbsComment {
     Users? user,
     bool? isLikedByMe,
     List<BbsComment>? replies,
+    bool? hasResba,
   }) {
     return BbsComment(
       id: id ?? this.id,
@@ -70,6 +74,7 @@ class BbsComment {
       user: user ?? this.user,
       isLikedByMe: isLikedByMe ?? this.isLikedByMe,
       replies: replies ?? this.replies,
+      hasResba: hasResba ?? this.hasResba,
     );
   }
 }

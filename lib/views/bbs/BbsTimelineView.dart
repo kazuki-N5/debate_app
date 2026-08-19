@@ -5,6 +5,7 @@ import 'package:debate_project/provider/bbs_timeline_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/resba_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -79,13 +80,30 @@ class BbsPostWidget extends ConsumerWidget {
 
     return InkWell(
       onTap: () {
-        if (_isNavigating) return;
+        if (_isNavigating) {
+          debugPrint('RESBA_DEBUG: skip (isNavigating=true)');
+          return;
+        }
         _isNavigating = true;
-        // 詳細画面へ遷移
-        context.push(
-          '/bbsPostDetail',
-          extra: post,
-        ).then((_) => _isNavigating = false);
+        debugPrint('RESBA_DEBUG: onTap, pushing /bbsPostDetail');
+        try {
+          context
+              .push(
+                '/bbsPostDetail',
+                extra: post,
+              )
+              .whenComplete(() {
+                debugPrint('RESBA_DEBUG: push completed');
+                _isNavigating = false;
+              });
+        } catch (e) {
+          debugPrint('RESBA_DEBUG: push error: $e');
+          _isNavigating = false;
+        }
+        // 保険: push が完了しなくても3秒でフラグを戻す
+        Future.delayed(const Duration(seconds: 3), () {
+          _isNavigating = false;
+        });
       },
       child: Container(
         color: Colors.white,
@@ -168,6 +186,13 @@ class BbsPostWidget extends ConsumerWidget {
                         height: 1.4,
                       ),
                     ),
+                  if (post.hasResba) ...[
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ResbaBadge(text: 'レスバ付き'),
+                    ),
+                  ],
                   if (post.imageUrls != null && post.imageUrls!.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     _buildImageGrid(context, post.imageUrls!),

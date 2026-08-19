@@ -34,6 +34,12 @@ class NotificationListTile extends StatelessWidget {
         return 'あなたのコメントに返信しました';
       case 'comment':
         return 'あなたのポストにコメントしました';
+      case 'resba_invite':
+        return 'あなたにレスバを申し込みました';
+      case 'resba_accepted':
+        return 'あなたのレスバを承諾しました';
+      case 'resba_declined':
+        return 'あなたのレスバを拒否しました';
       default:
         return '新しい通知があります';
     }
@@ -50,6 +56,12 @@ class NotificationListTile extends StatelessWidget {
       case 'reply_comment':
       case 'comment':
         return (Icons.chat_bubble, const Color(0xFF00BA7C));
+      case 'resba_invite':
+        return (Icons.sports_kabaddi, const Color(0xFF7856FF));
+      case 'resba_accepted':
+        return (Icons.sports_kabaddi, const Color(0xFF00BA7C));
+      case 'resba_declined':
+        return (Icons.sports_kabaddi, const Color(0xFFE0245E));
       default:
         return (Icons.notifications, Colors.blueGrey);
     }
@@ -148,6 +160,32 @@ class NotificationListTile extends StatelessWidget {
                             isUnread ? FontWeight.w600 : FontWeight.normal,
                       ),
                     ),
+                    // レスバ付きバッジ（返信通知の対象コメントにレスバが付いている）
+                    if (notification.hasResba) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1EBFF),
+                              borderRadius: BorderRadius.circular(10),
+                              border:
+                                  Border.all(color: const Color(0xFFCFC4FF)),
+                            ),
+                            child: const Text(
+                              '⚔️ レスバ付き',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF7856FF),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     // 引用(対象のポスト/コメント本文)
                     if (quote.isNotEmpty) ...[
                       const SizedBox(height: 6),

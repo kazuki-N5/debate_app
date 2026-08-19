@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レスバ機能 設計・要件定義書（コンテンツ融合型）</title>
+<style>
+  :root {
+    --blue: #1d9bf0;
+    --blue-dark: #0e6bb8;
+    --border: #e6e6e6;
+    --text: #0f1419;
+    --sub: #536471;
+    --bg: #f0f3f5;
+    --red-badge: #f91880;
+    --green: #00ba7c;
+    --orange: #ff9900;
+    --purple: #7856ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    line-height: 1.7;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    background: #f5f7fa;
+  }
+  .page-header {
+    background: linear-gradient(135deg, #7856ff, #4a30c4);
+    color: #fff;
+    padding: 28px 24px 24px;
+    border-bottom: 4px solid #4a30c4;
+  }
+  .page-header h1 { margin: 0; font-size: 25px; }
+  .page-header p { margin: 8px 0 0; opacity: .92; font-size: 14px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  h2 {
+    color: #4a30c4;
+    border-left: 5px solid #7856ff;
+    padding-left: 12px;
+    margin: 52px 0 18px;
+    font-size: 21px;
+  }
+  h3 { color: #334; font-size: 16px; margin: 30px 0 10px; }
+  h4 { color: #4a30c4; font-size: 14px; margin: 18px 0 8px; }
+  p, li { font-size: 14px; }
+  code {
+    background: #f0edfb;
+    border: 1px solid #ddd6f5;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12.5px;
+    color: #4a30c4;
+    font-family: Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; margin: 10px 0; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f0edfb; color: #4a30c4; white-space: nowrap; }
+  .pk { color: #16a34a; font-weight: 700; }
+  .fk { color: #ea580c; font-size: .92em; }
+
+  .note-box {
+    background: #fffbe8;
+    border: 1px solid #f0e3a8;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: #6b5d00;
+    margin: 10px 0;
+  }
+  .info-box {
+    background: #f0edfb;
+    border: 1px solid #ddd6f5;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: #3a2599;
+    margin: 10px 0;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 10.5px;
+    border-radius: 10px;
+    padding: 1px 8px;
+    margin-left: 6px;
+    vertical-align: 1px;
+    font-weight: 600;
+  }
+  .tag-new { background: #ffecf2; color: var(--red-badge); border: 1px solid #fbb8d2; }
+  .tag-exist { background: #e8f7ef; color: var(--green); border: 1px solid #a9e4c8; }
+  .tag-todo { background: #fff4e0; color: #c77800; border: 1px solid #f3d9a5; }
+  .tag-key { background: #f0edfb; color: #4a30c4; border: 1px solid #cfc4ff; }
+
+  .tree {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .tree .root {
+    display: inline-block;
+    background: #7856ff;
+    color: #fff;
+    font-weight: 700;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+  }
+  .tree ul { list-style: none; padding-left: 22px; margin: 8px 0 0; border-left: 2px dashed #cfc4ff; }
+  .tree li { margin: 6px 0; position: relative; font-size: 13.5px; }
+  .tree li::before {
+    content: ''; position: absolute; left: -22px; top: 10px;
+    width: 14px; height: 0; border-top: 2px dashed #cfc4ff;
+  }
+
+  .decision {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-left: 5px solid #7856ff;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 14px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .decision .q { font-weight: 800; color: var(--text); font-size: 14.5px; }
+  .decision ul { margin: 6px 0 0; padding-left: 18px; }
+  .decision li { font-size: 13px; margin: 3px 0; }
+
+  .chip {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 12px;
+    padding: 2px 10px;
+  }
+  .chip.pending { background: #fff4e0; color: #c77800; }
+  .chip.battle  { background: #f0edfb; color: #4a30c4; }
+  .chip.done    { background: #e8f7ef; color: #007a50; }
+  .chip.off     { background: #f0f1f3; color: #8a95a0; }
+
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 10px 0; }
+  .flow .box {
+    border: 2px solid #7856ff; color: #4a30c4;
+    background: #f4f1ff; border-radius: 8px;
+    padding: 6px 12px; font-size: 12.5px; font-weight: 600;
+  }
+  .flow .box.gray { border-color: #b0bcc6; color: #5b6b7a; background: #f5f7f9; }
+  .flow .box.green { border-color: #00ba7c; color: #007a50; background: #e8f7ef; }
+  .flow .box.orange { border-color: #ff9900; color: #b06d00; background: #fff4e0; }
+  .flow .arrow { color: #b0bcc6; font-weight: 800; }
+
+  .mock-area {
+    display: flex;
+    gap: 26px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin: 20px 0;
+  }
+  .device {
+    width: 340px;
+    background: #fff;
+    border-radius: 26px;
+    border: 8px solid #2b2f36;
+    box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .device .notch { background: #2b2f36; height: 12px; }
+  .device .screen { background: #fff; min-height: 600px; display: flex; flex-direction: column; }
+  .appbar {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14px; font-weight: 800; color: var(--text);
+  }
+  .appbar.purple { background: #7856ff; color: #fff; border-bottom: none; }
+  .mock-note {
+    flex: 1;
+    min-width: 280px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .mock-note h4 { margin: 0 0 8px; color: #4a30c4; font-size: 14px; }
+  .mock-note ul { margin: 0; padding-left: 18px; }
+  .mock-note li { font-size: 12.5px; margin: 4px 0; }
+
+  .post-card { border-bottom: 1px solid var(--border); padding: 12px 14px; }
+  .post-card .u { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .avatar-mini {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, #a88cf8, #7856ff);
+    color: #fff; font-weight: 800; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .post-card .body { font-size: 13.5px; color: var(--text); }
+  .post-card .meta { font-size: 11px; color: var(--sub); margin-top: 6px; display: flex; gap: 14px; }
+  .resba-badge {
+    display: inline-block;
+    background: #f0edfb; color: #4a30c4;
+    border: 1px solid #cfc4ff;
+    border-radius: 12px;
+    font-size: 10.5px; font-weight: 700;
+    padding: 1px 8px; margin-left: 6px;
+  }
+  .resba-card {
+    border: 2px solid #7856ff;
+    background: #faf8ff;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin: 10px;
+    font-size: 12px;
+  }
+  .resba-card .head { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: var(--sub); margin-bottom: 4px; }
+  .resba-card .theme { font-weight: 800; font-size: 13.5px; color: var(--text); }
+  .resba-card .vs { font-size: 11.5px; color: var(--sub); margin: 3px 0 8px; }
+  .resba-card .row { display: flex; gap: 6px; }
+  .btn {
+    flex: 1; text-align: center;
+    border-radius: 18px; padding: 7px 0;
+    font-size: 12.5px; font-weight: 700;
+  }
+  .btn.primary { background: #7856ff; color: #fff; }
+  .btn.green   { background: #00ba7c; color: #fff; }
+  .btn.red     { background: #f91880; color: #fff; }
+  .btn.gray    { background: #eef1f3; color: #5b6b7a; }
+  .btn.outline { background: #fff; color: #7856ff; border: 1.5px solid #7856ff; }
+  .comment { padding: 10px 14px 10px 46px; border-bottom: 1px solid #f2f2f2; font-size: 13px; }
+  .comment .u2 { font-size: 11px; color: var(--sub); font-weight: 700; margin-bottom: 2px; }
+  .comment .actions { display: flex; gap: 12px; margin-top: 6px; font-size: 11.5px; color: var(--sub); }
+  .comment .actions .sword { color: #4a30c4; font-weight: 700; }
+  .msg { padding: 8px 14px; font-size: 12.5px; }
+  .msg.left { text-align: left; }
+  .msg.right { text-align: right; }
+  .bubble {
+    display: inline-block; max-width: 82%;
+    background: #f2f5f7; border-radius: 14px;
+    padding: 7px 11px; text-align: left;
+  }
+  .msg.right .bubble { background: #e3dbff; }
+  .composer {
+    display: flex; align-items: center; gap: 10px;
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    margin-top: auto;
+  }
+  .composer .field { flex: 1; background: #eef1f3; border-radius: 18px; padding: 8px 12px; font-size: 12px; color: #a8b2ba; }
+  .composer .icon { font-size: 20px; color: var(--sub); }
+  .composer .icon.resba { color: #7856ff; }
+  .mini-input {
+    background: #eef1f3; border-radius: 18px;
+    padding: 8px 12px; font-size: 12.5px; color: #a8b2ba;
+    margin: 8px 10px;
+  }
+  .sheet {
+    background: #fff;
+    border-radius: 18px 18px 0 0;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    padding: 14px;
+    margin-top: auto;
+    box-shadow: 0 -4px 16px rgba(0,0,0,.08);
+  }
+  .sheet .title { font-weight: 800; font-size: 13px; margin-bottom: 8px; }
+  .input-line { background: #f2f4f6; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #6b7683; margin-bottom: 8px; }
+  .small { font-size: 12px; color: var(--sub); }
+  .section-gap { margin-top: 40px; }
+
+  /* ---- 観戦（スペクテイター） ---- */
+  .live-banner {
+    background: #f4f1ff;
+    border: 2px solid #7856ff;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin: 10px;
+    font-size: 12px;
+  }
+  .watch-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin: 10px;
+  }
+  .watch-card .wtitle { font-weight: 800; font-size: 13.5px; color: var(--text); }
+  .watch-card .wsub { font-size: 11px; color: var(--sub); margin: 2px 0 6px; }
+  .player-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 0;
+  }
+  .player-row .pname { font-weight: 800; font-size: 12.5px; }
+  .player-row .ptrophy { font-size: 10.5px; color: var(--sub); }
+  .player-row .pstate { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--sub); }
+  .player-row .pstate.done { color: #00ba7c; }
+  .stage {
+    background: #faf8ff;
+    border: 1px dashed #cfc4ff;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin: 8px 10px;
+    text-align: center;
+    font-size: 12px;
+    color: #4a30c4;
+  }
+  .live-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #f91880;
+    margin-right: 5px;
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 50% { opacity: .25; } }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>⚔️ レスバ機能 設計・要件定義書（コンテンツ融合型）</h1>
+  <p>写真を添付する感覚で、コメント・ポスト・DMメッセージに「レスバ」を添付する 要件定義・UI設計・データベース設計</p>
+</div>
+
+<main>
+
+  <!-- ========== 1. 概要 ========== -->
+  <h2>1. 概要・コンセプト</h2>
+  <div class="tree">
+    <span class="root">⚔️ レスバ（対戦招待）をコンテンツに添付</span>
+    <ul>
+      <li><b>返信にレスバをつける</b> <span class="tag tag-new">新規</span>
+        <ul>
+          <li>返信に写真をつけるのと同じ操作で、返信に「レスバ」を添付して送信</li>
+          <li>コメント欄で口論になったら「レスバしようぜ」の流れに</li>
+        </ul>
+      </li>
+      <li><b>ポストにレスバをつける</b> <span class="tag tag-new">新規</span>
+        <ul>
+          <li>ポスト作成時 or 既存ポストに「レスバ」を添付</li>
+          <li>見た人が「⚔️ 応じる」→ 対戦成立</li>
+        </ul>
+      </li>
+      <li><b>メッセージでレスバ（写真）を送る</b> <span class="tag tag-new">新規</span>
+        <ul>
+          <li>DMの入力欄で写真アイコンの隣の「⚔️」からレスバを送信</li>
+          <li>相手に「レスバ」カードとして届き、承諾/拒否</li>
+        </ul>
+      </li>
+      <li><b>対戦募集タブ・募集中一覧は作らない</b> <span class="tag tag-key">方針</span>
+        <ul>
+          <li>募集の独立UI（タブ・一覧・管理画面）は廃止し、チャット/コメントに融合</li>
+        </ul>
+      </li>
+      <li><b>バトル実行は rooms_v2 を使用</b> <span class="tag tag-exist">既存</span>
+        <ul>
+          <li>承諾されたら既存の対戦フロー（rooms_v2）でバトル開始</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+  <div class="note-box">
+    💡 <b>コンセプト：</b>「レスバ」は<b>コンテンツに添付するアタッチメント</b>です（写真添付と同等の操作感）。
+    募集一覧・申込者一覧・参加人数のような「対戦募集システム」のUIは一切持たず、
+    会話の中で自然に「⚔️ レスバしようぜ」と誘える流れを作ります。
+  </div>
+
+  <!-- ========== 2. 体験フロー ========== -->
+  <h2>2. 体験フロー（シナリオ）</h2>
+  <div class="flow">
+    <span class="box">コメント欄で議論が白熱<br><small>二人が意見を交わす</small></span>
+    <span class="arrow">→</span>
+    <span class="box">返信に「⚔️ レスバ」を添付<br><small>テーマを設定して送信</small></span>
+    <span class="arrow">→</span>
+    <span class="box orange">相手に届く<br><small>「⚔️ レスバが届きました」</small></span>
+    <span class="arrow">→ 承諾</span>
+    <span class="box green">バトル開始<br><small>rooms_v2 で二人が対戦</small></span>
+  </div>
+  <div class="flow">
+    <span class="box">レスバなしの普通の返信</span>
+    <span class="arrow">⇄</span>
+    <span class="box gray">拒否 / 無視<br><small>会話はそのまま続く</small></span>
+  </div>
+  <ul>
+    <li><b>返信・DM</b>は相手が最初から決まっているため、「相手に届いて承諾/拒否」のシンプルな1対1フロー。</li>
+    <li><b>ポスト</b>は誰でも応じられるフロー（応じた人を投稿者に1件ずつ表示 → 承認/拒否）。</li>
+    <li>拒否されても普通の会話は継続。バトルはあくまで「レスバ」を承諾した時だけ始まる。</li>
+  </ul>
+
+  <!-- ========== 3. コンテンツ別の設計 ========== -->
+  <h2>3. コンテンツ別の設計</h2>
+
+  <h3>3.1 返信にレスバをつける（コメント欄）</h3>
+  <table>
+    <tr><th>項目</th><th>設計</th></tr>
+    <tr><td>導線</td><td>返信入力欄のツールバーに <b>[📷 写真] [⚔️ レスバ]</b> を並べて配置。レスバアイコン → 添付シート（テーマ / 選択肢1 / 選択肢2）</td></tr>
+    <tr><td>相手</td><td><b>返信先の相手</b>（親コメントの投稿者 or ポスト投稿者）がそのまま対戦相手</td></tr>
+    <tr><td>相手側の表示</td><td>返信スレッド内に「⚔️ ○○さんからレスバが届きました」カード（テーマ表示 + 承諾/拒否ボタン）</td></tr>
+    <tr><td>成立後</td><td>承諾 → rooms_v2 でバトル開始。拒否 → カードに「拒否されました」と表示</td></tr>
+    <tr><td>補足</td><td>レスバ付きの返信は本文の上に ⚔️ バッジ付きの添付表示（写真添付と同レイアウト）</td></tr>
+  </table>
+
+  <h3>3.2 ポストにレスバをつける</h3>
+  <table>
+    <tr><th>項目</th><th>設計</th></tr>
+    <tr><td>導線</td><td>ポスト作成画面に「⚔️ レスバを付ける」オプション。既存ポスト詳細にも「このポストにレスバを付ける」ボタン</td></tr>
+    <tr><td>相手</td><td>不特定。ポストを見た誰でも「⚔️ 応じる」が可能（受付順に投稿者へ1件ずつ届く）</td></tr>
+    <tr><td>投稿者側の表示</td><td>応じた人が来たら<b>1件ずつ</b>「⚔️ 誰かがレスバに応じました」と表示 → 承認/拒否（一覧・人数表示なし）</td></tr>
+    <tr><td>成立後</td><td>承認 → rooms_v2 でバトル開始。他の応募は自動却下。拒否 → 次の応募者を表示</td></tr>
+    <tr><td>表示</td><td>レスバ付きポストはカードに ⚔️ バッジ、詳細に「このポストにレスバが付いています」カード</td></tr>
+  </table>
+
+  <h3>3.3 DMでレスバ（写真）を送る</h3>
+  <table>
+    <tr><th>項目</th><th>設計</th></tr>
+    <tr><td>導線</td><td>DMの入力欄で <b>[📷 写真] [⚔️ レスバ]</b> を並べて配置。写真を送るのと同じ操作でレスバを送信</td></tr>
+    <tr><td>相手</td><td>DMルームの相手（dm_room_members の他方）</td></tr>
+    <tr><td>相手側の表示</td><td>メッセージとして「⚔️ ○○さんからレスバが届きました」カード（承諾/拒否）</td></tr>
+    <tr><td>成立後</td><td>承諾 → rooms_v2 でバトル開始。拒否 → カードに「拒否されました」と表示</td></tr>
+  </table>
+
+  <div class="info-box">
+    ✅ <b>共通ルール：</b>レスバ送信・応募は<b>対戦中（rooms_v2 進行中）は不可</b>。
+    応募（ポストへの「応じる」）は<b>同時1件まで</b>。相手待ちのレスバは送信者側でキャンセル可能。
+  </div>
+
+  <!-- ========== 4. 状態遷移 ========== -->
+  <h2>4. 状態遷移・排他ルール</h2>
+
+  <h3>4.1 レスバ（battle_invites.status）</h3>
+  <div class="flow">
+    <span class="box orange">pending<br><small>提案中（相手待ち）</small></span>
+    <span class="arrow">→ 承諾</span>
+    <span class="box green">accepted<br><small>バトル開始（rooms_v2）</small></span>
+    <span class="arrow">→ バトル終了</span>
+    <span class="box gray">finished</span>
+  </div>
+  <div class="flow">
+    <span class="box orange">pending</span>
+    <span class="arrow">→</span>
+    <span class="box gray">declined<br><small>相手が拒否</small></span>
+    <span class="arrow">←</span>
+    <span class="box gray">cancelled<br><small>送信者が取り下げ</small></span>
+  </div>
+  <ul>
+    <li>ポスト型は <code>pending</code> 中に応募を受け付け、承認された応募者で <code>accepted</code> へ。</li>
+    <li>承諾でバトルが始まったら、送信者の他の pending レスバは自動 <code>cancelled</code>（対戦の二重化防止）。</li>
+  </ul>
+
+  <h3>4.2 ユーザーの対戦状態</h3>
+  <div class="flow">
+    <span class="box gray">フリー</span>
+    <span class="arrow">→</span>
+    <span class="box orange">レスバ提案中<br><small>相手の承諾待ち</small></span>
+    <span class="arrow">→ 承諾</span>
+    <span class="box green">対戦中<br><small>rooms_v2</small></span>
+    <span class="arrow">→ 終了</span>
+    <span class="box gray">フリー</span>
+  </div>
+  <div class="note-box">
+    ⚠️ <b>排他ルール：</b>
+    <ul style="margin:6px 0 0;">
+      <li>対戦中（rooms_v2 進行中）は新たなレスバ送信・応募ができない。</li>
+      <li>ポストへの「応じる」は同時1件のみ（別のレスバに応募済みなら申請不可）。</li>
+      <li>DM・返信のレスバ（指名型）は複数送ってよいが、どれかが承諾されたら他は自動キャンセル。</li>
+    </ul>
+  </div>
+
+  <!-- ========== 5. UI設計 ========== -->
+  <h2>5. UI 設計（モック画面）</h2>
+
+  <!-- モック1 -->
+  <h3>5.1 ポストに付いたレスバ（詳細画面）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">← ポスト詳細</div>
+        <div class="post-card">
+          <div class="u">
+            <div class="avatar-mini">A</div>
+            <div><b style="font-size:12.5px;">たろう</b> <span class="resba-badge">⚔️ レスバ付き</span></div>
+          </div>
+          <div class="body">「AIは人間の仕事を奪う」という意見に反論します。どちらが正しいか議論しましょう。</div>
+          <div class="meta">♥ 12 &nbsp; 💬 5 &nbsp; ⚔️ レスバ募集中</div>
+        </div>
+        <div class="resba-card">
+          <div class="head"><span>⚔️ このポストにレスバが付いています</span><span class="chip pending">相手待ち</span></div>
+          <div class="theme">AIは人間の仕事を奪うか？</div>
+          <div class="vs">選択肢：賛成 vs 反対</div>
+          <div class="row">
+            <div class="btn primary">⚔️ 応じる</div>
+          </div>
+        </div>
+        <div class="mini-input">コメントを書く…</div>
+        <div class="comment">
+          <div class="u2">じろう</div>
+          反論は「仕事が減っても新しい仕事が生まれる」ですよ
+          <div class="actions"><span>♥ 3</span><span>💬</span><span class="sword">⚔️ レスバを送る</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>レスバ付きポストはカードに <b>⚔️ バッジ</b>、詳細に<b>レスバカード</b>を表示。</li>
+        <li>「⚔️ 応じる」→ 投稿者に応募が届く（1件ずつ表示・承認/拒否）。</li>
+        <li>コメントのアクション行に「⚔️ レスバを送る」（返信型レスバの入口）。</li>
+        <li>対戦募集タブのような一覧・人数表示は<b>持たない</b>。あくまでポストに付随する形。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- モック2 -->
+  <h3>5.2 返信にレスバを添付（写真添付と同じ操作）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">← 返信する</div>
+        <div class="comment" style="padding-left:14px;">
+          <div class="u2">じろう</div>
+          反論は「仕事が減っても新しい仕事が生まれる」ですよ
+        </div>
+        <div class="comment" style="padding-left:14px;">
+          <div class="u2">たろう</div>
+          いや、奪われて終わりだと思いますよ
+        </div>
+        <div class="sheet">
+          <div class="title">返信を書く</div>
+          <div class="input-line">それならレスバで決着つけましょう！</div>
+          <div style="border:2px dashed #7856ff; border-radius:8px; padding:8px 10px; margin-bottom:8px; font-size:11.5px; color:#4a30c4;">
+            ⚔️ レスバを添付：<b>AIは人間の仕事を奪うか？</b>（賛成 vs 反対）
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:19px;">📷</span>
+            <span style="font-size:19px; color:#7856ff;">⚔️</span>
+            <div class="btn primary" style="flex:1;">送信（レスバ付き）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>返信入力ツールバーに <b>[📷 写真] [⚔️ レスバ]</b> を並べる（写真を付けるのと同じ感覚）。</li>
+        <li>レスバアイコン → テーマ/選択肢を設定するシート（返信本文から自動プリセット、編集可）。</li>
+        <li>送信すると返信に「⚔️ レスバ添付」バッジが付き、<b>返信先の相手</b>へ届く。</li>
+        <li>レスバ未設定なら通常の返信として送信（従来動作のまま）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- モック3 -->
+  <h3>5.3 相手側：レスバが届いた表示（返信スレッド）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">← 返信スレッド</div>
+        <div class="comment" style="padding-left:14px;">
+          <div class="u2">たろう</div>
+          それならレスバで決着つけましょう！ <span class="resba-badge">⚔️ レスバ付き</span>
+        </div>
+        <div class="resba-card">
+          <div class="head"><span>⚔️ たろうさんからレスバが届きました</span></div>
+          <div class="theme">AIは人間の仕事を奪うか？</div>
+          <div class="vs">選択肢：賛成 vs 反対<br>※あなたは「反対」側で対戦します</div>
+          <div class="row">
+            <div class="btn green">⚔️ 承諾して対戦</div>
+            <div class="btn gray">拒否</div>
+          </div>
+        </div>
+        <div class="comment" style="padding-left:14px;">
+          <div class="u2">じろう</div>
+          いいですよ、受けて立ちます
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>返信スレッド内に<b>レスバカード</b>として表示（別画面へ遷移しない）。</li>
+        <li>承諾 → その場で rooms_v2 のバトル画面へ。拒否 → カードが「拒否されました」表示に変わり、会話は継続。</li>
+        <li>カードの出し手は返信先の相手のみ（指名型なので誰でも応募、ではない）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- モック4 -->
+  <h3>5.4 DMでレスバ（写真）を送る</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">← たろう <span style="color:#7856ff;">⚔️</span></div>
+        <div class="msg left"><div class="bubble">このテーマで決着つけましょう！</div></div>
+        <div class="msg right">
+          <div class="bubble" style="border:2px solid #7856ff; background:#faf8ff;">
+            <span class="resba-badge">⚔️ レスバ</span>
+            <div style="font-weight:800; margin-top:4px;">AIは人間の仕事を奪うか？</div>
+            <div style="color:var(--sub);">賛成 vs 反対 ・ 相手の承諾待ち</div>
+          </div>
+        </div>
+        <div class="composer">
+          <span class="icon">📷</span>
+          <span class="icon resba">⚔️</span>
+          <div class="field">メッセージを入力…</div>
+          <span style="color:#7856ff; font-size:20px;">➤</span>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>DM入力欄に <b>[📷 写真] [⚔️ レスバ]</b> を並べ、写真を送るのと同じ操作感。</li>
+        <li>レスバは<b>メッセージの1種</b>としてスレッドに表示（送信者側は「承諾待ち」表示）。</li>
+        <li>テーマ設定シートは返信型と共通コンポーネント。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- モック5 -->
+  <h3>5.5 DM側：相手に届いたレスバ（承諾/拒否）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">← たろう</div>
+        <div class="msg left"><div class="bubble">このテーマで決着つけましょう！</div></div>
+        <div class="resba-card" style="margin:8px 14px;">
+          <div class="head"><span>⚔️ たろうさんからレスバが届きました</span></div>
+          <div class="theme">AIは人間の仕事を奪うか？</div>
+          <div class="vs">選択肢：賛成 vs 反対<br>※あなたは「反対」側で対戦します</div>
+          <div class="row">
+            <div class="btn green">⚔️ 承諾して対戦</div>
+            <div class="btn gray">拒否</div>
+          </div>
+        </div>
+        <div class="composer">
+          <span class="icon">📷</span>
+          <span class="icon resba">⚔️</span>
+          <div class="field">メッセージを入力…</div>
+          <span style="color:#7856ff; font-size:20px;">➤</span>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>DMスレッド内にレスバカードが届き、その場で承諾/拒否。</li>
+        <li>承諾 → rooms_v2 のバトルへ。拒否 → カードが「拒否されました」に変化。</li>
+        <li>通知（届いた・承諾待ち・拒否された）は既存の通知機構で配信。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- モック6 -->
+  <h3>5.6 ポスト型：投稿者側の承認UI（1件ずつ表示）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar purple">← レスバの応募（投稿者）</div>
+        <div style="padding:12px 14px 0;">
+          <div style="font-weight:800; font-size:14px;">AIは人間の仕事を奪うか？</div>
+          <div style="font-size:11.5px; color:var(--sub);">あなたのポストに付いたレスバ ・ 相手待ち</div>
+        </div>
+        <div style="padding:10px 14px 0; font-size:11.5px; color:var(--sub);">⚔️ レスバに応じた人がいます（受付順に1件ずつ表示）</div>
+        <div class="resba-card">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="avatar-mini">K</div>
+            <div>
+              <div style="font-weight:800; font-size:13px;">けんた が応じました</div>
+              <div style="font-size:11px; color:var(--sub);">🏆 850 ・ 勝敗 12-5</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:6px; margin-top:10px;">
+            <div class="btn green">承認して対戦</div>
+            <div class="btn gray">拒否</div>
+          </div>
+        </div>
+        <div class="note-box" style="margin:0 14px; font-size:11.5px;">
+          💡 拒否すると次の応募者が表示されます。<br>応募者一覧・人数は表示しません。
+        </div>
+        <div style="padding:14px; margin-top:auto;">
+          <div class="btn red">レスバを締め切る</div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>ポスト型は誰でも応じられるため、応募を<b>受付順に1件ずつ</b>投稿者へ表示（FIFO・一覧なし）。</li>
+        <li>承認 → rooms_v2 で対戦開始、他の応募は自動却下。拒否 → 次の応募者を表示。</li>
+        <li>応募側は同時1件まで（承認待ちの間は別のレスバに応じられない）。</li>
+        <li>「締め切る」で受付停止（応募済みにはキャンセル扱いの通知）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- モック7 -->
+  <h3>5.7 承諾後の流れ（rooms_v2 へ）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar purple">⚔️ レスバ成立！</div>
+        <div style="padding:16px 14px; text-align:center;">
+          <div style="font-size:34px;">⚔️</div>
+          <div style="font-weight:800; font-size:15px; margin-top:8px;">たろう vs けんた</div>
+          <div style="font-size:12px; color:var(--sub); margin-top:4px;">AIは人間の仕事を奪うか？<br>賛成 vs 反対</div>
+        </div>
+        <div class="resba-card" style="margin:8px 14px;">
+          <div class="head"><span>rooms_v2 で対戦開始</span><span class="chip battle">対戦中</span></div>
+          <div style="font-size:11.5px; color:var(--sub); margin-top:4px;">
+            player1：たろう（賛成）<br>player2：けんた（反対）<br>テーマ・選択肢はレスバ設定を引き継ぎ
+          </div>
+        </div>
+        <div style="padding:14px;">
+          <div class="btn primary">バトル画面へ移動</div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>承諾時に <code>rooms_v2</code> を作成し、<b>player1 = 送信者 / player2 = 承諾者</b>、テーマ・選択肢を引き継ぐ。</li>
+        <li>バトル中の判定・レート変動は既存フローをそのまま使用（変更なし）。</li>
+        <li>レスバの <code>battle_room_id</code> にルームIDを記録し、履歴・復帰導線に利用。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- モック8 -->
+  <h3>5.8 観戦エントリ（対戦中バナー）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">← ポスト詳細</div>
+        <div class="post-card">
+          <div class="u">
+            <div class="avatar-mini">A</div>
+            <div><b style="font-size:12.5px;">たろう</b> <span class="resba-badge">⚔️ 対戦中</span></div>
+          </div>
+          <div class="body">「AIは人間の仕事を奪う」という意見に反論します。</div>
+          <div class="meta">♥ 12 &nbsp; 💬 5 &nbsp; ⚔️ 対戦中</div>
+        </div>
+        <div class="live-banner">
+          <div class="head" style="display:flex; justify-content:space-between;">
+            <span style="font-weight:800; color:#4a30c4;"><span class="live-dot"></span>⚔️ ライブ観戦</span>
+            <span style="font-size:11px; color:var(--sub);">👁 12</span>
+          </div>
+          <div style="font-weight:800; font-size:13px; margin-top:4px;">たろう vs けんた が対戦中</div>
+          <div style="font-size:11px; color:var(--sub); margin-top:2px;">AIは人間の仕事を奪うか？（賛成 vs 反対）</div>
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <div class="btn primary">👁 観戦する</div>
+          </div>
+        </div>
+        <div class="comment">
+          <div class="u2">じろう</div>
+          この対戦面白そう、見てみよう
+          <div class="actions"><span>♥ 3</span><span>💬</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">← 議論部屋 <span style="font-size:11px; color:var(--sub);">メンバー 24人</span></div>
+        <div class="live-banner">
+          <div class="head" style="display:flex; justify-content:space-between;">
+            <span style="font-weight:800; color:#4a30c4;"><span class="live-dot"></span>⚔️ ルーム内で対戦中</span>
+            <span style="font-size:11px; color:var(--sub);">👁 8</span>
+          </div>
+          <div style="font-weight:800; font-size:13px; margin-top:4px;">さくら vs ひろし</div>
+          <div style="font-size:11px; color:var(--sub); margin-top:2px;">おすすめのプログラミング言語は？（Python vs Java）</div>
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <div class="btn primary">👁 観戦する</div>
+          </div>
+        </div>
+        <div class="msg left"><div class="bubble">二人ともすごい論戦してる…</div></div>
+        <div class="msg right"><div class="bubble">観戦して応援しよう！</div></div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li><b>エントリ導線はすべて「コンテンツに付随」</b>（レスバ本体と同じ思想）：<br>
+          ポスト詳細 / 返信スレッド / オプチャのメッセージリスト上部 / 対戦募集タブ に「⚔️ 対戦中」バナーを表示。</li>
+        <li>バナーには対戦者・テーマ・<b>観戦者数（👁）</b>を表示し、タップで観戦画面へ。</li>
+        <li>バトル終了でバナーは「結果発表」表示に切り替わり、しばらく後に消える。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- モック9 -->
+  <h3>5.9 観戦画面（リアルタイム・ライブビュー）</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar purple"><span><span class="live-dot"></span>⚔️ ライブ観戦</span> <span style="font-size:12px;">👁 12</span></div>
+        <div class="watch-card">
+          <div class="wtitle">AIは人間の仕事を奪うか？</div>
+          <div class="wsub">選択肢：賛成 vs 反対 ・ ラウンド 3/5 ・ 残り 0:42</div>
+          <div class="player-row">
+            <div class="avatar-mini">A</div>
+            <div>
+              <div class="pname">たろう</div>
+              <div class="ptrophy">🏆 1200 ・ 賛成側</div>
+            </div>
+            <div class="pstate done">✔ 回答済み</div>
+          </div>
+          <div class="player-row">
+            <div class="avatar-mini">K</div>
+            <div>
+              <div class="pname">けんた</div>
+              <div class="ptrophy">🏆 850 ・ 反対側</div>
+            </div>
+            <div class="pstate">回答中…</div>
+          </div>
+        </div>
+        <div class="stage">
+          📝 たろう：仕事は「置き換え」ではなく「再分配」されるべきだと思います
+        </div>
+        <div class="stage" style="border-color:#00ba7c; color:#007a50;">
+          ⏳ けんたの回答をお待ちください…
+        </div>
+        <div style="padding:14px; margin-top:auto;">
+          <div class="btn gray">観戦を終了</div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>観戦画面は<b>読み取り専用</b>。rooms_v2 の変更を <b>Supabase Realtime（postgres_changes）</b>で購読し、選択・回答・ラウンド進行・結果をライブ表示。</li>
+        <li>プレイヤーの「回答済み / 回答中」・タイマー・ラウンド経過がリアルタイム更新される。</li>
+        <li>観戦者数は battle_spectators の増減を購読して更新（👁 表示）。</li>
+        <li>投票・発言など参加者向け操作は一切なし（read-only）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- モック10 -->
+  <h3>5.10 観戦結果発表</h3>
+  <div class="mock-area">
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="appbar purple">⚔️ 結果発表</div>
+        <div style="padding:16px 14px; text-align:center;">
+          <div style="font-size:34px;">🏆</div>
+          <div style="font-weight:800; font-size:16px; margin-top:6px;">勝者：たろう</div>
+          <div style="font-size:12px; color:var(--sub); margin-top:4px;">AIは人間の仕事を奪うか？ ・ 3対2</div>
+        </div>
+        <div class="watch-card">
+          <div class="player-row">
+            <div class="avatar-mini">A</div>
+            <div>
+              <div class="pname">たろう <span style="color:#00ba7c;">（勝）</span></div>
+              <div class="ptrophy">🏆 1200 → 1208（+8）</div>
+            </div>
+          </div>
+          <div class="player-row">
+            <div class="avatar-mini">K</div>
+            <div>
+              <div class="pname">けんた</div>
+              <div class="ptrophy">🏆 850 → 846（-4）</div>
+            </div>
+          </div>
+        </div>
+        <div class="note-box" style="margin:0 14px; font-size:11.5px;">
+          👁 12人が観戦しました。観戦した方もコメントで感想をどうぞ。
+        </div>
+        <div style="padding:14px; margin-top:auto;">
+          <div class="btn primary">ポストに戻る</div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-note">
+      <h4>📋 設計メモ</h4>
+      <ul>
+        <li>バトル終了（rooms_v2.result 確定）で観戦者全員に結果画面へ切り替わる。</li>
+        <li>勝者・スコア・トロフィー変動を表示。既存の結果計算ロジックをそのまま利用。</li>
+        <li>結果表示後、観戦レコードは自動削除（観戦者数の整合）。</li>
+        <li>元のコンテンツ（ポスト/オプチャ）に戻る導線を必ず設置。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ========== 6. データベース設計 ========== -->
+  <h2>6. データベース設計</h2>
+
+  <h3>6.1 battle_invites（レスバ本体）</h3>
+  <table>
+    <tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr>
+    <tr><td class="pk">id</td><td>uuid</td><td>PK, DEFAULT gen_random_uuid()</td><td>レスバID</td></tr>
+    <tr><td>sender_id</td><td>uuid</td><td>NOT NULL, <span class="fk">FK users.id</span></td><td>レスバを送った人</td></tr>
+    <tr><td>attach_type</td><td>text</td><td>NOT NULL, CHECK in ('post','comment','dm')</td><td>添付先の種別</td></tr>
+    <tr><td>attach_id</td><td>uuid</td><td>NOT NULL</td><td>bbs_posts.id / bbs_comments.id / dm_messages.id</td></tr>
+    <tr><td>target_user_id</td><td>uuid</td><td>NULL, <span class="fk">FK users.id</span></td><td>指名相手（comment / dm のみ。post は NULL = 誰でも応募可）</td></tr>
+    <tr><td>theme</td><td>text</td><td>NOT NULL</td><td>テーマ（空ならバトル開始時にランダム）</td></tr>
+    <tr><td>choice1 / choice2</td><td>text</td><td>NULL</td><td>選択肢（空ならランダム）</td></tr>
+    <tr><td>status</td><td>text</td><td>NOT NULL DEFAULT 'pending', CHECK in ('pending','accepted','declined','cancelled','finished')</td><td>状態</td></tr>
+    <tr><td>responder_id</td><td>uuid</td><td>NULL, <span class="fk">FK users.id</span></td><td>post型で承認された応募者（accepted で確定）</td></tr>
+    <tr><td>battle_room_id</td><td>uuid</td><td>NULL, <span class="fk">FK rooms_v2.id</span></td><td>承諾で作成されたバトルルーム</td></tr>
+    <tr><td>created_at / updated_at</td><td>timestamptz</td><td>DEFAULT now()</td><td>作成・更新日時</td></tr>
+    <tr><td>responded_at</td><td>timestamptz</td><td>NULL</td><td>承諾・拒否日時</td></tr>
+  </table>
+  <div class="info-box">
+    <b>制約・インデックス：</b><br>
+    <code>INDEX (attach_type, attach_id)</code> … コンテンツに付いたレスバの取得（ポスト詳細 / 返信スレッド / DM）<br>
+    <code>INDEX (sender_id, status)</code> … 送信者の「提案中」一覧（マイ状態表示）<br>
+    <code>INDEX (target_user_id, status)</code> … 相手側の「届いたレスバ」一覧
+  </div>
+
+  <h3>6.2 battle_invite_applications（post型の応募）</h3>
+  <table>
+    <tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr>
+    <tr><td class="pk">id</td><td>uuid</td><td>PK, DEFAULT gen_random_uuid()</td><td>応募ID</td></tr>
+    <tr><td>invite_id</td><td>uuid</td><td>NOT NULL, <span class="fk">FK battle_invites.id</span> ON DELETE CASCADE</td><td>対象のレスバ</td></tr>
+    <tr><td>applicant_id</td><td>uuid</td><td>NOT NULL, <span class="fk">FK users.id</span></td><td>応募者（「⚔️ 応じる」を押した人）</td></tr>
+    <tr><td>status</td><td>text</td><td>NOT NULL DEFAULT 'pending', CHECK in ('pending','accepted','rejected','cancelled')</td><td>応募状態</td></tr>
+    <tr><td>created_at / updated_at</td><td>timestamptz</td><td>DEFAULT now()</td><td>応募・更新日時</td></tr>
+  </table>
+  <div class="info-box">
+    <b>制約・インデックス：</b><br>
+    <code>UNIQUE (invite_id, applicant_id)</code> … 同一レスバへの重複応募禁止<br>
+    <code>UNIQUE (applicant_id) WHERE status = 'pending'</code> … 同時応募1件のみ（部分ユニークインデックス）<br>
+    <code>INDEX (invite_id, status, created_at)</code> … 受付順（FIFO）で先頭1件の取得
+  </div>
+
+  <h3>6.3 rooms_v2 との関係（既存再利用）</h3>
+  <div class="flow">
+    <span class="box orange">battle_invites<br><small>status=pending</small></span>
+    <span class="arrow">→ 承諾（指名型）/ 承認（post型）</span>
+    <span class="box green">rooms_v2 を作成<br><small>player1=sender / player2=承諾者<br>current_theme=レスバのテーマ</small></span>
+    <span class="arrow">→</span>
+    <span class="box">invites.status = accepted<br>battle_room_id = rooms_v2.id</span>
+    <span class="arrow">→ バトル終了</span>
+    <span class="box gray">status = finished</span>
+  </div>
+  <ul>
+    <li>バトルの判定・レート計算は既存フローをそのまま使用（<b>rooms_v2 のみ使用、rooms_v3 は使わない</b>）。</li>
+    <li>ランダムマッチ（ホームの既存ボタン）は現行のまま残し、レスバ機能とは独立して動作。</li>
+  </ul>
+
+  <h3>6.4 RLS（行レベルセキュリティ）</h3>
+  <table>
+    <tr><th>種別</th><th>SELECT 可視範囲</th><th>書込</th></tr>
+    <tr><td><b>post 型</b></td><td>全員（ポストの可視性に準ずる）</td><td>送信は sender=自分 / 応募は applicant=自分（RPC 経由）</td></tr>
+    <tr><td><b>comment 型</b></td><td>ポスト・コメントの可視性に準ずる</td><td>送信は sender=自分 / 承諾・拒否は target_user=自分</td></tr>
+    <tr><td><b>dm 型</b></td><td>DMルームの当事者2名のみ</td><td>送信は sender=自分 / 承諾・拒否は target_user=自分</td></tr>
+  </table>
+  <div class="note-box">
+    🔒 <b>方針：</b>書き込みはすべて RPC（SECURITY DEFINER）経由とし、テーブルへの直接書込は RLS で拒否。読み取りのみテーブル直参照（ポリシー）を許可。
+  </div>
+
+  <h3>6.5 RPC 関数一覧（新規）</h3>
+  <table>
+    <tr><th>関数</th><th>引数</th><th>処理</th><th>戻り</th></tr>
+    <tr><td><code>attach_resba_to_comment</code></td><td>p_sender_id, p_comment_id, p_theme, p_choice1, p_choice2</td><td>返信にレスバを添付。target = 返信先の相手。対戦中チェック</td><td>invite / エラーコード</td></tr>
+    <tr><td><code>create_post_resba</code></td><td>p_sender_id, p_post_id, p_theme, p_choice1, p_choice2</td><td>ポストにレスバを付ける（誰でも応募可）</td><td>invite / エラーコード</td></tr>
+    <tr><td><code>send_dm_resba</code></td><td>p_sender_id, p_message_id, p_theme, p_choice1, p_choice2</td><td>DMでレスバを送信。target = ルームの相手</td><td>invite / エラーコード</td></tr>
+    <tr><td><code>respond_resba</code></td><td>p_invite_id, p_user_id, p_approve</td><td>指名型の承諾/拒否。承諾で rooms_v2 を作成し battle_room_id 記録、自分の他 pending を自動 cancelled</td><td>ルーム情報 / エラーコード</td></tr>
+    <tr><td><code>apply_post_resba</code></td><td>p_invite_id, p_user_id</td><td>post型の「⚔️ 応じる」。重複・排他（pending 1件/ユーザー）チェック</td><td>success / エラーコード</td></tr>
+    <tr><td><code>approve_post_resba</code></td><td>p_invite_id, p_application_id, p_host_id, p_approve</td><td>投稿者が応募を1件ずつ承認/拒否。承認で rooms_v2 作成・他を rejected</td><td>ルーム情報 / エラーコード</td></tr>
+    <tr><td><code>cancel_resba</code></td><td>p_invite_id, p_sender_id</td><td>送信者が pending を cancelled に</td><td>success</td></tr>
+    <tr><td><code>get_resba</code></td><td>p_attach_type, p_attach_id, p_user_id</td><td>コンテンツに付いたレスバと自分の応募状態を取得</td><td>json</td></tr>
+    <tr><td><code>get_my_resba_status</code></td><td>p_user_id</td><td>フリー / レスバ提案中 / 応募中（post型）/ 対戦中 を導出</td><td>json</td></tr>
+  </table>
+
+  <h3>6.6 ER 関係（主要部分）</h3>
+  <table>
+    <tr><th>テーブル</th><th>関連</th><th>メモ</th></tr>
+    <tr><td>users</td><td>1 ─ N battle_invites（sender_id / target_user_id / responder_id）<br>1 ─ N battle_invite_applications（applicant_id）</td><td>既存</td></tr>
+    <tr><td>battle_invites</td><td>1 ─ N battle_invite_applications<br>N ─ 1 bbs_posts / bbs_comments / dm_messages（attach_id）<br>N ─ 1 rooms_v2（battle_room_id）</td><td>新規</td></tr>
+    <tr><td>rooms_v2</td><td>バトルルーム本体（player1 / player2 / テーマ / 結果）</td><td>既存・再利用</td></tr>
+  </table>
+
+  <h3>6.7 既存機能の扱い（移行）</h3>
+  <table>
+    <tr><th>既存機能</th><th>扱い</th></tr>
+    <tr><td><b>対戦募集タブ</b>（CommunityPage 第1タブ / rooms_v2.is_bbs + challenger_id）</td><td><b>廃止</b>し、掲示板に統合。レスバ付きポスト（⚔️ バッジ）で代替</td></tr>
+    <tr><td><b>ランダムマッチ</b>（ホーム / findMatch）</td><td>そのまま残す（レスバとは独立）。「参加申込中」の状態表示は共通化の検討のみ</td></tr>
+    <tr><td>既存 is_bbs の募集データ</td><td>廃止時に必要ならバッチでレスバ化。不要なら放置（新規作成は新テーブルのみ）</td></tr>
+  </table>
+
+  <!-- ========== 7. エラー ========== -->
+  <h2>7. エラーコード・エッジケース</h2>
+  <table>
+    <tr><th>コード</th><th>意味</th><th>クライアント挙動</th></tr>
+    <tr><td>IN_BATTLE</td><td>対戦中にレスバ送信・応募</td><td>「対戦中のため送信できません」</td></tr>
+    <tr><td>ALREADY_APPLYING</td><td>別のポスト型レスバに応募中</td><td>現在の応募状態を表示しキャンセル導線を提示</td></tr>
+    <tr><td>ALREADY_APPLIED</td><td>同一レスバへの重複応募</td><td>無害メッセージ</td></tr>
+    <tr><td>INVITE_CLOSED</td><td>締切・成立・取消済みのレスバ</td><td>カード更新（非表示化）</td></tr>
+    <tr><td>NOT_TARGET / NOT_HOST</td><td>承諾・承認の権限なし</td><td>操作不可 UI</td></tr>
+    <tr><td>APPROVE_RACE</td><td>承認・承諾の同時競合</td><td>再取得して表示更新</td></tr>
+    <tr><td>SELF_INVITE</td><td>自分自身へのレスバ</td><td>送信不可</td></tr>
+  </table>
+  <div class="note-box">
+    ⚠️ <b>エッジケース：</b>
+    <ul style="margin:6px 0 0;">
+      <li><b>ポスト削除</b> → 付随するレスバは cancelled（バトル中なら継続可）。</li>
+      <li><b>返信削除 / DM削除</b> → 付随レスバは cancelled。</li>
+      <li><b>オプチャ</b>：今回は対象外（オプチャ内レスバは返信型レスバの応用として Phase 6 で検討）。</li>
+      <li><b>レスバ放置</b> → 3日で自動 cancelled（cron）。</li>
+      <li><b>拒否後の再送</b> → 可能（同じ相手へ再度レスバを送れる）。</li>
+    </ul>
+  </div>
+
+  <!-- ========== 8. ロードマップ ========== -->
+  <h2>8. 実装ロードマップ</h2>
+  <table>
+    <tr><th>Phase</th><th>内容</th><th>成果物</th></tr>
+    <tr><td><b>P1</b> 基盤</td><td>battle_invites / battle_invite_applications 作成、RLS、RPC 一式</td><td>マイグレーション + RPC テスト</td></tr>
+    <tr><td><b>P2</b> 返信にレスバ</td><td>返信ツールバー（📷⚔️）、添付シート、相手側カード（承諾/拒否）、rooms_v2 開始</td><td>BbsPostDetailView 改修</td></tr>
+    <tr><td><b>P3</b> ポストにレスバ</td><td>作成画面のオプション、⚔️ バッジ、詳細カード、「⚔️ 応じる」、投稿者側の1件ずつ承認UI</td><td>BbsPostCreateView / Timeline 改修</td></tr>
+    <tr><td><b>P4</b> DMでレスバ</td><td>入力欄の⚔️アイコン、送信・受信カード、承諾/拒否</td><td>DmRoomPage 改修</td></tr>
+    <tr><td><b>P5</b> 通知・状態表示</td><td>レスバ関連の通知（届いた/承諾/拒否）、マイ状態表示（対戦中の排他）</td><td>通知トリガー / HomePage</td></tr>
+    <tr><td><b>P6</b> 対戦募集タブの廃止</td><td>既存タブの統合・撤去、is_bbs の扱い整理</td><td>CommunityPage 改修</td></tr>
+    <tr><td><b>P7</b> 観戦機能</td><td>battle_spectators 基盤、観戦画面（Realtime ライブ・結果）、各場所の観戦導線（詳細は §10.7）</td><td>観戦画面 / バナー導線</td></tr>
+  </table>
+
+  <!-- ========== 9. チェックリスト ========== -->
+  <h2>9. 決定チェックリスト（承認用）</h2>
+  <table>
+    <tr><th>#</th><th>項目</th><th>決定内容</th><th>状態</th></tr>
+    <tr><td>1</td><td>コンセプト</td><td>レスバはコンテンツに添付するアタッチメント（写真添付と同じ操作感）</td><td>☐ 承認</td></tr>
+    <tr><td>2</td><td>独立UI</td><td>対戦募集タブ・募集中一覧・募集管理画面は作らない</td><td>☐ 承認</td></tr>
+    <tr><td>3</td><td>返信のレスバ</td><td>返信ツールバー [📷⚔️]、相手は返信先、承諾/拒否で成立</td><td>☐ 承認</td></tr>
+    <tr><td>4</td><td>ポストのレスバ</td><td>誰でも「⚔️ 応じる」可、応募は受付順に1件ずつ投稿者へ（一覧・人数表示なし）</td><td>☐ 承認</td></tr>
+    <tr><td>5</td><td>DMのレスバ</td><td>入力欄 [📷⚔️]、メッセージの1種として送信・承諾/拒否</td><td>☐ 承認</td></tr>
+    <tr><td>6</td><td>排他ルール</td><td>対戦中は送信・応募不可 / 応募は同時1件 / 承諾で他の提案は自動キャンセル</td><td>☐ 承認</td></tr>
+    <tr><td>7</td><td>バトル実行</td><td>既存 rooms_v2 を使用（rooms_v3 は使わない）</td><td>☐ 承認</td></tr>
+    <tr><td>8</td><td>データモデル</td><td>battle_invites + battle_invite_applications 新設</td><td>☐ 承認</td></tr>
+    <tr><td>9</td><td>既存の対戦募集タブ</td><td>廃止・掲示板へ統合（ランダムマッチは残す）</td><td>☐ 承認</td></tr>
+    <tr><td>10</td><td>レスバ放置</td><td>3日で自動キャンセル（cron）</td><td>☐ 承認</td></tr>
+  </table>
+
+  <!-- ========== 10. 観戦機能 ========== -->
+  <h2>10. 観戦機能（スペクテイター）設計・要件定義</h2>
+  <p>参加型レスバ（オプチャ / 返信・ポスト / 対戦募集）のバトルを、<b>それ以外のユーザーがリアルタイムで観戦できる</b>機能。<b>DM は1対1のプライベートのため観戦なし</b>。</p>
+
+  <h3>10.1 対象範囲と公開範囲</h3>
+  <table>
+    <tr><th>場所</th><th>観戦</th><th>公開範囲</th><th>観戦導線</th></tr>
+    <tr><td><b>オプチャ</b>内レスバ</td><td>◯</td><td>ルームメンバーのみ</td><td>ルームのメッセージリスト上部「⚔️ ルーム内で対戦中」バナー</td></tr>
+    <tr><td><b>返信</b>のレスバ</td><td>◯</td><td>全員（ポストの可視性に準ずる）</td><td>返信スレッド内の「⚔️ 対戦中」表示</td></tr>
+    <tr><td><b>ポスト</b>のレスバ</td><td>◯</td><td>全員</td><td>ポスト詳細の「⚔️ ライブ観戦」バナー</td></tr>
+    <tr><td><b>対戦募集</b>（既存タブ）</td><td>◯</td><td>全員</td><td>対戦募集タブの「対戦中（観戦可）」表示 / ホームの観戦バナー</td></tr>
+    <tr><td><b>DM</b></td><td><b>✗</b></td><td>—</td><td>なし（観戦機能を提供しない）</td></tr>
+  </table>
+  <div class="note-box">
+    💡 観戦はレスバ本体と同じ「コンテンツに付随」の思想。専用の観戦タブ・観戦一覧のような独立画面は作らず、
+    対戦中のコンテンツ（ポスト/返信/オプチャ/対戦募集カード）にバナーを付けて導線を提供します。
+  </div>
+
+  <h3>10.2 体験フロー</h3>
+  <div class="flow">
+    <span class="box">対戦中のバナーをタップ<br><small>ポスト詳細 / オプチャ / 対戦募集タブ</small></span>
+    <span class="arrow">→</span>
+    <span class="box green">ライブ観戦<br><small>rooms_v2 を Realtime 購読（read-only）</small></span>
+    <span class="arrow">→ バトル終了</span>
+    <span class="box">結果発表<br><small>勝者・スコア・トロフィー変動</small></span>
+    <span class="arrow">→</span>
+    <span class="box gray">元のコンテンツへ戻る</span>
+  </div>
+
+  <h3>10.3 リアルタイム同期（Supabase Realtime）</h3>
+  <ul>
+    <li>観戦画面は <code>rooms_v2</code> の <b>postgres_changes</b> を購読（channel：<code>watch-{room_id}</code>）。</li>
+    <li>購読イベント：<code>player1_choice / player2_choice</code>（回答済み）、ラウンド進行、<code>winner / result</code>（結果）。</li>
+    <li>観戦者数は <code>battle_spectators</code> の増減を購読して <b>👁 カウンター</b>を更新。</li>
+    <li>観戦画面は<b>読み取り専用</b>。参加者向けの操作（投票・発言・判定）は一切持たない。</li>
+    <li>既存のバトル画面（GamePage 等）は変更せず、観戦用の read-only ビューを別途用意。</li>
+  </ul>
+
+  <h3>10.4 データベース設計</h3>
+  <h4>battle_spectators（観戦者）</h4>
+  <table>
+    <tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr>
+    <tr><td class="pk">id</td><td>uuid</td><td>PK, DEFAULT gen_random_uuid()</td><td>観戦レコードID</td></tr>
+    <tr><td>battle_room_id</td><td>uuid</td><td>NOT NULL, <span class="fk">FK rooms_v2.id</span> ON DELETE CASCADE</td><td>観戦対象のバトル</td></tr>
+    <tr><td>user_id</td><td>uuid</td><td>NOT NULL, <span class="fk">FK users.id</span></td><td>観戦者</td></tr>
+    <tr><td>joined_at</td><td>timestamptz</td><td>DEFAULT now()</td><td>観戦開始日時</td></tr>
+  </table>
+  <div class="info-box">
+    <b>制約・インデックス：</b><br>
+    <code>UNIQUE (battle_room_id, user_id)</code> … 同一バトルへの重複観戦防止<br>
+    <code>INDEX (battle_room_id)</code> … 観戦者数カウント・一括退出
+  </div>
+
+  <h4>rooms_v2 への拡張（ALTER 1列のみ）</h4>
+  <table>
+    <tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr>
+    <tr><td>spectator_count</td><td>int</td><td>NOT NULL DEFAULT 0</td><td>観戦者数のキャッシュ（battle_spectators の INSERT / DELETE トリガーで更新）</td></tr>
+  </table>
+  <div class="info-box">
+    ⚙️ <b>トリガー：</b>battle_spectators に INSERT / DELETE されたら、対応する rooms_v2 の <code>spectator_count</code> を加減算。
+    バトル終了時（result 確定）は観戦者を一括 DELETE して 0 に戻す（または cron で掃除）。
+  </div>
+
+  <h3>10.5 RLS・RPC</h3>
+  <table>
+    <tr><th>対象</th><th>設計</th></tr>
+    <tr><td><b>RLS（battle_spectators）</b></td><td>INSERT / DELETE：自分の user_id のみ（RPC 経由）。SELECT：観戦対象バトルの公開範囲に準ずる（DM は当事者2名のみ＝事実上観戦不可、オプチャはルームメンバーのみ、他は全員）</td></tr>
+    <tr><td><code>join_battle_spectator</code></td><td>p_room_id, p_user_id … 対戦中のみ・自分が参加者でないこと・公開範囲チェック を行い観戦登録</td></tr>
+    <tr><td><code>leave_battle_spectator</code></td><td>p_room_id, p_user_id … 観戦退出（バトル終了時は一括処理）</td></tr>
+    <tr><td><code>get_spectator_count</code></td><td>p_room_id … 現在の観戦者数を返す</td></tr>
+    <tr><td><code>get_watchable_battles</code></td><td>p_scope_type, p_scope_id … 場所別（ポスト / オプチャ / 対戦募集）の観戦可能バトル一覧を返す</td></tr>
+  </table>
+
+  <h3>10.6 排他・エッジケース</h3>
+  <table>
+    <tr><th>ケース</th><th>挙動</th></tr>
+    <tr><td>自分が参加中のバトル</td><td>観戦対象外（参加画面がそのまま表示されるため観戦バナーを出さない）</td></tr>
+    <tr><td>対戦中の新規観戦</td><td>可能（バトル開始後〜結果確定前のみ join 可）</td></tr>
+    <tr><td>バトル終了</td><td>観戦画面が結果表示へ切り替わり、観戦者レコードを一括削除</td></tr>
+    <tr><td>オプチャ退出 / 削除</td><td>ルーム由来の観戦は自動退出・レコード削除</td></tr>
+    <tr><td>観戦中のユーザー</td><td>read-only なので対戦参加・ランダムマッチ等は制限しない（「対戦中」状態には含めない）</td></tr>
+    <tr><td>観戦者数の大量変動</td><td>spectator_count キャッシュ列で COUNT クエリを回避（N+1・負荷対策）</td></tr>
+  </table>
+
+  <h3>10.7 実装ロードマップ（P7）</h3>
+  <table>
+    <tr><th>Step</th><th>内容</th><th>成果物</th></tr>
+    <tr><td><b>P7-1</b> 基盤</td><td>battle_spectators 作成、rooms_v2.spectator_count 追加、トリガー、RLS、RPC 一式</td><td>マイグレーション + RPC テスト</td></tr>
+    <tr><td><b>P7-2</b> 観戦画面</td><td>read-only ライブビュー（Realtime 購読）、結果発表画面、観戦者数カウンター</td><td>観戦画面（WatchView）</td></tr>
+    <tr><td><b>P7-3</b> 観戦導線</td><td>ポスト詳細 / 返信スレッド / オプチャ / 対戦募集タブ に「⚔️ 対戦中」バナーを設置</td><td>各画面のバナー導線</td></tr>
+  </table>
+
+  <h3>10.8 決定チェックリスト（観戦追記）</h3>
+  <table>
+    <tr><th>#</th><th>項目</th><th>決定内容</th><th>状態</th></tr>
+    <tr><td>11</td><td>観戦対象</td><td>オプチャ / 返信 / ポスト / 対戦募集 = 観戦あり、<b>DM = なし</b></td><td>☐ 承認</td></tr>
+    <tr><td>12</td><td>公開範囲</td><td>オプチャはルームメンバーのみ、他は全員（ポストの可視性に準ずる）</td><td>☐ 承認</td></tr>
+    <tr><td>13</td><td>観戦画面</td><td>read-only ライブビュー（rooms_v2 を Realtime 購読）＋結果発表</td><td>☐ 承認</td></tr>
+    <tr><td>14</td><td>観戦者数</td><td>battle_spectators + rooms_v2.spectator_count で表示（👁）</td><td>☐ 承認</td></tr>
+    <tr><td>15</td><td>導線</td><td>専用タブは作らず、対戦中のコンテンツにバナーを付随（レスバと同じ思想）</td><td>☐ 承認</td></tr>
+  </table>
+
+  <div class="section-gap"></div>
+  <div class="info-box">
+    📎 関連資料：<a href="database_schema.html">database_schema.html</a>（DM/オプチャ DB設計）・
+    <a href="message_tab_plan.html">message_tab_plan.html</a>（メッセージタブ設計）・
+    <a href="post_detail.html">post_detail.html</a>（ポスト詳細設計）・
+    <a href="image_feature_design.html">image_feature_design.html</a>（写真添付設計）
+  </div>
+
+</main>
+</body>
+</html>

@@ -14,6 +14,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/provider/notification_service.dart';
+import 'package:debate_project/widgets/resba_applying_banner.dart';
 
 final scaffoldMessengerKeyProvider = Provider((ref) => GlobalKey<ScaffoldMessengerState>());
 
@@ -71,6 +72,15 @@ class MyApp extends ConsumerWidget {
         Locale('ja', 'JP'),
       ],
       locale: const Locale('ja', 'JP'),
+      // アプリ全体の最前面にレスバの応募中バナーを重ねる
+      builder: (context, child) {
+        return Stack(
+          children: [
+            if (child != null) child,
+            const ResbaApplyingBanner(),
+          ],
+        );
+      },
     );
   }
 }

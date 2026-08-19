@@ -138,10 +138,11 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
     }
   }
 
-  Future<void> sendMessage(String content, {String? imageUrl}) async {
+  /// メッセージを送信し、実際のメッセージIDを返す（レスバ添付時に使用）
+  Future<String?> sendMessage(String content, {String? imageUrl}) async {
     final supabase = _ref.read(supabaseProvider);
     final myId = supabase.auth.currentUser?.id;
-    if (myId == null) return;
+    if (myId == null) return null;
 
     // 楽観的UI (一時的なメッセージをStateに追加)
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
@@ -176,6 +177,7 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
           currentList.map((m) => m.id == tempId ? realMsg : m).toList()
         );
       }
+      return response['id'] as String?;
     } catch (e) {
       // エラー処理（本来ならエラー表示などが必要）
       print('sendMessage error: $e');
@@ -185,6 +187,7 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
           currentList.where((m) => m.id != tempId).toList() // 送信失敗したら仮メッセージを消す
         );
       }
+      return null;
     }
   }
 

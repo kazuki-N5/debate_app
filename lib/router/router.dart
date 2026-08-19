@@ -16,17 +16,26 @@ import 'package:debate_project/views/NotificationSettingsPage.dart';
 import 'package:debate_project/views/TransferPage.dart';
 import 'package:debate_project/views/WaittransferPage.dart';
 import 'package:debate_project/views/UserProfilePage.dart';
+import 'package:debate_project/views/MyResbaListPage.dart';
+import 'package:debate_project/views/ResbaRequestPage.dart';
+import 'package:debate_project/modes/app_notification.dart';
 import 'package:debate_project/modes/bbs_post.dart';
+import 'package:debate_project/modes/resba_invite.dart';
 import 'package:debate_project/views/bbs/BbsPostDetailView.dart';
 import 'package:debate_project/views/bbs/BbsPostCreateView.dart';
 import 'package:debate_project/modes/open_chat.dart';
 import 'package:debate_project/views/open_chat/OpenChatRoomView.dart';
 import 'package:debate_project/views/open_chat/OpenChatCreateRoomPage.dart';
 import 'package:debate_project/views/open_chat/OpenChatPreviewPage.dart';
+import 'package:debate_project/views/ResbaBattleWatchView.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+// アプリ全体でダイアログ（レスバの全画面確認など）を表示するためのグローバルキー
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 final GoRouter router = GoRouter(
+  navigatorKey: navigatorKey,
   errorBuilder: (context, state) => Scaffold(
     appBar: AppBar(title: const Text("Routing Error")),
     body: Center(child: Text('Page not found: ${state.error}')),
@@ -140,6 +149,37 @@ final GoRouter router = GoRouter(
         final post = state.extra as BbsPost;
         return NoTransitionPage(
           child: HeroControllerScope.none(child: BbsPostDetailView(post: post)),
+          key: state.pageKey,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/myResbas',
+      pageBuilder: (context, state) => NoTransitionPage(
+        child: const MyResbaListPage(),
+        key: state.pageKey,
+      ),
+    ),
+    GoRoute(
+      path: '/resbaWatch',
+      pageBuilder: (context, state) {
+        final invite = state.extra as ResbaInvite;
+        return NoTransitionPage(
+          child: ResbaBattleWatchView(invite: invite),
+          key: state.pageKey,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/resbaRequest',
+      pageBuilder: (context, state) {
+        final args =
+            state.extra as ({String inviteId, AppNotification? notification});
+        return NoTransitionPage(
+          child: ResbaRequestPage(
+            inviteId: args.inviteId,
+            notification: args.notification,
+          ),
           key: state.pageKey,
         );
       },

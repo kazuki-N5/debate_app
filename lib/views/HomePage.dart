@@ -10,6 +10,10 @@ import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/notification_provider.dart';
 import 'package:debate_project/provider/notification_settings_provider.dart';
+import 'package:debate_project/provider/resba_provider.dart';
+import 'package:debate_project/modes/bbs_post.dart';
+import 'package:debate_project/modes/resba_invite.dart';
+import 'package:debate_project/provider/bbs_timeline_provider.dart';
 import 'package:debate_project/provider/sfx_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
@@ -156,8 +160,26 @@ class HomePage extends HookConsumerWidget {
     useOnAppLifecycleStateChange((previous, current) {
       if (current == AppLifecycleState.resumed) {
         ref.read(userProvider.notifier).syncNotificationStatusWithSystem();
+        ref.read(notificationProvider.notifier).fetchNotifications();
       }
     });
+
+    // レスバ（対戦招待）の成立をリアルタイム検知し、バトル画面へ遷移するリスナー
+    // watch してプロバイダを生存させ、購読が破棄されないようにする
+    ref.watch(resbaMatchListenerProvider);
+    useEffect(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(resbaMatchListenerProvider.notifier).start();
+      });
+      return null;
+    }, []);
+
+    // ホストとして保留中の応募（試合終了後に表示）
+    final pendingHostInvites = ref.watch(pendingHostInvitesProvider);
+    final pendingInvites = pendingHostInvites.valueOrNull ?? const <ResbaInvite>[];
+    // 応募者がいる pending レスバのみ（保留バナーの表示対象）
+    final pendingWithApplications =
+        pendingInvites.where((i) => i.firstApplication != null).toList();
 
     // 現在のトロフィー数を保存して、次回の「前回値」として使う
     useEffect(() {
@@ -593,6 +615,27 @@ class HomePage extends HookConsumerWidget {
                                           ),
                                         ],
                                       ),
+                                      // マイレスバ（作ったレスバの管理）
+                                      Column(
+                                        children: [
+                                          IconButton(
+                                            icon: const Text(
+                                              '⚔️',
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 34,
+                                              ),
+                                            ),
+                                            onPressed: () {
+                                              ref
+                                                  .read(soundServiceProvider)
+                                                  .playSfx(SfxAssets.normal);
+                                              context.push('/myResbas');
+                                            },
+                                            enableFeedback: false,
+                                          ),
+                                        ],
+                                      ),
                                       // 設定アイコンと履歴アイコン
                                       Column(
                                         children: [
@@ -914,6 +957,101 @@ class HomePage extends HookConsumerWidget {
                                             ),
                                           ),
 
+                                          // 保留中の応募バナー（実際に応募者がいる pending レスバのみ・タップでポスト詳細へ）
+                                          if (pendingWithApplications
+                                              .isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                  bottom: 16),
+                                              child: GestureDetector(
+                                                behavior:
+                                                    HitTestBehavior.opaque,
+                                                onTap: () {
+                                                  final invite =
+                                                      pendingWithApplications
+                                                          .first;
+                                                  BbsPost? post;
+                                                  final posts = ref
+                                                      .read(
+                                                          bbsTimelineProvider)
+                                                      .valueOrNull;
+                                                  if (posts != null) {
+                                                    for (final p in posts) {
+                                                      if (p.id ==
+                                                          invite.attachId) {
+                                                        post = p;
+                                                        break;
+                                                      }
+                                                    }
+                                                  }
+                                                  if (post != null &&
+                                                      context.mounted) {
+                                                    context.push(
+                                                        '/bbsPostDetail',
+                                                        extra: post);
+                                                  }
+                                                },
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets
+                                                          .symmetric(
+                                                              horizontal: 14,
+                                                              vertical: 12),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                        0xFFFAF8FF),
+                                                    border: Border.all(
+                                                        color: const Color(
+                                                            0xFF7856FF)),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      const Text('⚔️',
+                                                          style: TextStyle(
+                                                              fontSize: 16)),
+                                                      const SizedBox(
+                                                          width: 10),
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          children: [
+                                                            Text(
+                                                              '保留中の応募があります（${pendingWithApplications.length}件）',
+                                                              style: AppTextStyles
+                                                                  .bold(
+                                                                fontSize: 13,
+                                                                color: const Color(
+                                                                    0xFF7856FF),
+                                                              ),
+                                                            ),
+                                                            Text(
+                                                              'タップして確認・承認できます',
+                                                              style: AppTextStyles
+                                                                  .notoSans(
+                                                                fontSize: 11,
+                                                                color: Colors
+                                                                    .grey,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      const Icon(
+                                                        Icons.chevron_right,
+                                                        color: Color(
+                                                            0xFF7856FF),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+
                                           // ゲーム開始ボタン
                                           SizedBox(
                                             // ContainerをSizedBoxに変更 (子にElevatedButtonしかないため)
@@ -932,6 +1070,42 @@ class HomePage extends HookConsumerWidget {
                                                       vibration.vibrateShort();
                                                     }
                                                   : () async {
+                                                      // 前の試合（進行中ルーム）があれば「負け（相手勝ち）」にして解除
+                                                      // 待ち時間なしで新しい試合に参加できるようにする
+                                                      await ref
+                                                          .read(
+                                                              resbaActionsProvider)
+                                                          .resolveMyBattle();
+                                                      // 応募中チェック: 応募中のレスバがあれば確認ダイアログ
+                                                      final status = await ref
+                                                          .read(
+                                                              resbaActionsProvider)
+                                                          .getMyResbaStatus();
+                                                      if (status.isApplying) {
+                                                        final proceed = await showDialog<bool>(
+                                                          context: context,
+                                                          builder: (dialogContext) => AlertDialog(
+                                                            title: const Text('⚔️ 応募中のレスバがあります'),
+                                                            content: const Text('応募を取り消してランダムマッチに参加しますか？'),
+                                                            actions: [
+                                                              TextButton(
+                                                                onPressed: () => Navigator.pop(dialogContext, false),
+                                                                child: const Text('いいえ'),
+                                                              ),
+                                                              ElevatedButton(
+                                                                onPressed: () => Navigator.pop(dialogContext, true),
+                                                                child: const Text('はい、取り消して参加'),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        );
+                                                        if (proceed != true) return;
+                                                        await ref
+                                                            .read(resbaActionsProvider)
+                                                            .cancelMyPendingApplications();
+                                                        ref.invalidate(
+                                                            pendingHostInvitesProvider);
+                                                      }
                                                       toggleBoolean();
                                                       friendmatchnotifier
                                                           .state = true;
@@ -1058,7 +1232,7 @@ class HomePage extends HookConsumerWidget {
             activeIcons: [
               const Icon(Icons.people, color: Colors.blue),
               const Icon(Icons.home, color: Colors.blue),
-              _buildMessageIcon(unreadNotifications, active: true),
+              const Icon(Icons.message, color: Colors.blue),
             ],
             inactiveIcons: [
               Column(
@@ -1082,7 +1256,10 @@ class HomePage extends HookConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildMessageIcon(unreadNotifications, active: false),
+                  _buildMessageIcon(
+                    currentIndex.value == 2 ? 0 : unreadNotifications,
+                    active: false,
+                  ),
                   Text("メッセージ",
                       style: TextStyle(
                           color: currentIndex.value == 2
@@ -1100,6 +1277,10 @@ class HomePage extends HookConsumerWidget {
             activeIndex: currentIndex.value,
             onTap: (index) {
               FocusManager.instance.primaryFocus?.unfocus();
+              // メッセージタブ(2)から他のタブに移動した場合、溜まっていた通知を既読にする
+              if (currentIndex.value == 2 && index != 2) {
+                ref.read(notificationProvider.notifier).markAllRead();
+              }
               visitedTabs.value = {
                 ...visitedTabs.value,
                 index

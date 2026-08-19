@@ -1,10 +1,14 @@
 import 'dart:io';
+import 'package:debate_project/modes/resba_invite.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:debate_project/provider/dm_provider.dart';
 import 'package:debate_project/provider/image_upload_provider.dart';
+import 'package:debate_project/provider/resba_provider.dart';
+import 'package:debate_project/widgets/resba_attach_sheet.dart';
+import 'package:debate_project/widgets/resba_card.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:debate_project/widgets/full_screen_image_viewer.dart';
 
@@ -65,6 +69,8 @@ class DmRoomPage extends HookConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('エラー: $err')),
         data: (rId) {
+          final resbasAsync = ref.watch(dmResbaProvider(rId));
+          final resbas = resbasAsync.valueOrNull ?? const <ResbaInvite>[];
           return Column(
             children: [
               Expanded(
@@ -87,68 +93,104 @@ class DmRoomPage extends HookConsumerWidget {
                         // temp_, sent_ の場合は少し色を薄くするなど工夫も可能
                         final isSending = msg.id.startsWith('temp_');
 
-                        return Align(
-                          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                          child: Opacity(
-                            opacity: isSending ? 0.6 : 1.0,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                              decoration: BoxDecoration(
-                                color: isMe ? Colors.blueAccent : Colors.grey[300],
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                children: [
-                                  if (msg.imageUrl != null)
-                                    Padding(
-                                      padding: EdgeInsets.only(bottom: msg.content.isNotEmpty ? 4.0 : 0.0),
-                                      child: GestureDetector(
-                                        // タップで画像を拡大表示
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => FullScreenImageViewer(
-                                                imageUrls: [msg.imageUrl!],
-                                                initialIndex: 0,
+                        // このメッセージに付いたレスバ（アクティブのみ）
+                        final msgResbas = resbas
+                            .where((r) =>
+                                r.attachType == 'dm' &&
+                                r.attachId == msg.id &&
+                                (r.isPending || r.isAccepted))
+                            .toList();
+
+                        return Column(
+                          crossAxisAlignment: isMe
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
+                          children: [
+                            Align(
+                              alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                              child: Opacity(
+                                opacity: isSending ? 0.6 : 1.0,
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                                  decoration: BoxDecoration(
+                                    color: isMe ? Colors.blueAccent : Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                    children: [
+                                      if (msg.imageUrl != null)
+                                        Padding(
+                                          padding: EdgeInsets.only(bottom: msg.content.isNotEmpty ? 4.0 : 0.0),
+                                          child: GestureDetector(
+                                            // タップで画像を拡大表示
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => FullScreenImageViewer(
+                                                    imageUrls: [msg.imageUrl!],
+                                                    initialIndex: 0,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: CachedNetworkImage(
+                                                imageUrl: msg.imageUrl!,
+                                                fit: BoxFit.cover,
+                                                memCacheWidth: 900, // 表示サイズでデコードしてカクつきを抑える
+                                                fadeInDuration: Duration.zero, // ふわ〜っと出るフェードを無効化してパッと表示
+                                                fadeOutDuration: Duration.zero,
+                                                placeholder: (context, url) => Container(height: 150, color: Colors.grey[300]),
+                                                errorWidget: (context, url, error) => const Icon(Icons.error),
                                               ),
                                             ),
-                                          );
-                                        },
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: CachedNetworkImage(
-                                            imageUrl: msg.imageUrl!,
-                                            fit: BoxFit.cover,
-                                            memCacheWidth: 900, // 表示サイズでデコードしてカクつきを抑える
-                                            fadeInDuration: Duration.zero, // ふわ〜っと出るフェードを無効化してパッと表示
-                                            fadeOutDuration: Duration.zero,
-                                            placeholder: (context, url) => Container(height: 150, color: Colors.grey[300]),
-                                            errorWidget: (context, url, error) => const Icon(Icons.error),
                                           ),
                                         ),
-                                      ),
-                                    ),
-                                  if (msg.content.isNotEmpty)
-                                    Text(
-                                      msg.content,
-                                      style: TextStyle(
-                                        color: isMe ? Colors.white : Colors.black87,
-                                      ),
-                                    ),
-                                ],
+                                      if (msg.content.isNotEmpty)
+                                        Text(
+                                          msg.content,
+                                          style: TextStyle(
+                                            color: isMe ? Colors.white : Colors.black87,
+                                          ),
+                                        ),
+                                      if (msgResbas.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 6),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: const [
+                                              ResbaBadge(text: 'レスバ'),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                            // レスバカード（承諾/拒否・相手待ち表示）
+                            for (final invite in msgResbas)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: ResbaCard(
+                                  invite: invite,
+                                  onChanged: () {
+                                    ref.invalidate(dmResbaProvider(rId));
+                                  },
+                                ),
+                              ),
+                          ],
                         );
                       },
                     );
                   },
                 ),
               ),
-              _MessageInputWidget(roomId: roomId!),
+              _MessageInputWidget(roomId: rId),
             ],
           );
         },
@@ -167,10 +209,11 @@ class _MessageInputWidget extends HookConsumerWidget {
     final messageController = useTextEditingController();
     final selectedImage = useState<File?>(null);
     final isUploading = useState(false);
+    final resbaAttachment = useState<ResbaAttachment?>(null);
 
     void sendMessage() async {
       final text = messageController.text.trim();
-      if (text.isEmpty && selectedImage.value == null) return;
+      if (text.isEmpty && selectedImage.value == null && resbaAttachment.value == null) return;
 
       isUploading.value = true;
       try {
@@ -185,10 +228,26 @@ class _MessageInputWidget extends HookConsumerWidget {
         }
 
         // 楽観的UIによる即時反映のためProviderに依頼
-        ref.read(dmMessagesProvider(roomId).notifier).sendMessage(text, imageUrl: uploadedUrl);
-        
+        final messageId = await ref.read(dmMessagesProvider(roomId).notifier).sendMessage(text, imageUrl: uploadedUrl);
+
+        // レスバ（写真）を送る感覚でレスバを添付
+        final attachment = resbaAttachment.value;
+        if (attachment != null && messageId != null) {
+          final result = await ref.read(resbaActionsProvider).sendDmResba(
+                messageId: messageId,
+                theme: attachment.theme,
+                choice1: attachment.choice1,
+                choice2: attachment.choice2,
+              );
+          if (result.error != null && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.error!)));
+          }
+          ref.invalidate(dmResbaProvider(roomId));
+        }
+
         messageController.clear();
         selectedImage.value = null;
+        resbaAttachment.value = null;
       } catch (e) {
         if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('送信エラー: $e')));
       } finally {
@@ -213,6 +272,19 @@ class _MessageInputWidget extends HookConsumerWidget {
                     final image = await picker.pickImage();
                     if (image != null) {
                       selectedImage.value = image;
+                    }
+                  },
+                ),
+                // ⚔️ レスバ（写真）を送る
+                IconButton(
+                  icon: const Text('⚔️', style: TextStyle(fontSize: 20, color: Color(0xFF7856FF))),
+                  onPressed: isUploading.value ? null : () async {
+                    final attachment = await showResbaAttachSheet(
+                      context,
+                      presetTheme: messageController.text.trim(),
+                    );
+                    if (attachment != null) {
+                      resbaAttachment.value = attachment;
                     }
                   },
                 ),
@@ -276,6 +348,42 @@ class _MessageInputWidget extends HookConsumerWidget {
                       ),
                     ),
                   ],
+                ),
+              ),
+            if (resbaAttachment.value != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, left: 48.0, bottom: 8.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF8FF),
+                    border: Border.all(color: const Color(0xFF7856FF)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('⚔️', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'レスバ: ${resbaAttachment.value!.theme}',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF7856FF),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          resbaAttachment.value = null;
+                        },
+                        child: const Icon(Icons.close, size: 16, color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 ),
               ),
           ],

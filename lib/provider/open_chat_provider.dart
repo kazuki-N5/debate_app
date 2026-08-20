@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:debate_project/modes/open_chat.dart';
+import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // 検索クエリを保持するプロバイダー
@@ -31,9 +33,43 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
   final String roomId;
   RealtimeChannel? _channel;
   bool hasMore = true;
+  // 端末内で非表示にしたメッセージID(「非表示」機能)
+  Set<String> _hiddenMessageIds = {};
 
   OpenChatMessagesNotifier(this._ref, this.roomId) : super(const AsyncValue.loading()) {
+    _loadHiddenIds();
     _init();
+  }
+
+  Future<void> _loadHiddenIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _hiddenMessageIds =
+          (prefs.getStringList('hidden_open_chat_message_ids') ?? const []).toSet();
+    } catch (_) {}
+  }
+
+  /// メッセージを「非表示」にする(端末内のみ)
+  Future<void> hideMessage(String messageId) async {
+    _hiddenMessageIds.add(messageId);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('hidden_open_chat_message_ids', _hiddenMessageIds.toList());
+    } catch (_) {}
+    if (state is AsyncData) {
+      state = AsyncValue.data(
+        state.value!.where((m) => m.id != messageId).toList(),
+      );
+    }
+  }
+
+  /// ブロック済みユーザー・非表示メッセージを除外
+  List<OpenChatMessage> _filter(List<OpenChatMessage> messages) {
+    final blocked = _ref.read(blockedUserIdsProvider).toSet();
+    return messages
+        .where((m) => !blocked.contains(m.userId))
+        .where((m) => !_hiddenMessageIds.contains(m.id))
+        .toList();
   }
 
   Future<void> _init() async {
@@ -52,9 +88,11 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
         ),
         callback: (payload) {
           final newMsg = OpenChatMessage.fromJson(payload.newRecord);
-          // 新着メッセージを受信した場合、現在のリストに追加
+          // ブロック済みユーザー・非表示メッセージは追加しない
           if (state is AsyncData) {
             final currentList = state.value!;
+            final filtered = _filter([newMsg]);
+            if (filtered.isEmpty) return;
             // 重複チェック
             if (!currentList.any((msg) => msg.id == newMsg.id)) {
               state = AsyncValue.data([...currentList, newMsg]);
@@ -74,7 +112,7 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
           
       final messages = (response as List).map((e) => OpenChatMessage.fromJson(e as Map<String, dynamic>)).toList();
       // created_atが降順で来るので、昇順（古い順）に直して画面表示用に合わせる
-      state = AsyncValue.data(messages.reversed.toList());
+      state = AsyncValue.data(_filter(messages.reversed.toList()));
       
       if (messages.length < 50) {
         hasMore = false;
@@ -108,7 +146,7 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
         hasMore = false;
       }
 
-      state = AsyncValue.data([...olderMessages.reversed, ...currentList]);
+      state = AsyncValue.data([..._filter(olderMessages.reversed.toList()), ...currentList]);
     } catch (e) {
       print('loadMore error: $e');
     }
@@ -186,17 +224,22 @@ class OpenChatActionNotifier extends AutoDisposeNotifier<void> {
     }
   }
 
-  Future<void> sendMessage(String roomId, String content, {String? imageUrl}) async {
+  Future<String?> sendMessage(String roomId, String content, {String? imageUrl}) async {
     final supabase = ref.read(supabaseProvider);
     final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return;
+    if (userId == null) return null;
 
-    await supabase.from('open_chat_messages').insert({
-      'room_id': roomId,
-      'user_id': userId,
-      'content': content,
-      if (imageUrl != null) 'image_url': imageUrl,
-    });
+    final response = await supabase
+        .from('open_chat_messages')
+        .insert({
+          'room_id': roomId,
+          'user_id': userId,
+          'content': content,
+          if (imageUrl != null) 'image_url': imageUrl,
+        })
+        .select('id')
+        .single();
+    return response['id'] as String?;
   }
 
   Future<String?> leaveRoom(String roomId) async {

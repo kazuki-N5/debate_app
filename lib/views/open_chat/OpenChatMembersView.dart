@@ -5,6 +5,7 @@ import 'package:debate_project/provider/open_chat_provider.dart';
 import 'package:debate_project/modes/open_chat.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/widgets/moderation.dart';
 
 class OpenChatMembersView extends HookConsumerWidget {
   final OpenChatRoom room;
@@ -64,12 +65,22 @@ class OpenChatMembersView extends HookConsumerWidget {
                     ],
                   ),
                   subtitle: Text('参加: ${member.joinedAt.month}/${member.joinedAt.day}', style: const TextStyle(fontSize: 12)),
-                  trailing: (isAdmin && !isMe)
-                      ? TextButton(
-                          onPressed: () => _confirmKick(context, ref, member),
-                          child: const Text('削除', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                        )
-                      : null,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!isMe) ...[
+                        TextButton(
+                          onPressed: () => _confirmBlock(context, ref, member),
+                          child: const Text('ブロック', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        ),
+                        if (isAdmin)
+                          TextButton(
+                            onPressed: () => _confirmKick(context, ref, member),
+                            child: const Text('削除', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                          ),
+                      ],
+                    ],
+                  ),
                 );
               },
             ),
@@ -78,6 +89,15 @@ class OpenChatMembersView extends HookConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(child: Text('エラー: $error')),
       ),
+    );
+  }
+
+  void _confirmBlock(BuildContext context, WidgetRef ref, OpenChatMember targetMember) {
+    showBlockUserDialog(
+      context: context,
+      ref: ref,
+      targetUserId: targetMember.userId,
+      targetName: 'このユーザー',
     );
   }
 

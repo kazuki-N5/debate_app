@@ -1,10 +1,12 @@
 // ignore_for_file: file_names
+import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/follow_provider.dart';
 import 'package:debate_project/provider/user_profile_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/views/bbs/BbsTimelineView.dart';
 import 'package:debate_project/views/DmRoomPage.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/moderation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -39,6 +41,10 @@ class UserProfilePage extends HookConsumerWidget {
 
     final isSelf = Supabase.instance.client.auth.currentUser?.id == user.id;
     final isFollowing = ref.watch(isFollowingProvider(user.id));
+    // ブロック状態(自分がブロック / 相手からブロック)
+    final isBlocked = ref.watch(blockedUserIdsProvider).contains(user.id);
+    final blockedByThem =
+        ref.watch(isBlockedByProvider(user.id)).valueOrNull ?? false;
     final headerUrl = user.header_url;
     final avatarUrl = user.avatar_url;
     final bio = user.bio ?? '';
@@ -95,6 +101,47 @@ class UserProfilePage extends HookConsumerWidget {
                         ),
                         Row(
                           children: [
+                            if (!isSelf) ...[
+                              // ブロック / ブロック解除
+                              IconButton(
+                                icon: Icon(
+                                  isBlocked ? Icons.person_off : Icons.block,
+                                  color: isBlocked ? Colors.red : Colors.black54,
+                                ),
+                                tooltip: isBlocked ? 'ブロックを解除' : 'ブロック',
+                                onPressed: () {
+                                  if (isBlocked) {
+                                    showUnblockUserDialog(
+                                      context: context,
+                                      ref: ref,
+                                      targetUserId: user.id,
+                                      targetName: name,
+                                    );
+                                  } else {
+                                    showBlockUserDialog(
+                                      context: context,
+                                      ref: ref,
+                                      targetUserId: user.id,
+                                      targetName: name,
+                                      onBlocked: () =>
+                                          ref.invalidate(userProfileProvider(user.id)),
+                                    );
+                                  }
+                                },
+                              ),
+                              // 通報
+                              IconButton(
+                                icon: const Icon(Icons.flag_outlined,
+                                    color: Colors.black54),
+                                tooltip: '通報',
+                                onPressed: () => showReportDialog(
+                                  context: context,
+                                  ref: ref,
+                                  opponentId: user.id,
+                                  contentType: 'user',
+                                ),
+                              ),
+                            ],
                             IconButton(
                               icon: const Icon(Icons.mail_outline),
                               onPressed: () {
@@ -152,6 +199,27 @@ class UserProfilePage extends HookConsumerWidget {
                         style: AppTextStyles.notoSans(fontSize: 15),
                       ),
                       const SizedBox(height: 16),
+                    ],
+                    // 相手からブロックされている場合の表示
+                    if (blockedByThem) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red[200]!),
+                        ),
+                        child: Text(
+                          'このユーザーからブロックされています',
+                          style: AppTextStyles.notoSans(
+                            fontSize: 12,
+                            color: Colors.red[700],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                     ],
                   ],
                 ),

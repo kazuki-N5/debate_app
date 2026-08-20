@@ -14,6 +14,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:debate_project/utils/date_formatter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:debate_project/widgets/full_screen_image_viewer.dart';
+import 'package:debate_project/widgets/moderation.dart';
 
 class BbsTimelineView extends HookConsumerWidget {
   const BbsTimelineView({super.key});
@@ -170,7 +171,38 @@ class BbsPostWidget extends ConsumerWidget {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          final myId = ref.read(currentUserIdProvider);
+                          final isOwn = post.userId == myId;
+                          showContentMenuSheet(
+                            context: context,
+                            ref: ref,
+                            authorUserId: isOwn ? null : post.userId,
+                            authorName: userName,
+                            contentType: 'bbs_post',
+                            contentId: post.id,
+                            contentSnapshot: post.content,
+                            isOwnContent: isOwn,
+                            onHide: () =>
+                                ref.read(bbsTimelineProvider.notifier).hidePost(post.id),
+                            onDelete: isOwn
+                                ? () async {
+                                    final ok = await ref
+                                        .read(bbsTimelineProvider.notifier)
+                                        .deletePost(post.id);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(ok ? '投稿を削除しました' : '削除に失敗しました'),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                : null,
+                            onBlocked: () =>
+                                ref.read(bbsTimelineProvider.notifier).fetchPosts(),
+                          );
+                        },
                         child: const Icon(CupertinoIcons.ellipsis, color: Color(0xFF536471), size: iconSize),
                       ),
                     ],

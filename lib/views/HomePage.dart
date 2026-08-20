@@ -7,7 +7,6 @@ import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
-import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/notification_provider.dart';
 import 'package:debate_project/provider/notification_settings_provider.dart';
 import 'package:debate_project/provider/resba_provider.dart';
@@ -19,7 +18,6 @@ import 'package:debate_project/view_model/Homepage_view_model.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:debate_project/view_model/start_error_dialog.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
-import 'package:debate_project/widgets/bbs_applying_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart'; // CupertinoSwitchのために追加
 import 'package:flutter_hooks/flutter_hooks.dart'; // Hooksを継続して使用
@@ -28,7 +26,6 @@ import 'package:hooks_riverpod/hooks_riverpod.dart'; // hooks_riverpodを継続�
 import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:debate_project/provider/bbs_provider.dart';
 import 'package:debate_project/views/CommunityPage.dart';
 import 'package:debate_project/views/MessagePage.dart';
 
@@ -62,96 +59,6 @@ class HomePage extends HookConsumerWidget {
     final lastTrophy = ref.watch(lastTrophyCountProvider);
     final user = ref.watch(userProvider);
 
-    ref.listen<BbsRoomState?>(bbsHostProvider, (previous, next) {
-      // 誰かから申し込みがあった時
-      if (previous?.challengerId == null && next?.challengerId != null) {
-        showDialog(
-          context: context,
-          barrierDismissible: false, // 処理中に外側タップで閉じられないようにする
-          builder: (ctx) {
-            bool isLoading = false;
-            return StatefulBuilder(
-              builder: (ctx, setState) {
-                return AlertDialog(
-                  title: Text('申し込みがありました',
-                      style: AppTextStyles.bold(fontSize: 18)),
-                  content: isLoading
-                      ? const SizedBox(
-                          height: 50,
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      : const Text('対戦を申し込みました。やりますか？'),
-                  actions: [
-                    if (!isLoading)
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          ref
-                              .read(bbsHostProvider.notifier)
-                              .approveChallenger(false);
-                        },
-                        child: const Text('いいえ'),
-                      ),
-                    if (!isLoading)
-                      ElevatedButton(
-                        onPressed: () async {
-                          setState(() {
-                            isLoading = true;
-                          });
-                          final success = await ref
-                              .read(bbsHostProvider.notifier)
-                              .approveChallenger(true);
-                          if (!success) {
-                            setState(() {
-                              isLoading = false;
-                            });
-                            if (ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(content: Text('承認に失敗しました')));
-                            }
-                          }
-                          // 成功時はダイアログは開いたまま(ぐるぐる状態)で、下のリスナーで画面遷移する
-                        },
-                        child: const Text('はい'),
-                      ),
-                  ],
-                );
-              },
-            );
-          },
-        );
-      }
-
-      // マッチング成立(承認成功)時の処理: ぐるぐるダイアログを閉じて画面遷移
-      if (previous?.player2Id == null && next?.player2Id != null) {
-        Navigator.of(context, rootNavigator: true).pop(); // ダイアログを閉じる
-        if (next?.roomId != null) {
-          ref
-              .read(matchingRoomProvider.notifier)
-              .joinBbsRoom(next!.roomId!)
-              .then((_) {
-            router.go('/wait');
-          });
-        }
-      }
-    });
-
-    ref.listen<BbsRoomState?>(bbsGuestProvider, (previous, next) async {
-      if (previous?.challengerId != null && next?.player2Id != null) {
-        if (next?.roomId != null) {
-          await ref
-              .read(matchingRoomProvider.notifier)
-              .joinBbsRoom(next!.roomId!);
-        }
-        ref.read(bbsGuestProvider.notifier).clearState();
-        router.go('/wait');
-      } else if (previous?.challengerId != null &&
-          next?.challengerId == null &&
-          next?.player2Id == null) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('申し込みが拒否されました')));
-      }
-    });
 
     // 設定画面から戻ったときなどに通知状態を同期する
     useOnAppLifecycleStateChange((previous, current) {
@@ -167,6 +74,10 @@ class HomePage extends HookConsumerWidget {
     useEffect(() {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(resbaMatchListenerProvider.notifier).start();
+        // ホーム画面表示時にマッチング状態を確実にリセット
+        isMatching.value = false;
+        ref.read(friendmatchProvider.notifier).state = false;
+        ref.read(matchingRoomProvider.notifier).delete();
       });
       return null;
     }, []);
@@ -184,9 +95,7 @@ class HomePage extends HookConsumerWidget {
       return null;
     }, [user.trophy]);
 
-    final matchingRoomnotifier = ref.watch(matchingRoomProvider.notifier);
     final vibration = ref.read(vibrationServiceProvider);
-    final chatsnotifier = ref.read(chatProvider.notifier);
     final optionalupdate = ref.read(optionalboolProvider);
     final update = ref.read(appConfigProvider);
     final updatenotifier = ref.read(appStateProvider.notifier);
@@ -350,15 +259,9 @@ class HomePage extends HookConsumerWidget {
     final bannerAd = ref.watch(
         bannerAdProvider); // 空の依存配列 [] は、このエフェクトがウィジェットがマウントされたとき一度だけ実行されることを意味します (initState と同様)
 
-    // --- 既存の useEffect (ルーム/チャットのクリーンアップ用) ---
+    // --- 既存の useEffect (バージョン確認用) ---
     useEffect(() {
-      // マウント時に実行したい処理をまとめた非同期関数
       Future<void> initializePage() async {
-        // 以前の状態をクリアする、または初期化として実行したい処理
-        // これらがもし非同期処理なら await を付けてください
-        matchingRoomnotifier.delete();
-        chatsnotifier.unsubscribeFromMessages();
-
         // バージョン情報を取得
         final saveversion = await updatenotifier.getVersion();
         print('今の保存されてるバージョン　$saveversion');
@@ -964,65 +867,83 @@ class HomePage extends HookConsumerWidget {
                                                               SfxAssets.go);
                                                       vibration.vibrateShort();
                                                     }
-                                                  : () async {
-                                                      // 前の試合（進行中ルーム）があれば「負け（相手勝ち）」にして解除
-                                                      // 待ち時間なしで新しい試合に参加できるようにする
-                                                      await ref
-                                                          .read(
-                                                              resbaActionsProvider)
-                                                          .resolveMyBattle();
-                                                      // 応募中チェック: 応募中のレスバがあれば確認ダイアログ
-                                                      final status = await ref
-                                                          .read(
-                                                              resbaActionsProvider)
-                                                          .getMyResbaStatus();
-                                                      if (status.isApplying) {
-                                                        final proceed = await showDialog<bool>(
-                                                          context: context,
-                                                          builder: (dialogContext) => AlertDialog(
-                                                            title: const Text('⚔️ 応募中のレスバがあります'),
-                                                            content: const Text('応募を取り消してランダムマッチに参加しますか？'),
-                                                            actions: [
-                                                              TextButton(
-                                                                onPressed: () => Navigator.pop(dialogContext, false),
-                                                                child: const Text('いいえ'),
-                                                              ),
-                                                              ElevatedButton(
-                                                                onPressed: () => Navigator.pop(dialogContext, true),
-                                                                child: const Text('はい、取り消して参加'),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        );
-                                                        if (proceed != true) return;
-                                                        await ref
-                                                            .read(resbaActionsProvider)
-                                                            .cancelMyPendingApplications();
-                                                      }
-                                                      toggleBoolean();
-                                                      friendmatchnotifier
-                                                          .state = true;
-                                                      ref
-                                                          .read(
-                                                              soundServiceProvider)
-                                                          .playSfx(
-                                                              SfxAssets.go);
-                                                      vibration.vibrateShort();
-                                                      // findMatchの呼び出しは変更なし
-                                                      await ref
-                                                          .read(
-                                                              matchingRoomProvider
-                                                                  .notifier)
-                                                          .findMatch(
-                                                              '', '', '', '');
-                                                      // 非同期処理中にWidgetが破棄されることがあるため、
-                                                      // 破棄されていたら再びトグルしない("used after being disposed"対策)
-                                                      if (context.mounted) {
-                                                        toggleBoolean();
-                                                      }
-                                                      friendmatchnotifier
-                                                          .state = false;
-                                                    },
+                                                   : () async {
+                                                       try {
+                                                         isMatching.value = true;
+                                                         // 前の試合（進行中ルーム）があれば「負け（相手勝ち）」にして解除
+                                                         // 待ち時間なしで新しい試合に参加できるようにする
+                                                         await ref
+                                                             .read(
+                                                                 resbaActionsProvider)
+                                                             .resolveMyBattle();
+                                                         // 応募中チェック: 応募中のレスバがあれば確認ダイアログ
+                                                         final status = await ref
+                                                             .read(
+                                                                 resbaActionsProvider)
+                                                             .getMyResbaStatus();
+                                                         if (status.isApplying) {
+                                                           final proceed =
+                                                               await showDialog<
+                                                                   bool>(
+                                                             context: context,
+                                                             builder:
+                                                                 (dialogContext) =>
+                                                                     AlertDialog(
+                                                               title: const Text(
+                                                                   '⚔️ 応募中のレスバがあります'),
+                                                               content: const Text(
+                                                                   '応募を取り消してランダムマッチに参加しますか？'),
+                                                               actions: [
+                                                                 TextButton(
+                                                                   onPressed:
+                                                                       () =>
+                                                                           Navigator.pop(dialogContext, false),
+                                                                   child:
+                                                                       const Text('いいえ'),
+                                                                 ),
+                                                                 ElevatedButton(
+                                                                   onPressed:
+                                                                       () =>
+                                                                           Navigator.pop(dialogContext, true),
+                                                                   child:
+                                                                       const Text('はい、取り消して参加'),
+                                                                 ),
+                                                               ],
+                                                             ),
+                                                           );
+                                                           if (proceed != true) {
+                                                             return;
+                                                           }
+                                                           await ref
+                                                               .read(
+                                                                   resbaActionsProvider)
+                                                               .cancelMyPendingApplications();
+                                                         }
+                                                         friendmatchnotifier
+                                                             .state = true;
+                                                         ref
+                                                             .read(
+                                                                 soundServiceProvider)
+                                                             .playSfx(
+                                                                 SfxAssets.go);
+                                                         vibration
+                                                             .vibrateShort();
+                                                         // findMatchの呼び出し
+                                                         await ref
+                                                             .read(
+                                                                 matchingRoomProvider
+                                                                     .notifier)
+                                                             .findMatch(
+                                                                 '', '', '', '');
+                                                       } finally {
+                                                         if (context.mounted) {
+                                                           isMatching.value =
+                                                               false;
+                                                         }
+                                                         friendmatchnotifier
+                                                             .state = false;
+                                                       }
+                                                     },
                                               style: ElevatedButton.styleFrom(
                                                 backgroundColor: Colors.white,
                                                 disabledBackgroundColor:
@@ -1106,14 +1027,6 @@ class HomePage extends HookConsumerWidget {
                   ? const KeepAlivePage(child: MessagePage())
                   : const SizedBox.shrink(), // 2: メッセージ
             ],
-          ),
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: BbsApplyingBanner(),
-            ),
           ),
         ],
       ),

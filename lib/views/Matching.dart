@@ -406,14 +406,23 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
             showErrorDialog(context);
           }
         } else {
-          log('相手が退出したため再マッチング');
+          log('相手が退出したため');
           if (context.mounted) {
             matchErrorService.showMatchEndMessage('マッチ終了：相手がキャンセルをしました', 0.68);
           }
-          try {
-            ref.read(matchingRoomProvider.notifier).findMatch('', '', '', '');
-          } catch (e) {
+          final isFriend = next.password != null && next.password!.isNotEmpty;
+          final isBbs = next.isBbs == true;
+          if (isFriend || isBbs) {
+            log('フレンドマッチまたはレスバのためホームへ戻ります');
+            await ref.read(matchingRoomProvider.notifier).delete();
             router.go('/home');
+          } else {
+            log('ランダムマッチのため再マッチング');
+            try {
+              ref.read(matchingRoomProvider.notifier).findMatch('', '', '', '');
+            } catch (e) {
+              router.go('/home');
+            }
           }
         }
       }
@@ -521,12 +530,21 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
               if (context.mounted) {
                 matchErrorService.showMatchEndMessage('マッチ終了：$message', 0.68);
               }
-            }
 
-            try {
-              roomnotifier.findMatch('', '', '', '');
-            } catch (e) {
-              router.go('/home');
+              final isFriend = latestRoom.password != null &&
+                  latestRoom.password!.isNotEmpty;
+              final isBbs = latestRoom.isBbs == true;
+
+              if (isFriend || isBbs || myGo != true) {
+                await roomnotifier.delete();
+                router.go('/home');
+              } else {
+                try {
+                  roomnotifier.findMatch('', '', '', '');
+                } catch (e) {
+                  router.go('/home');
+                }
+              }
             }
           }
           if (diff <= -0.6 && !hasAutoGoCalled.value) { // 1回だけ送信するようにフラグをチェック

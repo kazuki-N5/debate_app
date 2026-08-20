@@ -7,7 +7,6 @@ import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
-import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
 import 'package:debate_project/provider/sfx_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -15,6 +14,7 @@ import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/utils/rating_systems/brawl_stars_rating.dart';
+import 'package:debate_project/view_model/Homepage_view_model.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:debate_project/widgets/radar_chart_view.dart';
 import 'package:flutter/cupertino.dart';
@@ -44,7 +44,6 @@ class FinishPage extends HookConsumerWidget {
     final user = ref.read(currentUserIdProvider);
     final usernotifier = ref.watch(userProvider.notifier);
     final roomnotifier = ref.read(matchingRoomProvider.notifier);
-    final chatsnotifier = ref.read(chatProvider.notifier);
     final BannerAd? mediumRectangleAd = ref.watch(mediumRectangleAdProvider);
     // isAdBlockingInteraction の状態を監視
     final isAdBlockingInteraction = ref.watch(adNotifierProvider);
@@ -156,6 +155,9 @@ class FinishPage extends HookConsumerWidget {
         ref.read(adNotifierProvider.notifier).showAd();
       }
 
+      // マッチングフラグを確実にリセット
+      ref.read(friendmatchProvider.notifier).state = false;
+
       Future.microtask(() {
         if (isSubscribe == false) {
           // 広告をロード
@@ -165,11 +167,8 @@ class FinishPage extends HookConsumerWidget {
         // ロード済みの広告を表示 (Medium Rectangle Ad はビルド内で watch しているのでここで特別な処理は不要)
       });
 
-      // 部屋の情報をクリア
+      // 部屋の情報をクリア（チャット購読解除・プレゼンス破棄を含む）
       roomnotifier.delete();
-      // 部屋の状態ストリームの購読を終了
-      // メッセージストリームの購読を終了
-      chatsnotifier.unsubscribeFromMessages();
 
       return () {};
     }, const []);
@@ -250,6 +249,8 @@ class FinishPage extends HookConsumerWidget {
         ? ''
         : (ratingDetail.bonus > 0 ? '+' : '') + ratingDetail.bonus.toString();
 
+    final hasTrophyChange = room.password == null && room.isBbs != true;
+
     void showSharePreviewDialog() {
       final GlobalKey globalKey = GlobalKey();
 
@@ -307,8 +308,8 @@ class FinishPage extends HookConsumerWidget {
                   key: globalKey,
                   child: _ShareableResultCard(
                     result: resultText,
-                    points: room.password == null ? basePointTextVal : null,
-                    bonus: room.password == null && isUnderdogVal
+                    points: hasTrophyChange ? basePointTextVal : null,
+                    bonus: hasTrophyChange && isUnderdogVal
                         ? bonusPointTextVal
                         : null,
                     reason: reasonText,
@@ -394,7 +395,7 @@ class FinishPage extends HookConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           // 左側のダミー（表示されないがスペースを確保して「勝利/敗北」を中央に保つ）
-                          if (room.password == null)
+                          if (hasTrophyChange)
                             Opacity(
                               opacity: 0,
                               child: Row(
@@ -436,7 +437,7 @@ class FinishPage extends HookConsumerWidget {
                                   : Colors.grey[700],
                             ),
                           ),
-                          if (room.password == null)
+                          if (hasTrophyChange)
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -472,7 +473,7 @@ class FinishPage extends HookConsumerWidget {
                             ),
                         ],
                       ),
-                      if (isUnderdogVal && room.password == null) ...[
+                      if (isUnderdogVal && hasTrophyChange) ...[
                         const SizedBox(height: 12),
                         Container(
                           padding: const EdgeInsets.symmetric(

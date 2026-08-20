@@ -1,4 +1,5 @@
 // ignore_for_file: file_names, avoid_print, use_build_context_synchronously
+import 'dart:developer';
 import 'package:debate_project/router/router.dart';
 
 import 'package:flutter/material.dart';
@@ -36,6 +37,9 @@ void main() async {
     url: dotenv.get('P_VAR_URL'), // .envのURLを取得.
     anonKey: dotenv.get('P_VAR_ANONKEY'), // .envのanonキーを取得.
   );
+
+  // ★診断用: どのバックエンドに接続しているか確認する(実機/エミュレータの差異調査)
+  log('🔌 Supabase URL: ${dotenv.get('P_VAR_URL')}');
 
   // 通知プロバイダーのコンテナを作成 (ProviderScopeなしの状態でもアクセス可能にするため。またはProviderScope内でrefを利用)
   final container = ProviderContainer();

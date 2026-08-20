@@ -151,6 +151,11 @@ class SettingPage extends HookConsumerWidget {
                 title: 'データ引き継ぎ',
                 onTap: () => handleDataTransfer(context),
               ),
+              _buildListTile(
+                icon: Icons.block,
+                title: 'ブロック管理',
+                onTap: () => router.push('/blocked_users'),
+              ),
               const SizedBox(height: 10), // セクション間のスペース
 
               // --- 「プレミアム機能」セクション (変更なし) ---

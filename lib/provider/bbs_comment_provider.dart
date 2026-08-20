@@ -1,9 +1,11 @@
 import 'package:debate_project/modes/bbs_comment.dart';
 import 'package:debate_project/modes/users.dart';
+import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:debate_project/provider/bbs_timeline_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // 投稿ごとのコメントを取得するためのプロバイダ
 final bbsCommentProvider = StateNotifierProvider.family<BbsCommentNotifier, AsyncValue<List<BbsComment>>, String>((ref, postId) {
@@ -13,15 +15,55 @@ final bbsCommentProvider = StateNotifierProvider.family<BbsCommentNotifier, Asyn
 class BbsCommentNotifier extends StateNotifier<AsyncValue<List<BbsComment>>> {
   final Ref _ref;
   final String postId;
+  // 端末内で非表示にしたコメントID(「非表示」機能)
+  Set<String> _hiddenCommentIds = {};
 
   BbsCommentNotifier(this._ref, this.postId) : super(const AsyncValue.loading()) {
+    _loadHiddenIds();
     fetchComments();
+  }
+
+  Future<void> _loadHiddenIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _hiddenCommentIds = (prefs.getStringList('hidden_bbs_comment_ids') ?? const []).toSet();
+    } catch (_) {}
+  }
+
+  /// コメントを「非表示」にする(端末内のみ)
+  Future<void> hideComment(String commentId) async {
+    _hiddenCommentIds.add(commentId);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('hidden_bbs_comment_ids', _hiddenCommentIds.toList());
+    } catch (_) {}
+    await fetchComments();
+  }
+
+  /// 自分のコメントを削除する
+  Future<bool> deleteComment(String commentId) async {
+    try {
+      final supabase = _ref.read(supabaseProvider);
+      await supabase.from('bbs_comments').delete().eq('id', commentId);
+      await fetchComments();
+      return true;
+    } catch (e) {
+      debugPrint('deleteComment error: $e');
+      return false;
+    }
+  }
+
+  /// コメント1件(とその返信)がブロック済み・非表示か
+  bool _shouldHide(BbsComment c) {
+    return _hiddenCommentIds.contains(c.id);
   }
 
   Future<void> fetchComments() async {
     try {
       final supabase = _ref.read(supabaseProvider);
       final currentUserId = _ref.read(currentUserIdProvider);
+      // ブロック済みユーザーのコメントは表示しない
+      final blocked = _ref.read(blockedUserIdsProvider).toSet();
 
       // コメント一覧を取得 (古い順、いいねフラグ付き)
       final response = await supabase.rpc('get_bbs_comments_with_status', params: {
@@ -37,6 +79,9 @@ class BbsCommentNotifier extends StateNotifier<AsyncValue<List<BbsComment>>> {
         final isLiked = item['is_liked_by_me'] ?? false;
         allComments.add(BbsComment.fromMap(item, user: user, isLikedByMe: isLiked));
       }
+
+      // ブロック済みユーザーのコメントを除外
+      allComments = allComments.where((c) => !blocked.contains(c.userId)).toList();
 
       // すべてのコメントをMapに保持しておく
       Map<String, BbsComment> commentMap = {};
@@ -75,8 +120,15 @@ class BbsCommentNotifier extends StateNotifier<AsyncValue<List<BbsComment>>> {
 
       for (int i = 0; i < rootComments.length; i++) {
         final replies = repliesMap[rootComments[i].id] ?? [];
-        rootComments[i] = rootComments[i].copyWith(replies: replies);
+        // 非表示にしたコメントは返信も含めて除外
+        final visibleReplies = replies
+            .where((r) => !_shouldHide(r))
+            .toList();
+        rootComments[i] = rootComments[i].copyWith(replies: visibleReplies);
       }
+
+      // ルート自体が非表示なら除外
+      rootComments = rootComments.where((c) => !_shouldHide(c)).toList();
 
       state = AsyncValue.data(rootComments);
     } catch (e, st) {

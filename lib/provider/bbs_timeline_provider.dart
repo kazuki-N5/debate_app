@@ -1,8 +1,10 @@
 import 'package:debate_project/modes/bbs_post.dart';
 import 'package:debate_project/modes/users.dart';
+import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final bbsTimelineProvider = StateNotifierProvider<BbsTimelineNotifier, AsyncValue<List<BbsPost>>>((ref) {
   return BbsTimelineNotifier(ref);
@@ -10,9 +12,44 @@ final bbsTimelineProvider = StateNotifierProvider<BbsTimelineNotifier, AsyncValu
 
 class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
   final Ref _ref;
+  // 端末内で非表示にした投稿ID(「非表示」機能)
+  Set<String> _hiddenPostIds = {};
 
   BbsTimelineNotifier(this._ref) : super(const AsyncValue.loading()) {
+    _loadHiddenIds();
     fetchPosts();
+  }
+
+  Future<void> _loadHiddenIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _hiddenPostIds = (prefs.getStringList('hidden_bbs_post_ids') ?? const []).toSet();
+    } catch (_) {}
+  }
+
+  /// 投稿を「非表示」にする(端末内のみ。ブロックとは独立)
+  Future<void> hidePost(String postId) async {
+    _hiddenPostIds.add(postId);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('hidden_bbs_post_ids', _hiddenPostIds.toList());
+    } catch (_) {}
+    if (state is AsyncData) {
+      state = AsyncValue.data(state.value!.where((p) => p.id != postId).toList());
+    }
+  }
+
+  /// 自分の投稿を削除する
+  Future<bool> deletePost(String postId) async {
+    try {
+      final supabase = _ref.read(supabaseProvider);
+      await supabase.from('bbs_posts').delete().eq('id', postId);
+      await fetchPosts();
+      return true;
+    } catch (e) {
+      debugPrint('deletePost error: $e');
+      return false;
+    }
   }
 
   Future<void> fetchPosts() async {
@@ -20,6 +57,8 @@ class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
       state = const AsyncValue.loading();
       final supabase = _ref.read(supabaseProvider);
       final currentUserId = _ref.read(currentUserIdProvider);
+      // ブロック済みユーザーの投稿は表示しない
+      final blocked = _ref.read(blockedUserIdsProvider).toSet();
 
       // 投稿一覧を取得 (新しい順、いいねフラグ付き)
       final response = await supabase.rpc('get_bbs_posts_with_status', params: {
@@ -33,6 +72,12 @@ class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
         final isLiked = item['is_liked_by_me'] ?? false;
         posts.add(BbsPost.fromMap(item, user: user, isLikedByMe: isLiked));
       }
+
+      // ブロック済みユーザー・非表示投稿を除外
+      posts = posts
+          .where((p) => !blocked.contains(p.userId))
+          .where((p) => !_hiddenPostIds.contains(p.id))
+          .toList();
 
       state = AsyncValue.data(posts);
     } catch (e, st) {

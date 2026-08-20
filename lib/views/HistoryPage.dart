@@ -1,5 +1,6 @@
 // ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/modes/history.dart';
+import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/view_model/prohibited_view_model.dart';
@@ -248,7 +249,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${record.opponentName}さんをブロックしますか？\nブロックすると、このユーザーとの履歴は表示されなくなり、マッチングしなくなります。', // 説明を修正
+                                    '${record.opponentName}さんをブロックしますか？\nブロックすると、このユーザーの投稿・メッセージが表示されなくなり、DM・対戦申し込みもできなくなります。\n※ランダムマッチングでは引き続き対戦することがあります。', // 説明を修正
                                     style: AppTextStyles.notoSans(
                                       color: Colors.black.withValues(alpha: 0.8),
                                       fontSize: 15,
@@ -294,7 +295,10 @@ class _MatchHistoryItem extends HookConsumerWidget {
                                       'block_user_id': opponentid,
                                     });
 
-                                    // ② SharedPreferencesにブロックしたroomidを保存
+                                    // ② ブロック一覧プロバイダを更新(全画面に反映)
+                                    await ref.read(blockedUserIdsProvider.notifier).refresh();
+
+                                    // ③ SharedPreferencesにブロックしたroomidを保存
                                     final prefs = await SharedPreferences.getInstance();
                                     const key = 'blocked_room_ids'; // 保存キー
                                     
@@ -307,7 +311,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
                                       await prefs.setStringList(key, blockedRoomIds);
                                     }
 
-                                    // ③ プロバイダを無効化し、履歴リストを再読み込み・再フィルタリングさせる
+                                    // ④ プロバイダを無効化し、履歴リストを再読み込み・再フィルタリングさせる
                                     ref.invalidate(matchRecordsProvider);
 
                                     // ④ ダイアログを閉じる

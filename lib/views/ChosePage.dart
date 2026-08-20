@@ -2,7 +2,6 @@
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:developer';
-import 'dart:math' hide log;
 
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/matching_provider.dart';
@@ -11,6 +10,7 @@ import 'package:debate_project/provider/match_error_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/router/router.dart';
+import 'package:debate_project/view_model/Homepage_view_model.dart';
 import 'package:debate_project/view_model/Profile_model.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
@@ -45,7 +45,6 @@ class ChosePage extends HookConsumerWidget {
     }, [room.winner]);
 
     final isTimerActive = useState<bool>(true);
-    final choice = useState<bool?>(null);
 
     Future<DateTime> getServerTime() async {
       final response = await supabase.rpc('get_server_time');
@@ -102,11 +101,7 @@ class ChosePage extends HookConsumerWidget {
 
           if (!hasChoiceBeenUpdated) {
             hasChoiceBeenUpdated = true;
-            if (selectedChoice.value == null) {
-              choice.value = Random().nextBool();
-              await roomnotifier.updateChoice(
-                  room.roomId!, user!, choice.value!, 3);
-            } else {
+            if (selectedChoice.value != null) {
               await roomnotifier.updateChoice(
                   room.roomId!, user!, selectedChoice.value!, 3);
             }
@@ -144,6 +139,8 @@ class ChosePage extends HookConsumerWidget {
             if (context.mounted) {
               matchErrorService.showMatchEndMessage('マッチ終了：$message', 0.68);
             }
+            ref.read(friendmatchProvider.notifier).state = false;
+            await roomnotifier.delete();
             router.go('/home');
           }
         }
@@ -158,6 +155,7 @@ class ChosePage extends HookConsumerWidget {
     useEffect(() {
       return () {
         log('【DEBUG】ChosePage: unmounted. Cancelling timer.');
+        ref.read(friendmatchProvider.notifier).state = false;
         timerRef.value?.cancel();
         if (timerRef.value == null) {
           log('【DEBUG】ChosePage: timerRef.value was null at unmount!');

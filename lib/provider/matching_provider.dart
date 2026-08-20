@@ -213,6 +213,8 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     _offlineTimer?.cancel(); // 追加
     ref.read(opponentOfflineStatusProvider.notifier).state = null;
     ref.read(otherUserProvider.notifier).clear();
+    ref.read(friendmatchProvider.notifier).state = false;
+    state = MatchingRoom();
     log('All notifier resources cleaned up.');
   }
 

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>観戦機能・コメント（ヤジ）機能 実装計画書</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        h1 {
+            border-bottom: 2px solid #5a5a5a;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #0056b3;
+            margin-top: 30px;
+            border-left: 5px solid #0056b3;
+            padding-left: 10px;
+        }
+        .section {
+            background-color: #fff;
+            margin-bottom: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        ul, ol {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        .highlight {
+            font-weight: bold;
+            color: #d9534f;
+        }
+    </style>
+</head>
+<body>
+    <h1>観戦機能・コメント機能 実装計画書</h1>
+
+    <div class="section">
+        <h2>1. 概要</h2>
+        <p>ポスト、コメント、対戦募集、オープンチャットの各所から、現在進行中の試合を第三者が観戦できる機能を追加する。また、観戦者が試合中のプレイヤーに向けて短文の応援やヤジをリアルタイムで送信できる「観戦コメント機能」を実装する。</p>
+    </div>
+
+    <div class="section">
+        <h2>2. 観戦画面の仕様</h2>
+        <ul>
+            <li><strong>視点の提供：</strong>ホスト(A)と参加者(B)の試合において、観戦者は特定のプレイヤー（例：B視点）として試合のUIを閲覧する。</li>
+            <li><strong>テーマ選択時の色分け：</strong>テーマ選択画面では、観戦対象のプレイヤー（自分視点側）を<span style="color: blue; font-weight: bold;">「青」</span>、相手を<span style="color: red; font-weight: bold;">「赤」</span>として表示する。</li>
+            <li><strong>観戦者用UI：</strong>プレイヤー用の入力フォームや操作ボタン（回答送信など）は観戦者には非表示、または無効化し、専用の観戦用UIとして構築する。</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>3. 観戦コメント（ヤジ）機能</h2>
+        <ul>
+            <li><strong>コメント送信UI：</strong>観戦画面にコメント入力欄を設け、<span class="highlight">最大15文字</span>までの短文を送信できるようにする。</li>
+            <li><strong>フローティングアニメーション表示：</strong>送信・受信されたコメントは、画面の横からふわっと出現し、横切るよう（またはフェードアウトして）消えるアニメーションで表示する。</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>4. プレイヤー向け機能（コメント非表示設定）</h2>
+        <ul>
+            <li><strong>非表示トグルボタン：</strong>試合中のプレイヤー（A・B）の画面に、観戦者からのコメント表示を切り替える（ON/OFF）ボタンを追加する。</li>
+            <li><strong>ローカル状態管理：</strong>この表示設定はローカル（SharedPreferences等のローカルDB）で管理し、OFFにした場合は画面上にコメントのフローティングアニメーションを描画しないようにする。</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>5. 実装ステップ</h2>
+        <ol>
+            <li><strong>バックエンド・リアルタイム通信の拡張：</strong>
+                SupabaseのRealtime（またはFirestore等）を利用し、試合（ルーム）ごとの「観戦コメント送受信」用のチャンネル設定を行う。
+            </li>
+            <li><strong>観戦用UIとプレイヤー視点の構築：</strong>
+                既存の試合画面ウィジェットをベースに、観戦者向けのモード（入力無効化、相手を赤・自分を青とするUI調整）を追加する。
+            </li>
+            <li><strong>フローティングアニメーションの作成：</strong>
+                Flutterの<code>AnimationController</code>や<code>Positioned</code>、パッケージ等を利用し、画面上を文字が流れる・ふわっと消えるカスタムウィジェットを作成する。
+            </li>
+            <li><strong>コメント送受信処理の統合：</strong>
+                観戦画面に15文字制限のテキストフィールドを実装し、送信時にバックエンドへデータを送信。試合画面側でSubscribeし、受信のたびにアニメーションウィジェットを生成する。
+            </li>
+            <li><strong>プレイヤー画面のコメント非表示機能実装：</strong>
+                プレイヤーの対戦画面UIにON/OFFアイコンボタンを配置し、OFF状態の時は受信したコメントの描画をスキップする処理を入れる。状態はローカルストレージへ保存・復元する。
+            </li>
+        </ol>
+    </div>
+</body>
+</html>

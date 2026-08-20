@@ -14,10 +14,12 @@ import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:debate_project/view_model/prohibited_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/floating_spectator_comments.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GamePage extends HookConsumerWidget {
   const GamePage({super.key});
@@ -29,6 +31,9 @@ class GamePage extends HookConsumerWidget {
     final showFullChoice = useState(false);
     final textControler = useTextEditingController();
     final textFieldFocusNode = useFocusNode();
+    final isSpectatorCommentMuted = useState<bool>(false);
+    final spectatorOverlayKey =
+        useRef(GlobalKey<FloatingSpectatorCommentsOverlayState>());
 
     // 点滅アニメーションのためのAnimationController
     final animationController = useAnimationController(
@@ -90,6 +95,23 @@ class GamePage extends HookConsumerWidget {
       }
     }
 
+    // 観戦コメント（ヤジ）のミュート設定読み込み
+    Future<void> loadSpectatorMutePreference() async {
+      final prefs = await SharedPreferences.getInstance();
+      if (context.mounted) {
+        isSpectatorCommentMuted.value =
+            prefs.getBool('spectator_comments_muted') ?? false;
+      }
+    }
+
+    // 観戦コメントミュート切り替え
+    Future<void> toggleSpectatorMute() async {
+      final next = !isSpectatorCommentMuted.value;
+      isSpectatorCommentMuted.value = next;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('spectator_comments_muted', next);
+    }
+
     // 非表示にするメッセージIDを保存し、状態を更新する関数
     Future<void> hideMessage(String messageId) async {
       final newHiddenIds = {...hiddenMessageIds.value, messageId};
@@ -102,6 +124,7 @@ class GamePage extends HookConsumerWidget {
     // ウィジェットの初回ビルド時に一度だけ実行される
     useEffect(() {
       loadHiddenMessageIds();
+      loadSpectatorMutePreference();
       return null; // クリーンアップは不要
     }, const []);
 
@@ -248,19 +271,42 @@ class GamePage extends HookConsumerWidget {
       chatsnotifier.subscribeToMessages(room.roomId!);
       countTime(); // タイマーを再稼働
 
+      // 観戦コメント（ヤジ）のRealtime Broadcastを購読
+      RealtimeChannel? spectatorChannel;
+      if (room.roomId != null) {
+        spectatorChannel = supabase.channel('spectator:room:${room.roomId}');
+        spectatorChannel
+            .onBroadcast(
+              event: 'spectator_comment',
+              callback: (payload) {
+                final text = payload['text'] as String?;
+                if (text != null && text.isNotEmpty) {
+                  spectatorOverlayKey.value.currentState?.addComment(text);
+                }
+              },
+            )
+            .subscribe();
+      }
+
       return () {
         gametimer.value?.cancel();
+        if (spectatorChannel != null) {
+          supabase.removeChannel(spectatorChannel);
+        }
       };
-    }, []);
+    }, [room.roomId]);
 
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-        showFullChoice.value = false;
-      },
-      child: Stack(
-        children: [
-          Scaffold(
+    return FloatingSpectatorCommentsOverlay(
+      key: spectatorOverlayKey.value,
+      isMuted: isSpectatorCommentMuted.value,
+      child: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus();
+          showFullChoice.value = false;
+        },
+        child: Stack(
+          children: [
+            Scaffold(
             backgroundColor: Colors.blue,
             appBar: AppBar(
               elevation: 0,
@@ -336,54 +382,80 @@ class GamePage extends HookConsumerWidget {
                         flex: 1,
                         child: Padding(
                           padding: const EdgeInsets.only(right: 5),
-                          child: Stack(
-                            alignment: Alignment.centerRight,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                            Opacity(
-                              opacity: cantap.value ? 1.0 : 0.5,
-                              child: IconButton(
+                              // コメント非表示トグルボタン
+                              IconButton(
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
-                                icon: const Icon(Icons.door_back_door,
-                                    color: Colors.white),
-                                iconSize: 29,
-                                onPressed: cantap.value
-                                    ? () {
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) => const Dialog(),
-                                        );
-                                      }
-                                    : null,
-                              ),
-                            ),
-                            if (room.player1_finish == true ||
-                                room.player2_finish == true)
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  onPressed: cantap.value
-                                      ? () {
-                                          showDialog(
-                                            context: context,
-                                            builder: (context) => const Dialog(),
-                                          );
-                                        }
-                                      : null,
-                                  icon: FaIcon(
-                                    FontAwesomeIcons.check,
-                                    size: 19,
-                                    color: Colors.red[900],
-                                  ),
+                                tooltip: isSpectatorCommentMuted.value
+                                    ? '観戦コメントを表示'
+                                    : '観戦コメントを非表示',
+                                icon: Icon(
+                                  isSpectatorCommentMuted.value
+                                      ? Icons.speaker_notes_off
+                                      : Icons.speaker_notes,
+                                  color: isSpectatorCommentMuted.value
+                                      ? Colors.white.withValues(alpha: 0.4)
+                                      : Colors.white,
+                                  size: 24,
                                 ),
+                                onPressed: toggleSpectatorMute,
                               ),
-                          ],
+                              const SizedBox(width: 8),
+                              Stack(
+                                alignment: Alignment.centerRight,
+                                children: [
+                                  Opacity(
+                                    opacity: cantap.value ? 1.0 : 0.5,
+                                    child: IconButton(
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      icon: const Icon(Icons.door_back_door,
+                                          color: Colors.white),
+                                      iconSize: 29,
+                                      onPressed: cantap.value
+                                          ? () {
+                                              showDialog(
+                                                context: context,
+                                                builder: (context) =>
+                                                    const Dialog(),
+                                              );
+                                            }
+                                          : null,
+                                    ),
+                                  ),
+                                  if (room.player1_finish == true ||
+                                      room.player2_finish == true)
+                                    Positioned(
+                                      top: 0,
+                                      right: 0,
+                                      child: IconButton(
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        onPressed: cantap.value
+                                            ? () {
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (context) =>
+                                                      const Dialog(),
+                                                );
+                                              }
+                                            : null,
+                                        icon: FaIcon(
+                                          FontAwesomeIcons.check,
+                                          size: 19,
+                                          color: Colors.red[900],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
                   if (showFullChoice.value)
@@ -659,7 +731,8 @@ class GamePage extends HookConsumerWidget {
             ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
 

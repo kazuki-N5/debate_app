@@ -36,12 +36,21 @@ class ProhibitedService {
     String? opponentId,
     String? roomId,
     String? chatId,
+    String? contentId,
+    String? contentType,
+    String? reason,
+    String? contentSnapshot,
   }) async {
     try {
       await _supabase.from('prohibited').insert({
         'user_id': opponentId, // 引数名を修正
         'room_id': roomId,
         'chat_id': chatId, // 引数名を修正
+        'reporter_id': _supabase.auth.currentUser?.id,
+        'content_id': contentId,
+        'content_type': contentType,
+        'reason': reason,
+        'content_snapshot': contentSnapshot,
       });
 
       // 成功した場合の処理
@@ -89,6 +98,7 @@ class MessageBubble extends HookConsumerWidget {
   final bool showAvatar;
   final String? roomId; // ★★★ 追加: roomId を受け取るように変更 ★★★
   final VoidCallback onHide; // 親ウィジェットから非表示処理を受け取るコールバック
+  final VoidCallback? onBlock; // 親ウィジェットからブロック処理を受け取るコールバック(任意)
 
   const MessageBubble({
     super.key,
@@ -99,6 +109,7 @@ class MessageBubble extends HookConsumerWidget {
     required this.showAvatar,
     this.roomId, // ★★★ 追加: roomId をコンストラクタに追加 ★★★
     required this.onHide,
+    this.onBlock,
   });
 
   @override
@@ -189,7 +200,7 @@ class MessageBubble extends HookConsumerWidget {
               
               showCustomPopover(
                 context: anchorContext,
-                height: 90,
+                height: onBlock != null ? 130 : 90,
                 arrowDxOffset: 0, // アンカー位置で調整するためオフセットは0
                 children: [
                   PopoverButton(
@@ -202,6 +213,9 @@ class MessageBubble extends HookConsumerWidget {
                         opponentId: chat.senderId,
                         roomId: roomId,
                         chatId: chat.id,
+                        contentId: chat.id,
+                        contentType: 'message',
+                        contentSnapshot: chat.content,
                       );
                       Navigator.of(context).pop();
                     },
@@ -214,6 +228,16 @@ class MessageBubble extends HookConsumerWidget {
                       Navigator.of(context).pop();
                     },
                   ),
+                  if (onBlock != null) ...[
+                    const SizedBox(height: 4),
+                    PopoverButton(
+                      text: 'ブロック',
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        onBlock!();
+                      },
+                    ),
+                  ],
                 ],
               );
             },

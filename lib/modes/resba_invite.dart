@@ -33,8 +33,8 @@ class HostApplication {
   final String theme;
   final String? choice1;
   final String? choice2;
-  final String attachType; // post / comment
-  final String attachId;
+  final String attachType; // post / comment / dm / open_chat / recruit
+  final String? attachId; // recruit(対戦募集)は添付先なし
   final String applicantId;
   final String? applicantName;
   final String? applicantAvatar;
@@ -48,7 +48,7 @@ class HostApplication {
     this.choice1,
     this.choice2,
     required this.attachType,
-    required this.attachId,
+    this.attachId, // recruit(対戦募集)は添付先なし
     required this.applicantId,
     this.applicantName,
     this.applicantAvatar,
@@ -64,7 +64,7 @@ class HostApplication {
       choice1: json['choice1'] as String?,
       choice2: json['choice2'] as String?,
       attachType: json['attach_type'] as String? ?? 'post',
-      attachId: json['attach_id'] as String,
+      attachId: json['attach_id'] as String?,
       applicantId: json['applicant_id'] as String,
       applicantName: json['applicant_name'] as String?,
       applicantAvatar: json['applicant_avatar'] as String?,
@@ -83,8 +83,8 @@ class ResbaInvite {
   final String? senderName;
   final String? senderAvatar;
   final int? senderTrophy;
-  final String attachType; // post / comment / dm
-  final String attachId;
+  final String attachType; // post / comment / dm / open_chat / recruit
+  final String? attachId; // recruit(対戦募集)は添付先なし
   final String? targetUserId;
   final String theme;
   final String? choice1;
@@ -107,7 +107,7 @@ class ResbaInvite {
     this.senderAvatar,
     this.senderTrophy,
     required this.attachType,
-    required this.attachId,
+    this.attachId,
     this.targetUserId,
     required this.theme,
     this.choice1,
@@ -132,7 +132,7 @@ class ResbaInvite {
       senderAvatar: json['sender_avatar'] as String?,
       senderTrophy: json['sender_trophy'] as int?,
       attachType: json['attach_type'] as String,
-      attachId: json['attach_id'] as String,
+      attachId: json['attach_id'] as String?,
       targetUserId: json['target_user_id'] as String?,
       theme: json['theme'] as String? ?? 'レスバ対戦',
       choice1: json['choice1'] as String?,

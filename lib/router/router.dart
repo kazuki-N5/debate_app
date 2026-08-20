@@ -17,6 +17,7 @@ import 'package:debate_project/views/TransferPage.dart';
 import 'package:debate_project/views/WaittransferPage.dart';
 import 'package:debate_project/views/UserProfilePage.dart';
 import 'package:debate_project/views/MyResbaListPage.dart';
+import 'package:debate_project/views/BlockedUsersPage.dart';
 import 'package:debate_project/views/ResbaRequestPage.dart';
 import 'package:debate_project/modes/app_notification.dart';
 import 'package:debate_project/modes/bbs_post.dart';
@@ -193,6 +194,13 @@ final GoRouter router = GoRouter(
           key: state.pageKey,
         );
       },
+    ),
+    GoRoute(
+      path: '/blocked_users',
+      pageBuilder: (context, state) => NoTransitionPage(
+        child: const BlockedUsersPage(),
+        key: state.pageKey,
+      ),
     ),
   ],
 );

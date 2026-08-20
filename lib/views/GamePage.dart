@@ -152,6 +152,7 @@ class GamePage extends HookConsumerWidget {
         }
         if (diff < -20) {
           gametimer.value?.cancel();
+          await roomnotifier.delete();
           router.go('/home');
         }
       });
@@ -189,6 +190,7 @@ class GamePage extends HookConsumerWidget {
 
           if (fiinishcount >= 21) {
             finishtimer.value?.cancel();
+            await roomnotifier.delete();
             router.go('/home');
           }
         });

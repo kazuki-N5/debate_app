@@ -96,10 +96,8 @@ class ResbaCard extends ConsumerWidget {
           },
         ),
       ];
-    } else if (invite.isPending &&
-        (invite.attachType == 'post' || invite.attachType == 'comment') &&
-        !invite.isSender) {
-      // 募集型（ポスト / 返信）: 応募者側
+    } else if (invite.isPending && !invite.isTarget && !invite.isSender) {
+      // 募集型（ポスト / 返信 / DM / オプチャ / 対戦募集）: 応募者側
       if (invite.myApplication == null || invite.myApplication == 'cancelled') {
         // 未応募 or 自分でやめた → 応募できる（再応募可）
         actionButtons = [
@@ -154,11 +152,9 @@ class ResbaCard extends ConsumerWidget {
         actionButtons = [];
       }
     } else if (invite.isPending && invite.isSender) {
-      // 送信者側: 募集型（ポスト/返信）は申込者を1件ずつ承認、指名型（DM）は相手待ち
-      if ((invite.attachType == 'post' || invite.attachType == 'comment') &&
-          invite.firstApplication != null) {
-        final app = invite.firstApplication!;
-        return _buildPostHostCard(context, ref, app);
+      // 送信者側: 募集型は申込者を1件ずつ承認、指名型（旧DM）は相手待ち
+      if (!invite.isTarget && invite.firstApplication != null) {
+        return _buildPostHostCard(context, ref, invite.firstApplication!);
       }
       actionButtons = [
         _ActionButton(
@@ -212,7 +208,7 @@ class ResbaCard extends ConsumerWidget {
     // ---- 状態ラベル ----
     String? statusLabel;
     if (!invite.isSender &&
-        invite.attachType != 'dm' &&
+        !invite.isTarget &&
         invite.myApplication == 'rejected') {
       // 他の人が承認されたため自動却下された応募者には「拒否されました」を表示
       statusLabel = '拒否されました';
@@ -226,12 +222,11 @@ class ResbaCard extends ConsumerWidget {
       statusLabel = '対戦終了';
     } else if (invite.isTarget) {
       statusLabel = '相手待ち';
-    } else if (invite.isSender &&
-        (invite.attachType == 'post' || invite.attachType == 'comment')) {
+    } else if (invite.isSender && !invite.isTarget) {
       statusLabel = '申込待ち';
     } else if (invite.isSender) {
       statusLabel = '相手待ち';
-    } else if (invite.attachType == 'post' || invite.attachType == 'comment') {
+    } else if (!invite.isTarget) {
       // 拒否された場合は「募集中」と表示しない
       statusLabel = invite.myApplication == 'rejected' ? '拒否されました' : '募集中';
     }

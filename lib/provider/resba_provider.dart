@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:debate_project/modes/resba_invite.dart';
+import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
@@ -196,7 +197,7 @@ class ResbaActions {
         'p_choice2': choice2 ?? '',
       });
 
-  /// DMメッセージにレスバを添付
+  /// DMメッセージにレスバを添付(募集型: 誰でも応募可)
   Future<ResbaResult> sendDmResba({
     required String messageId,
     required String theme,
@@ -206,6 +207,34 @@ class ResbaActions {
       _invoke('send_dm_resba', {
         'p_sender_id': _userId,
         'p_message_id': messageId,
+        'p_theme': theme,
+        'p_choice1': choice1 ?? '',
+        'p_choice2': choice2 ?? '',
+      });
+
+  /// オープンチャットメッセージにレスバを添付(募集型)
+  Future<ResbaResult> createOpenChatResba({
+    required String messageId,
+    required String theme,
+    String? choice1,
+    String? choice2,
+  }) =>
+      _invoke('create_open_chat_resba', {
+        'p_sender_id': _userId,
+        'p_message_id': messageId,
+        'p_theme': theme,
+        'p_choice1': choice1 ?? '',
+        'p_choice2': choice2 ?? '',
+      });
+
+  /// 対戦募集(添付なしの募集型レスバ)を作成
+  Future<ResbaResult> createRecruitResba({
+    required String theme,
+    String? choice1,
+    String? choice2,
+  }) =>
+      _invoke('create_recruit_resba', {
+        'p_sender_id': _userId,
         'p_theme': theme,
         'p_choice1': choice1 ?? '',
         'p_choice2': choice2 ?? '',
@@ -383,6 +412,7 @@ class ResbaActions {
     if (code == 'NOT_HOST') return 'このレスバの投稿者ではないため操作できません';
     if (code == 'NOT_POST_OWNER') return '自分のポストにのみレスバを付けられます';
     if (code == 'SELF_INVITE' || code == 'SELF_APPLY') return '自分自身には送信できません';
+    if (code == 'BLOCKED') return 'ブロックされているため、この操作はできません';
     return '失敗しました: $code';
   }
 }
@@ -472,13 +502,16 @@ class ResbaMatchListener extends StateNotifier<bool> {
           ),
           callback: (payload) async {
             final newData = payload.newRecord;
+            log('realtime[resba-sender] event: status=${newData['status']}');
             if (newData['status'] == 'accepted') {
               final roomId = newData['battle_room_id']?.toString();
               if (roomId != null) await _navigateToBattle(roomId);
             }
           },
         )
-        .subscribe();
+        .subscribe((status, [error]) {
+          log('realtime[resba-sender] state=$status${error != null ? ' error=$error' : ''}');
+        });
 
     // 応募者側: 自分の応募が承認されたら
     _applicantChannel = supabase
@@ -494,6 +527,7 @@ class ResbaMatchListener extends StateNotifier<bool> {
           ),
           callback: (payload) async {
             final newData = payload.newRecord;
+            log('realtime[resba-applicant] event: status=${newData['status']}');
             if (newData['status'] == 'accepted') {
               final inviteId = newData['invite_id']?.toString();
               if (inviteId == null) return;
@@ -507,34 +541,25 @@ class ResbaMatchListener extends StateNotifier<bool> {
             }
           },
         )
-        .subscribe();
+        .subscribe((status, [error]) {
+          log('realtime[resba-applicant] state=$status${error != null ? ' error=$error' : ''}');
+        });
 
     // ホスト側: 自分のレスバへの応募 INSERT → 応募キューを更新（ダイアログはキュー単位で1つ）
     _hostChannel = supabase
         .channel('resba-host-$myId')
         .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
+          event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'battle_invite_applications',
           callback: (payload) async {
-            final newData = payload.newRecord;
-            final inviteId = newData['invite_id']?.toString();
-            if (inviteId == null) return;
-            final invite = await supabase
-                .from('battle_invites')
-                .select('sender_id')
-                .eq('id', inviteId)
-                .maybeSingle();
-            if (invite == null || invite['sender_id']?.toString() != myId) {
-              return;
-            }
+            log('realtime[resba-host] application change event');
             await _refreshHostQueue();
           },
         )
         .subscribe((status, [error]) async {
+          log('realtime[resba-host] state=$status${error != null ? ' error=$error' : ''}');
           // 購読確立（初回・再接続時）に現在の応募キューを再取得する
-          // ランダムマッチの waitForMatch と同じ「購読＋初期取得」パターンで、
-          // 切断中に起きた応募の取りこぼしを回復する（旧・ライフサイクル復帰処理の置き換え）
           if (status == RealtimeSubscribeStatus.subscribed) {
             await _refreshHostQueue();
           }
@@ -564,8 +589,15 @@ class ResbaMatchListener extends StateNotifier<bool> {
   /// 応募が溜まっていたら「応募キュー」ダイアログを開く（同時に1つだけ）
   Future<void> _maybeOpenQueueDialog() async {
     if (_dialogOpen) return;
-    // 対戦中は表示しない（承認もサーバー側で IN_BATTLE によりブロックされるため）
+    // 対戦フロー中（待機・選択・試合・リザルト）はダイアログを表示しない
     if (_inBattle) return;
+    try {
+      final currentPath =
+          router.routerDelegate.currentConfiguration.uri.path;
+      const battlePaths = {'/wait', '/chose', '/game', '/finish'};
+      if (battlePaths.contains(currentPath)) return;
+    } catch (_) {}
+
     final items = ref
             .read(pendingHostApplicationsProvider)
             .valueOrNull ??
@@ -584,12 +616,14 @@ class ResbaMatchListener extends StateNotifier<bool> {
   Future<void> _navigateToBattle(String roomId) async {
     if (_handledRoomIds.contains(roomId)) return;
     _handledRoomIds.add(roomId);
-    // 既に別の試合中ならバトル画面へ移動しない
-    // （サーバー側でも is_user_in_battle により二重対戦はブロックされる）
-    if (_inBattle) {
-      log('⚔️ resba navigate skipped: 既に対戦中のため遷移スキップ (roomId=$roomId)');
+
+    final room = ref.read(matchingRoomProvider);
+    // 既に同一ルームで対戦中なら重複遷移をスキップ
+    if (room.roomId == roomId && room.winner == null) {
+      log('⚔️ resba navigate skipped: 同一ルームで既に対戦中 (roomId=$roomId)');
       return;
     }
+
     try {
       await ref.read(matchingRoomProvider.notifier).joinBbsRoom(roomId);
       router.go('/wait');
@@ -695,6 +729,7 @@ class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
           ),
           callback: (payload) {
             final newData = payload.newRecord;
+            log('realtime[resba-applying] event: status=${newData['status']}');
             final status = newData['status'] as String?;
             if (status == 'rejected') {
               // ホストに拒否された: 「⚔️ 拒否されました」を一時表示する
@@ -712,7 +747,9 @@ class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
             }
           },
         )
-        .subscribe();
+        .subscribe((status, [error]) {
+          log('realtime[resba-applying] state=$status${error != null ? ' error=$error' : ''}');
+        });
   }
 
   Future<void> fetch() async {
@@ -748,6 +785,61 @@ class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
     super.dispose();
   }
 }
+
+// ============================================================
+// 対戦募集(recruit型)・オープンチャット(open_chat型)レスバの一覧
+// ============================================================
+
+/// 募集中の対戦募集(recruit型レスバ)一覧
+final recruitResbasProvider = StateNotifierProvider<RecruitResbasNotifier,
+    AsyncValue<List<ResbaInvite>>>((ref) {
+  return RecruitResbasNotifier(ref);
+});
+
+class RecruitResbasNotifier
+    extends StateNotifier<AsyncValue<List<ResbaInvite>>> {
+  final Ref ref;
+
+  RecruitResbasNotifier(this.ref) : super(const AsyncValue.loading()) {
+    fetch();
+  }
+
+  SupabaseClient get supabase => ref.read(supabaseProvider);
+
+  Future<void> fetch() async {
+    try {
+      final r = await supabase.rpc('get_recruit_resbas', params: {
+        'p_user_id': ref.read(currentUserIdProvider),
+      });
+      // ブロック済みユーザーの募集は表示しない
+      final blocked = ref.read(blockedUserIdsProvider).toSet();
+      final list = (r as List<dynamic>)
+          .map((e) => ResbaInvite.fromJson(e as Map<String, dynamic>))
+          .where((invite) => !blocked.contains(invite.senderId))
+          .toList();
+      state = AsyncValue.data(list);
+    } catch (e, st) {
+      log('get_recruit_resbas error: $e');
+      state = AsyncValue.error(e, st);
+    }
+  }
+}
+
+/// オープンチャットルームのレスバ一覧(メッセージに添付された募集型)
+final openChatResbasProvider =
+    FutureProvider.family.autoDispose<List<ResbaInvite>, String>((ref, roomId) async {
+  final supabase = ref.read(supabaseProvider);
+  final r = await supabase.rpc('get_open_chat_resbas', params: {
+    'p_room_id': roomId,
+    'p_user_id': ref.read(currentUserIdProvider),
+  });
+  // ブロック済みユーザーのレスバは表示しない
+  final blocked = ref.read(blockedUserIdsProvider).toSet();
+  return (r as List<dynamic>)
+      .map((e) => ResbaInvite.fromJson(e as Map<String, dynamic>))
+      .where((invite) => !blocked.contains(invite.senderId))
+      .toList();
+});
 
 // ホスト側の応募ダイアログは widgets/resba_host_queue_dialog.dart の
 // showHostApplicationQueueDialog()（応募キュー・古い順・溜まる表示）に移行済み

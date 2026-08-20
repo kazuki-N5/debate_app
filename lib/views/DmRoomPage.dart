@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:debate_project/modes/resba_invite.dart';
+import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -7,10 +8,14 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:debate_project/provider/dm_provider.dart';
 import 'package:debate_project/provider/image_upload_provider.dart';
 import 'package:debate_project/provider/resba_provider.dart';
+import 'package:debate_project/view_model/prohibited_view_model.dart';
+import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/moderation.dart';
 import 'package:debate_project/widgets/resba_attach_sheet.dart';
 import 'package:debate_project/widgets/resba_card.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:debate_project/widgets/full_screen_image_viewer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DmRoomPage extends HookConsumerWidget {
   final String otherUserId;
@@ -28,6 +33,36 @@ class DmRoomPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final roomIdAsync = ref.watch(dmRoomIdProvider(otherUserId));
     final scrollController = useScrollController();
+
+    // ブロック状態(自分がブロック / 相手からブロック)
+    final blockedByMe = ref.watch(blockedUserIdsProvider).contains(otherUserId);
+    final blockedByThem =
+        ref.watch(isBlockedByProvider(otherUserId)).valueOrNull ?? false;
+    final isBlocked = blockedByMe || blockedByThem;
+
+    // 端末内で非表示にしたメッセージID(「非表示」機能)
+    final hiddenMessageIds = useState<Set<String>>({});
+    useEffect(() {
+      Future<void> load() async {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          hiddenMessageIds.value =
+              (prefs.getStringList('hidden_dm_message_ids') ?? const []).toSet();
+        } catch (_) {}
+      }
+
+      load();
+      return null;
+    }, []);
+
+    Future<void> hideDmMessage(String messageId) async {
+      final next = {...hiddenMessageIds.value, messageId};
+      hiddenMessageIds.value = next;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('hidden_dm_message_ids', next.toList());
+      } catch (_) {}
+    }
 
     // roomIdが取得できている場合のみメッセージをwatchする
     final roomId = roomIdAsync.valueOrNull;
@@ -67,7 +102,20 @@ class DmRoomPage extends HookConsumerWidget {
       ),
       body: roomIdAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('エラー: $err')),
+        error: (err, stack) {
+          // ブロックされている場合は専用メッセージを表示
+          if (err.toString().contains('BLOCKED')) {
+            return Center(
+              child: Text(
+                blockedByThem
+                    ? 'ブロックされているためDMを開始できません'
+                    : 'ブロックしたユーザーとのDMは開始できません',
+                style: const TextStyle(color: Colors.grey),
+              ),
+            );
+          }
+          return Center(child: Text('エラー: $err'));
+        },
         data: (rId) {
           final resbasAsync = ref.watch(dmResbaProvider(rId));
           final resbas = resbasAsync.valueOrNull ?? const <ResbaInvite>[];
@@ -89,6 +137,11 @@ class DmRoomPage extends HookConsumerWidget {
                       itemBuilder: (context, index) {
                         final msg = messages[index];
                         final isMe = msg.senderId == myId;
+
+                        // 非表示にしたメッセージは表示しない
+                        if (hiddenMessageIds.value.contains(msg.id)) {
+                          return const SizedBox.shrink();
+                        }
                         
                         // temp_, sent_ の場合は少し色を薄くするなど工夫も可能
                         final isSending = msg.id.startsWith('temp_');
@@ -110,64 +163,113 @@ class DmRoomPage extends HookConsumerWidget {
                               alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                               child: Opacity(
                                 opacity: isSending ? 0.6 : 1.0,
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                                  decoration: BoxDecoration(
-                                    color: isMe ? Colors.blueAccent : Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                    children: [
-                                      if (msg.imageUrl != null)
-                                        Padding(
-                                          padding: EdgeInsets.only(bottom: msg.content.isNotEmpty ? 4.0 : 0.0),
-                                          child: GestureDetector(
-                                            // タップで画像を拡大表示
-                                            onTap: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => FullScreenImageViewer(
-                                                    imageUrls: [msg.imageUrl!],
-                                                    initialIndex: 0,
+                                child: GestureDetector(
+                                  // 相手のメッセージを長押しで通報/非表示/ブロック
+                                  onLongPress: isMe
+                                      ? null
+                                      : () {
+                                          showCustomPopover(
+                                            context: context,
+                                            height: 130,
+                                            arrowDxOffset: 0,
+                                            children: [
+                                              PopoverButton(
+                                                text: '通報',
+                                                onTap: () async {
+                                                  Navigator.of(context).pop();
+                                                  await showReportDialog(
+                                                    context: context,
+                                                    ref: ref,
+                                                    opponentId: msg.senderId,
+                                                    contentId: msg.id,
+                                                    contentType: 'dm_message',
+                                                    contentSnapshot: msg.content,
+                                                  );
+                                                },
+                                              ),
+                                              const SizedBox(height: 4),
+                                              PopoverButton(
+                                                text: '非表示',
+                                                onTap: () {
+                                                  Navigator.of(context).pop();
+                                                  hideDmMessage(msg.id);
+                                                },
+                                              ),
+                                              const SizedBox(height: 4),
+                                              PopoverButton(
+                                                text: 'ブロック',
+                                                onTap: () {
+                                                  Navigator.of(context).pop();
+                                                  showBlockUserDialog(
+                                                    context: context,
+                                                    ref: ref,
+                                                    targetUserId: msg.senderId,
+                                                    targetName: otherUserName,
+                                                  );
+                                                },
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                                    decoration: BoxDecoration(
+                                      color: isMe ? Colors.blueAccent : Colors.grey[300],
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                      children: [
+                                        if (msg.imageUrl != null)
+                                          Padding(
+                                            padding: EdgeInsets.only(bottom: msg.content.isNotEmpty ? 4.0 : 0.0),
+                                            child: GestureDetector(
+                                              // タップで画像を拡大表示
+                                              onTap: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) => FullScreenImageViewer(
+                                                      imageUrls: [msg.imageUrl!],
+                                                      initialIndex: 0,
+                                                    ),
                                                   ),
+                                                );
+                                              },
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(8),
+                                                child: CachedNetworkImage(
+                                                  imageUrl: msg.imageUrl!,
+                                                  fit: BoxFit.cover,
+                                                  memCacheWidth: 900, // 表示サイズでデコードしてカクつきを抑える
+                                                  fadeInDuration: Duration.zero, // ふわ〜っと出るフェードを無効化してパッと表示
+                                                  fadeOutDuration: Duration.zero,
+                                                  placeholder: (context, url) => Container(height: 150, color: Colors.grey[300]),
+                                                  errorWidget: (context, url, error) => const Icon(Icons.error),
                                                 ),
-                                              );
-                                            },
-                                            child: ClipRRect(
-                                              borderRadius: BorderRadius.circular(8),
-                                              child: CachedNetworkImage(
-                                                imageUrl: msg.imageUrl!,
-                                                fit: BoxFit.cover,
-                                                memCacheWidth: 900, // 表示サイズでデコードしてカクつきを抑える
-                                                fadeInDuration: Duration.zero, // ふわ〜っと出るフェードを無効化してパッと表示
-                                                fadeOutDuration: Duration.zero,
-                                                placeholder: (context, url) => Container(height: 150, color: Colors.grey[300]),
-                                                errorWidget: (context, url, error) => const Icon(Icons.error),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      if (msg.content.isNotEmpty)
-                                        Text(
-                                          msg.content,
-                                          style: TextStyle(
-                                            color: isMe ? Colors.white : Colors.black87,
+                                        if (msg.content.isNotEmpty)
+                                          Text(
+                                            msg.content,
+                                            style: TextStyle(
+                                              color: isMe ? Colors.white : Colors.black87,
+                                            ),
                                           ),
-                                        ),
-                                      if (msgResbas.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 6),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: const [
-                                              ResbaBadge(text: 'レスバ'),
-                                            ],
+                                        if (msgResbas.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 6),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: const [
+                                                ResbaBadge(text: 'レスバ'),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -190,7 +292,20 @@ class DmRoomPage extends HookConsumerWidget {
                   },
                 ),
               ),
-              _MessageInputWidget(roomId: rId),
+              if (isBlocked)
+                Container(
+                  width: double.infinity,
+                  color: Colors.grey[200],
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  child: Text(
+                    blockedByThem
+                        ? 'ブロックされているためDMを送信できません'
+                        : 'ブロックしたユーザーです。DMを送信できません',
+                    style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              if (!isBlocked) _MessageInputWidget(roomId: rId),
             ],
           );
         },

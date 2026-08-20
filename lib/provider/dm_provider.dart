@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 
 // 1. ルームIDを取得・作成するプロバイダー
@@ -57,6 +58,12 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
     _init();
   }
 
+  /// ブロック済みユーザーのメッセージを除外
+  List<DmMessage> _filter(List<DmMessage> messages) {
+    final blocked = _ref.read(blockedUserIdsProvider).toSet();
+    return messages.where((m) => !blocked.contains(m.senderId)).toList();
+  }
+
   Future<void> _init() async {
     final supabase = _ref.read(supabaseProvider);
 
@@ -73,9 +80,10 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
         ),
         callback: (payload) {
           final newMsg = DmMessage.fromJson(payload.newRecord);
-          // 新着メッセージを受信した場合、現在のリストに追加
+          // ブロック済みユーザーのメッセージは追加しない
           if (state is AsyncData) {
             final currentList = state.value!;
+            if (_filter([newMsg]).isEmpty) return;
             // 重複チェック (送信時の楽観的UIで追加済みの場合は無視、または上書き)
             if (!currentList.any((msg) => msg.id == newMsg.id)) {
               // reverse: true (最新が0番目) を想定して先頭に追加
@@ -97,7 +105,7 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
       final messages = (response as List).map((e) => DmMessage.fromJson(e as Map<String, dynamic>)).toList();
       
       // DmRoomPageのListViewはreverse: trueなので、降順のままでOK
-      state = AsyncValue.data(messages);
+      state = AsyncValue.data(_filter(messages));
       
       if (messages.length < 50) {
         hasMore = false;
@@ -132,7 +140,7 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
         hasMore = false;
       }
 
-      state = AsyncValue.data([...currentList, ...olderMessages]);
+      state = AsyncValue.data([...currentList, ..._filter(olderMessages)]);
     } catch (e) {
       print('loadMore error: $e');
     }

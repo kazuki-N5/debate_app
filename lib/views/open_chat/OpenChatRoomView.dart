@@ -2,14 +2,19 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:debate_project/modes/resba_invite.dart';
 import 'package:debate_project/provider/open_chat_provider.dart';
 import 'package:debate_project/modes/open_chat.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/image_upload_provider.dart';
 import 'package:debate_project/views/open_chat/OpenChatMembersView.dart';
 import 'package:debate_project/modes/chat.dart';
 import 'package:debate_project/view_model/prohibited_view_model.dart'; // MessageBubble
+import 'package:debate_project/widgets/moderation.dart';
+import 'package:debate_project/widgets/resba_attach_sheet.dart';
+import 'package:debate_project/widgets/resba_card.dart';
 
 class OpenChatRoomView extends HookConsumerWidget {
   final OpenChatRoom room;
@@ -26,6 +31,15 @@ class OpenChatRoomView extends HookConsumerWidget {
     
     final selectedImage = useState<File?>(null);
     final isUploading = useState(false);
+    // ⚔️ レスバ添付(募集型: 誰でも応募可)
+    final resbaAttachment = useState<ResbaAttachment?>(null);
+
+    // このルームのメッセージに付いたレスバ一覧
+    final resbasAsync = ref.watch(openChatResbasProvider(room.id));
+    final resbas = resbasAsync.valueOrNull ?? const <ResbaInvite>[];
+    void refreshResbas() {
+      ref.invalidate(openChatResbasProvider(room.id));
+    }
 
     useEffect(() {
       void scrollListener() {
@@ -125,14 +139,45 @@ class OpenChatRoomView extends HookConsumerWidget {
                       bool showAvatar = !isUserMessage &&
                           (index == 0 || messages[index - 1].userId != message.userId);
 
-                      return MessageBubble(
-                        chat: chat,
-                        isUserMessage: isUserMessage,
-                        opponentAvatarUrl: null, // 今回はアバター表示を簡易化
-                        myAvatarUrl: null,
-                        showAvatar: showAvatar,
-                        roomId: room.id,
-                        onHide: () {}, // 非表示処理が必要な場合は実装
+                      // このメッセージに付いたレスバ(募集型)
+                      final msgResbas = resbas
+                          .where((r) =>
+                              r.attachType == 'open_chat' &&
+                              r.attachId == message.id &&
+                              (r.isPending || r.isAccepted || r.isFinished))
+                          .toList();
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          MessageBubble(
+                            chat: chat,
+                            isUserMessage: isUserMessage,
+                            opponentAvatarUrl: null, // 今回はアバター表示を簡易化
+                            myAvatarUrl: null,
+                            showAvatar: showAvatar,
+                            roomId: room.id,
+                            onHide: () => ref
+                                .read(openChatMessagesProvider(room.id).notifier)
+                                .hideMessage(message.id),
+                            onBlock: isUserMessage
+                                ? null
+                                : () => showBlockUserDialog(
+                                    context: context,
+                                    ref: ref,
+                                    targetUserId: message.userId,
+                                    targetName: 'このユーザー',
+                                  ),
+                          ),
+                          for (final invite in msgResbas)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 40, right: 8),
+                              child: ResbaCard(
+                                invite: invite,
+                                onChanged: refreshResbas,
+                              ),
+                            ),
+                        ],
                       );
                     },
                   );
@@ -163,6 +208,19 @@ class OpenChatRoomView extends HookConsumerWidget {
                           final image = await picker.pickImage();
                           if (image != null) {
                             selectedImage.value = image;
+                          }
+                        },
+                      ),
+                      // ⚔️ レスバ添付(募集型: 誰でも応募可)
+                      IconButton(
+                        icon: const Text('⚔️', style: TextStyle(fontSize: 20, color: Color(0xFF7856FF))),
+                        onPressed: isUploading.value ? null : () async {
+                          final attachment = await showResbaAttachSheet(
+                            context,
+                            presetTheme: textController.text.trim(),
+                          );
+                          if (attachment != null) {
+                            resbaAttachment.value = attachment;
                           }
                         },
                       ),
@@ -226,7 +284,9 @@ class OpenChatRoomView extends HookConsumerWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         constraints: const BoxConstraints(),
                         onPressed: isUploading.value ? null : () async {
-                          if (textController.text.trim().isNotEmpty || selectedImage.value != null) {
+                          if (textController.text.trim().isNotEmpty ||
+                              selectedImage.value != null ||
+                              resbaAttachment.value != null) {
                             isUploading.value = true;
                             try {
                               String? uploadedUrl;
@@ -239,13 +299,36 @@ class OpenChatRoomView extends HookConsumerWidget {
                                 );
                               }
 
-                              await ref.read(openChatActionProvider.notifier).sendMessage(
+                              final messageId = await ref
+                                  .read(openChatActionProvider.notifier)
+                                  .sendMessage(
                                     room.id,
                                     textController.text.trim(),
                                     imageUrl: uploadedUrl,
                                   );
+
+                              // ⚔️ レスバを添付(募集型)
+                              final attachment = resbaAttachment.value;
+                              if (attachment != null && messageId != null) {
+                                final result = await ref
+                                    .read(resbaActionsProvider)
+                                    .createOpenChatResba(
+                                      messageId: messageId,
+                                      theme: attachment.theme,
+                                      choice1: attachment.choice1,
+                                      choice2: attachment.choice2,
+                                    );
+                                if (result.error != null && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(result.error!)),
+                                  );
+                                }
+                                refreshResbas();
+                              }
+
                               textController.clear();
                               selectedImage.value = null;
+                              resbaAttachment.value = null;
                               if (scrollController.hasClients) {
                                 scrollController.animateTo(
                                   scrollController.position.maxScrollExtent + 100, // 末尾へスクロール
@@ -299,6 +382,38 @@ class OpenChatRoomView extends HookConsumerWidget {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  if (resbaAttachment.value != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0, left: 48.0, bottom: 8.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFAF8FF),
+                          border: Border.all(color: const Color(0xFF7856FF)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Text('⚔️', style: TextStyle(fontSize: 16)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'レスバ: ${resbaAttachment.value!.theme}',
+                                style: AppTextStyles.bold(fontSize: 12.5, color: const Color(0xFF7856FF)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                resbaAttachment.value = null;
+                              },
+                              child: const Icon(Icons.close, size: 16, color: Colors.grey),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                 ],

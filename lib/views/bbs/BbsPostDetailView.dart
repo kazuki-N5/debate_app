@@ -9,6 +9,7 @@ import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/views/bbs/BbsTimelineView.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/moderation.dart';
 import 'package:debate_project/widgets/resba_attach_sheet.dart';
 import 'package:debate_project/widgets/resba_card.dart';
 import 'package:flutter/material.dart';
@@ -599,6 +600,45 @@ class _CommentThreadWidget extends HookConsumerWidget {
                             child: Text('投稿主', style: AppTextStyles.notoSans(fontSize: 10, color: Colors.deepOrange)),
                           ),
                         ],
+                        const Spacer(),
+                        // コメントメニュー(通報 / 非表示 / ブロック / 削除)
+                        GestureDetector(
+                          onTap: () {
+                            final myId = ref.read(currentUserIdProvider);
+                            final isOwnComment = comment.userId == myId;
+                            showContentMenuSheet(
+                              context: context,
+                              ref: ref,
+                              authorUserId: isOwnComment ? null : comment.userId,
+                              authorName: userName,
+                              contentType: 'bbs_comment',
+                              contentId: comment.id,
+                              contentSnapshot: comment.content,
+                              isOwnContent: isOwnComment,
+                              onHide: () => ref
+                                  .read(bbsCommentProvider(post.id).notifier)
+                                  .hideComment(comment.id),
+                              onDelete: isOwnComment
+                                  ? () async {
+                                      final ok = await ref
+                                          .read(bbsCommentProvider(post.id).notifier)
+                                          .deleteComment(comment.id);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(ok ? 'コメントを削除しました' : '削除に失敗しました'),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  : null,
+                              onBlocked: () => ref
+                                  .read(bbsCommentProvider(post.id).notifier)
+                                  .fetchComments(),
+                            );
+                          },
+                          child: const Icon(CupertinoIcons.ellipsis, color: Color(0xFF536471), size: 16),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -740,6 +780,45 @@ class _CommentThreadWidget extends HookConsumerWidget {
                                       child: Text('投稿主', style: AppTextStyles.notoSans(fontSize: 9, color: Colors.deepOrange)),
                                     ),
                                   ],
+                                  const Spacer(),
+                                  // 返信メニュー(通報 / 非表示 / ブロック / 削除)
+                                  GestureDetector(
+                                    onTap: () {
+                                      final myId = ref.read(currentUserIdProvider);
+                                      final isOwnReply = reply.userId == myId;
+                                      showContentMenuSheet(
+                                        context: context,
+                                        ref: ref,
+                                        authorUserId: isOwnReply ? null : reply.userId,
+                                        authorName: rUserName,
+                                        contentType: 'bbs_comment',
+                                        contentId: reply.id,
+                                        contentSnapshot: reply.content,
+                                        isOwnContent: isOwnReply,
+                                        onHide: () => ref
+                                            .read(bbsCommentProvider(post.id).notifier)
+                                            .hideComment(reply.id),
+                                        onDelete: isOwnReply
+                                            ? () async {
+                                                final ok = await ref
+                                                    .read(bbsCommentProvider(post.id).notifier)
+                                                    .deleteComment(reply.id);
+                                                if (context.mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(ok ? 'コメントを削除しました' : '削除に失敗しました'),
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            : null,
+                                        onBlocked: () => ref
+                                            .read(bbsCommentProvider(post.id).notifier)
+                                            .fetchComments(),
+                                      );
+                                    },
+                                    child: const Icon(CupertinoIcons.ellipsis, color: Color(0xFF536471), size: 14),
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 2),

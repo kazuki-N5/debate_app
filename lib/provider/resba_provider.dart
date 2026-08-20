@@ -6,7 +6,6 @@ import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/widgets/resba_host_queue_dialog.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -275,21 +274,6 @@ class ResbaActions {
         'p_user_id': _userId,
       });
 
-  /// 自分がホストの pending レスバ一覧（保留応募の表示用）を取得
-  Future<List<ResbaInvite>> getMyPendingHostInvites() async {
-    try {
-      final response = await supabase.rpc('get_my_pending_host_invites', params: {
-        'p_user_id': _userId,
-      });
-      return (response as List)
-          .map((e) => ResbaInvite.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      log('get_my_pending_host_invites error: $e');
-      return [];
-    }
-  }
-
   /// 自分がホストの「保留中の応募」全件（古い順・応募キュー表示用）
   Future<List<HostApplication>> getMyPendingHostApplications() async {
     try {
@@ -433,8 +417,7 @@ class PendingHostApplicationsNotifier
   }
 }
 
-class ResbaMatchListener extends StateNotifier<bool>
-    with WidgetsBindingObserver {
+class ResbaMatchListener extends StateNotifier<bool> {
   final Ref ref;
   ResbaMatchListener(this.ref) : super(false) {
     // 対戦中のバトルが終了したら（winner確定・ルーム破棄など）保留中の応募を再確認
@@ -474,8 +457,6 @@ class ResbaMatchListener extends StateNotifier<bool>
     }
     if (state) return;
     state = true;
-
-    WidgetsBinding.instance.addObserver(this);
 
     // 送信者側: 自分のレスバが承諾されたら
     _senderChannel = supabase
@@ -550,7 +531,14 @@ class ResbaMatchListener extends StateNotifier<bool>
             await _refreshHostQueue();
           },
         )
-        .subscribe();
+        .subscribe((status, [error]) async {
+          // 購読確立（初回・再接続時）に現在の応募キューを再取得する
+          // ランダムマッチの waitForMatch と同じ「購読＋初期取得」パターンで、
+          // 切断中に起きた応募の取りこぼしを回復する（旧・ライフサイクル復帰処理の置き換え）
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            await _refreshHostQueue();
+          }
+        });
 
     // 開始時の未対応応募をキューに反映（あればダイアログ表示）
     await _refreshHostQueue();
@@ -593,20 +581,15 @@ class ResbaMatchListener extends StateNotifier<bool>
     }
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // バックグラウンド中に来た応募も取りこぼさない
-      _refreshHostQueue();
-    }
-  }
-
   Future<void> _navigateToBattle(String roomId) async {
     if (_handledRoomIds.contains(roomId)) return;
     _handledRoomIds.add(roomId);
     // 既に別の試合中ならバトル画面へ移動しない
     // （サーバー側でも is_user_in_battle により二重対戦はブロックされる）
-    if (_inBattle) return;
+    if (_inBattle) {
+      log('⚔️ resba navigate skipped: 既に対戦中のため遷移スキップ (roomId=$roomId)');
+      return;
+    }
     try {
       await ref.read(matchingRoomProvider.notifier).joinBbsRoom(roomId);
       router.go('/wait');
@@ -617,31 +600,11 @@ class ResbaMatchListener extends StateNotifier<bool>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _authSub?.cancel();
     if (_senderChannel != null) supabase.removeChannel(_senderChannel!);
     if (_applicantChannel != null) supabase.removeChannel(_applicantChannel!);
     if (_hostChannel != null) supabase.removeChannel(_hostChannel!);
     super.dispose();
-  }
-}
-
-/// 自分がホストの保留応募（pending レスバ + 先頭応募者）を表示するためのプロバイダ
-final pendingHostInvitesProvider = StateNotifierProvider.autoDispose<
-    PendingHostInvitesNotifier, AsyncValue<List<ResbaInvite>>>((ref) {
-  return PendingHostInvitesNotifier(ref);
-});
-
-class PendingHostInvitesNotifier
-    extends StateNotifier<AsyncValue<List<ResbaInvite>>> {
-  final Ref ref;
-  PendingHostInvitesNotifier(this.ref) : super(const AsyncValue.loading()) {
-    fetch();
-  }
-
-  Future<void> fetch() async {
-    final invites = await ref.read(resbaActionsProvider).getMyPendingHostInvites();
-    state = AsyncValue.data(invites);
   }
 }
 

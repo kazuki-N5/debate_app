@@ -19,7 +19,7 @@ class MyResbaListPage extends ConsumerStatefulWidget {
 class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
   List<ResbaInvite> _invites = [];
   bool _loading = true;
-  int _tabIndex = 0; // 0: 募集中 / 1: 履歴
+  int _tabIndex = 0; // 0: 募集中 / 1: 応募されてる中 / 2: 履歴
 
   @override
   void initState() {
@@ -39,10 +39,41 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
   }
 
   List<ResbaInvite> get _current {
-    if (_tabIndex == 0) {
-      return _invites.where((i) => i.isPending).toList();
+    switch (_tabIndex) {
+      case 0: // 募集中（応募ゼロ）
+        return _invites
+            .where((i) => i.isPending && i.applicationCount == 0)
+            .toList();
+      case 1: // 応募されてる中（応募あり）
+        return _invites
+            .where((i) => i.isPending && i.applicationCount > 0)
+            .toList();
+      default: // 履歴
+        return _invites.where((i) => !i.isPending).toList();
     }
-    return _invites.where((i) => !i.isPending).toList();
+  }
+
+  /// 応募の承認 / 拒否（応募されてる中タブから直接操作）
+  Future<void> _approveApplication(ResbaInvite invite, bool approve) async {
+    final app = invite.firstApplication;
+    if (app == null) return;
+    final result = await ref
+        .read(resbaActionsProvider)
+        .approveApplication(invite.id, app.id, approve);
+    if (result.error != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(result.error!)));
+      }
+      return;
+    }
+    if (approve && result.roomId != null) {
+      // 承認 → 試合へ
+      await ref.read(matchingRoomProvider.notifier).joinBbsRoom(result.roomId!);
+      if (mounted) router.go('/wait');
+      return;
+    }
+    await _fetch();
   }
 
   Future<void> _withdraw(ResbaInvite invite) async {
@@ -128,7 +159,8 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
           Row(
             children: [
               _segButton('募集中', 0),
-              _segButton('履歴', 1),
+              _segButton('応募されてる中', 1),
+              _segButton('履歴', 2),
             ],
           ),
           Expanded(
@@ -137,7 +169,11 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
                 : current.isEmpty
                     ? Center(
                         child: Text(
-                          _tabIndex == 0 ? '募集中のレスバはありません' : '履歴はありません',
+                          _tabIndex == 0
+                              ? '募集中のレスバはありません'
+                              : _tabIndex == 1
+                                  ? '応募が来ているレスバはありません'
+                                  : '履歴はありません',
                           style: AppTextStyles.notoSans(
                               color: Colors.grey, fontSize: 15),
                         ),
@@ -207,7 +243,11 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
 
     final String statusLabel;
     final Color statusColor;
-    if (isPending) {
+    if (isPending && invite.applicationCount > 0) {
+      // 応募されてる中: 応募件数を強調表示
+      statusLabel = '応募${invite.applicationCount}件';
+      statusColor = const Color(0xFF7856FF);
+    } else if (isPending) {
       statusLabel = invite.attachType == 'post' ? '募集中' : '相手待ち';
       statusColor = const Color(0xFFC77800);
     } else if (isAccepted) {
@@ -223,6 +263,9 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
       statusLabel = '取り下げ';
       statusColor = Colors.grey;
     }
+
+    // 先頭の応募者（承認/拒否対象）
+    final firstApp = invite.firstApplication;
 
     return Card(
       color: const Color(0xFFF3F3F3),
@@ -267,10 +310,61 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
               style:
                   AppTextStyles.notoSans(fontSize: 11, color: Colors.grey),
             ),
+            // 応募されてる中: 先頭の応募者を表示
+            if (isPending && firstApp != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundImage:
+                        firstApp.applicantAvatar != null &&
+                                firstApp.applicantAvatar!.isNotEmpty
+                            ? NetworkImage(firstApp.applicantAvatar!)
+                            : null,
+                    child: firstApp.applicantAvatar == null ||
+                            firstApp.applicantAvatar!.isEmpty
+                        ? const Icon(Icons.person, size: 14)
+                        : null,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${firstApp.applicantName ?? '名無し'} さん',
+                    style:
+                        AppTextStyles.bold(fontSize: 12, color: Colors.black87),
+                  ),
+                  if (firstApp.applicantTrophy != null) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      '🏆 ${firstApp.applicantTrophy}',
+                      style: AppTextStyles.notoSans(
+                          fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ],
+              ),
+            ],
             const SizedBox(height: 10),
             Row(
               children: [
-                if (isPending)
+                if (isPending && firstApp != null) ...[
+                  // 応募されてる中: 承認 / 拒否
+                  Expanded(
+                    child: _actionButton(
+                      label: '✅ 承認して対戦',
+                      color: const Color(0xFF00BA7C),
+                      onTap: () => _approveApplication(invite, true),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _actionButton(
+                      label: '拒否',
+                      color: Colors.grey,
+                      onTap: () => _approveApplication(invite, false),
+                    ),
+                  ),
+                ] else if (isPending)
                   Expanded(
                     child: _actionButton(
                       label: '取り下げる',

@@ -11,9 +11,6 @@ import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/notification_provider.dart';
 import 'package:debate_project/provider/notification_settings_provider.dart';
 import 'package:debate_project/provider/resba_provider.dart';
-import 'package:debate_project/modes/bbs_post.dart';
-import 'package:debate_project/modes/resba_invite.dart';
-import 'package:debate_project/provider/bbs_timeline_provider.dart';
 import 'package:debate_project/provider/sfx_provider.dart';
 import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
@@ -173,13 +170,6 @@ class HomePage extends HookConsumerWidget {
       });
       return null;
     }, []);
-
-    // ホストとして保留中の応募（試合終了後に表示）
-    final pendingHostInvites = ref.watch(pendingHostInvitesProvider);
-    final pendingInvites = pendingHostInvites.valueOrNull ?? const <ResbaInvite>[];
-    // 応募者がいる pending レスバのみ（保留バナーの表示対象）
-    final pendingWithApplications =
-        pendingInvites.where((i) => i.firstApplication != null).toList();
 
     // 現在のトロフィー数を保存して、次回の「前回値」として使う
     useEffect(() {
@@ -957,101 +947,6 @@ class HomePage extends HookConsumerWidget {
                                             ),
                                           ),
 
-                                          // 保留中の応募バナー（実際に応募者がいる pending レスバのみ・タップでポスト詳細へ）
-                                          if (pendingWithApplications
-                                              .isNotEmpty)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                  bottom: 16),
-                                              child: GestureDetector(
-                                                behavior:
-                                                    HitTestBehavior.opaque,
-                                                onTap: () {
-                                                  final invite =
-                                                      pendingWithApplications
-                                                          .first;
-                                                  BbsPost? post;
-                                                  final posts = ref
-                                                      .read(
-                                                          bbsTimelineProvider)
-                                                      .valueOrNull;
-                                                  if (posts != null) {
-                                                    for (final p in posts) {
-                                                      if (p.id ==
-                                                          invite.attachId) {
-                                                        post = p;
-                                                        break;
-                                                      }
-                                                    }
-                                                  }
-                                                  if (post != null &&
-                                                      context.mounted) {
-                                                    context.push(
-                                                        '/bbsPostDetail',
-                                                        extra: post);
-                                                  }
-                                                },
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets
-                                                          .symmetric(
-                                                              horizontal: 14,
-                                                              vertical: 12),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(
-                                                        0xFFFAF8FF),
-                                                    border: Border.all(
-                                                        color: const Color(
-                                                            0xFF7856FF)),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
-                                                  ),
-                                                  child: Row(
-                                                    children: [
-                                                      const Text('⚔️',
-                                                          style: TextStyle(
-                                                              fontSize: 16)),
-                                                      const SizedBox(
-                                                          width: 10),
-                                                      Expanded(
-                                                        child: Column(
-                                                          crossAxisAlignment:
-                                                              CrossAxisAlignment
-                                                                  .start,
-                                                          children: [
-                                                            Text(
-                                                              '保留中の応募があります（${pendingWithApplications.length}件）',
-                                                              style: AppTextStyles
-                                                                  .bold(
-                                                                fontSize: 13,
-                                                                color: const Color(
-                                                                    0xFF7856FF),
-                                                              ),
-                                                            ),
-                                                            Text(
-                                                              'タップして確認・承認できます',
-                                                              style: AppTextStyles
-                                                                  .notoSans(
-                                                                fontSize: 11,
-                                                                color: Colors
-                                                                    .grey,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      const Icon(
-                                                        Icons.chevron_right,
-                                                        color: Color(
-                                                            0xFF7856FF),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-
                                           // ゲーム開始ボタン
                                           SizedBox(
                                             // ContainerをSizedBoxに変更 (子にElevatedButtonしかないため)
@@ -1103,8 +998,6 @@ class HomePage extends HookConsumerWidget {
                                                         await ref
                                                             .read(resbaActionsProvider)
                                                             .cancelMyPendingApplications();
-                                                        ref.invalidate(
-                                                            pendingHostInvitesProvider);
                                                       }
                                                       toggleBoolean();
                                                       friendmatchnotifier

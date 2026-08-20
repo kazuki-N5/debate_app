@@ -9,7 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-//import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 
 import 'package:debate_project/widgets/app_text_styles.dart';
@@ -29,7 +29,7 @@ void main() async {
 
   // Firebaseの初期化
   await Firebase.initializeApp();
-  //await MobileAds.instance.initialize();
+  await MobileAds.instance.initialize();
 
 
   await Supabase.initialize(

@@ -19,7 +19,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 1.1.1+52
 
 environment:
-  sdk: ^3.5.3
+  sdk: ^3.10.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -57,7 +57,7 @@ dependencies:
   image_cropper: ^9.1.0
   audioplayers: ^6.4.0
   vibration: ^3.1.3
-  google_mobile_ads: ^6.0.0
+  google_mobile_ads: ^9.1.0
   device_info_plus: ^11.4.0
   version: ^3.0.2
   package_info_plus: ^8.3.0

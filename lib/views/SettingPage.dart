@@ -131,7 +131,7 @@ class SettingPage extends HookConsumerWidget {
               // --- 「サポート＆その他」セクション (変更なし) ---
               _buildSectionTitle('サポート＆その他'),
               _buildListTile(
-                icon: FontAwesomeIcons.xTwitter,
+                icon: FontAwesomeIcons.xTwitter.data,
                 title: '公式X',
                 onTap: () => _launchURL(context, _xProfileUrl),
                 iconSize: 20,

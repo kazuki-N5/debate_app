@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オープンチャット作成 (青ヘッダー＋オーバーレイ注記)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-white min-h-screen pb-16 text-[#1C1C1E]">
+    <!-- 青色ヘッダー (AppBar) -->
+    <header class="bg-[#007AFF] text-white sticky top-0 z-50 px-4 h-12 flex items-center justify-between shadow-sm">
+        <button class="text-white text-base p-1 hover:opacity-80 transition"><i class="fas fa-chevron-left"></i></button>
+        <h1 class="text-white font-bold text-base">オープンチャットを作成</h1>
+        <button class="text-white font-bold text-base hover:opacity-80 transition px-1">作成</button>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 py-3 space-y-5">
+        <!-- 1. 背景画像 ＆ アイコン（上部に注記テキストをオーバーレイ） -->
+        <div class="relative w-full h-40 bg-slate-900 rounded-2xl overflow-visible shadow-sm cursor-pointer" onclick="document.getElementById('bg-file-input').click()">
+            <div id="bg-preview" class="w-full h-full rounded-2xl bg-cover bg-center overflow-hidden flex flex-col justify-between p-3 bg-gradient-to-b from-black/60 via-black/20 to-black/50">
+                <!-- 上部にオーバーレイ表示される注記テキスト -->
+                <p class="text-white text-xs leading-relaxed max-w-[280px] drop-shadow-md">
+                    この画像はオープンチャットのプロフィールおよびトークルームの背景に適用されます。
+                </p>
+                <!-- 右下のカメラボタン -->
+                <div class="self-end w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-md text-gray-800 hover:scale-105 transition">
+                    <i class="fas fa-camera text-sm"></i>
+                </div>
+            </div>
+            <input type="file" id="bg-file-input" class="hidden" accept="image/*" onchange="previewBg(this)">
+
+            <!-- アイコン（中央下に重なる） -->
+            <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 cursor-pointer" onclick="event.stopPropagation(); document.getElementById('icon-file-input').click()">
+                <div class="relative group">
+                    <div id="icon-preview" class="w-16 h-16 bg-white rounded-full border-2 border-white flex items-center justify-center shadow-md overflow-hidden bg-gray-200">
+                        <i class="fas fa-user text-gray-400 text-2xl"></i>
+                    </div>
+                    <div class="absolute bottom-0 right-0 w-5 h-5 bg-[#007AFF] text-white rounded-full border border-white flex items-center justify-center shadow-sm">
+                        <i class="fas fa-camera text-[8px]"></i>
+                    </div>
+                </div>
+                <input type="file" id="icon-file-input" class="hidden" accept="image/*" onchange="previewIcon(this)">
+            </div>
+        </div>
+
+        <!-- 余白（アイコン重なり分） -->
+        <div class="h-2"></div>
+
+        <!-- 2. オープンチャット名（枠線ボックススタイル） -->
+        <div class="px-1">
+            <div class="flex items-center gap-1 mb-1.5">
+                <label class="text-sm font-bold text-[#1C1C1E]">オープンチャット名を入力</label>
+                <span class="text-red-500 font-bold text-sm">*</span>
+            </div>
+            <input type="text" id="room-name" placeholder="オープンチャット名を入力" oninput="updateCount('room-name', 'name-count', 50)" class="w-full bg-[#F8FAFC] border border-[#E5E5EA] rounded-xl px-3.5 py-2.5 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF] placeholder-[#C7C7CC] transition">
+            <div class="text-right text-xs text-[#8E8E93] mt-1" id="name-count">0/50</div>
+        </div>
+
+        <!-- 3. 説明（枠線ボックススタイル） -->
+        <div class="px-1">
+            <label class="block text-sm font-bold text-[#1C1C1E] mb-1.5">説明</label>
+            <textarea id="room-desc" rows="3" placeholder="説明を入力&#10;&#10;「#」から始まるハッシュタグを入力" oninput="updateCount('room-desc', 'desc-count', 1000)" class="w-full bg-[#F8FAFC] border border-[#E5E5EA] rounded-xl p-3 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF] placeholder-[#C7C7CC] resize-none leading-relaxed transition"></textarea>
+            <div class="text-right text-xs text-[#8E8E93] mt-1" id="desc-count">0/1000</div>
+        </div>
+
+        <!-- 4. ハッシュタグ（カテゴリー風チップ一覧 ＋ 枠付き追加入力欄） -->
+        <div class="px-1">
+            <label class="block text-sm font-bold text-[#1C1C1E] mb-1">ハッシュタグ</label>
+            <p class="text-xs text-[#8E8E93] mb-3 leading-relaxed">ハッシュタグを設定すると、ユーザーが検索した時にこのオープンチャットが見つかりやすくなります。</p>
+            
+            <!-- チップ一覧（未選択：白/グレー、選択中：青背景/白文字） -->
+            <div id="tags-container" class="flex flex-wrap gap-2">
+                <button type="button" onclick="toggleTag(this)" class="tag-chip px-3.5 py-1.5 bg-white text-[#333333] border border-[#E5E5EA] rounded-lg text-xs font-medium hover:bg-gray-50 transition">
+                    ディベート
+                </button>
+                <button type="button" onclick="toggleTag(this)" class="tag-chip px-3.5 py-1.5 bg-white text-[#333333] border border-[#E5E5EA] rounded-lg text-xs font-medium hover:bg-gray-50 transition">
+                    初心者歓迎
+                </button>
+                <button type="button" onclick="toggleTag(this)" class="tag-chip px-3.5 py-1.5 bg-white text-[#333333] border border-[#E5E5EA] rounded-lg text-xs font-medium hover:bg-gray-50 transition">
+                    雑談
+                </button>
+                <button type="button" onclick="toggleTag(this)" class="tag-chip px-3.5 py-1.5 bg-white text-[#333333] border border-[#E5E5EA] rounded-lg text-xs font-medium hover:bg-gray-50 transition">
+                    時事問題
+                </button>
+                <button type="button" onclick="toggleTag(this)" class="tag-chip px-3.5 py-1.5 bg-white text-[#333333] border border-[#E5E5EA] rounded-lg text-xs font-medium hover:bg-gray-50 transition">
+                    質問・相談
+                </button>
+                <button type="button" onclick="toggleTag(this)" class="tag-chip px-3.5 py-1.5 bg-white text-[#333333] border border-[#E5E5EA] rounded-lg text-xs font-medium hover:bg-gray-50 transition">
+                    勉強・作業
+                </button>
+                <button type="button" onclick="toggleTag(this)" class="tag-chip px-3.5 py-1.5 bg-white text-[#333333] border border-[#E5E5EA] rounded-lg text-xs font-medium hover:bg-gray-50 transition">
+                    趣味
+                </button>
+                <button type="button" onclick="toggleTag(this)" class="tag-chip px-3.5 py-1.5 bg-white text-[#333333] border border-[#E5E5EA] rounded-lg text-xs font-medium hover:bg-gray-50 transition">
+                    ゲーム
+                </button>
+                <button type="button" onclick="toggleTag(this)" class="tag-chip px-3.5 py-1.5 bg-white text-[#333333] border border-[#E5E5EA] rounded-lg text-xs font-medium hover:bg-gray-50 transition">
+                    アニメ・漫画
+                </button>
+                <button type="button" onclick="toggleTag(this)" class="tag-chip px-3.5 py-1.5 bg-white text-[#333333] border border-[#E5E5EA] rounded-lg text-xs font-medium hover:bg-gray-50 transition">
+                    情報交換
+                </button>
+            </div>
+
+            <!-- オリジナルタグ追加入力欄（枠付き ＋ 背景なしテキストボタン「追加」） -->
+            <div class="flex items-center gap-2 mt-3 bg-[#F8FAFC] border border-[#E5E5EA] rounded-xl px-3 py-2">
+                <span class="text-[#8E8E93] font-bold text-sm">#</span>
+                <input type="text" id="custom-tag-input" placeholder="オリジナルのハッシュタグを追加" onkeypress="if(event.key==='Enter'){event.preventDefault();addCustomTag();}" class="flex-1 bg-transparent text-xs text-[#1C1C1E] focus:outline-none placeholder-[#C7C7CC]">
+                <button type="button" onclick="addCustomTag()" class="text-[#007AFF] text-xs font-bold px-1 hover:opacity-70 transition">
+                    追加
+                </button>
+            </div>
+        </div>
+
+        <!-- 5. 合言葉 -->
+        <div class="px-1 pt-1">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm font-bold text-[#1C1C1E]">合言葉で参加制限</div>
+                    <div class="text-xs text-[#8E8E93] mt-0.5">合言葉を知っている人のみ参加できます</div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="pass-toggle" class="sr-only peer" onchange="togglePassword(this)">
+                    <div class="w-11 h-6 bg-[#E5E5EA] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#007AFF] shadow-inner"></div>
+                </label>
+            </div>
+            
+            <div id="password-area" class="overflow-hidden max-h-0 transition-all duration-300">
+                <div class="pt-2.5">
+                    <input type="text" placeholder="参加用の合言葉を入力" class="w-full bg-[#F8FAFC] border border-[#E5E5EA] rounded-xl px-3.5 py-2.5 text-sm text-[#1C1C1E] focus:outline-none focus:border-[#007AFF] placeholder-[#C7C7CC]">
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- スクリプト -->
+    <script>
+        function updateCount(inputId, countId, max) {
+            const input = document.getElementById(inputId);
+            const count = document.getElementById(countId);
+            count.innerText = `${input.value.length}/${max}`;
+        }
+
+        function previewBg(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('bg-preview').style.backgroundImage = `url(${e.target.result})`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function previewIcon(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('icon-preview').innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover rounded-full">`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function togglePassword(checkbox) {
+            const area = document.getElementById('password-area');
+            if (checkbox.checked) {
+                area.classList.remove('max-h-0');
+                area.classList.add('max-h-20');
+            } else {
+                area.classList.remove('max-h-20');
+                area.classList.add('max-h-0');
+            }
+        }
+
+        function toggleTag(btn) {
+            const isSelected = btn.classList.contains('bg-[#007AFF]');
+            if (isSelected) {
+                btn.classList.remove('bg-[#007AFF]', 'text-white', 'border-[#007AFF]', 'shadow-sm');
+                btn.classList.add('bg-white', 'text-[#333333]', 'border-[#E5E5EA]');
+            } else {
+                btn.classList.remove('bg-white', 'text-[#333333]', 'border-[#E5E5EA]');
+                btn.classList.add('bg-[#007AFF]', 'text-white', 'border-[#007AFF]', 'shadow-sm');
+            }
+        }
+
+        function addCustomTag() {
+            const input = document.getElementById('custom-tag-input');
+            let val = input.value.trim();
+            if (!val) return;
+
+            if (val.startsWith('#')) {
+                val = val.substring(1).trim();
+            }
+            if (!val) return;
+
+            const container = document.getElementById('tags-container');
+            const newBtn = document.createElement('button');
+            newBtn.type = 'button';
+            newBtn.onclick = function() { toggleTag(this); };
+            newBtn.className = "tag-chip px-3.5 py-1.5 bg-[#007AFF] text-white border border-[#007AFF] shadow-sm rounded-lg text-xs font-medium hover:opacity-90 transition";
+            newBtn.innerText = val;
+
+            container.appendChild(newBtn);
+            input.value = '';
+        }
+    </script>
+</body>
+</html>

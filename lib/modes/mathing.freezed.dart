@@ -12,7 +12,8 @@ part of 'mathing.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
+  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
+);
 
 /// @nodoc
 mixin _$MatchingRoom {
@@ -51,34 +52,36 @@ mixin _$MatchingRoom {
 /// @nodoc
 abstract class $MatchingRoomCopyWith<$Res> {
   factory $MatchingRoomCopyWith(
-          MatchingRoom value, $Res Function(MatchingRoom) then) =
-      _$MatchingRoomCopyWithImpl<$Res, MatchingRoom>;
+    MatchingRoom value,
+    $Res Function(MatchingRoom) then,
+  ) = _$MatchingRoomCopyWithImpl<$Res, MatchingRoom>;
   @useResult
-  $Res call(
-      {String? roomId,
-      String? player1Id,
-      String? player2Id,
-      bool? isMatched,
-      DateTime? createdAt,
-      String? winner,
-      String? reason,
-      bool? player1Choice,
-      bool? player2Choice,
-      DateTime? updatedAt,
-      bool? change,
-      bool? go,
-      bool? player1_finish,
-      bool? player2_finish,
-      bool? player1_go,
-      bool? player2_go,
-      DateTime? player1_time,
-      DateTime? player2_time,
-      String? theme,
-      String? choice1,
-      String? choice2,
-      String? password,
-      MatchScores? scores,
-      bool? isBbs});
+  $Res call({
+    String? roomId,
+    String? player1Id,
+    String? player2Id,
+    bool? isMatched,
+    DateTime? createdAt,
+    String? winner,
+    String? reason,
+    bool? player1Choice,
+    bool? player2Choice,
+    DateTime? updatedAt,
+    bool? change,
+    bool? go,
+    bool? player1_finish,
+    bool? player2_finish,
+    bool? player1_go,
+    bool? player2_go,
+    DateTime? player1_time,
+    DateTime? player2_time,
+    String? theme,
+    String? choice1,
+    String? choice2,
+    String? password,
+    MatchScores? scores,
+    bool? isBbs,
+  });
 }
 
 /// @nodoc
@@ -121,104 +124,107 @@ class _$MatchingRoomCopyWithImpl<$Res, $Val extends MatchingRoom>
     Object? scores = freezed,
     Object? isBbs = freezed,
   }) {
-    return _then(_value.copyWith(
-      roomId: freezed == roomId
-          ? _value.roomId
-          : roomId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      player1Id: freezed == player1Id
-          ? _value.player1Id
-          : player1Id // ignore: cast_nullable_to_non_nullable
-              as String?,
-      player2Id: freezed == player2Id
-          ? _value.player2Id
-          : player2Id // ignore: cast_nullable_to_non_nullable
-              as String?,
-      isMatched: freezed == isMatched
-          ? _value.isMatched
-          : isMatched // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      createdAt: freezed == createdAt
-          ? _value.createdAt
-          : createdAt // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      winner: freezed == winner
-          ? _value.winner
-          : winner // ignore: cast_nullable_to_non_nullable
-              as String?,
-      reason: freezed == reason
-          ? _value.reason
-          : reason // ignore: cast_nullable_to_non_nullable
-              as String?,
-      player1Choice: freezed == player1Choice
-          ? _value.player1Choice
-          : player1Choice // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player2Choice: freezed == player2Choice
-          ? _value.player2Choice
-          : player2Choice // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      updatedAt: freezed == updatedAt
-          ? _value.updatedAt
-          : updatedAt // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      change: freezed == change
-          ? _value.change
-          : change // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      go: freezed == go
-          ? _value.go
-          : go // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player1_finish: freezed == player1_finish
-          ? _value.player1_finish
-          : player1_finish // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player2_finish: freezed == player2_finish
-          ? _value.player2_finish
-          : player2_finish // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player1_go: freezed == player1_go
-          ? _value.player1_go
-          : player1_go // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player2_go: freezed == player2_go
-          ? _value.player2_go
-          : player2_go // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player1_time: freezed == player1_time
-          ? _value.player1_time
-          : player1_time // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      player2_time: freezed == player2_time
-          ? _value.player2_time
-          : player2_time // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      theme: freezed == theme
-          ? _value.theme
-          : theme // ignore: cast_nullable_to_non_nullable
-              as String?,
-      choice1: freezed == choice1
-          ? _value.choice1
-          : choice1 // ignore: cast_nullable_to_non_nullable
-              as String?,
-      choice2: freezed == choice2
-          ? _value.choice2
-          : choice2 // ignore: cast_nullable_to_non_nullable
-              as String?,
-      password: freezed == password
-          ? _value.password
-          : password // ignore: cast_nullable_to_non_nullable
-              as String?,
-      scores: freezed == scores
-          ? _value.scores
-          : scores // ignore: cast_nullable_to_non_nullable
-              as MatchScores?,
-      isBbs: freezed == isBbs
-          ? _value.isBbs
-          : isBbs // ignore: cast_nullable_to_non_nullable
-              as bool?,
-    ) as $Val);
+    return _then(
+      _value.copyWith(
+            roomId: freezed == roomId
+                ? _value.roomId
+                : roomId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            player1Id: freezed == player1Id
+                ? _value.player1Id
+                : player1Id // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            player2Id: freezed == player2Id
+                ? _value.player2Id
+                : player2Id // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            isMatched: freezed == isMatched
+                ? _value.isMatched
+                : isMatched // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            createdAt: freezed == createdAt
+                ? _value.createdAt
+                : createdAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            winner: freezed == winner
+                ? _value.winner
+                : winner // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            reason: freezed == reason
+                ? _value.reason
+                : reason // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            player1Choice: freezed == player1Choice
+                ? _value.player1Choice
+                : player1Choice // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            player2Choice: freezed == player2Choice
+                ? _value.player2Choice
+                : player2Choice // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            updatedAt: freezed == updatedAt
+                ? _value.updatedAt
+                : updatedAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            change: freezed == change
+                ? _value.change
+                : change // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            go: freezed == go
+                ? _value.go
+                : go // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            player1_finish: freezed == player1_finish
+                ? _value.player1_finish
+                : player1_finish // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            player2_finish: freezed == player2_finish
+                ? _value.player2_finish
+                : player2_finish // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            player1_go: freezed == player1_go
+                ? _value.player1_go
+                : player1_go // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            player2_go: freezed == player2_go
+                ? _value.player2_go
+                : player2_go // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            player1_time: freezed == player1_time
+                ? _value.player1_time
+                : player1_time // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            player2_time: freezed == player2_time
+                ? _value.player2_time
+                : player2_time // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            theme: freezed == theme
+                ? _value.theme
+                : theme // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            choice1: freezed == choice1
+                ? _value.choice1
+                : choice1 // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            choice2: freezed == choice2
+                ? _value.choice2
+                : choice2 // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            password: freezed == password
+                ? _value.password
+                : password // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            scores: freezed == scores
+                ? _value.scores
+                : scores // ignore: cast_nullable_to_non_nullable
+                      as MatchScores?,
+            isBbs: freezed == isBbs
+                ? _value.isBbs
+                : isBbs // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+          )
+          as $Val,
+    );
   }
 }
 
@@ -226,35 +232,37 @@ class _$MatchingRoomCopyWithImpl<$Res, $Val extends MatchingRoom>
 abstract class _$$MatchingRoomImplCopyWith<$Res>
     implements $MatchingRoomCopyWith<$Res> {
   factory _$$MatchingRoomImplCopyWith(
-          _$MatchingRoomImpl value, $Res Function(_$MatchingRoomImpl) then) =
-      __$$MatchingRoomImplCopyWithImpl<$Res>;
+    _$MatchingRoomImpl value,
+    $Res Function(_$MatchingRoomImpl) then,
+  ) = __$$MatchingRoomImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call(
-      {String? roomId,
-      String? player1Id,
-      String? player2Id,
-      bool? isMatched,
-      DateTime? createdAt,
-      String? winner,
-      String? reason,
-      bool? player1Choice,
-      bool? player2Choice,
-      DateTime? updatedAt,
-      bool? change,
-      bool? go,
-      bool? player1_finish,
-      bool? player2_finish,
-      bool? player1_go,
-      bool? player2_go,
-      DateTime? player1_time,
-      DateTime? player2_time,
-      String? theme,
-      String? choice1,
-      String? choice2,
-      String? password,
-      MatchScores? scores,
-      bool? isBbs});
+  $Res call({
+    String? roomId,
+    String? player1Id,
+    String? player2Id,
+    bool? isMatched,
+    DateTime? createdAt,
+    String? winner,
+    String? reason,
+    bool? player1Choice,
+    bool? player2Choice,
+    DateTime? updatedAt,
+    bool? change,
+    bool? go,
+    bool? player1_finish,
+    bool? player2_finish,
+    bool? player1_go,
+    bool? player2_go,
+    DateTime? player1_time,
+    DateTime? player2_time,
+    String? theme,
+    String? choice1,
+    String? choice2,
+    String? password,
+    MatchScores? scores,
+    bool? isBbs,
+  });
 }
 
 /// @nodoc
@@ -262,8 +270,9 @@ class __$$MatchingRoomImplCopyWithImpl<$Res>
     extends _$MatchingRoomCopyWithImpl<$Res, _$MatchingRoomImpl>
     implements _$$MatchingRoomImplCopyWith<$Res> {
   __$$MatchingRoomImplCopyWithImpl(
-      _$MatchingRoomImpl _value, $Res Function(_$MatchingRoomImpl) _then)
-      : super(_value, _then);
+    _$MatchingRoomImpl _value,
+    $Res Function(_$MatchingRoomImpl) _then,
+  ) : super(_value, _then);
 
   /// Create a copy of MatchingRoom
   /// with the given fields replaced by the non-null parameter values.
@@ -295,135 +304,138 @@ class __$$MatchingRoomImplCopyWithImpl<$Res>
     Object? scores = freezed,
     Object? isBbs = freezed,
   }) {
-    return _then(_$MatchingRoomImpl(
-      roomId: freezed == roomId
-          ? _value.roomId
-          : roomId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      player1Id: freezed == player1Id
-          ? _value.player1Id
-          : player1Id // ignore: cast_nullable_to_non_nullable
-              as String?,
-      player2Id: freezed == player2Id
-          ? _value.player2Id
-          : player2Id // ignore: cast_nullable_to_non_nullable
-              as String?,
-      isMatched: freezed == isMatched
-          ? _value.isMatched
-          : isMatched // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      createdAt: freezed == createdAt
-          ? _value.createdAt
-          : createdAt // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      winner: freezed == winner
-          ? _value.winner
-          : winner // ignore: cast_nullable_to_non_nullable
-              as String?,
-      reason: freezed == reason
-          ? _value.reason
-          : reason // ignore: cast_nullable_to_non_nullable
-              as String?,
-      player1Choice: freezed == player1Choice
-          ? _value.player1Choice
-          : player1Choice // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player2Choice: freezed == player2Choice
-          ? _value.player2Choice
-          : player2Choice // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      updatedAt: freezed == updatedAt
-          ? _value.updatedAt
-          : updatedAt // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      change: freezed == change
-          ? _value.change
-          : change // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      go: freezed == go
-          ? _value.go
-          : go // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player1_finish: freezed == player1_finish
-          ? _value.player1_finish
-          : player1_finish // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player2_finish: freezed == player2_finish
-          ? _value.player2_finish
-          : player2_finish // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player1_go: freezed == player1_go
-          ? _value.player1_go
-          : player1_go // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player2_go: freezed == player2_go
-          ? _value.player2_go
-          : player2_go // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      player1_time: freezed == player1_time
-          ? _value.player1_time
-          : player1_time // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      player2_time: freezed == player2_time
-          ? _value.player2_time
-          : player2_time // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      theme: freezed == theme
-          ? _value.theme
-          : theme // ignore: cast_nullable_to_non_nullable
-              as String?,
-      choice1: freezed == choice1
-          ? _value.choice1
-          : choice1 // ignore: cast_nullable_to_non_nullable
-              as String?,
-      choice2: freezed == choice2
-          ? _value.choice2
-          : choice2 // ignore: cast_nullable_to_non_nullable
-              as String?,
-      password: freezed == password
-          ? _value.password
-          : password // ignore: cast_nullable_to_non_nullable
-              as String?,
-      scores: freezed == scores
-          ? _value.scores
-          : scores // ignore: cast_nullable_to_non_nullable
-              as MatchScores?,
-      isBbs: freezed == isBbs
-          ? _value.isBbs
-          : isBbs // ignore: cast_nullable_to_non_nullable
-              as bool?,
-    ));
+    return _then(
+      _$MatchingRoomImpl(
+        roomId: freezed == roomId
+            ? _value.roomId
+            : roomId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        player1Id: freezed == player1Id
+            ? _value.player1Id
+            : player1Id // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        player2Id: freezed == player2Id
+            ? _value.player2Id
+            : player2Id // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        isMatched: freezed == isMatched
+            ? _value.isMatched
+            : isMatched // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        createdAt: freezed == createdAt
+            ? _value.createdAt
+            : createdAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        winner: freezed == winner
+            ? _value.winner
+            : winner // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        reason: freezed == reason
+            ? _value.reason
+            : reason // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        player1Choice: freezed == player1Choice
+            ? _value.player1Choice
+            : player1Choice // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        player2Choice: freezed == player2Choice
+            ? _value.player2Choice
+            : player2Choice // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        updatedAt: freezed == updatedAt
+            ? _value.updatedAt
+            : updatedAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        change: freezed == change
+            ? _value.change
+            : change // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        go: freezed == go
+            ? _value.go
+            : go // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        player1_finish: freezed == player1_finish
+            ? _value.player1_finish
+            : player1_finish // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        player2_finish: freezed == player2_finish
+            ? _value.player2_finish
+            : player2_finish // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        player1_go: freezed == player1_go
+            ? _value.player1_go
+            : player1_go // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        player2_go: freezed == player2_go
+            ? _value.player2_go
+            : player2_go // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        player1_time: freezed == player1_time
+            ? _value.player1_time
+            : player1_time // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        player2_time: freezed == player2_time
+            ? _value.player2_time
+            : player2_time // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        theme: freezed == theme
+            ? _value.theme
+            : theme // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        choice1: freezed == choice1
+            ? _value.choice1
+            : choice1 // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        choice2: freezed == choice2
+            ? _value.choice2
+            : choice2 // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        password: freezed == password
+            ? _value.password
+            : password // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        scores: freezed == scores
+            ? _value.scores
+            : scores // ignore: cast_nullable_to_non_nullable
+                  as MatchScores?,
+        isBbs: freezed == isBbs
+            ? _value.isBbs
+            : isBbs // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+      ),
+    );
   }
 }
 
 /// @nodoc
 
 class _$MatchingRoomImpl implements _MatchingRoom {
-  _$MatchingRoomImpl(
-      {this.roomId,
-      this.player1Id,
-      this.player2Id,
-      this.isMatched,
-      this.createdAt,
-      this.winner,
-      this.reason,
-      this.player1Choice,
-      this.player2Choice,
-      this.updatedAt,
-      this.change,
-      this.go,
-      this.player1_finish,
-      this.player2_finish,
-      this.player1_go,
-      this.player2_go,
-      this.player1_time,
-      this.player2_time,
-      this.theme,
-      this.choice1,
-      this.choice2,
-      this.password,
-      this.scores,
-      this.isBbs});
+  _$MatchingRoomImpl({
+    this.roomId,
+    this.player1Id,
+    this.player2Id,
+    this.isMatched,
+    this.createdAt,
+    this.winner,
+    this.reason,
+    this.player1Choice,
+    this.player2Choice,
+    this.updatedAt,
+    this.change,
+    this.go,
+    this.player1_finish,
+    this.player2_finish,
+    this.player1_go,
+    this.player2_go,
+    this.player1_time,
+    this.player2_time,
+    this.theme,
+    this.choice1,
+    this.choice2,
+    this.password,
+    this.scores,
+    this.isBbs,
+  });
 
   @override
   final String? roomId;
@@ -526,32 +538,32 @@ class _$MatchingRoomImpl implements _MatchingRoom {
 
   @override
   int get hashCode => Object.hashAll([
-        runtimeType,
-        roomId,
-        player1Id,
-        player2Id,
-        isMatched,
-        createdAt,
-        winner,
-        reason,
-        player1Choice,
-        player2Choice,
-        updatedAt,
-        change,
-        go,
-        player1_finish,
-        player2_finish,
-        player1_go,
-        player2_go,
-        player1_time,
-        player2_time,
-        theme,
-        choice1,
-        choice2,
-        password,
-        scores,
-        isBbs
-      ]);
+    runtimeType,
+    roomId,
+    player1Id,
+    player2Id,
+    isMatched,
+    createdAt,
+    winner,
+    reason,
+    player1Choice,
+    player2Choice,
+    updatedAt,
+    change,
+    go,
+    player1_finish,
+    player2_finish,
+    player1_go,
+    player2_go,
+    player1_time,
+    player2_time,
+    theme,
+    choice1,
+    choice2,
+    password,
+    scores,
+    isBbs,
+  ]);
 
   /// Create a copy of MatchingRoom
   /// with the given fields replaced by the non-null parameter values.
@@ -563,31 +575,32 @@ class _$MatchingRoomImpl implements _MatchingRoom {
 }
 
 abstract class _MatchingRoom implements MatchingRoom {
-  factory _MatchingRoom(
-      {final String? roomId,
-      final String? player1Id,
-      final String? player2Id,
-      final bool? isMatched,
-      final DateTime? createdAt,
-      final String? winner,
-      final String? reason,
-      final bool? player1Choice,
-      final bool? player2Choice,
-      final DateTime? updatedAt,
-      final bool? change,
-      final bool? go,
-      final bool? player1_finish,
-      final bool? player2_finish,
-      final bool? player1_go,
-      final bool? player2_go,
-      final DateTime? player1_time,
-      final DateTime? player2_time,
-      final String? theme,
-      final String? choice1,
-      final String? choice2,
-      final String? password,
-      final MatchScores? scores,
-      final bool? isBbs}) = _$MatchingRoomImpl;
+  factory _MatchingRoom({
+    final String? roomId,
+    final String? player1Id,
+    final String? player2Id,
+    final bool? isMatched,
+    final DateTime? createdAt,
+    final String? winner,
+    final String? reason,
+    final bool? player1Choice,
+    final bool? player2Choice,
+    final DateTime? updatedAt,
+    final bool? change,
+    final bool? go,
+    final bool? player1_finish,
+    final bool? player2_finish,
+    final bool? player1_go,
+    final bool? player2_go,
+    final DateTime? player1_time,
+    final DateTime? player2_time,
+    final String? theme,
+    final String? choice1,
+    final String? choice2,
+    final String? password,
+    final MatchScores? scores,
+    final bool? isBbs,
+  }) = _$MatchingRoomImpl;
 
   @override
   String? get roomId;

@@ -24,16 +24,18 @@ class NamePageChange extends HookConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.blue,
         elevation: 0,
-        automaticallyImplyLeading: false, // AppBarの戻るボタンを削除
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => context.pop(),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           '',
           style: AppTextStyles.notoSans(color: Colors.white),
         ),
       ),
-      body: Stack( // Stackを追加
-        children: [
-          Center(
-            child: Padding(
+      body: Center(
+        child: Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -117,21 +119,6 @@ class NamePageChange extends HookConsumerWidget {
               ),
             ),
           ),
-          Positioned(
-            left: 10,
-            bottom: 20,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new),
-              iconSize: 28.0,
-              color: Colors.black, // 色を白に変更
-              tooltip: '戻る',
-              onPressed: () => context.pop(), // go_routerのcontext.pop()を使用
-              padding: const EdgeInsets.all(12.0),
-              splashRadius: 24.0,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

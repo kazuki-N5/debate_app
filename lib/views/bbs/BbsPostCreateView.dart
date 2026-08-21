@@ -281,51 +281,6 @@ class _BbsPostCreateViewState extends ConsumerState<BbsPostCreateView> {
                 ),
               ),
             ),
-            Positioned(
-              bottom: 8,
-              left: 8,
-              right: 8,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.play_circle_outline, color: Colors.white, size: 12),
-                            SizedBox(width: 2),
-                            Text('動画', style: TextStyle(color: Colors.white, fontSize: 10)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text('+ALT', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.edit, color: Colors.white, size: 12),
-                  ),
-                ],
-              ),
-            ),
           ],
         );
       },

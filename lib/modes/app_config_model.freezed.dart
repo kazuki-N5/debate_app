@@ -12,7 +12,8 @@ part of 'app_config_model.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
+  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
+);
 
 /// @nodoc
 mixin _$AppConfig {
@@ -38,13 +39,14 @@ abstract class $AppConfigCopyWith<$Res> {
   factory $AppConfigCopyWith(AppConfig value, $Res Function(AppConfig) then) =
       _$AppConfigCopyWithImpl<$Res, AppConfig>;
   @useResult
-  $Res call(
-      {String? minVersion,
-      String? latestVersion,
-      String? maxVersion,
-      String? changelog,
-      bool? isMaintenanceMode,
-      String? maintenanceMessage});
+  $Res call({
+    String? minVersion,
+    String? latestVersion,
+    String? maxVersion,
+    String? changelog,
+    bool? isMaintenanceMode,
+    String? maintenanceMessage,
+  });
 }
 
 /// @nodoc
@@ -69,32 +71,35 @@ class _$AppConfigCopyWithImpl<$Res, $Val extends AppConfig>
     Object? isMaintenanceMode = freezed,
     Object? maintenanceMessage = freezed,
   }) {
-    return _then(_value.copyWith(
-      minVersion: freezed == minVersion
-          ? _value.minVersion
-          : minVersion // ignore: cast_nullable_to_non_nullable
-              as String?,
-      latestVersion: freezed == latestVersion
-          ? _value.latestVersion
-          : latestVersion // ignore: cast_nullable_to_non_nullable
-              as String?,
-      maxVersion: freezed == maxVersion
-          ? _value.maxVersion
-          : maxVersion // ignore: cast_nullable_to_non_nullable
-              as String?,
-      changelog: freezed == changelog
-          ? _value.changelog
-          : changelog // ignore: cast_nullable_to_non_nullable
-              as String?,
-      isMaintenanceMode: freezed == isMaintenanceMode
-          ? _value.isMaintenanceMode
-          : isMaintenanceMode // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      maintenanceMessage: freezed == maintenanceMessage
-          ? _value.maintenanceMessage
-          : maintenanceMessage // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ) as $Val);
+    return _then(
+      _value.copyWith(
+            minVersion: freezed == minVersion
+                ? _value.minVersion
+                : minVersion // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            latestVersion: freezed == latestVersion
+                ? _value.latestVersion
+                : latestVersion // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            maxVersion: freezed == maxVersion
+                ? _value.maxVersion
+                : maxVersion // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            changelog: freezed == changelog
+                ? _value.changelog
+                : changelog // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            isMaintenanceMode: freezed == isMaintenanceMode
+                ? _value.isMaintenanceMode
+                : isMaintenanceMode // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            maintenanceMessage: freezed == maintenanceMessage
+                ? _value.maintenanceMessage
+                : maintenanceMessage // ignore: cast_nullable_to_non_nullable
+                      as String?,
+          )
+          as $Val,
+    );
   }
 }
 
@@ -102,17 +107,19 @@ class _$AppConfigCopyWithImpl<$Res, $Val extends AppConfig>
 abstract class _$$AppConfigImplCopyWith<$Res>
     implements $AppConfigCopyWith<$Res> {
   factory _$$AppConfigImplCopyWith(
-          _$AppConfigImpl value, $Res Function(_$AppConfigImpl) then) =
-      __$$AppConfigImplCopyWithImpl<$Res>;
+    _$AppConfigImpl value,
+    $Res Function(_$AppConfigImpl) then,
+  ) = __$$AppConfigImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call(
-      {String? minVersion,
-      String? latestVersion,
-      String? maxVersion,
-      String? changelog,
-      bool? isMaintenanceMode,
-      String? maintenanceMessage});
+  $Res call({
+    String? minVersion,
+    String? latestVersion,
+    String? maxVersion,
+    String? changelog,
+    bool? isMaintenanceMode,
+    String? maintenanceMessage,
+  });
 }
 
 /// @nodoc
@@ -120,8 +127,9 @@ class __$$AppConfigImplCopyWithImpl<$Res>
     extends _$AppConfigCopyWithImpl<$Res, _$AppConfigImpl>
     implements _$$AppConfigImplCopyWith<$Res> {
   __$$AppConfigImplCopyWithImpl(
-      _$AppConfigImpl _value, $Res Function(_$AppConfigImpl) _then)
-      : super(_value, _then);
+    _$AppConfigImpl _value,
+    $Res Function(_$AppConfigImpl) _then,
+  ) : super(_value, _then);
 
   /// Create a copy of AppConfig
   /// with the given fields replaced by the non-null parameter values.
@@ -135,58 +143,61 @@ class __$$AppConfigImplCopyWithImpl<$Res>
     Object? isMaintenanceMode = freezed,
     Object? maintenanceMessage = freezed,
   }) {
-    return _then(_$AppConfigImpl(
-      minVersion: freezed == minVersion
-          ? _value.minVersion
-          : minVersion // ignore: cast_nullable_to_non_nullable
-              as String?,
-      latestVersion: freezed == latestVersion
-          ? _value.latestVersion
-          : latestVersion // ignore: cast_nullable_to_non_nullable
-              as String?,
-      maxVersion: freezed == maxVersion
-          ? _value.maxVersion
-          : maxVersion // ignore: cast_nullable_to_non_nullable
-              as String?,
-      changelog: freezed == changelog
-          ? _value.changelog
-          : changelog // ignore: cast_nullable_to_non_nullable
-              as String?,
-      isMaintenanceMode: freezed == isMaintenanceMode
-          ? _value.isMaintenanceMode
-          : isMaintenanceMode // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      maintenanceMessage: freezed == maintenanceMessage
-          ? _value.maintenanceMessage
-          : maintenanceMessage // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ));
+    return _then(
+      _$AppConfigImpl(
+        minVersion: freezed == minVersion
+            ? _value.minVersion
+            : minVersion // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        latestVersion: freezed == latestVersion
+            ? _value.latestVersion
+            : latestVersion // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        maxVersion: freezed == maxVersion
+            ? _value.maxVersion
+            : maxVersion // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        changelog: freezed == changelog
+            ? _value.changelog
+            : changelog // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        isMaintenanceMode: freezed == isMaintenanceMode
+            ? _value.isMaintenanceMode
+            : isMaintenanceMode // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        maintenanceMessage: freezed == maintenanceMessage
+            ? _value.maintenanceMessage
+            : maintenanceMessage // ignore: cast_nullable_to_non_nullable
+                  as String?,
+      ),
+    );
   }
 }
 
 /// @nodoc
 
 class _$AppConfigImpl implements _AppConfig {
-  const _$AppConfigImpl(
-      {this.minVersion,
-      this.latestVersion,
-      this.maxVersion,
-      this.changelog,
-      this.isMaintenanceMode,
-      this.maintenanceMessage});
+  const _$AppConfigImpl({
+    this.minVersion,
+    this.latestVersion,
+    this.maxVersion,
+    this.changelog,
+    this.isMaintenanceMode,
+    this.maintenanceMessage,
+  });
 
   @override
   final String? minVersion;
-// 変更: 汎用的な最小サポートバージョン
+  // 変更: 汎用的な最小サポートバージョン
   @override
   final String? latestVersion;
-// 変更: 汎用的な最新バージョン
+  // 変更: 汎用的な最新バージョン
   @override
   final String? maxVersion;
-// 追加: 開発用の最大バージョン
+  // 追加: 開発用の最大バージョン
   @override
   final String? changelog;
-// 共通の変更ログ
+  // 共通の変更ログ
   @override
   final bool? isMaintenanceMode;
   @override
@@ -217,8 +228,15 @@ class _$AppConfigImpl implements _AppConfig {
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, minVersion, latestVersion,
-      maxVersion, changelog, isMaintenanceMode, maintenanceMessage);
+  int get hashCode => Object.hash(
+    runtimeType,
+    minVersion,
+    latestVersion,
+    maxVersion,
+    changelog,
+    isMaintenanceMode,
+    maintenanceMessage,
+  );
 
   /// Create a copy of AppConfig
   /// with the given fields replaced by the non-null parameter values.
@@ -230,13 +248,14 @@ class _$AppConfigImpl implements _AppConfig {
 }
 
 abstract class _AppConfig implements AppConfig {
-  const factory _AppConfig(
-      {final String? minVersion,
-      final String? latestVersion,
-      final String? maxVersion,
-      final String? changelog,
-      final bool? isMaintenanceMode,
-      final String? maintenanceMessage}) = _$AppConfigImpl;
+  const factory _AppConfig({
+    final String? minVersion,
+    final String? latestVersion,
+    final String? maxVersion,
+    final String? changelog,
+    final bool? isMaintenanceMode,
+    final String? maintenanceMessage,
+  }) = _$AppConfigImpl;
 
   @override
   String? get minVersion; // 変更: 汎用的な最小サポートバージョン

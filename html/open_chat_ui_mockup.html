@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>オープンチャット作成画面 モダンUI & ハッシュタグ機能 設計モックアップ</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            appBlue: '#2196F3',
+            appBlueDark: '#1976D2',
+            appBlueLight: '#E3F2FD',
+            appBg: '#F8FAFC',
+          },
+          fontFamily: {
+            sans: ['"Noto Sans JP"', 'sans-serif'],
+            rounded: ['"M PLUS Rounded 1c"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #F1F5F9;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+    .phone-shadow {
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 12px #1E293B, 0 0 0 14px #475569;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #CBD5E1;
+      border-radius: 4px;
+    }
+    .fade-in {
+      animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 pb-20">
+
+  <!-- ヘッダー -->
+  <header class="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white py-6 px-8 shadow-md">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 bg-blue-500/30 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase mb-2 border border-blue-400/30">
+          <i class="fa-solid fa-hashtag text-yellow-300"></i> HashTag & UI/DB Re-Architecture
+        </div>
+        <h1 class="text-2xl md:text-3xl font-bold font-rounded">オープンチャット ハッシュタグ対応 & モダンUI設計書</h1>
+        <p class="text-blue-100 text-sm mt-1">説明文からの#タグ自動抽出・DBタグ配列設計・青色AppBar統一・インタラクティブモック</p>
+      </div>
+      <!-- ビュー切り替えタブ -->
+      <div class="flex bg-slate-900/40 p-1.5 rounded-xl backdrop-blur-sm self-start md:self-auto border border-white/10">
+        <button onclick="switchView('modern')" id="tab-modern" class="px-4 py-2 rounded-lg text-sm font-bold transition-all bg-white text-blue-600 shadow-sm flex items-center gap-2">
+          <i class="fa-solid fa-mobile-screen"></i> インタラクティブUI
+        </button>
+        <button onclick="switchView('db-design')" id="tab-db-design" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-200 hover:text-white flex items-center gap-2">
+          <i class="fa-solid fa-database"></i> DB・RPC設計書
+        </button>
+        <button onclick="switchView('compare')" id="tab-compare" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-200 hover:text-white flex items-center gap-2">
+          <i class="fa-solid fa-table-columns"></i> 比較 (Before/After)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="max-w-7xl mx-auto px-4 md:px-8 mt-8">
+
+    <!-- ハッシュタグ機能 & UI改善ポイント要約バナー -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 mb-8">
+      <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+        <span class="w-2 h-6 bg-blue-500 rounded-full"></span>
+        ハッシュタグ追加に伴う再設計ハイライト
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="flex items-start gap-3 p-4 rounded-xl bg-blue-50/60 border border-blue-100">
+          <div class="w-9 h-9 rounded-lg bg-blue-500 text-white flex items-center justify-center flex-shrink-0 text-base shadow-sm">
+            <i class="fa-solid fa-hashtag"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-xs md:text-sm">説明文から#タグ自動抽出</h3>
+            <p class="text-[11px] text-slate-600 mt-1">説明文に <code class="bg-blue-100 px-1 rounded text-blue-700 font-mono">#時事問題 #初心者歓迎</code> と打つと自動でタグチップとして認識・反映。</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3 p-4 rounded-xl bg-indigo-50/60 border border-indigo-100">
+          <div class="w-9 h-9 rounded-lg bg-indigo-500 text-white flex items-center justify-center flex-shrink-0 text-base shadow-sm">
+            <i class="fa-solid fa-database"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-xs md:text-sm">DB: tags text[] カラム追加</h3>
+            <p class="text-[11px] text-slate-600 mt-1">PostgreSQLの配列型とGINインデックスで高速なタグ検索・完全一致/部分一致クエリを実現。</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3 p-4 rounded-xl bg-emerald-50/60 border border-emerald-100">
+          <div class="w-9 h-9 rounded-lg bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 text-base shadow-sm">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-xs md:text-sm">タグ検索 & タップ絞り込み</h3>
+            <p class="text-[11px] text-slate-600 mt-1">一覧やプレビューでタグをタップすると即座にそのタグでルーム一覧を検索・フィルタリング。</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3 p-4 rounded-xl bg-purple-50/60 border border-purple-100">
+          <div class="w-9 h-9 rounded-lg bg-purple-500 text-white flex items-center justify-center flex-shrink-0 text-base shadow-sm">
+            <i class="fa-solid fa-palette"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-xs md:text-sm">青色AppBar & 不要アイコン削除</h3>
+            <p class="text-[11px] text-slate-600 mt-1">AppBarを青色背景・白文字で統一。作成・プレビューで意味のなかった虫眼鏡と3点メニューを完全撤廃。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 1: インタラクティブモダンUI ==================== -->
+    <div id="view-modern" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- スマホ実機プレビュー (左側) -->
+      <div class="lg:col-span-5 flex flex-col items-center">
+        
+        <!-- モック内 画面切り替えスイッチ -->
+        <div class="flex items-center gap-2 bg-slate-200/80 p-1 rounded-xl mb-4 text-xs font-bold text-slate-700">
+          <button onclick="setScreen('create')" id="screen-btn-create" class="px-3.5 py-1.5 rounded-lg bg-white shadow-sm text-blue-600 transition-all">
+            作成画面
+          </button>
+          <button onclick="setScreen('preview')" id="screen-btn-preview" class="px-3.5 py-1.5 rounded-lg hover:bg-white/50 transition-all">
+            プレビュー画面
+          </button>
+        </div>
+
+        <!-- スマホ外枠フレーム -->
+        <div class="w-[375px] h-[770px] bg-slate-900 rounded-[44px] phone-shadow relative overflow-hidden flex flex-col border-[5px] border-slate-800">
+          
+          <!-- ノッチ・ダイナミックアイランド -->
+          <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-950 rounded-full z-50 flex items-center justify-end px-2">
+            <div class="w-2.5 h-2.5 bg-slate-900 rounded-full border border-slate-800"></div>
+          </div>
+
+          <!-- アプリ本体画面 -->
+          <div class="flex-1 bg-[#F8FAFC] flex flex-col overflow-hidden pt-7">
+            
+            <!-- 画面A: 作成画面 -->
+            <div id="app-screen-create" class="flex-1 flex flex-col overflow-hidden fade-in">
+              <!-- AppBar (青色背景・白文字・統一感) -->
+              <div class="bg-blue-500 text-white px-4 py-3 flex items-center justify-between shadow-sm relative z-30">
+                <div class="flex items-center gap-3">
+                  <button class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 active:scale-95 transition">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                  </button>
+                  <h2 class="font-bold text-base font-rounded tracking-wide">オープンチャット作成</h2>
+                </div>
+                <div class="text-xs font-semibold bg-white/20 px-2.5 py-1 rounded-full text-blue-50">
+                  新規
+                </div>
+              </div>
+
+              <!-- スクロール可能なフォームコンテンツ -->
+              <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+                
+                <!-- ヘッダー：背景カバー画像 ＆ アバターアイコン設定セクション -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                  <!-- カバー画像エリア -->
+                  <div class="relative h-28 bg-gradient-to-br from-blue-100 via-indigo-50 to-blue-200 flex items-center justify-center group cursor-pointer overflow-hidden" onclick="triggerCoverSelect()">
+                    <!-- プレビュー画像（設定時） -->
+                    <img id="cover-preview-img" src="" class="absolute inset-0 w-full h-full object-cover hidden" alt="Cover">
+                    <div id="cover-placeholder" class="flex flex-col items-center gap-1 text-blue-600/80 group-hover:scale-105 transition-transform">
+                      <div class="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm shadow-sm flex items-center justify-center text-blue-500">
+                        <i class="fa-solid fa-image text-xs"></i>
+                      </div>
+                      <span class="text-[11px] font-bold">カバー画像を設定</span>
+                    </div>
+                    <!-- 変更バッジ (画像設定後) -->
+                    <button id="cover-change-btn" class="hidden absolute top-2 right-2 bg-slate-900/60 hover:bg-slate-900/80 text-white text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur-sm transition">
+                      <i class="fa-solid fa-camera mr-1"></i>変更
+                    </button>
+                  </div>
+
+                  <!-- アイコン画像と説明 -->
+                  <div class="px-4 pb-3 pt-0 relative flex flex-col items-center">
+                    <!-- アバターサークル -->
+                    <div class="-mt-10 relative cursor-pointer group" onclick="triggerIconSelect()">
+                      <div class="w-18 h-18 rounded-full bg-white p-1 shadow-md">
+                        <div class="w-16 h-16 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden relative">
+                          <img id="avatar-preview-img" src="" class="w-full h-full object-cover hidden" alt="Avatar">
+                          <div id="avatar-placeholder" class="flex flex-col items-center text-slate-400 group-hover:text-blue-500 transition-colors">
+                            <i class="fa-solid fa-camera text-base"></i>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] shadow border-2 border-white">
+                        <i class="fa-solid fa-plus"></i>
+                      </div>
+                    </div>
+                    <span class="text-[10px] text-slate-500 mt-1 font-medium">アイコン画像 (任意)</span>
+                  </div>
+                </div>
+
+                <!-- 基本情報入力カード -->
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-3.5">
+                  <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
+                    <i class="fa-solid fa-circle-info text-blue-500 text-xs"></i>
+                    <span class="text-xs font-bold text-slate-700">ルームの基本情報</span>
+                  </div>
+
+                  <!-- ルーム名 -->
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <span>ルーム名</span>
+                        <span class="text-[9px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded">必須</span>
+                      </label>
+                      <span id="name-count" class="text-[10px] text-slate-400 font-mono">0/30</span>
+                    </div>
+                    <div class="relative flex items-center">
+                      <i class="fa-regular fa-comment-dots absolute left-3 text-slate-400 text-xs"></i>
+                      <input type="text" id="input-room-name" maxlength="30" placeholder="例: 時事・社会問題の議論部屋" 
+                        class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400 font-medium"
+                        oninput="updateCount('input-room-name', 'name-count', 30); updatePreview();">
+                    </div>
+                  </div>
+
+                  <!-- ルーム説明文 ＆ ハッシュタグ自動認識 -->
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <span>説明文</span>
+                        <span class="text-[9px] bg-slate-100 text-slate-500 font-medium px-1.5 py-0.5 rounded">任意</span>
+                      </label>
+                      <span id="desc-count" class="text-[10px] text-slate-400 font-mono">0/200</span>
+                    </div>
+                    <div class="relative">
+                      <textarea id="input-room-desc" rows="3" maxlength="200" placeholder="説明文を入力。#ディベート #初心者歓迎 のように#をつけるとタグになります"
+                        class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400 resize-none font-medium leading-relaxed"
+                        oninput="handleDescInput()"></textarea>
+                    </div>
+
+                    <!-- 抽出されたハッシュタグのリアルタイムチップ表示 -->
+                    <div id="detected-tags-container" class="mt-2 pt-2 border-t border-slate-100 hidden">
+                      <div class="text-[10px] font-bold text-slate-500 mb-1.5 flex items-center gap-1">
+                        <i class="fa-solid fa-tags text-blue-500"></i>
+                        <span>検出されたハッシュタグ:</span>
+                      </div>
+                      <div id="detected-tags-list" class="flex flex-wrap gap-1.5">
+                        <!-- JSで動的生成 -->
+                      </div>
+                    </div>
+
+                    <!-- クイックタグ追加ボタン -->
+                    <div class="mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 text-[10px]">
+                      <span class="text-slate-400 flex-shrink-0">タグ候補:</span>
+                      <button onclick="appendTag('#時事ディベート')" class="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full font-medium transition flex-shrink-0">
+                        +#時事ディベート
+                      </button>
+                      <button onclick="appendTag('#初心者歓迎')" class="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full font-medium transition flex-shrink-0">
+                        +#初心者歓迎
+                      </button>
+                      <button onclick="appendTag('#雑談')" class="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full font-medium transition flex-shrink-0">
+                        +#雑談
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- セキュリティ・参加設定カード -->
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-xs">
+                        <i class="fa-solid fa-lock"></i>
+                      </div>
+                      <div>
+                        <div class="text-xs font-bold text-slate-800">合言葉（パスワード）設定</div>
+                        <div class="text-[10px] text-slate-500">非公開ルームにしたい場合に設定</div>
+                      </div>
+                    </div>
+                    <!-- トグルスイッチ -->
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" id="toggle-password" class="sr-only peer" onchange="togglePasswordField()">
+                      <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+                    </label>
+                  </div>
+
+                  <!-- 合言葉入力フィールド（トグルONで展開） -->
+                  <div id="password-field-container" class="hidden pt-2 border-t border-slate-100 fade-in">
+                    <label class="text-[11px] font-bold text-slate-600 mb-1 block">設定する合言葉</label>
+                    <div class="relative flex items-center">
+                      <i class="fa-solid fa-key absolute left-3 text-slate-400 text-xs"></i>
+                      <input type="password" id="input-password" placeholder="参加時に必要な合言葉を入力"
+                        class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400 font-mono"
+                        oninput="updatePreview()">
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">※合言葉を知っているユーザーのみが参加できます</p>
+                  </div>
+                </div>
+
+                <!-- 作成ボタン -->
+                <div class="pt-1 pb-4">
+                  <button id="btn-create-submit" onclick="simulateCreateRoom()" 
+                    class="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 active:scale-[0.98] text-white rounded-xl font-bold text-xs shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 transition-all">
+                    <i class="fa-solid fa-check"></i>
+                    <span>オープンチャットを作成</span>
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- 画面B: プレビュー画面 (参加確認画面) -->
+            <div id="app-screen-preview" class="flex-1 flex flex-col overflow-hidden hidden fade-in">
+              <!-- 改善後のAppBar (青色背景・虫眼鏡と3点メニューを削除) -->
+              <div class="bg-blue-500 text-white px-4 py-3 flex items-center justify-between shadow-sm relative z-30">
+                <div class="flex items-center gap-3">
+                  <button onclick="setScreen('create')" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 active:scale-95 transition">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                  </button>
+                  <h2 class="font-bold text-base font-rounded tracking-wide">オープンチャット</h2>
+                </div>
+                <!-- 右側の余計なアイコンは一切なし！ -->
+                <div class="text-[11px] bg-blue-600/60 px-2 py-0.5 rounded text-blue-100">
+                  プレビュー
+                </div>
+              </div>
+
+              <!-- プレビューコンテンツ -->
+              <div class="flex-1 overflow-y-auto custom-scrollbar flex flex-col justify-between">
+                <div>
+                  <!-- カバー画像 -->
+                  <div class="h-40 bg-slate-200 relative overflow-hidden flex items-center justify-center">
+                    <img id="preview-screen-cover" src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&auto=format&fit=crop&q=80" class="w-full h-full object-cover" alt="Cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                  </div>
+
+                  <!-- ルーム情報 -->
+                  <div class="px-5 -mt-8 relative z-10 flex flex-col items-center text-center">
+                    <!-- アバター -->
+                    <div class="w-16 h-16 rounded-full bg-white p-1 shadow-md mb-2">
+                      <img id="preview-screen-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80" class="w-full h-full rounded-full object-cover" alt="Avatar">
+                    </div>
+
+                    <h3 id="preview-screen-title" class="text-base font-bold text-slate-800 leading-snug">
+                      時事・社会問題の議論部屋
+                    </h3>
+
+                    <div class="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
+                      <span class="inline-flex items-center gap-1">
+                        <i class="fa-solid fa-user-group text-[10px]"></i> メンバー 1
+                      </span>
+                      <span id="preview-screen-lock-badge" class="hidden inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200/60">
+                        <i class="fa-solid fa-lock text-[9px]"></i> 合言葉あり
+                      </span>
+                    </div>
+
+                    <!-- ハッシュタグチップ表示 (プレビュー) -->
+                    <div id="preview-screen-tags" class="flex flex-wrap gap-1 justify-center mt-2.5">
+                      <!-- JSでタグ表示 -->
+                    </div>
+
+                    <p id="preview-screen-desc" class="text-xs text-slate-600 mt-2.5 leading-relaxed max-w-[280px]">
+                      政治や経済の時事ネタについて語り合いましょう！
+                    </p>
+                  </div>
+                </div>
+
+                <!-- 参加ボタンエリア (下部固定) -->
+                <div class="p-4 bg-white border-t border-slate-100 mt-4">
+                  <button class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold text-xs shadow-sm transition">
+                    参加する
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ホームバー -->
+          <div class="h-5 bg-slate-900 flex items-center justify-center">
+            <div class="w-24 h-1 bg-slate-700 rounded-full"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右側：デザイン解説 ＆ インタラクティブ操作パネル -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- 操作テストコントローラー -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-blue-500"></i>
+              ハッシュタグ動作テスト & プリセット
+            </h3>
+            <span class="text-xs text-slate-500">説明文の#タグ抽出をお試しください</span>
+          </div>
+
+          <div class="mt-4 space-y-4">
+            <!-- プリセット画像選択 -->
+            <div>
+              <label class="text-xs font-bold text-slate-700 block mb-2">タグ付きプリセットを適用</label>
+              <div class="flex flex-wrap gap-2">
+                <button onclick="applyPreset(1)" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold hover:bg-slate-50 hover:border-blue-400 transition flex items-center gap-1.5">
+                  <i class="fa-solid fa-graduation-cap text-blue-500"></i> ディベート広場 (#時事 #経済)
+                </button>
+                <button onclick="applyPreset(2)" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold hover:bg-slate-50 hover:border-blue-400 transition flex items-center gap-1.5">
+                  <i class="fa-solid fa-gamepad text-purple-500"></i> レスバ観戦Bar (#合言葉 #初心者歓迎)
+                </button>
+                <button onclick="clearPreset()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition">
+                  <i class="fa-solid fa-rotate-left"></i> リセット
+                </button>
+              </div>
+            </div>
+
+            <!-- ハッシュタグ抽出のロジック説明 -->
+            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200/80 text-xs space-y-2">
+              <div class="font-bold text-slate-700 flex items-center gap-1.5">
+                <i class="fa-solid fa-code text-blue-500"></i>
+                Dart側でのハッシュタグ抽出正規表現
+              </div>
+              <p class="text-slate-600">
+                ユーザーが説明文に入力したテキストから、以下の正規表現でハッシュタグを自動抽出してDBの <code class="bg-slate-200 px-1 rounded font-mono">tags</code> カラムに保存します。
+              </p>
+              <div class="bg-slate-900 rounded-lg p-3 font-mono text-[11px] text-emerald-400">
+                final tagRegex = RegExp(r'#([^\s#]+)');<br>
+                final tags = tagRegex.allMatches(description).map((m) =&gt; m.group(1)!).toSet().toList();
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3つの主要改善セクション詳細 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-white rounded-xl p-5 border border-slate-200/80 shadow-sm">
+            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm mb-3">
+              <i class="fa-solid fa-hashtag"></i>
+            </div>
+            <h4 class="font-bold text-slate-800 text-sm mb-1">説明文からの自動タグ化</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              ユーザーは専用のタグ入力欄に縛られず、説明文に「#ディベート」「#初心者歓迎」と自然に書くだけで自動タグとして登録されます。
+            </p>
+          </div>
+
+          <div class="bg-white rounded-xl p-5 border border-slate-200/80 shadow-sm">
+            <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm mb-3">
+              <i class="fa-solid fa-database"></i>
+            </div>
+            <h4 class="font-bold text-slate-800 text-sm mb-1">PostgreSQL tags 配列型</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              <code class="bg-slate-100 px-1 rounded text-indigo-700 font-mono">tags text[] DEFAULT '{}'</code> により、GINインデックスを活用した爆速タグ検索が可能になります。
+            </p>
+          </div>
+
+          <div class="bg-white rounded-xl p-5 border border-slate-200/80 shadow-sm">
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm mb-3">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </div>
+            <h4 class="font-bold text-slate-800 text-sm mb-1">一覧・検索でのタグ絞り込み</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              オープンチャット一覧画面（<code class="bg-slate-100 px-1 rounded text-xs font-mono">OpenChatRoomsView</code>）でもタグチップを表示し、ワンタップで検索可能に。
+            </p>
+          </div>
+
+          <div class="bg-white rounded-xl p-5 border border-slate-200/80 shadow-sm">
+            <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-sm mb-3">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
+            <h4 class="font-bold text-slate-800 text-sm mb-1">クリーンな青色AppBar</h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              AppBarは鮮やかな青色（<code class="bg-slate-100 px-1 rounded text-purple-700 font-mono">Colors.blue</code>）で統一し、無駄な虫眼鏡や3点メニューを撤廃。
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 2: データベース・RPC設計書 ==================== -->
+    <div id="view-db-design" class="hidden space-y-6">
+      
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4">
+          <i class="fa-solid fa-table text-blue-500"></i>
+          1. テーブルスキーマ変更 (`open_chat_rooms`)
+        </h3>
+        <p class="text-xs text-slate-600 mb-4 leading-relaxed">
+          <code class="bg-slate-100 px-1.5 py-0.5 rounded text-blue-600 font-mono">open_chat_rooms</code> テーブルに <code class="bg-slate-100 px-1.5 py-0.5 rounded text-blue-600 font-mono">tags text[] DEFAULT '{}'::text[]</code> カラムを追加し、GINインデックスを付与します。
+        </p>
+
+        <div class="bg-slate-900 text-slate-200 p-4 rounded-xl text-xs font-mono overflow-x-auto leading-relaxed">
+          <span class="text-slate-400">-- 1. tags カラムの追加</span><br>
+          <span class="text-pink-400">ALTER TABLE</span> public.open_chat_rooms <br>
+          <span class="text-pink-400">ADD COLUMN IF NOT EXISTS</span> tags text[] <span class="text-pink-400">DEFAULT</span> <span class="text-emerald-400">'{}'::text[]</span>;<br><br>
+          <span class="text-slate-400">-- 2. タグ検索を高速化するGINインデックス</span><br>
+          <span class="text-pink-400">CREATE INDEX IF NOT EXISTS</span> idx_open_chat_rooms_tags <br>
+          <span class="text-pink-400">ON</span> public.open_chat_rooms <span class="text-pink-400">USING</span> gin (tags);
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4">
+          <i class="fa-solid fa-gears text-indigo-500"></i>
+          2. RPC関数 `create_open_chat_room` の改修
+        </h3>
+        <p class="text-xs text-slate-600 mb-4 leading-relaxed">
+          引数に <code class="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600 font-mono">p_tags text[] DEFAULT '{}'::text[]</code> を追加し、登録時にタグを保存できるようにします。
+        </p>
+
+        <div class="bg-slate-900 text-slate-200 p-4 rounded-xl text-xs font-mono overflow-x-auto leading-relaxed">
+          <span class="text-pink-400">CREATE OR REPLACE FUNCTION</span> public.create_open_chat_room (<br>
+          &nbsp;&nbsp;p_name text,<br>
+          &nbsp;&nbsp;p_description text,<br>
+          &nbsp;&nbsp;p_icon_url text,<br>
+          &nbsp;&nbsp;p_background_url text <span class="text-pink-400">DEFAULT NULL</span>,<br>
+          &nbsp;&nbsp;p_password text <span class="text-pink-400">DEFAULT NULL</span>,<br>
+          &nbsp;&nbsp;<span class="text-emerald-400">p_tags text[] DEFAULT '{}'::text[]</span><br>
+          )<br>
+          <span class="text-pink-400">RETURNS</span> jsonb <span class="text-pink-400">AS</span> $$<br>
+          <span class="text-pink-400">DECLARE</span><br>
+          &nbsp;&nbsp;v_room_id UUID;<br>
+          &nbsp;&nbsp;v_user_id UUID := auth.uid();<br>
+          <span class="text-pink-400">BEGIN</span><br>
+          &nbsp;&nbsp;<span class="text-pink-400">IF</span> v_user_id <span class="text-pink-400">IS NULL THEN</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-pink-400">RETURN</span> jsonb_build_object(<span class="text-emerald-400">'success'</span>, <span class="text-pink-400">false</span>, <span class="text-emerald-400">'error'</span>, <span class="text-emerald-400">'認証されていません'</span>);<br>
+          &nbsp;&nbsp;<span class="text-pink-400">END IF</span>;<br><br>
+          &nbsp;&nbsp;<span class="text-slate-400">-- ルーム作成 (tags カラムを含める)</span><br>
+          &nbsp;&nbsp;<span class="text-pink-400">INSERT INTO</span> open_chat_rooms (name, description, icon_url, background_url, password, owner_id, <span class="text-emerald-400">tags</span>)<br>
+          &nbsp;&nbsp;<span class="text-pink-400">VALUES</span> (p_name, p_description, p_icon_url, p_background_url, p_password, v_user_id, <span class="text-emerald-400">p_tags</span>)<br>
+          &nbsp;&nbsp;<span class="text-pink-400">RETURNING</span> id <span class="text-pink-400">INTO</span> v_room_id;<br><br>
+          &nbsp;&nbsp;<span class="text-slate-400">-- 作成者を Admin として追加</span><br>
+          &nbsp;&nbsp;<span class="text-pink-400">INSERT INTO</span> open_chat_members (room_id, user_id, role)<br>
+          &nbsp;&nbsp;<span class="text-pink-400">VALUES</span> (v_room_id, v_user_id, <span class="text-emerald-400">'admin'</span>);<br><br>
+          &nbsp;&nbsp;<span class="text-pink-400">RETURN</span> jsonb_build_object(<span class="text-emerald-400">'success'</span>, <span class="text-pink-400">true</span>, <span class="text-emerald-400">'room_id'</span>, v_room_id);<br>
+          <span class="text-pink-400">END</span>;<br>
+          $$ <span class="text-pink-400">LANGUAGE</span> plpgsql <span class="text-pink-400">SECURITY DEFINER</span>;
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4">
+          <i class="fa-solid fa-filter text-emerald-500"></i>
+          3. 一覧取得RPC `get_open_chat_rooms_with_status` のタグ検索対応
+        </h3>
+        <p class="text-xs text-slate-600 mb-4 leading-relaxed">
+          検索クエリ（<code class="bg-slate-100 px-1.5 py-0.5 rounded text-emerald-600 font-mono">p_search_query</code>）で、名前・説明文に加えて <code class="bg-slate-100 px-1.5 py-0.5 rounded text-emerald-600 font-mono">tags</code> 内のタグ一致も検索ヒットするように拡張します。また戻り値に <code class="bg-slate-100 px-1.5 py-0.5 rounded text-emerald-600 font-mono">tags text[]</code> を含めます。
+        </p>
+
+        <div class="bg-slate-900 text-slate-200 p-4 rounded-xl text-xs font-mono overflow-x-auto leading-relaxed">
+          <span class="text-pink-400">CREATE OR REPLACE FUNCTION</span> public.get_open_chat_rooms_with_status(<br>
+          &nbsp;&nbsp;p_search_query text <span class="text-pink-400">DEFAULT NULL</span><br>
+          )<br>
+          <span class="text-pink-400">RETURNS TABLE</span> (<br>
+          &nbsp;&nbsp;id uuid,<br>
+          &nbsp;&nbsp;name text,<br>
+          &nbsp;&nbsp;description text,<br>
+          &nbsp;&nbsp;icon_url text,<br>
+          &nbsp;&nbsp;background_url text,<br>
+          &nbsp;&nbsp;owner_id uuid,<br>
+          &nbsp;&nbsp;created_at timestamp with time zone,<br>
+          &nbsp;&nbsp;member_count bigint,<br>
+          &nbsp;&nbsp;is_joined boolean,<br>
+          &nbsp;&nbsp;<span class="text-emerald-400">tags text[]</span><br>
+          ) <span class="text-pink-400">AS</span> $$<br>
+          ...<br>
+          <span class="text-pink-400">WHERE</span><br>
+          &nbsp;&nbsp;(p_search_query <span class="text-pink-400">IS NULL OR</span> p_search_query = <span class="text-emerald-400">''</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-pink-400">OR</span> r.name <span class="text-pink-400">ILIKE</span> <span class="text-emerald-400">'%'</span> || p_search_query || <span class="text-emerald-400">'%'</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-pink-400">OR</span> r.description <span class="text-pink-400">ILIKE</span> <span class="text-emerald-400">'%'</span> || p_search_query || <span class="text-emerald-400">'%'</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400">-- タグ完全一致 または タグ配列内に含むか検索</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-emerald-400">OR p_search_query = ANY(r.tags)</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-emerald-400">OR REPLACE(p_search_query, '#', '') = ANY(r.tags)</span><br>
+          &nbsp;&nbsp;)<br>
+          ...<br>
+          $$ <span class="text-pink-400">LANGUAGE</span> plpgsql <span class="text-pink-400">SECURITY DEFINER</span>;
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==================== VIEW 3: Before vs After 比較 ==================== -->
+    <div id="view-compare" class="hidden">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+        
+        <!-- BEFORE (従来) -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-md bg-rose-100 text-rose-700 font-bold text-xs">BEFORE</span>
+              <h3 class="font-bold text-slate-800">従来のUI・構造</h3>
+            </div>
+            <span class="text-xs text-slate-400">改善前</span>
+          </div>
+
+          <!-- ミニスマホ (Before) -->
+          <div class="w-full max-w-[320px] mx-auto bg-white rounded-2xl border-2 border-slate-300 overflow-hidden shadow-sm">
+            <!-- AppBar -->
+            <div class="bg-blue-500 text-white px-4 py-2.5 flex items-center justify-between text-sm font-bold">
+              <span>オープンチャット作成</span>
+            </div>
+            <!-- Body -->
+            <div class="p-3 space-y-3 text-xs">
+              <div class="h-24 bg-gray-200 rounded flex flex-col items-center justify-center text-gray-400 relative">
+                <i class="fa-solid fa-image text-lg mb-1"></i>
+                <span class="text-[10px]">背景画像を追加</span>
+                <div class="w-12 h-12 rounded-full bg-gray-300 border-2 border-white absolute -bottom-3 flex items-center justify-center">
+                  <i class="fa-solid fa-camera text-gray-500 text-xs"></i>
+                </div>
+              </div>
+              <div class="pt-3 space-y-2 text-[11px]">
+                <div class="border border-gray-300 rounded p-2 text-gray-400">ルーム名 (必須)</div>
+                <div class="border border-gray-300 rounded p-2 text-gray-400 h-14">説明文 (任意)</div>
+                <div class="border border-gray-300 rounded p-2 text-gray-400">合言葉 (任意)</div>
+                <button class="w-full py-2 bg-blue-500 text-white rounded-full font-bold text-xs">オープンチャットを作成</button>
+              </div>
+            </div>
+          </div>
+
+          <ul class="mt-4 space-y-2 text-xs text-slate-600">
+            <li class="flex items-center gap-2 text-rose-600">
+              <i class="fa-solid fa-xmark"></i> ハッシュタグ機能がなく、目的別の検索や分類ができない
+            </li>
+            <li class="flex items-center gap-2 text-rose-600">
+              <i class="fa-solid fa-xmark"></i> 灰色の背景とアイコンが素朴で質素に見える
+            </li>
+            <li class="flex items-center gap-2 text-rose-600">
+              <i class="fa-solid fa-xmark"></i> プレビュー画面のAppBarが白色で虫眼鏡や3点メニューが付いていて統一感がない
+            </li>
+          </ul>
+        </div>
+
+        <!-- AFTER (改善後) -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border-2 border-blue-500/50 relative overflow-hidden">
+          <div class="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
+            PROPOSED
+          </div>
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-md bg-blue-100 text-blue-700 font-bold text-xs">AFTER</span>
+              <h3 class="font-bold text-slate-800">モダン改善後UI + ハッシュタグ</h3>
+            </div>
+            <span class="text-xs text-blue-600 font-bold">完成イメージ</span>
+          </div>
+
+          <!-- ミニスマホ (After) -->
+          <div class="w-full max-w-[320px] mx-auto bg-slate-50 rounded-2xl border-2 border-blue-400 overflow-hidden shadow-md">
+            <!-- AppBar (鮮やかブルー) -->
+            <div class="bg-blue-500 text-white px-4 py-2.5 flex items-center justify-between text-sm font-bold shadow-sm">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-arrow-left text-xs"></i>
+                <span>オープンチャット作成</span>
+              </div>
+            </div>
+            <!-- Body -->
+            <div class="p-3 space-y-2.5 text-xs">
+              <!-- 洗練されたカバー & アバター -->
+              <div class="bg-white rounded-xl p-2 border border-slate-200 shadow-sm">
+                <div class="h-16 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg flex flex-col items-center justify-center text-blue-500 text-[10px] font-bold">
+                  <i class="fa-solid fa-image mb-0.5"></i>
+                  <span>カバー画像を設定</span>
+                </div>
+                <div class="-mt-5 flex justify-center">
+                  <div class="w-10 h-10 rounded-full bg-white p-0.5 shadow">
+                    <div class="w-full h-full rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                      <i class="fa-solid fa-camera text-[10px]"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 角丸フォームカード & タグ -->
+              <div class="bg-white rounded-xl p-2.5 border border-slate-200 shadow-sm space-y-2">
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 flex items-center gap-2 text-slate-700 text-[11px]">
+                  <i class="fa-regular fa-comment-dots text-slate-400"></i>
+                  <span>ルーム名 (必須)</span>
+                </div>
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-slate-700 text-[11px]">
+                  <span>説明文 (#ディベート #時事)</span>
+                  <div class="flex gap-1 mt-1">
+                    <span class="bg-blue-100 text-blue-700 text-[9px] px-1 rounded font-bold">#ディベート</span>
+                    <span class="bg-blue-100 text-blue-700 text-[9px] px-1 rounded font-bold">#時事</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 合言葉トグル -->
+              <div class="bg-white rounded-xl p-2 border border-slate-200 shadow-sm flex items-center justify-between text-[10px] font-bold text-slate-700">
+                <div class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-lock text-amber-500"></i>
+                  <span>合言葉を設定する</span>
+                </div>
+                <div class="w-6 h-3.5 bg-slate-200 rounded-full"></div>
+              </div>
+
+              <button class="w-full py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold shadow-sm text-xs">
+                オープンチャットを作成
+              </button>
+            </div>
+          </div>
+
+          <ul class="mt-4 space-y-2 text-xs text-slate-600">
+            <li class="flex items-center gap-2 text-emerald-600 font-medium">
+              <i class="fa-solid fa-check"></i> 説明文に#を入力するだけで自動タグ抽出＆DB登録
+            </li>
+            <li class="flex items-center gap-2 text-emerald-600 font-medium">
+              <i class="fa-solid fa-check"></i> グラデーションやソフトシャドウ、角丸で清潔感とモダンさを両立
+            </li>
+            <li class="flex items-center gap-2 text-emerald-600 font-medium">
+              <i class="fa-solid fa-check"></i> AppBarは青色で統一され、不要なアイコンを徹底排除
+            </li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // タブ切り替え
+    function switchView(view) {
+      const modernView = document.getElementById('view-modern');
+      const dbView = document.getElementById('view-db-design');
+      const compareView = document.getElementById('view-compare');
+      const tabModern = document.getElementById('tab-modern');
+      const tabDb = document.getElementById('tab-db-design');
+      const tabCompare = document.getElementById('tab-compare');
+
+      modernView.classList.add('hidden');
+      dbView.classList.add('hidden');
+      compareView.classList.add('hidden');
+      
+      const defaultTabClass = "px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-200 hover:text-white flex items-center gap-2";
+      const activeTabClass = "px-4 py-2 rounded-lg text-sm font-bold transition-all bg-white text-blue-600 shadow-sm flex items-center gap-2";
+
+      tabModern.className = defaultTabClass;
+      tabDb.className = defaultTabClass;
+      tabCompare.className = defaultTabClass;
+
+      if (view === 'modern') {
+        modernView.classList.remove('hidden');
+        tabModern.className = activeTabClass;
+      } else if (view === 'db-design') {
+        dbView.classList.remove('hidden');
+        tabDb.className = activeTabClass;
+      } else {
+        compareView.classList.remove('hidden');
+        tabCompare.className = activeTabClass;
+      }
+    }
+
+    // スマホ画面切り替え (作成画面 vs プレビュー画面)
+    function setScreen(screen) {
+      const screenCreate = document.getElementById('app-screen-create');
+      const screenPreview = document.getElementById('app-screen-preview');
+      const btnCreate = document.getElementById('screen-btn-create');
+      const btnPreview = document.getElementById('screen-btn-preview');
+
+      if (screen === 'create') {
+        screenCreate.classList.remove('hidden');
+        screenPreview.classList.add('hidden');
+        btnCreate.className = "px-3.5 py-1.5 rounded-lg bg-white shadow-sm text-blue-600 transition-all";
+        btnPreview.className = "px-3.5 py-1.5 rounded-lg hover:bg-white/50 transition-all";
+      } else {
+        screenCreate.classList.add('hidden');
+        screenPreview.classList.remove('hidden');
+        btnPreview.className = "px-3.5 py-1.5 rounded-lg bg-white shadow-sm text-blue-600 transition-all";
+        btnCreate.className = "px-3.5 py-1.5 rounded-lg hover:bg-white/50 transition-all";
+      }
+    }
+
+    // 文字数カウント更新
+    function updateCount(inputId, countId, max) {
+      const input = document.getElementById(inputId);
+      const count = document.getElementById(countId);
+      count.innerText = `${input.value.length}/${max}`;
+    }
+
+    // ハッシュタグ抽出
+    function extractTags(text) {
+      const regex = /#([^\s#]+)/g;
+      const matches = [];
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        matches.push(match[1]);
+      }
+      return [...new Set(matches)]; // 重複排除
+    }
+
+    // 説明文入力ハンドラー
+    function handleDescInput() {
+      updateCount('input-room-desc', 'desc-count', 200);
+      const desc = document.getElementById('input-room-desc').value;
+      const tags = extractTags(desc);
+
+      const container = document.getElementById('detected-tags-container');
+      const list = document.getElementById('detected-tags-list');
+      
+      if (tags.length > 0) {
+        container.classList.remove('hidden');
+        list.innerHTML = tags.map(t => `<span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200 flex items-center gap-1"><i class="fa-solid fa-hashtag text-[8px]"></i>${t}</span>`).join('');
+      } else {
+        container.classList.add('hidden');
+      }
+
+      updatePreview();
+    }
+
+    // クイックタグ追加
+    function appendTag(tagWithHash) {
+      const descInput = document.getElementById('input-room-desc');
+      if (descInput.value.includes(tagWithHash)) return;
+      if (descInput.value.trim().length > 0 && !descInput.value.endsWith(' ')) {
+        descInput.value += ' ' + tagWithHash;
+      } else {
+        descInput.value += tagWithHash;
+      }
+      handleDescInput();
+    }
+
+    // パスワードトグル切り替え
+    function togglePasswordField() {
+      const toggle = document.getElementById('toggle-password');
+      const container = document.getElementById('password-field-container');
+      const lockBadge = document.getElementById('preview-screen-lock-badge');
+      if (toggle.checked) {
+        container.classList.remove('hidden');
+        lockBadge.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+        lockBadge.classList.add('hidden');
+        document.getElementById('input-password').value = '';
+      }
+    }
+
+    // プレビューのリアルタイム反映
+    function updatePreview() {
+      const name = document.getElementById('input-room-name').value.trim() || '時事・社会問題の議論部屋';
+      const desc = document.getElementById('input-room-desc').value.trim() || '政治や経済の時事ネタについて語り合いましょう！';
+      const tags = extractTags(desc);
+      
+      document.getElementById('preview-screen-title').innerText = name;
+      document.getElementById('preview-screen-desc').innerText = desc;
+
+      const previewTagsEl = document.getElementById('preview-screen-tags');
+      if (tags.length > 0) {
+        previewTagsEl.innerHTML = tags.map(t => `<span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-100 flex items-center gap-0.5"><i class="fa-solid fa-hashtag text-[8px]"></i>${t}</span>`).join('');
+      } else {
+        previewTagsEl.innerHTML = '';
+      }
+    }
+
+    // プリセット適用
+    const presets = {
+      1: {
+        name: '【公式】時事・社会問題ディベート広場',
+        desc: '政治・経済・最新テクノロジーの倫理問題などをテーマに活発にディベートするオープンチャットです。 #時事ディベート #経済 #初心者歓迎',
+        cover: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=600&auto=format&fit=crop&q=80',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+        hasPassword: false
+      },
+      2: {
+        name: '夜更かし雑談＆レスバ観戦Bar',
+        desc: '対戦募集中の熱いレスバをみんなで観戦したり、気軽な雑談をするプライベートルームです。入室は合言葉を知っている人のみ！ #夜更かし #レスバ観戦 #雑談',
+        cover: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80',
+        avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=200&auto=format&fit=crop&q=80',
+        hasPassword: true,
+        password: 'secret_debate'
+      }
+    };
+
+    function applyPreset(id) {
+      const data = presets[id];
+      if (!data) return;
+
+      document.getElementById('input-room-name').value = data.name;
+      document.getElementById('input-room-desc').value = data.desc;
+      updateCount('input-room-name', 'name-count', 30);
+      handleDescInput();
+
+      // カバー画像
+      const coverImg = document.getElementById('cover-preview-img');
+      coverImg.src = data.cover;
+      coverImg.classList.remove('hidden');
+      document.getElementById('cover-placeholder').classList.add('hidden');
+      document.getElementById('cover-change-btn').classList.remove('hidden');
+      document.getElementById('preview-screen-cover').src = data.cover;
+
+      // アバター画像
+      const avatarImg = document.getElementById('avatar-preview-img');
+      avatarImg.src = data.avatar;
+      avatarImg.classList.remove('hidden');
+      document.getElementById('avatar-placeholder').classList.add('hidden');
+      document.getElementById('preview-screen-avatar').src = data.avatar;
+
+      // パスワード
+      const toggle = document.getElementById('toggle-password');
+      toggle.checked = data.hasPassword;
+      togglePasswordField();
+      if (data.hasPassword) {
+        document.getElementById('input-password').value = data.password;
+      }
+
+      updatePreview();
+    }
+
+    function clearPreset() {
+      document.getElementById('input-room-name').value = '';
+      document.getElementById('input-room-desc').value = '';
+      updateCount('input-room-name', 'name-count', 30);
+      handleDescInput();
+
+      document.getElementById('cover-preview-img').src = '';
+      document.getElementById('cover-preview-img').classList.add('hidden');
+      document.getElementById('cover-placeholder').classList.remove('hidden');
+      document.getElementById('cover-change-btn').classList.add('hidden');
+
+      document.getElementById('avatar-preview-img').src = '';
+      document.getElementById('avatar-preview-img').classList.add('hidden');
+      document.getElementById('avatar-placeholder').classList.remove('hidden');
+
+      const toggle = document.getElementById('toggle-password');
+      toggle.checked = false;
+      togglePasswordField();
+
+      updatePreview();
+    }
+
+    function triggerCoverSelect() {
+      applyPreset(1);
+    }
+
+    function triggerIconSelect() {
+      applyPreset(2);
+    }
+
+    function simulateCreateRoom() {
+      const name = document.getElementById('input-room-name').value.trim();
+      if (!name) {
+        alert('ルーム名を入力してください');
+        return;
+      }
+
+      const btn = document.getElementById('btn-create-submit');
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i><span>作成中...</span>`;
+      btn.disabled = true;
+
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        alert('オープンチャットを作成しました！プレビュー画面を表示します。');
+        setScreen('preview');
+      }, 700);
+    }
+
+    // 初期化
+    handleDescInput();
+  </script>
+</body>
+</html>

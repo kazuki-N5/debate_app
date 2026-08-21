@@ -602,77 +602,113 @@ class FinishPage extends HookConsumerWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IgnorePointer(
-                        ignoring: isAdBlockingInteraction,
-                        child: ElevatedButton(
-                          onPressed: isMatching.value || isAdBlockingInteraction
-                              ? null
-                              : () async {
-                                  toggleBoolean();
-                                  ref
-                                      .read(soundServiceProvider)
-                                      .playSfx(SfxAssets.go);
-                                  vibration.vibrateShort();
-                                  // findMatchの呼び出しは変更なし
-                                  await ref
-                                      .read(matchingRoomProvider.notifier)
-                                      .findMatch('', '', '', '');
-                                  toggleBoolean();
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            disabledBackgroundColor: Colors.blue,
-                            minimumSize: const Size(double.infinity, 50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                      if (hasTrophyChange) ...[
+                        IgnorePointer(
+                          ignoring: isAdBlockingInteraction,
+                          child: ElevatedButton(
+                            onPressed: isMatching.value || isAdBlockingInteraction
+                                ? null
+                                : () async {
+                                    toggleBoolean();
+                                    ref
+                                        .read(soundServiceProvider)
+                                        .playSfx(SfxAssets.go);
+                                    vibration.vibrateShort();
+                                    // findMatchの呼び出しは変更なし
+                                    await ref
+                                        .read(matchingRoomProvider.notifier)
+                                        .findMatch('', '', '', '');
+                                    toggleBoolean();
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              disabledBackgroundColor: Colors.blue,
+                              minimumSize: const Size(double.infinity, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            'もう一度ディベート',
-                            style: AppTextStyles.notoSans(
-                              color: Colors.white,
-                              fontSize: 16,
+                            child: Text(
+                              'もう一度ディベート',
+                              style: AppTextStyles.notoSans(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 12),
+                      ],
                       Row(
                         children: [
                           // 左側の「ホームに戻る」ボタン
                           Expanded(
-                            child: OutlinedButton(
-                              onPressed: isAdBlockingInteraction
-                                  ? null
-                                  : () async {
-                                      try {
-                                        final result =
-                                            await usernotifier.fetchUser(user);
-                                        if (result.win! >= 5) {
-                                          ref
-                                              .read(reviewProvider.notifier)
-                                              .state = true;
-                                        }
-                                        router.go('/home');
-                                      } catch (e) {
-                                        showErrorDialog(context);
-                                      }
-                                    },
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.blue),
-                                minimumSize: const Size(0, 50), // 高さを50に設定
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: Text(
-                                'ホームに戻る',
-                                style: AppTextStyles.notoSans(
-                                  color: Colors.blue,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
+                            child: hasTrophyChange
+                                ? OutlinedButton(
+                                    onPressed: isAdBlockingInteraction
+                                        ? null
+                                        : () async {
+                                            try {
+                                              final result =
+                                                  await usernotifier.fetchUser(user);
+                                              if (result.win! >= 5) {
+                                                ref
+                                                    .read(reviewProvider.notifier)
+                                                    .state = true;
+                                              }
+                                              router.go('/home');
+                                            } catch (e) {
+                                              showErrorDialog(context);
+                                            }
+                                          },
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: Colors.blue),
+                                      minimumSize: const Size(0, 50), // 高さを50に設定
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'ホームに戻る',
+                                      style: AppTextStyles.notoSans(
+                                        color: Colors.blue,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  )
+                                : ElevatedButton(
+                                    onPressed: isAdBlockingInteraction
+                                        ? null
+                                        : () async {
+                                            try {
+                                              final result =
+                                                  await usernotifier.fetchUser(user);
+                                              if (result.win! >= 5) {
+                                                ref
+                                                    .read(reviewProvider.notifier)
+                                                    .state = true;
+                                              }
+                                              router.go('/home');
+                                            } catch (e) {
+                                              showErrorDialog(context);
+                                            }
+                                          },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      minimumSize: const Size(0, 50),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'ホームに戻る',
+                                      style: AppTextStyles.notoSans(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
                           ),
                           const SizedBox(width: 12), // ボタン間のスペース
                           // 右側のシェアボタン（正方形）
@@ -680,7 +716,6 @@ class FinishPage extends HookConsumerWidget {
                             width: 50,
                             height: 50,
                             child: OutlinedButton(
-                              // TODO: シェア機能のロジックをここに実装します
                               onPressed: isAdBlockingInteraction
                                   ? null
                                   : () async {

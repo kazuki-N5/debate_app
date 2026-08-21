@@ -13,6 +13,25 @@ class FullScreenImageViewer extends StatefulWidget {
     required this.initialIndex,
   });
 
+  /// アニメーションなしで即座にパッと画像プレビューを表示する
+  static Future<void> show(
+    BuildContext context, {
+    required List<String> imageUrls,
+    int initialIndex = 0,
+  }) {
+    return Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, _, __) => FullScreenImageViewer(
+          imageUrls: imageUrls,
+          initialIndex: initialIndex,
+        ),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
+  }
+
   @override
   State<FullScreenImageViewer> createState() => _FullScreenImageViewerState();
 }

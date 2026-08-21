@@ -1,4 +1,6 @@
 // ignore_for_file: file_names, avoid_print, use_build_context_synchronously
+import 'package:debate_project/modes/debate_scores.dart';
+
 class MatchRecordDisplay {
   final String roomid;
   final String resultString; // "勝利" or "敗北"
@@ -16,6 +18,17 @@ class MatchRecordDisplay {
   final int? player1MoveTrophy;
   final int? player2MoveTrophy;
 
+  // レーダーチャート・詳細表示用
+  final MatchScores? scores;
+  final String? myName;
+  final String? opponentChoice;
+  final bool isPlayer1;
+
+  final DateTime? createdAt;
+
+  PlayerScore? get myScore => scores?.getMyScore(isPlayer1);
+  PlayerScore? get opponentScore => scores?.getOpponentScore(isPlayer1);
+
   MatchRecordDisplay({
     required this.roomid,
     required this.resultString,
@@ -30,5 +43,10 @@ class MatchRecordDisplay {
     this.isUnderdog = false,
     this.player1MoveTrophy,
     this.player2MoveTrophy,
+    this.scores,
+    this.myName,
+    this.opponentChoice,
+    this.isPlayer1 = true,
+    this.createdAt,
   });
 }

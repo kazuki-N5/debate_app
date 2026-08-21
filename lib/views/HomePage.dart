@@ -8,7 +8,6 @@ import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/notification_provider.dart';
-import 'package:debate_project/provider/notification_settings_provider.dart';
 import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/provider/sfx_provider.dart';
 import 'package:debate_project/provider/user.dart';
@@ -19,7 +18,6 @@ import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:debate_project/view_model/start_error_dialog.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart'; // CupertinoSwitchのために追加
 import 'package:flutter_hooks/flutter_hooks.dart'; // Hooksを継続して使用
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart'; // hooks_riverpodを継続して使用
@@ -394,138 +392,148 @@ class HomePage extends HookConsumerWidget {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      // プロフィール画像とユーザー情報
-                                      Row(
+                                      // 左側セクション (プロフィール情報 + 左列アイコン群)
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          // プロフィール画像
-                                          Showcase(
-                                            key: profileIconKey,
-                                            description: 'アイコンが変更できます',
-                                            tooltipBackgroundColor:
-                                                Colors.blueAccent,
-                                            textColor: Colors.white,
-                                            targetBorderRadius:
-                                                BorderRadius.circular(50),
-                                            overlayOpacity: 0.5,
-                                            child: InkWell(
-                                              onTap: isMatching.value
-                                                  ? () {}
-                                                  : () async {
-                                                      toggleBoolean();
-                                                      await ref
-                                                          .read(userProvider
-                                                              .notifier)
-                                                          .updateAvatar();
-                                                      // 非同期処理中にWidgetが破棄されることがあるため、
-                                                      // 破棄されていたら再びトグルしない("used after being disposed"対策)
-                                                      if (context.mounted) {
-                                                        toggleBoolean();
-                                                      }
-                                                    },
-                                              borderRadius:
-                                                  BorderRadius.circular(25),
-                                              enableFeedback: false,
-                                              child: Container(
-                                                width: 50,
-                                                height: 50,
-                                                decoration: BoxDecoration(
-                                                  color: Colors
-                                                      .grey[300], // アイコンの背景色
-                                                  shape: BoxShape.circle,
-                                                  border: Border.all(
-                                                      color: Colors.white,
-                                                      width: 2),
-                                                ),
-                                                child: ClipOval(
-                                                  child: user.avatar_url !=
-                                                              null &&
-                                                          user.avatar_url!
-                                                              .isNotEmpty
-                                                      ? Image.network(
-                                                          user.avatar_url!,
-                                                          fit: BoxFit.cover,
-                                                          errorBuilder:
-                                                              (context, error,
-                                                                  stackTrace) {
-                                                            print(
-                                                                '画像読み込みエラー: $error');
-                                                            return Icon(
-                                                              Icons
-                                                                  .person, // 人物を表すアイコン
-                                                              color: Colors
-                                                                  .grey[600],
-                                                              size: 30,
-                                                            );
-                                                          },
-                                                        )
-                                                      : Icon(
-                                                          Icons
-                                                              .person, // アバターがない場合の初期アイコン
-                                                          color:
-                                                              Colors.grey[600],
-                                                          size: 30,
-                                                        ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-
-                                          const SizedBox(width: 10),
-                                          // 名前とトロフィー数
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                          // プロフィール画像とユーザー情報
+                                          Row(
                                             children: [
-                                              GestureDetector(
-                                                onTap: () {
-                                                  context.push('/name2');
-                                                },
-                                                child: Text(
-                                                  user.name!,
-                                                  style: AppTextStyles.bold(
-                                                    color: Colors.white,
-                                                    fontSize: 16,
+                                              // プロフィール画像
+                                              Showcase(
+                                                key: profileIconKey,
+                                                description: 'アイコンが変更できます',
+                                                tooltipBackgroundColor:
+                                                    Colors.blueAccent,
+                                                textColor: Colors.white,
+                                                targetBorderRadius:
+                                                    BorderRadius.circular(50),
+                                                overlayOpacity: 0.5,
+                                                child: InkWell(
+                                                  onTap: isMatching.value
+                                                      ? () {}
+                                                      : () async {
+                                                          toggleBoolean();
+                                                          await ref
+                                                              .read(userProvider
+                                                                  .notifier)
+                                                              .updateAvatar();
+                                                          // 非同期処理中にWidgetが破棄されることがあるため、
+                                                          // 破棄されていたら再びトグルしない("used after being disposed"対策)
+                                                          if (context.mounted) {
+                                                            toggleBoolean();
+                                                          }
+                                                        },
+                                                  borderRadius:
+                                                      BorderRadius.circular(25),
+                                                  enableFeedback: false,
+                                                  child: Container(
+                                                    width: 50,
+                                                    height: 50,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors
+                                                          .grey[300], // アイコンの背景色
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(
+                                                          color: Colors.white,
+                                                          width: 2),
+                                                    ),
+                                                    child: ClipOval(
+                                                      child: user.avatar_url !=
+                                                                  null &&
+                                                              user.avatar_url!
+                                                                  .isNotEmpty
+                                                          ? Image.network(
+                                                              user.avatar_url!,
+                                                              fit: BoxFit.cover,
+                                                              errorBuilder:
+                                                                  (context, error,
+                                                                      stackTrace) {
+                                                                print(
+                                                                    '画像読み込みエラー: $error');
+                                                                return Icon(
+                                                                  Icons
+                                                                      .person, // 人物を表すアイコン
+                                                                  color: Colors
+                                                                      .grey[600],
+                                                                  size: 30,
+                                                                );
+                                                              },
+                                                            )
+                                                          : Icon(
+                                                              Icons
+                                                                  .person, // アバターがない場合の初期アイコン
+                                                              color:
+                                                                  Colors.grey[600],
+                                                              size: 30,
+                                                            ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
-                                              Row(
+
+                                              const SizedBox(width: 10),
+                                              // 名前とトロフィー数
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
-                                                  Image(
-                                                    image: const AssetImage(
-                                                        'assets/images/trofie.png'), // 画像パスを指定
-                                                    width: a, // サイズ調整
-                                                    height: a,
+                                                  GestureDetector(
+                                                    onTap: () {
+                                                      context.push('/name2');
+                                                    },
+                                                    child: Text(
+                                                      user.name!,
+                                                      style: AppTextStyles.bold(
+                                                        color: Colors.white,
+                                                        fontSize: 16,
+                                                      ),
+                                                    ),
                                                   ),
-                                                  const SizedBox(width: 1),
-                                                  TrophyCountAnimation(
-                                                    targetTrophy: user.trophy,
-                                                    startTrophy:
-                                                        lastTrophy, // nullなら現在の値が使われる
+                                                  Row(
+                                                    children: [
+                                                      Image(
+                                                        image: const AssetImage(
+                                                            'assets/images/trofie.png'), // 画像パスを指定
+                                                        width: a, // サイズ調整
+                                                        height: a,
+                                                      ),
+                                                      const SizedBox(width: 1),
+                                                      TrophyCountAnimation(
+                                                        targetTrophy: user.trophy,
+                                                        startTrophy:
+                                                            lastTrophy, // nullなら現在の値が使われる
+                                                      ),
+                                                    ],
                                                   ),
                                                 ],
                                               ),
                                             ],
                                           ),
-                                        ],
-                                      ),
-                                      // マイレスバ（作ったレスバの管理）
-                                      Column(
-                                        children: [
-                                          IconButton(
-                                            icon: const Text(
-                                              '⚔️',
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 34,
+                                          const SizedBox(height: 7),
+                                          // 左側のアイコン列（マイレスバ等）
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              IconButton(
+                                                icon: const Text(
+                                                  '⚔️',
+                                                  style: TextStyle(
+                                                    color: Colors.white70,
+                                                    fontSize: 34,
+                                                  ),
+                                                ),
+                                                onPressed: () {
+                                                  ref
+                                                      .read(soundServiceProvider)
+                                                      .playSfx(SfxAssets.normal);
+                                                  context.push('/myResbas');
+                                                },
+                                                enableFeedback: false,
                                               ),
-                                            ),
-                                            onPressed: () {
-                                              ref
-                                                  .read(soundServiceProvider)
-                                                  .playSfx(SfxAssets.normal);
-                                              context.push('/myResbas');
-                                            },
-                                            enableFeedback: false,
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -746,65 +754,7 @@ class HomePage extends HookConsumerWidget {
                                       padding: const EdgeInsets.all(20.0),
                                       child: Column(
                                         children: [
-                                          // 通知設定セクション（UIのみ）
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              GestureDetector(
-                                                onTap: () {
-                                                  ref
-                                                      .read(soundServiceProvider)
-                                                      .playSfx(SfxAssets.normal);
-                                                  context.push(
-                                                      '/notification_settings');
-                                                },
-                                                child: const Padding(
-                                                  padding: EdgeInsets.only(
-                                                      right: 2,
-                                                      left: 10,
-                                                      top: 10,
-                                                      bottom: 10),
-                                                  child: const Icon(
-                                                    Icons.info_outline,
-                                                    color: Colors.white,
-                                                    size: 18,
-                                                  ),
-                                                ),
-                                              ),
-                                              const Icon(
-                                                Icons.notifications,
-                                                color: Colors.white,
-                                                size: 28,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              const Text(
-                                                'プッシュ通知',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              CupertinoSwitch(
-                                                value: ref
-                                                        .watch(
-                                                            notificationSettingsProvider)
-                                                        .valueOrNull
-                                                        ?.isNotificationEnabled ??
-                                                    false,
-                                                onChanged: (value) {
-                                                  // プロバイダーを通じてDBを更新
-                                                  ref
-                                                      .read(
-                                                          userProvider.notifier)
-                                                      .updateNotificationStatus(
-                                                          context, value);
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 8),
+
                                           // フレンドと対戦ボタン
                                           Container(
                                             width: double.infinity,
@@ -1004,7 +954,7 @@ class HomePage extends HookConsumerWidget {
                           IgnorePointer(
                             child: Center(
                               child: Transform.translate(
-                                offset: const Offset(0, -100), // さらに上に配置をずらす
+                                offset: const Offset(0, -50), // さらに上に配置をずらす
                                 child: SizedBox(
                                   width: bigicon,
                                   height: bigicon,
@@ -1035,10 +985,15 @@ class HomePage extends HookConsumerWidget {
         // RepaintBoundary: ナビバーの毎フレーム描画(影のblur)を他UIから分離してカクつきを防ぐ
         child: RepaintBoundary(
           child: CircleNavBar(
-            activeIcons: [
-              const Icon(Icons.people, color: Colors.blue),
-              const Icon(Icons.home, color: Colors.blue),
-              const Icon(Icons.message, color: Colors.blue),
+            activeIcons: const [
+              Icon(Icons.people, color: Colors.blue),
+              Center(
+                child: Text(
+                  '⚔️',
+                  style: TextStyle(fontSize: 24),
+                ),
+              ),
+              Icon(Icons.message, color: Colors.blue),
             ],
             inactiveIcons: [
               Column(
@@ -1057,7 +1012,23 @@ class HomePage extends HookConsumerWidget {
                           fontWeight: FontWeight.bold)),
                 ],
               ),
-              const Icon(Icons.home), // 非アクティブ状態
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    '⚔️',
+                    style: TextStyle(fontSize: 20),
+                  ),
+                  Text("ホーム",
+                      style: TextStyle(
+                          color: currentIndex.value == 1
+                              ? Colors.blue
+                              : Colors.grey,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold)),
+                ],
+              ),
               Column(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,

@@ -167,12 +167,13 @@ class MessagePage extends HookConsumerWidget {
   }
 
   /// メッセージタップ時の画面遷移
-  void _openChat(BuildContext context, WidgetRef ref, ChatInboxItem item) {
+  void _openChat(BuildContext context, WidgetRef ref, ChatInboxItem item) async {
     if (item.isDm) {
-      // ルームを開く前に既読化して未読バッジを更新
-      ref.read(markDmReadProvider)(item.roomId);
+      // ルームを開く前に既読化
+      await ref.read(markDmReadProvider)(item.roomId);
       ref.invalidate(chatInboxProvider);
-      Navigator.push(
+      if (!context.mounted) return;
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => DmRoomPage(
@@ -182,11 +183,16 @@ class MessagePage extends HookConsumerWidget {
           ),
         ),
       );
-    } else if (item.openChatRoom != null) {
-      // ルームを開く前に既読化して未読バッジを更新
-      ref.read(markOpenChatReadProvider)(item.roomId);
+      // 画面から戻ってきたときにも最新の既読状態に更新
       ref.invalidate(chatInboxProvider);
-      context.push('/openChatRoom', extra: item.openChatRoom);
+    } else if (item.openChatRoom != null) {
+      // ルームを開く前に既読化
+      await ref.read(markOpenChatReadProvider)(item.roomId);
+      ref.invalidate(chatInboxProvider);
+      if (!context.mounted) return;
+      await context.push('/openChatRoom', extra: item.openChatRoom);
+      // 画面から戻ってきたときにも最新の既読状態に更新
+      ref.invalidate(chatInboxProvider);
     }
   }
 }

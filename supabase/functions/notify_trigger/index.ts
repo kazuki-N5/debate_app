@@ -1,19 +1,32 @@
 /**
  * Edge Function: notify_trigger
- * いいね / フォロー / 返信 / DM / オプチャ のプッシュ通知(FCM)を送信する
+ * いいね / フォロー / 返信 / DM / オプチャ / レスバ招待 のプッシュ通知(FCM)を送信する
  *
- * DBトリガー (sql/message_tab.sql) から net.http_post で呼ばれる想定。
- *
- * リクエスト例:
- *   個別通知  : { "type": "like_post", "user_id": "受信者UUID", "actor_name": "アクター名" }
- *   DM通知    : { "type": "dm", "room_id": "ルームUUID", "sender_id": "送信者UUID" }
- *   オプチャ通知: { "type": "open_chat", "room_id": "ルームUUID", "sender_id": "送信者UUID" }
+ * DBトリガーから net.http_post で呼ばれる。
  */
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { JWT } from "npm:google-auth-library@9";
 import serviceAccount from "./service-account.json" with { type: "json" };
 
-Deno.serve(async (req) => {
+interface RequestBody {
+  type: string;
+  user_id?: string;
+  actor_name?: string;
+  room_id?: string;
+  sender_id?: string;
+}
+
+interface NotificationSettings {
+  is_notification_enabled?: boolean;
+  like_enabled?: boolean;
+  comment_enabled?: boolean;
+  follow_enabled?: boolean;
+  dm_enabled?: boolean;
+  open_chat_enabled?: boolean;
+  match_waiting_enabled?: boolean;
+}
+
+Deno.serve(async (req: Request) => {
   try {
     // シークレットチェック (NOTIFY_SECRET を設定した場合のみ必須)
     const secret = Deno.env.get("NOTIFY_SECRET");
@@ -24,7 +37,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const body = await req.json();
+    const body: RequestBody = await req.json();
     const { type } = body;
 
     // ルーム型通知 (DM / オプチャ): 受信者をDBから特定して送信
@@ -35,7 +48,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 個別通知 (いいね/フォロー/返信)
+    // 個別通知 (いいね/フォロー/返信/レスバ)
     const { user_id, actor_name } = body;
     if (!user_id || !type) {
       return new Response(
@@ -44,20 +57,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL"),
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 受信者のFCMトークンを取得 (トークン保有者のみ)
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("fcm_token, notification_settings(is_notification_enabled, like_enabled, comment_enabled, follow_enabled)")
+      .select("fcm_token, notification_settings(is_notification_enabled, like_enabled, comment_enabled, follow_enabled, match_waiting_enabled)")
       .eq("id", user_id)
       .not("fcm_token", "is", null)
       .maybeSingle();
     if (userError) throw userError;
-    if (!user?.fcm_token) {
+    if (!user?.fcm_token || (user.fcm_token as string).trim() === "") {
       return new Response(
         JSON.stringify({ message: "No target (disabled or no token)." }),
         { headers: { "Content-Type": "application/json" } }
@@ -65,7 +77,8 @@ Deno.serve(async (req) => {
     }
 
     // マスター + カテゴリ別設定チェック (プッシュ通知の細かいON/OFF。設定行がなければON扱い)
-    const settings = user?.notification_settings?.[0];
+    const settingsList = user.notification_settings as unknown as NotificationSettings[] | null;
+    const settings = settingsList?.[0];
     if (!isPushEnabled(type, settings)) {
       return new Response(
         JSON.stringify({ message: "No target (notification disabled)." }),
@@ -76,6 +89,8 @@ Deno.serve(async (req) => {
     const { title, body: messageBody } = buildMessage(type, actor_name ?? "誰か");
     const accessToken = await getAccessToken();
     const sent = await sendFcm(
+      supabase,
+      user_id,
       accessToken,
       user.fcm_token,
       title,
@@ -87,10 +102,11 @@ Deno.serve(async (req) => {
       JSON.stringify({ message: "Success", title, body: messageBody, sent }),
       { headers: { "Content-Type": "application/json" } }
     );
-  } catch (err) {
-    console.error("Function error:", err.message);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error("Function error:", errorMsg);
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: errorMsg }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -98,14 +114,15 @@ Deno.serve(async (req) => {
 
 /**
  * ルーム型通知 (DM / オプチャ) を送信する
- * - DM: ルームの他メンバー1人に送信
- * - オプチャ: 参加者全員(送信者以外)に送信
  */
-async function sendRoomNotification({ type, room_id, sender_id }) {
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL"),
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-  );
+async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
+  if (!room_id || !sender_id) {
+    return { message: "room_id and sender_id are required" };
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   // 送信者名を取得
   const { data: sender } = await supabase
@@ -115,26 +132,24 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
     .maybeSingle();
   const actorName = sender?.name ?? "誰か";
 
-  let receiverIds = [];
+  let receiverIds: string[] = [];
   let title = "";
   let messageBody = "";
 
   if (type === "dm") {
-    // 受信者 = ルームの他メンバー
     const { data: members } = await supabase
       .from("dm_room_members")
       .select("user_id")
       .eq("room_id", room_id);
     receiverIds = (members ?? [])
-      .map((m) => m.user_id)
-      .filter((uid) => uid !== sender_id);
+      .map((m: { user_id: string }) => m.user_id)
+      .filter((uid: string) => uid !== sender_id);
 
-    // このルームのメッセージ件数 (1件なら初回)
     const { count } = await supabase
       .from("dm_messages")
       .select("id", { count: "exact", head: true })
       .eq("room_id", room_id);
-    // 最新メッセージ本文
+
     const { data: lastMsg } = await supabase
       .from("dm_messages")
       .select("content")
@@ -145,13 +160,11 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
 
     title = "DMが届きました";
     if (count === 1) {
-      // その人から初めてのDM → 本文は出さない
       messageBody = `${actorName} さんから通知が来ました`;
     } else {
       messageBody = `${actorName} さん: ${truncate(lastMsg?.content ?? "")}`;
     }
   } else {
-    // オプチャ: ルーム名・参加者・最新メッセージを取得
     const { data: room } = await supabase
       .from("open_chat_rooms")
       .select("name")
@@ -169,8 +182,8 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
       .limit(1)
       .maybeSingle();
     receiverIds = (members ?? [])
-      .map((m) => m.user_id)
-      .filter((uid) => uid !== sender_id);
+      .map((m: { user_id: string }) => m.user_id)
+      .filter((uid: string) => uid !== sender_id);
     title = room?.name ?? "オープンチャット";
     messageBody = `${actorName} さん: ${truncate(lastMsg?.content ?? "")}`;
   }
@@ -179,7 +192,6 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
     return { message: "No targets." };
   }
 
-  // 受信者のFCMトークンを一括取得 (トークン保有者のみ)
   const { data: targetUsers, error: usersError } = await supabase
     .from("users")
     .select("id, fcm_token, notification_settings(is_notification_enabled, dm_enabled, open_chat_enabled)")
@@ -190,10 +202,11 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
     return { message: "No targets (disabled or no token)." };
   }
 
-  // マスター + カテゴリ別設定チェック (DM / オプチャ。設定行がなければON扱い)
-  const filteredUsers = targetUsers.filter((u) => {
-    const s = u.notification_settings?.[0];
-    if (s?.is_notification_enabled === false) return false; // マスターOFF
+  const filteredUsers = targetUsers.filter((u: { id: string; fcm_token: string | null; notification_settings?: NotificationSettings[] }) => {
+    if (!u.fcm_token || u.fcm_token.trim() === "") return false;
+    const settingsList = u.notification_settings as unknown as NotificationSettings[] | null;
+    const s = settingsList?.[0];
+    if (s?.is_notification_enabled === false) return false;
     if (type === "dm") return s?.dm_enabled !== false;
     return s?.open_chat_enabled !== false;
   });
@@ -203,15 +216,25 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
 
   const accessToken = await getAccessToken();
 
-  // FCMトークンの重複排除して送信
-  const uniqueTokens = new Set();
-  let successCount = 0;
+  const uniqueTokens = new Set<string>();
+  const sendTargets: { user: { id: string; fcm_token: string | null }; token: string }[] = [];
+
   for (const user of filteredUsers) {
     if (!user.fcm_token || uniqueTokens.has(user.fcm_token)) continue;
     uniqueTokens.add(user.fcm_token);
-    const sent = await sendFcm(accessToken, user.fcm_token, title, messageBody, type);
-    if (sent) successCount++;
+    sendTargets.push({ user, token: user.fcm_token });
   }
+
+  // Promise.allSettled で全員へ並行して一斉送信
+  const results = await Promise.allSettled(
+    sendTargets.map(({ user, token }) =>
+      sendFcm(supabase, user.id, accessToken, token, title, messageBody, type)
+    )
+  );
+
+  const successCount = results.filter(
+    (r) => r.status === "fulfilled" && r.value === true
+  ).length;
 
   return {
     message: "Success",
@@ -221,10 +244,9 @@ async function sendRoomNotification({ type, room_id, sender_id }) {
   };
 }
 
-/** マスター + カテゴリ別のプッシュ通知設定を判定 (設定行がなければON扱い) */
-function isPushEnabled(type, settings) {
+function isPushEnabled(type: string, settings?: NotificationSettings): boolean {
   if (!settings) return true;
-  if (settings.is_notification_enabled === false) return false; // マスターOFF
+  if (settings.is_notification_enabled === false) return false;
   switch (type) {
     case "like_post":
     case "like_comment":
@@ -234,13 +256,16 @@ function isPushEnabled(type, settings) {
       return settings.comment_enabled !== false;
     case "follow":
       return settings.follow_enabled !== false;
+    case "resba_invite":
+    case "resba_accepted":
+    case "resba_declined":
+      return settings.match_waiting_enabled !== false;
     default:
       return true;
   }
 }
 
-/** 通知種別に応じたタイトル・本文 (個別通知用) */
-function buildMessage(type, actorName) {
+function buildMessage(type: string, actorName: string): { title: string; body: string } {
   switch (type) {
     case "like_post":
       return {
@@ -267,13 +292,35 @@ function buildMessage(type, actorName) {
         title: "コメントが来ました",
         body: `${actorName} さんがあなたのポストにコメントしました`,
       };
+    case "resba_invite":
+      return {
+        title: "レスバの対戦申し込みが届きました！",
+        body: `${actorName} さんからレスバの対戦申し込みが届きました`,
+      };
+    case "resba_accepted":
+      return {
+        title: "レスバの申し込みが承諾されました！",
+        body: `${actorName} さんが対戦申し込みを承諾しました`,
+      };
+    case "resba_declined":
+      return {
+        title: "レスバの申し込みが辞退されました",
+        body: `${actorName} さんが対戦申し込みを辞退しました`,
+      };
     default:
       return { title: "新しい通知", body: actorName };
   }
 }
 
-/** FCM へ1件送信する (成功なら true) */
-async function sendFcm(accessToken, fcmToken, title, body, type) {
+async function sendFcm(
+  supabase: SupabaseClient,
+  userId: string,
+  accessToken: string,
+  fcmToken: string,
+  title: string,
+  body: string,
+  type: string
+): Promise<boolean> {
   try {
     const res = await fetch(
       `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`,
@@ -287,9 +334,7 @@ async function sendFcm(accessToken, fcmToken, title, body, type) {
           message: {
             token: fcmToken,
             notification: { title, body },
-            // iOS: 音あり
             apns: { payload: { aps: { sound: "default" } } },
-            // Android: ポップアップ(Heads-up)表示
             android: {
               priority: "high",
               notification: { channel_id: "high_importance_channel_v4" },
@@ -300,26 +345,48 @@ async function sendFcm(accessToken, fcmToken, title, body, type) {
       }
     );
     if (!res.ok) {
-      console.error("FCM send failed:", await res.text());
+      const resData = await res.json().catch(() => ({}));
+      console.error(`FCM send failed for user ${userId}:`, JSON.stringify(resData));
+
+      const errorCode = resData?.error?.details?.[0]?.errorCode;
+      const status = resData?.error?.status;
+      if (
+        res.status === 404 ||
+        status === "NOT_FOUND" ||
+        errorCode === "UNREGISTERED" ||
+        errorCode === "INVALID_ARGUMENT" ||
+        res.status === 400
+      ) {
+        console.log(`Clearing invalid FCM token for user ${userId}`);
+        await supabase.from("users").update({ fcm_token: null }).eq("id", userId);
+      }
       return false;
     }
     return true;
-  } catch (e) {
-    console.error("FCM send error:", e.message);
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e);
+    console.error(`FCM send error for user ${userId}:`, errorMsg);
     return false;
   }
 }
 
-/** 本文を最大 length 文字に切り詰める */
-function truncate(text, length = 30) {
+function truncate(text: string, length = 30): string {
   if (!text) return "";
   return text.length > length ? text.substring(0, length) + "…" : text;
 }
 
-/** Google Auth を使用して FCM のアクセストークンを取得 */
-function getAccessToken() {
+// Google OAuth アクセストークンのモジュールスコープキャッシュ（ウォームスタンバイ中に再利用）
+let cachedAccessToken: string | null = null;
+let tokenExpiresAt = 0; // UNIXミリ秒
+
+function getAccessToken(): Promise<string> {
+  const now = Date.now();
+  // 有効期限内（余裕を見て5分前の55分間）であればキャッシュトークンを即返却
+  if (cachedAccessToken && now < tokenExpiresAt - 5 * 60 * 1000) {
+    return Promise.resolve(cachedAccessToken);
+  }
+
   return new Promise((resolve, reject) => {
-    // private_key の改行エスケープを正規化 (JSONによって \n が残るケースへの防御)
     const privateKey = serviceAccount.private_key.replace(/\\n/g, "\n");
     const jwtClient = new JWT({
       email: serviceAccount.client_email,
@@ -331,7 +398,14 @@ function getAccessToken() {
         reject(err);
         return;
       }
-      resolve(tokens.access_token);
+      if (tokens?.access_token) {
+        cachedAccessToken = tokens.access_token;
+        // 有効期限を設定（デフォルト1時間 = 3600秒）
+        tokenExpiresAt = Date.now() + 3600 * 1000;
+        resolve(tokens.access_token);
+      } else {
+        reject(new Error("No access token returned"));
+      }
     });
   });
 }

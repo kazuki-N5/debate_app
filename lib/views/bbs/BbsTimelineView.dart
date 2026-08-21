@@ -54,7 +54,7 @@ class BbsTimelineView extends HookConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('エラーが発生しました')),
+        error: (e, st) => const Center(child: Text('エラーが発生しました')),
       ),
     );
   }
@@ -220,7 +220,7 @@ class BbsPostWidget extends ConsumerWidget {
                     ),
                   if (post.hasResba) ...[
                     const SizedBox(height: 6),
-                    Align(
+                    const Align(
                       alignment: Alignment.centerLeft,
                       child: ResbaBadge(text: 'レスバ付き'),
                     ),
@@ -410,13 +410,10 @@ class BbsPostWidget extends ConsumerWidget {
 
 
   void _showFullScreen(BuildContext context, List<String> imageUrls, int index) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => FullScreenImageViewer(
-          imageUrls: imageUrls,
-          initialIndex: index,
-        ),
-      ),
+    FullScreenImageViewer.show(
+      context,
+      imageUrls: imageUrls,
+      initialIndex: index,
     );
   }
 }

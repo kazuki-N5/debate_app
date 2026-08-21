@@ -12,11 +12,12 @@ part of 'chat.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
+  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
+);
 
 /// @nodoc
 mixin _$Chat {
-// コンストラクタも大文字
+  // コンストラクタも大文字
   String get id => throw _privateConstructorUsedError; // セミコロンではなくカンマ
   String get roomId => throw _privateConstructorUsedError;
   String get senderId => throw _privateConstructorUsedError;
@@ -35,13 +36,14 @@ abstract class $ChatCopyWith<$Res> {
   factory $ChatCopyWith(Chat value, $Res Function(Chat) then) =
       _$ChatCopyWithImpl<$Res, Chat>;
   @useResult
-  $Res call(
-      {String id,
-      String roomId,
-      String senderId,
-      String content,
-      DateTime createdAt,
-      String? imageUrl});
+  $Res call({
+    String id,
+    String roomId,
+    String senderId,
+    String content,
+    DateTime createdAt,
+    String? imageUrl,
+  });
 }
 
 /// @nodoc
@@ -66,49 +68,54 @@ class _$ChatCopyWithImpl<$Res, $Val extends Chat>
     Object? createdAt = null,
     Object? imageUrl = freezed,
   }) {
-    return _then(_value.copyWith(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      roomId: null == roomId
-          ? _value.roomId
-          : roomId // ignore: cast_nullable_to_non_nullable
-              as String,
-      senderId: null == senderId
-          ? _value.senderId
-          : senderId // ignore: cast_nullable_to_non_nullable
-              as String,
-      content: null == content
-          ? _value.content
-          : content // ignore: cast_nullable_to_non_nullable
-              as String,
-      createdAt: null == createdAt
-          ? _value.createdAt
-          : createdAt // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-      imageUrl: freezed == imageUrl
-          ? _value.imageUrl
-          : imageUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ) as $Val);
+    return _then(
+      _value.copyWith(
+            id: null == id
+                ? _value.id
+                : id // ignore: cast_nullable_to_non_nullable
+                      as String,
+            roomId: null == roomId
+                ? _value.roomId
+                : roomId // ignore: cast_nullable_to_non_nullable
+                      as String,
+            senderId: null == senderId
+                ? _value.senderId
+                : senderId // ignore: cast_nullable_to_non_nullable
+                      as String,
+            content: null == content
+                ? _value.content
+                : content // ignore: cast_nullable_to_non_nullable
+                      as String,
+            createdAt: null == createdAt
+                ? _value.createdAt
+                : createdAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime,
+            imageUrl: freezed == imageUrl
+                ? _value.imageUrl
+                : imageUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
+          )
+          as $Val,
+    );
   }
 }
 
 /// @nodoc
 abstract class _$$ChatImplCopyWith<$Res> implements $ChatCopyWith<$Res> {
   factory _$$ChatImplCopyWith(
-          _$ChatImpl value, $Res Function(_$ChatImpl) then) =
-      __$$ChatImplCopyWithImpl<$Res>;
+    _$ChatImpl value,
+    $Res Function(_$ChatImpl) then,
+  ) = __$$ChatImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call(
-      {String id,
-      String roomId,
-      String senderId,
-      String content,
-      DateTime createdAt,
-      String? imageUrl});
+  $Res call({
+    String id,
+    String roomId,
+    String senderId,
+    String content,
+    DateTime createdAt,
+    String? imageUrl,
+  });
 }
 
 /// @nodoc
@@ -116,7 +123,7 @@ class __$$ChatImplCopyWithImpl<$Res>
     extends _$ChatCopyWithImpl<$Res, _$ChatImpl>
     implements _$$ChatImplCopyWith<$Res> {
   __$$ChatImplCopyWithImpl(_$ChatImpl _value, $Res Function(_$ChatImpl) _then)
-      : super(_value, _then);
+    : super(_value, _then);
 
   /// Create a copy of Chat
   /// with the given fields replaced by the non-null parameter values.
@@ -130,50 +137,53 @@ class __$$ChatImplCopyWithImpl<$Res>
     Object? createdAt = null,
     Object? imageUrl = freezed,
   }) {
-    return _then(_$ChatImpl(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      roomId: null == roomId
-          ? _value.roomId
-          : roomId // ignore: cast_nullable_to_non_nullable
-              as String,
-      senderId: null == senderId
-          ? _value.senderId
-          : senderId // ignore: cast_nullable_to_non_nullable
-              as String,
-      content: null == content
-          ? _value.content
-          : content // ignore: cast_nullable_to_non_nullable
-              as String,
-      createdAt: null == createdAt
-          ? _value.createdAt
-          : createdAt // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-      imageUrl: freezed == imageUrl
-          ? _value.imageUrl
-          : imageUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ));
+    return _then(
+      _$ChatImpl(
+        id: null == id
+            ? _value.id
+            : id // ignore: cast_nullable_to_non_nullable
+                  as String,
+        roomId: null == roomId
+            ? _value.roomId
+            : roomId // ignore: cast_nullable_to_non_nullable
+                  as String,
+        senderId: null == senderId
+            ? _value.senderId
+            : senderId // ignore: cast_nullable_to_non_nullable
+                  as String,
+        content: null == content
+            ? _value.content
+            : content // ignore: cast_nullable_to_non_nullable
+                  as String,
+        createdAt: null == createdAt
+            ? _value.createdAt
+            : createdAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime,
+        imageUrl: freezed == imageUrl
+            ? _value.imageUrl
+            : imageUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
+      ),
+    );
   }
 }
 
 /// @nodoc
 
 class _$ChatImpl implements _Chat {
-  _$ChatImpl(
-      {required this.id,
-      required this.roomId,
-      required this.senderId,
-      required this.content,
-      required this.createdAt,
-      this.imageUrl});
+  _$ChatImpl({
+    required this.id,
+    required this.roomId,
+    required this.senderId,
+    required this.content,
+    required this.createdAt,
+    this.imageUrl,
+  });
 
-// コンストラクタも大文字
+  // コンストラクタも大文字
   @override
   final String id;
-// セミコロンではなくカンマ
+  // セミコロンではなくカンマ
   @override
   final String roomId;
   @override
@@ -208,7 +218,14 @@ class _$ChatImpl implements _Chat {
 
   @override
   int get hashCode => Object.hash(
-      runtimeType, id, roomId, senderId, content, createdAt, imageUrl);
+    runtimeType,
+    id,
+    roomId,
+    senderId,
+    content,
+    createdAt,
+    imageUrl,
+  );
 
   /// Create a copy of Chat
   /// with the given fields replaced by the non-null parameter values.
@@ -220,15 +237,16 @@ class _$ChatImpl implements _Chat {
 }
 
 abstract class _Chat implements Chat {
-  factory _Chat(
-      {required final String id,
-      required final String roomId,
-      required final String senderId,
-      required final String content,
-      required final DateTime createdAt,
-      final String? imageUrl}) = _$ChatImpl;
+  factory _Chat({
+    required final String id,
+    required final String roomId,
+    required final String senderId,
+    required final String content,
+    required final DateTime createdAt,
+    final String? imageUrl,
+  }) = _$ChatImpl;
 
-// コンストラクタも大文字
+  // コンストラクタも大文字
   @override
   String get id; // セミコロンではなくカンマ
   @override

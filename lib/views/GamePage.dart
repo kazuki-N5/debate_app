@@ -26,7 +26,8 @@ class GamePage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final countdown = useState<int?>(null);
+    // タイマー更新による画面全体リビルドを防ぐため ValueNotifier を使用
+    final countdownNotifier = useRef(ValueNotifier<int?>(null)).value;
     final finish = useState(false);
     final showFullChoice = useState(false);
     final textControler = useTextEditingController();
@@ -140,7 +141,7 @@ class GamePage extends HookConsumerWidget {
       // 試合制限時間（秒）に基づいて終了期限を計算（通信ラグを考慮して+2秒のバッファ）
       deadline = room.updatedAt!.add(const Duration(seconds: matchDurationSeconds + 2));
 
-      countdown.value = matchDurationSeconds; // 初期カウントダウン表示
+      countdownNotifier.value = matchDurationSeconds; // 初期カウントダウン表示
       cantap.value = true; // テスト用：常に降参ボタンを有効化
 
 
@@ -160,7 +161,7 @@ class GamePage extends HookConsumerWidget {
           }
         }
         if (diff >= 0) {
-          countdown.value = diff;
+          countdownNotifier.value = diff;
         }
         if (diff <= 0) {
           finish.value = true;
@@ -340,40 +341,40 @@ class GamePage extends HookConsumerWidget {
                       Expanded(
                         flex: 1,
                         child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 15, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.timer, // 時計のアイコン
-                                  size: 20,
-                                  color: countdown.value != null &&
-                                          countdown.value! <= 3
-                                      ? Colors.red
-                                      : Colors.grey[800],
+                          child: ValueListenableBuilder<int?>(
+                            valueListenable: countdownNotifier,
+                            builder: (context, countdownValue, _) {
+                              final isUrgent = countdownValue != null && countdownValue <= 3;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 15, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
-                                const SizedBox(width: 5), // アイコンとテキストの間隔
-                                Text(
-                                  countdown.value != null
-                                      ? formatTime(countdown.value!)
-                                      : '-',
-                                  style: AppTextStyles.notoSans(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: countdown.value != null &&
-                                            countdown.value! <= 3
-                                        ? Colors.red
-                                        : Colors.grey[800],
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.timer, // 時計のアイコン
+                                      size: 20,
+                                      color: isUrgent ? Colors.red : Colors.grey[800],
+                                    ),
+                                    const SizedBox(width: 5), // アイコンとテキストの間隔
+                                    Text(
+                                      countdownValue != null
+                                          ? formatTime(countdownValue)
+                                          : '-',
+                                      style: AppTextStyles.notoSans(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: isUrgent ? Colors.red : Colors.grey[800],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
                         ),
                       ),

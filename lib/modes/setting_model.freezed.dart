@@ -12,7 +12,8 @@ part of 'setting_model.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
+  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
+);
 
 /// @nodoc
 mixin _$SettingsModel {
@@ -30,8 +31,9 @@ mixin _$SettingsModel {
 /// @nodoc
 abstract class $SettingsModelCopyWith<$Res> {
   factory $SettingsModelCopyWith(
-          SettingsModel value, $Res Function(SettingsModel) then) =
-      _$SettingsModelCopyWithImpl<$Res, SettingsModel>;
+    SettingsModel value,
+    $Res Function(SettingsModel) then,
+  ) = _$SettingsModelCopyWithImpl<$Res, SettingsModel>;
   @useResult
   $Res call({double sfxVolume, bool isSfxOn, bool isVibrationOn});
 }
@@ -55,20 +57,23 @@ class _$SettingsModelCopyWithImpl<$Res, $Val extends SettingsModel>
     Object? isSfxOn = null,
     Object? isVibrationOn = null,
   }) {
-    return _then(_value.copyWith(
-      sfxVolume: null == sfxVolume
-          ? _value.sfxVolume
-          : sfxVolume // ignore: cast_nullable_to_non_nullable
-              as double,
-      isSfxOn: null == isSfxOn
-          ? _value.isSfxOn
-          : isSfxOn // ignore: cast_nullable_to_non_nullable
-              as bool,
-      isVibrationOn: null == isVibrationOn
-          ? _value.isVibrationOn
-          : isVibrationOn // ignore: cast_nullable_to_non_nullable
-              as bool,
-    ) as $Val);
+    return _then(
+      _value.copyWith(
+            sfxVolume: null == sfxVolume
+                ? _value.sfxVolume
+                : sfxVolume // ignore: cast_nullable_to_non_nullable
+                      as double,
+            isSfxOn: null == isSfxOn
+                ? _value.isSfxOn
+                : isSfxOn // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            isVibrationOn: null == isVibrationOn
+                ? _value.isVibrationOn
+                : isVibrationOn // ignore: cast_nullable_to_non_nullable
+                      as bool,
+          )
+          as $Val,
+    );
   }
 }
 
@@ -76,8 +81,9 @@ class _$SettingsModelCopyWithImpl<$Res, $Val extends SettingsModel>
 abstract class _$$SettingsModelImplCopyWith<$Res>
     implements $SettingsModelCopyWith<$Res> {
   factory _$$SettingsModelImplCopyWith(
-          _$SettingsModelImpl value, $Res Function(_$SettingsModelImpl) then) =
-      __$$SettingsModelImplCopyWithImpl<$Res>;
+    _$SettingsModelImpl value,
+    $Res Function(_$SettingsModelImpl) then,
+  ) = __$$SettingsModelImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({double sfxVolume, bool isSfxOn, bool isVibrationOn});
@@ -88,8 +94,9 @@ class __$$SettingsModelImplCopyWithImpl<$Res>
     extends _$SettingsModelCopyWithImpl<$Res, _$SettingsModelImpl>
     implements _$$SettingsModelImplCopyWith<$Res> {
   __$$SettingsModelImplCopyWithImpl(
-      _$SettingsModelImpl _value, $Res Function(_$SettingsModelImpl) _then)
-      : super(_value, _then);
+    _$SettingsModelImpl _value,
+    $Res Function(_$SettingsModelImpl) _then,
+  ) : super(_value, _then);
 
   /// Create a copy of SettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -100,28 +107,33 @@ class __$$SettingsModelImplCopyWithImpl<$Res>
     Object? isSfxOn = null,
     Object? isVibrationOn = null,
   }) {
-    return _then(_$SettingsModelImpl(
-      sfxVolume: null == sfxVolume
-          ? _value.sfxVolume
-          : sfxVolume // ignore: cast_nullable_to_non_nullable
-              as double,
-      isSfxOn: null == isSfxOn
-          ? _value.isSfxOn
-          : isSfxOn // ignore: cast_nullable_to_non_nullable
-              as bool,
-      isVibrationOn: null == isVibrationOn
-          ? _value.isVibrationOn
-          : isVibrationOn // ignore: cast_nullable_to_non_nullable
-              as bool,
-    ));
+    return _then(
+      _$SettingsModelImpl(
+        sfxVolume: null == sfxVolume
+            ? _value.sfxVolume
+            : sfxVolume // ignore: cast_nullable_to_non_nullable
+                  as double,
+        isSfxOn: null == isSfxOn
+            ? _value.isSfxOn
+            : isSfxOn // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        isVibrationOn: null == isVibrationOn
+            ? _value.isVibrationOn
+            : isVibrationOn // ignore: cast_nullable_to_non_nullable
+                  as bool,
+      ),
+    );
   }
 }
 
 /// @nodoc
 
 class _$SettingsModelImpl implements _SettingsModel {
-  const _$SettingsModelImpl(
-      {this.sfxVolume = 0.8, this.isSfxOn = true, this.isVibrationOn = true});
+  const _$SettingsModelImpl({
+    this.sfxVolume = 0.8,
+    this.isSfxOn = true,
+    this.isVibrationOn = true,
+  });
 
   @override
   @JsonKey()
@@ -164,10 +176,11 @@ class _$SettingsModelImpl implements _SettingsModel {
 }
 
 abstract class _SettingsModel implements SettingsModel {
-  const factory _SettingsModel(
-      {final double sfxVolume,
-      final bool isSfxOn,
-      final bool isVibrationOn}) = _$SettingsModelImpl;
+  const factory _SettingsModel({
+    final double sfxVolume,
+    final bool isSfxOn,
+    final bool isVibrationOn,
+  }) = _$SettingsModelImpl;
 
   @override
   double get sfxVolume;

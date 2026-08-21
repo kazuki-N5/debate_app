@@ -201,7 +201,12 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
 
   @override
   void dispose() {
-    _channel?.unsubscribe();
+    if (_channel != null) {
+      try {
+        final supabase = _ref.read(supabaseProvider);
+        supabase.removeChannel(_channel!);
+      } catch (_) {}
+    }
     super.dispose();
   }
 }

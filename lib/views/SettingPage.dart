@@ -70,10 +70,6 @@ class SettingPage extends HookConsumerWidget {
     // 効果音スライダーがアクティブかどうか (isSfxOn に基づく)
     final isSfxSliderActive = settings.isSfxOn;
 
-    const double bottomButtonAreaHeight = kMinInteractiveDimension * 1.5;
-    const double bottomPadding = 20.0;
-    const double adBannerHeight = 60.0;
-
     Future<void> handleDataTransfer(BuildContext context) async {
       router.push('/transfer');
     }
@@ -84,131 +80,115 @@ class SettingPage extends HookConsumerWidget {
             style: AppTextStyles.bold(color: Colors.white)),
         backgroundColor: Colors.blue,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => context.pop(),
+        ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       backgroundColor: Colors.blue,
-      body: Stack(
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 30.0),
         children: [
-          ListView(
-            padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0,
-                bottomButtonAreaHeight + bottomPadding + adBannerHeight),
-            children: [
-              // --- 音量設定セクション ---
-              _buildSectionTitle('音量設定'), // タイトルを変更
-              // 効果音の音量調整コントロールを表示
-              _buildVolumeControl(
-                context: context,
-                title: '効果音', // タイトルを「効果音」に
-                volume: settings.sfxVolume, // sfxVolume を使用
-                isOn: settings.isSfxOn, // isSfxOn を使用
-                // 効果音のオン/オフ状態に応じてスライダーの有効/無効を切り替え
-                onVolumeChanged: isSfxSliderActive
-                    ? (value) => settingsNotifier
-                        .setSfxVolume(value) // setSfxVolume を呼び出し
-                    : null,
-                onToggleChanged: (value) =>
-                    settingsNotifier.toggleSfx(value), // toggleSfx を呼び出し
-                isActive: isSfxSliderActive, // isSfxOn に基づく
-              ),
-              // --- サウンド設定は削除 ---
-              _buildSwitchTile(
-                title: '振動',
-                value: settings.isVibrationOn,
-                onChanged: (value) => settingsNotifier.toggleVibration(value),
-              ),
-              const SizedBox(height: 10), // セクション間のスペース
-
-              // --- 通知セクション ---
-              _buildSectionTitle('通知'),
-              _buildListTile(
-                icon: Icons.notifications,
-                title: '通知設定',
-                onTap: () => router.push('/notification_settings'),
-              ),
-              const SizedBox(height: 10), // セクション間のスペース
-
-              // --- 「サポート＆その他」セクション (変更なし) ---
-              _buildSectionTitle('サポート＆その他'),
-              _buildListTile(
-                icon: FontAwesomeIcons.xTwitter.data,
-                title: '公式X',
-                onTap: () => _launchURL(context, _xProfileUrl),
-                iconSize: 20,
-              ),
-              _buildListTile(
-                icon: Icons.rate_review,
-                title: '評価する',
-                onTap: () => _requestReview(context),
-              ),
-              _buildListTile(
-                icon: Icons.bug_report,
-                title: 'バグ報告&機能提案',
-                onTap: () => _reportBug(context),
-              ),
-              _buildListTile(
-                icon: Icons.sync_alt,
-                title: 'データ引き継ぎ',
-                onTap: () => handleDataTransfer(context),
-              ),
-              _buildListTile(
-                icon: Icons.block,
-                title: 'ブロック管理',
-                onTap: () => router.push('/blocked_users'),
-              ),
-              const SizedBox(height: 10), // セクション間のスペース
-
-              // --- 「プレミアム機能」セクション (変更なし) ---
-              _buildSectionTitle('プレミアム機能'),
-              if (isSubscribed == false)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.star),
-                    label: const Text('広告を消す'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 12.0),
-                      textStyle: AppTextStyles.notoSans(fontSize: 16),
-                    ),
-                    onPressed: () => _handleSubscription(context, ref),
-                  ),
-                ),
-              if (isSubscribed)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: Center(
-                    child: Text(
-                      'プレミアム機能をご利用中です！',
-                      style: AppTextStyles.bold(
-                          color: Colors.white,
-                          fontSize: 16),
-                    ),
-                  ),
-                ),
-              _buildListTile(
-                icon: Icons.restore,
-                title: '購入情報を復元',
-                onTap: () async => await inappNotifier.restorePurchases(),
-              ),
-              const SizedBox(height: 30), // 下部のスペース確保
-            ],
+          // --- 音量設定セクション ---
+          _buildSectionTitle('音量設定'), // タイトルを変更
+          // 効果音の音量調整コントロールを表示
+          _buildVolumeControl(
+            context: context,
+            title: '効果音', // タイトルを「効果音」に
+            volume: settings.sfxVolume, // sfxVolume を使用
+            isOn: settings.isSfxOn, // isSfxOn を使用
+            // 効果音のオン/オフ状態に応じてスライダーの有効/無効を切り替え
+            onVolumeChanged: isSfxSliderActive
+                ? (value) => settingsNotifier
+                    .setSfxVolume(value) // setSfxVolume を呼び出し
+                : null,
+            onToggleChanged: (value) =>
+                settingsNotifier.toggleSfx(value), // toggleSfx を呼び出し
+            isActive: isSfxSliderActive, // isSfxOn に基づく
           ),
-          // --- 戻るボタン (変更なし) ---
-          Positioned(
-            left: 10,
-            bottom: 20,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new),
-              iconSize: 28.0,
-              color: Colors.black,
-              tooltip: '戻る',
-              onPressed: () => context.pop(),
-              padding: const EdgeInsets.all(12.0),
-              splashRadius: 24.0,
+          // --- サウンド設定は削除 ---
+          _buildSwitchTile(
+            title: '振動',
+            value: settings.isVibrationOn,
+            onChanged: (value) => settingsNotifier.toggleVibration(value),
+          ),
+          const SizedBox(height: 10), // セクション間のスペース
+
+          // --- 通知セクション ---
+          _buildSectionTitle('通知'),
+          _buildListTile(
+            icon: Icons.notifications,
+            title: '通知設定',
+            onTap: () => router.push('/notification_settings'),
+          ),
+          const SizedBox(height: 10), // セクション間のスペース
+
+          // --- 「サポート＆その他」セクション (変更なし) ---
+          _buildSectionTitle('サポート＆その他'),
+          _buildListTile(
+            icon: FontAwesomeIcons.xTwitter.data,
+            title: '公式X',
+            onTap: () => _launchURL(context, _xProfileUrl),
+            iconSize: 20,
+          ),
+          _buildListTile(
+            icon: Icons.rate_review,
+            title: '評価する',
+            onTap: () => _requestReview(context),
+          ),
+          _buildListTile(
+            icon: Icons.bug_report,
+            title: 'バグ報告&機能提案',
+            onTap: () => _reportBug(context),
+          ),
+          _buildListTile(
+            icon: Icons.sync_alt,
+            title: 'データ引き継ぎ',
+            onTap: () => handleDataTransfer(context),
+          ),
+          _buildListTile(
+            icon: Icons.block,
+            title: 'ブロック管理',
+            onTap: () => router.push('/blocked_users'),
+          ),
+          const SizedBox(height: 10), // セクション間のスペース
+
+          // --- 「プレミアム機能」セクション (変更なし) ---
+          _buildSectionTitle('プレミアム機能'),
+          if (isSubscribed == false)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.star),
+                label: const Text('広告を消す'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                  textStyle: AppTextStyles.notoSans(fontSize: 16),
+                ),
+                onPressed: () => _handleSubscription(context, ref),
+              ),
             ),
+          if (isSubscribed)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(
+                child: Text(
+                  'プレミアム機能をご利用中です！',
+                  style: AppTextStyles.bold(
+                      color: Colors.white,
+                      fontSize: 16),
+                ),
+              ),
+            ),
+          _buildListTile(
+            icon: Icons.restore,
+            title: '購入情報を復元',
+            onTap: () async => await inappNotifier.restorePurchases(),
           ),
+          const SizedBox(height: 30), // 下部のスペース確保
         ],
       ),
     );

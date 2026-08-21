@@ -18,6 +18,7 @@ class OpenChatRoom with _$OpenChatRoom {
     // 追加情報（一覧表示用など）
     @JsonKey(name: 'member_count') int? memberCount,
     @JsonKey(name: 'is_joined') bool? isJoined,
+    @JsonKey(name: 'tags') List<String>? tags,
   }) = _OpenChatRoom;
 
   factory OpenChatRoom.fromJson(Map<String, dynamic> json) => _$OpenChatRoomFromJson(json);

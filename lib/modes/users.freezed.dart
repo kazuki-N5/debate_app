@@ -12,7 +12,8 @@ part of 'users.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
+  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
+);
 
 /// @nodoc
 mixin _$Users {
@@ -39,18 +40,19 @@ abstract class $UsersCopyWith<$Res> {
   factory $UsersCopyWith(Users value, $Res Function(Users) then) =
       _$UsersCopyWithImpl<$Res, Users>;
   @useResult
-  $Res call(
-      {String id,
-      String? name,
-      int trophy,
-      int? win,
-      int? lose,
-      String? avatar_url,
-      bool? status,
-      String? fcm_token,
-      bool? is_notification_enabled,
-      String? bio,
-      String? header_url});
+  $Res call({
+    String id,
+    String? name,
+    int trophy,
+    int? win,
+    int? lose,
+    String? avatar_url,
+    bool? status,
+    String? fcm_token,
+    bool? is_notification_enabled,
+    String? bio,
+    String? header_url,
+  });
 }
 
 /// @nodoc
@@ -80,74 +82,79 @@ class _$UsersCopyWithImpl<$Res, $Val extends Users>
     Object? bio = freezed,
     Object? header_url = freezed,
   }) {
-    return _then(_value.copyWith(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      name: freezed == name
-          ? _value.name
-          : name // ignore: cast_nullable_to_non_nullable
-              as String?,
-      trophy: null == trophy
-          ? _value.trophy
-          : trophy // ignore: cast_nullable_to_non_nullable
-              as int,
-      win: freezed == win
-          ? _value.win
-          : win // ignore: cast_nullable_to_non_nullable
-              as int?,
-      lose: freezed == lose
-          ? _value.lose
-          : lose // ignore: cast_nullable_to_non_nullable
-              as int?,
-      avatar_url: freezed == avatar_url
-          ? _value.avatar_url
-          : avatar_url // ignore: cast_nullable_to_non_nullable
-              as String?,
-      status: freezed == status
-          ? _value.status
-          : status // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      fcm_token: freezed == fcm_token
-          ? _value.fcm_token
-          : fcm_token // ignore: cast_nullable_to_non_nullable
-              as String?,
-      is_notification_enabled: freezed == is_notification_enabled
-          ? _value.is_notification_enabled
-          : is_notification_enabled // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      bio: freezed == bio
-          ? _value.bio
-          : bio // ignore: cast_nullable_to_non_nullable
-              as String?,
-      header_url: freezed == header_url
-          ? _value.header_url
-          : header_url // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ) as $Val);
+    return _then(
+      _value.copyWith(
+            id: null == id
+                ? _value.id
+                : id // ignore: cast_nullable_to_non_nullable
+                      as String,
+            name: freezed == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            trophy: null == trophy
+                ? _value.trophy
+                : trophy // ignore: cast_nullable_to_non_nullable
+                      as int,
+            win: freezed == win
+                ? _value.win
+                : win // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            lose: freezed == lose
+                ? _value.lose
+                : lose // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            avatar_url: freezed == avatar_url
+                ? _value.avatar_url
+                : avatar_url // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            status: freezed == status
+                ? _value.status
+                : status // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            fcm_token: freezed == fcm_token
+                ? _value.fcm_token
+                : fcm_token // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            is_notification_enabled: freezed == is_notification_enabled
+                ? _value.is_notification_enabled
+                : is_notification_enabled // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            bio: freezed == bio
+                ? _value.bio
+                : bio // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            header_url: freezed == header_url
+                ? _value.header_url
+                : header_url // ignore: cast_nullable_to_non_nullable
+                      as String?,
+          )
+          as $Val,
+    );
   }
 }
 
 /// @nodoc
 abstract class _$$UsersImplCopyWith<$Res> implements $UsersCopyWith<$Res> {
   factory _$$UsersImplCopyWith(
-          _$UsersImpl value, $Res Function(_$UsersImpl) then) =
-      __$$UsersImplCopyWithImpl<$Res>;
+    _$UsersImpl value,
+    $Res Function(_$UsersImpl) then,
+  ) = __$$UsersImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call(
-      {String id,
-      String? name,
-      int trophy,
-      int? win,
-      int? lose,
-      String? avatar_url,
-      bool? status,
-      String? fcm_token,
-      bool? is_notification_enabled,
-      String? bio,
-      String? header_url});
+  $Res call({
+    String id,
+    String? name,
+    int trophy,
+    int? win,
+    int? lose,
+    String? avatar_url,
+    bool? status,
+    String? fcm_token,
+    bool? is_notification_enabled,
+    String? bio,
+    String? header_url,
+  });
 }
 
 /// @nodoc
@@ -155,8 +162,9 @@ class __$$UsersImplCopyWithImpl<$Res>
     extends _$UsersCopyWithImpl<$Res, _$UsersImpl>
     implements _$$UsersImplCopyWith<$Res> {
   __$$UsersImplCopyWithImpl(
-      _$UsersImpl _value, $Res Function(_$UsersImpl) _then)
-      : super(_value, _then);
+    _$UsersImpl _value,
+    $Res Function(_$UsersImpl) _then,
+  ) : super(_value, _then);
 
   /// Create a copy of Users
   /// with the given fields replaced by the non-null parameter values.
@@ -175,70 +183,73 @@ class __$$UsersImplCopyWithImpl<$Res>
     Object? bio = freezed,
     Object? header_url = freezed,
   }) {
-    return _then(_$UsersImpl(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      name: freezed == name
-          ? _value.name
-          : name // ignore: cast_nullable_to_non_nullable
-              as String?,
-      trophy: null == trophy
-          ? _value.trophy
-          : trophy // ignore: cast_nullable_to_non_nullable
-              as int,
-      win: freezed == win
-          ? _value.win
-          : win // ignore: cast_nullable_to_non_nullable
-              as int?,
-      lose: freezed == lose
-          ? _value.lose
-          : lose // ignore: cast_nullable_to_non_nullable
-              as int?,
-      avatar_url: freezed == avatar_url
-          ? _value.avatar_url
-          : avatar_url // ignore: cast_nullable_to_non_nullable
-              as String?,
-      status: freezed == status
-          ? _value.status
-          : status // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      fcm_token: freezed == fcm_token
-          ? _value.fcm_token
-          : fcm_token // ignore: cast_nullable_to_non_nullable
-              as String?,
-      is_notification_enabled: freezed == is_notification_enabled
-          ? _value.is_notification_enabled
-          : is_notification_enabled // ignore: cast_nullable_to_non_nullable
-              as bool?,
-      bio: freezed == bio
-          ? _value.bio
-          : bio // ignore: cast_nullable_to_non_nullable
-              as String?,
-      header_url: freezed == header_url
-          ? _value.header_url
-          : header_url // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ));
+    return _then(
+      _$UsersImpl(
+        id: null == id
+            ? _value.id
+            : id // ignore: cast_nullable_to_non_nullable
+                  as String,
+        name: freezed == name
+            ? _value.name
+            : name // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        trophy: null == trophy
+            ? _value.trophy
+            : trophy // ignore: cast_nullable_to_non_nullable
+                  as int,
+        win: freezed == win
+            ? _value.win
+            : win // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        lose: freezed == lose
+            ? _value.lose
+            : lose // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        avatar_url: freezed == avatar_url
+            ? _value.avatar_url
+            : avatar_url // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        status: freezed == status
+            ? _value.status
+            : status // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        fcm_token: freezed == fcm_token
+            ? _value.fcm_token
+            : fcm_token // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        is_notification_enabled: freezed == is_notification_enabled
+            ? _value.is_notification_enabled
+            : is_notification_enabled // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        bio: freezed == bio
+            ? _value.bio
+            : bio // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        header_url: freezed == header_url
+            ? _value.header_url
+            : header_url // ignore: cast_nullable_to_non_nullable
+                  as String?,
+      ),
+    );
   }
 }
 
 /// @nodoc
 
 class _$UsersImpl implements _Users {
-  const _$UsersImpl(
-      {required this.id,
-      this.name,
-      required this.trophy,
-      this.win,
-      this.lose,
-      this.avatar_url,
-      this.status,
-      this.fcm_token,
-      this.is_notification_enabled,
-      this.bio,
-      this.header_url});
+  const _$UsersImpl({
+    required this.id,
+    this.name,
+    required this.trophy,
+    this.win,
+    this.lose,
+    this.avatar_url,
+    this.status,
+    this.fcm_token,
+    this.is_notification_enabled,
+    this.bio,
+    this.header_url,
+  });
 
   @override
   final String id;
@@ -284,7 +295,9 @@ class _$UsersImpl implements _Users {
             (identical(other.fcm_token, fcm_token) ||
                 other.fcm_token == fcm_token) &&
             (identical(
-                    other.is_notification_enabled, is_notification_enabled) ||
+                  other.is_notification_enabled,
+                  is_notification_enabled,
+                ) ||
                 other.is_notification_enabled == is_notification_enabled) &&
             (identical(other.bio, bio) || other.bio == bio) &&
             (identical(other.header_url, header_url) ||
@@ -292,8 +305,20 @@ class _$UsersImpl implements _Users {
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, id, name, trophy, win, lose,
-      avatar_url, status, fcm_token, is_notification_enabled, bio, header_url);
+  int get hashCode => Object.hash(
+    runtimeType,
+    id,
+    name,
+    trophy,
+    win,
+    lose,
+    avatar_url,
+    status,
+    fcm_token,
+    is_notification_enabled,
+    bio,
+    header_url,
+  );
 
   /// Create a copy of Users
   /// with the given fields replaced by the non-null parameter values.
@@ -305,18 +330,19 @@ class _$UsersImpl implements _Users {
 }
 
 abstract class _Users implements Users {
-  const factory _Users(
-      {required final String id,
-      final String? name,
-      required final int trophy,
-      final int? win,
-      final int? lose,
-      final String? avatar_url,
-      final bool? status,
-      final String? fcm_token,
-      final bool? is_notification_enabled,
-      final String? bio,
-      final String? header_url}) = _$UsersImpl;
+  const factory _Users({
+    required final String id,
+    final String? name,
+    required final int trophy,
+    final int? win,
+    final int? lose,
+    final String? avatar_url,
+    final bool? status,
+    final String? fcm_token,
+    final bool? is_notification_enabled,
+    final String? bio,
+    final String? header_url,
+  }) = _$UsersImpl;
 
   @override
   String get id;

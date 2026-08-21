@@ -10,11 +10,12 @@ import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/image_upload_provider.dart';
 import 'package:debate_project/views/open_chat/OpenChatMembersView.dart';
-import 'package:debate_project/modes/chat.dart';
-import 'package:debate_project/view_model/prohibited_view_model.dart'; // MessageBubble
 import 'package:debate_project/widgets/moderation.dart';
+import 'package:debate_project/widgets/popover_widgets.dart';
 import 'package:debate_project/widgets/resba_attach_sheet.dart';
 import 'package:debate_project/widgets/resba_card.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:debate_project/widgets/full_screen_image_viewer.dart';
 
 class OpenChatRoomView extends HookConsumerWidget {
   final OpenChatRoom room;
@@ -28,7 +29,7 @@ class OpenChatRoomView extends HookConsumerWidget {
     final textController = useTextEditingController();
     final textFieldFocusNode = useFocusNode();
     final scrollController = useScrollController();
-    
+
     final selectedImage = useState<File?>(null);
     final isUploading = useState(false);
     // ⚔️ レスバ添付(募集型: 誰でも応募可)
@@ -43,29 +44,42 @@ class OpenChatRoomView extends HookConsumerWidget {
 
     useEffect(() {
       void scrollListener() {
-        if (scrollController.position.pixels <= scrollController.position.minScrollExtent) {
+        if (scrollController.position.pixels <=
+            scrollController.position.minScrollExtent) {
           // 一番上（過去）にスクロールした時
           ref.read(openChatMessagesProvider(room.id).notifier).loadMore();
         }
       }
+
       scrollController.addListener(scrollListener);
       return () => scrollController.removeListener(scrollListener);
     }, [scrollController]);
 
+    final hasBgImage = room.backgroundUrl != null && room.backgroundUrl!.isNotEmpty;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.blue,
       appBar: AppBar(
-        title: Text(room.name, style: AppTextStyles.bold(color: Colors.white, fontSize: 18)),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: hasBgImage ? Colors.black.withValues(alpha: 0.3) : Colors.blue,
+        elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          room.name,
+          style: AppTextStyles.bold(color: Colors.white, fontSize: 18),
+        ),
         actions: [
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
+            icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (value) async {
               if (value == 'members') {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => OpenChatMembersView(room: room)),
+                  PageRouteBuilder(
+                    pageBuilder: (context, _, __) =>
+                        OpenChatMembersView(room: room),
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
+                  ),
                 );
               } else if (value == 'leave') {
                 final confirm = await showDialog<bool>(
@@ -74,22 +88,31 @@ class OpenChatRoomView extends HookConsumerWidget {
                     title: const Text('退室の確認'),
                     content: const Text('このオープンチャットから退室しますか？'),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
-                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('退室する', style: TextStyle(color: Colors.red))),
+                      TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('キャンセル')),
+                      TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('退室する',
+                              style: TextStyle(color: Colors.red))),
                     ],
                   ),
                 );
-                
+
                 if (confirm == true && context.mounted) {
-                  final error = await ref.read(openChatActionProvider.notifier).leaveRoom(room.id);
+                  final error = await ref
+                      .read(openChatActionProvider.notifier)
+                      .leaveRoom(room.id);
                   if (error == null) {
                     if (context.mounted) {
                       Navigator.pop(context); // チャット画面を閉じる
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('退室しました')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('退室しました')));
                     }
                   } else {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('エラー: $error')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('エラー: $error')));
                     }
                   }
                 }
@@ -98,46 +121,78 @@ class OpenChatRoomView extends HookConsumerWidget {
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'members',
-                child: Row(children: [Icon(Icons.people, color: Colors.black87), SizedBox(width: 8), Text('メンバー管理')]),
+                child: Row(children: [
+                  Icon(Icons.people, color: Colors.black87),
+                  SizedBox(width: 8),
+                  Text('メンバー管理')
+                ]),
               ),
               const PopupMenuItem(
                 value: 'leave',
-                child: Row(children: [Icon(Icons.exit_to_app, color: Colors.red), SizedBox(width: 8), Text('退室する', style: TextStyle(color: Colors.red))]),
+                child: Row(children: [
+                  Icon(Icons.exit_to_app, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('退室する', style: TextStyle(color: Colors.red))
+                ]),
               ),
             ],
           ),
         ],
       ),
-      body: SafeArea(
+      body: Container(
+        decoration: BoxDecoration(
+          color: Colors.blue,
+          image: hasBgImage
+              ? DecorationImage(
+                  image: CachedNetworkImageProvider(room.backgroundUrl!),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withValues(alpha: 0.15),
+                    BlendMode.darken,
+                  ),
+                )
+              : null,
+        ),
         child: Column(
           children: [
             Expanded(
               child: messagesAsync.when(
+                loading: () => const Center(
+                    child: CircularProgressIndicator(color: Colors.white)),
+                error: (error, stack) => Center(
+                    child: Text('エラー: $error',
+                        style: const TextStyle(color: Colors.white))),
                 data: (messages) {
                   if (messages.isEmpty) {
-                    return Center(child: Text('まだメッセージはありません', style: AppTextStyles.notoSans(color: Colors.grey)));
+                    return Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Text(
+                          'まだメッセージはありません',
+                          style: TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                      ),
+                    );
                   }
                   return ListView.builder(
                     controller: scrollController,
                     reverse: false,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 4),
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];
                       final isUserMessage = message.userId == currentUserId;
-                      
-                      final chat = Chat(
-                        id: message.id,
-                        roomId: message.roomId,
-                        senderId: message.userId,
-                        content: message.content,
-                        createdAt: message.createdAt,
-                        imageUrl: message.imageUrl,
-                      );
 
                       // アバター表示ロジック：相手の発言かつ、一つ前（古い方）の送信者と異なる場合に表示
-                      bool showAvatar = !isUserMessage &&
-                          (index == 0 || messages[index - 1].userId != message.userId);
+                      final showAvatar = !isUserMessage &&
+                          (index == 0 ||
+                              messages[index - 1].userId != message.userId);
 
                       // このメッセージに付いたレスバ(募集型)
                       final msgResbas = resbas
@@ -147,281 +202,537 @@ class OpenChatRoomView extends HookConsumerWidget {
                               (r.isPending || r.isAccepted || r.isFinished))
                           .toList();
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          MessageBubble(
-                            chat: chat,
-                            isUserMessage: isUserMessage,
-                            opponentAvatarUrl: null, // 今回はアバター表示を簡易化
-                            myAvatarUrl: null,
-                            showAvatar: showAvatar,
-                            roomId: room.id,
-                            onHide: () => ref
-                                .read(openChatMessagesProvider(room.id).notifier)
-                                .hideMessage(message.id),
-                            onBlock: isUserMessage
-                                ? null
-                                : () => showBlockUserDialog(
-                                    context: context,
-                                    ref: ref,
-                                    targetUserId: message.userId,
-                                    targetName: 'このユーザー',
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 4.0, horizontal: 4.0),
+                        child: Column(
+                          crossAxisAlignment: isUserMessage
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: isUserMessage
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              mainAxisAlignment: isUserMessage
+                                  ? MainAxisAlignment.end
+                                  : MainAxisAlignment.start,
+                              children: [
+                                if (!isUserMessage) ...[
+                                  if (showAvatar)
+                                    CircleAvatar(
+                                      radius: 16,
+                                      backgroundColor: Colors.white
+                                          .withValues(alpha: 0.3),
+                                      child: const Icon(Icons.person,
+                                          size: 16, color: Colors.white),
+                                    )
+                                  else
+                                    const SizedBox(width: 32),
+                                  const SizedBox(width: 8),
+                                ],
+                                if (isUserMessage) ...[
+                                  _buildStatus(message.id),
+                                  const SizedBox(width: 4),
+                                ],
+                                Flexible(
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Builder(
+                                        builder: (bubbleContext) {
+                                          return GestureDetector(
+                                            onLongPress: isUserMessage
+                                                ? null
+                                                : () {
+                                                    showCustomPopover(
+                                                      context: bubbleContext,
+                                                      height: 130,
+                                                      children: [
+                                                        PopoverButton(
+                                                          text: '通報',
+                                                          onTap: () async {
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop();
+                                                            await showReportDialog(
+                                                              context: context,
+                                                              ref: ref,
+                                                              opponentId:
+                                                                  message.userId,
+                                                              contentId:
+                                                                  message.id,
+                                                              contentType:
+                                                                  'open_chat_message',
+                                                              contentSnapshot:
+                                                                  message
+                                                                      .content,
+                                                            );
+                                                          },
+                                                        ),
+                                                        const SizedBox(height: 4),
+                                                        PopoverButton(
+                                                          text: '非表示',
+                                                          onTap: () {
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop();
+                                                            ref
+                                                                .read(
+                                                                    openChatMessagesProvider(
+                                                                            room.id)
+                                                                        .notifier)
+                                                                .hideMessage(
+                                                                    message.id);
+                                                          },
+                                                        ),
+                                                        const SizedBox(height: 4),
+                                                        PopoverButton(
+                                                          text: 'ブロック',
+                                                          onTap: () {
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop();
+                                                            showBlockUserDialog(
+                                                              context: context,
+                                                              ref: ref,
+                                                              targetUserId:
+                                                                  message.userId,
+                                                              targetName:
+                                                                  'このユーザー',
+                                                            );
+                                                          },
+                                                        ),
+                                                      ],
+                                                    );
+                                                  },
+                                            child: Container(
+                                              constraints: BoxConstraints(
+                                                maxWidth: MediaQuery.of(context)
+                                                        .size
+                                                        .width *
+                                                    0.75,
+                                              ),
+                                              padding: const EdgeInsets.fromLTRB(
+                                                  12, 6, 12, 8),
+                                              decoration: BoxDecoration(
+                                                color: isUserMessage
+                                                    ? const Color(0xff95eb7c)
+                                                    : Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  if (message.imageUrl != null)
+                                                    Padding(
+                                                      padding: EdgeInsets.only(
+                                                          bottom: message
+                                                                  .content
+                                                                  .isNotEmpty
+                                                              ? 4.0
+                                                              : 0.0),
+                                                      child: GestureDetector(
+                                                        onTap: () {
+                                                          FullScreenImageViewer
+                                                              .show(
+                                                            context,
+                                                            imageUrls: [
+                                                              message.imageUrl!
+                                                            ],
+                                                            initialIndex: 0,
+                                                          );
+                                                        },
+                                                        child: ClipRRect(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(8),
+                                                          child:
+                                                              CachedNetworkImage(
+                                                            imageUrl: message
+                                                                .imageUrl!,
+                                                            fit: BoxFit.cover,
+                                                            memCacheWidth: 900,
+                                                            fadeInDuration:
+                                                                Duration.zero,
+                                                            fadeOutDuration:
+                                                                Duration.zero,
+                                                            placeholder: (context,
+                                                                    url) =>
+                                                                Container(
+                                                                    height: 150,
+                                                                    color: Colors
+                                                                            .grey[
+                                                                        300]),
+                                                            errorWidget: (context,
+                                                                    url,
+                                                                    error) =>
+                                                                const Icon(
+                                                                    Icons.error),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  if (message.content.isNotEmpty)
+                                                    Text(
+                                                      message.content,
+                                                      style:
+                                                          AppTextStyles.notoSans(
+                                                        color: Colors.black,
+                                                        fontSize: 15,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      // しっぽ（ゲーム画面と同一）
+                                      Positioned(
+                                        top: 6,
+                                        left: isUserMessage ? null : -6,
+                                        right: isUserMessage ? -6 : null,
+                                        child: CustomPaint(
+                                          painter: _OpenChatBubbleTailPainter(
+                                            isUserMessage
+                                                ? const Color(0xff95eb7c)
+                                                : Colors.white,
+                                            isUserMessage,
+                                          ),
+                                          size: const Size(10, 10),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                          ),
-                          for (final invite in msgResbas)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 40, right: 8),
-                              child: ResbaCard(
-                                invite: invite,
-                                onChanged: refreshResbas,
-                              ),
+                                ),
+                              ],
                             ),
-                        ],
+                            for (final invite in msgResbas)
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  top: 6,
+                                  left: isUserMessage ? 0 : 40,
+                                  right: isUserMessage ? 8 : 0,
+                                ),
+                                child: ResbaCard(
+                                  invite: invite,
+                                  onChanged: refreshResbas,
+                                ),
+                              ),
+                          ],
+                        ),
                       );
                     },
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) => Center(child: Text('エラー: $error')),
               ),
             ),
             // 入力エリア
-            Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(color: Colors.black12, offset: Offset(0, -1), blurRadius: 4),
-                ],
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.image, color: Colors.grey),
-                        onPressed: isUploading.value ? null : () async {
-                          final picker = ref.read(imageUploadProvider);
-                          final image = await picker.pickImage();
-                          if (image != null) {
-                            selectedImage.value = image;
-                          }
-                        },
-                      ),
-                      // ⚔️ レスバ添付(募集型: 誰でも応募可)
-                      IconButton(
-                        icon: const Text('⚔️', style: TextStyle(fontSize: 20, color: Color(0xFF7856FF))),
-                        onPressed: isUploading.value ? null : () async {
-                          final attachment = await showResbaAttachSheet(
-                            context,
-                            presetTheme: textController.text.trim(),
-                          );
-                          if (attachment != null) {
-                            resbaAttachment.value = attachment;
-                          }
-                        },
-                      ),
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF3F3F3),
-                            borderRadius: BorderRadius.circular(25),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          child: TextField(
-                            focusNode: textFieldFocusNode,
-                            controller: textController,
-                            maxLength: 50,
-                            style: AppTextStyles.notoSans(color: Colors.black, fontSize: 14),
-                            decoration: InputDecoration(
-                              isDense: true,
-                              border: InputBorder.none,
-                              hintText: 'メッセージを入力',
-                              counterText: '',
-                              hintStyle: AppTextStyles.notoSans(color: Colors.grey[400]),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                            ),
-                            maxLines: null,
-                            keyboardType: TextInputType.multiline,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Transform.translate(
-                        offset: const Offset(4, 0),
-                        child: ValueListenableBuilder<TextEditingValue>(
-                          valueListenable: textController,
-                          builder: (context, value, child) {
-                            final remaining = 50 - value.text.length;
-                            return Container(
-                              constraints: const BoxConstraints(minWidth: 28),
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF3F3F3),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey[300]!),
-                              ),
-                              child: Text(
-                                '$remaining',
-                                style: AppTextStyles.notoSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: remaining <= 0 ? Colors.red : Colors.grey[600],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      IconButton(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        constraints: const BoxConstraints(),
-                        onPressed: isUploading.value ? null : () async {
-                          if (textController.text.trim().isNotEmpty ||
-                              selectedImage.value != null ||
-                              resbaAttachment.value != null) {
-                            isUploading.value = true;
-                            try {
-                              String? uploadedUrl;
-                              if (selectedImage.value != null) {
-                                final uploader = ref.read(imageUploadProvider);
-                                uploadedUrl = await uploader.uploadImage(
-                                  file: selectedImage.value!,
-                                  bucketName: 'chat_images',
-                                  folderName: 'open_chat',
-                                );
+          Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+            ),
+            padding: EdgeInsets.only(
+              left: 8,
+              right: 2,
+              top: 4,
+              bottom: MediaQuery.of(context).padding.bottom + 4,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.image, color: Colors.grey),
+                      onPressed: isUploading.value
+                          ? null
+                          : () async {
+                              final picker = ref.read(imageUploadProvider);
+                              final image = await picker.pickImage();
+                              if (image != null) {
+                                selectedImage.value = image;
                               }
+                            },
+                    ),
+                    // ⚔️ レスバ添付(募集型: 誰でも応募可)
+                    IconButton(
+                      icon: const Text('⚔️',
+                          style: TextStyle(
+                              fontSize: 20, color: Color(0xFF7856FF))),
+                      onPressed: isUploading.value
+                          ? null
+                          : () async {
+                              final attachment = await showResbaAttachSheet(
+                                context,
+                                presetTheme: textController.text.trim(),
+                              );
+                              if (attachment != null) {
+                                resbaAttachment.value = attachment;
+                              }
+                            },
+                    ),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F3F3),
+                          borderRadius: BorderRadius.circular(25),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: TextField(
+                          focusNode: textFieldFocusNode,
+                          controller: textController,
+                          maxLength: 200,
+                          textAlignVertical: TextAlignVertical.center,
+                          style: AppTextStyles.notoSans(
+                              color: Colors.black, fontSize: 14),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            border: InputBorder.none,
+                            hintText: 'メッセージを入力',
+                            counterText: '',
+                            hintStyle:
+                                AppTextStyles.notoSans(color: Colors.grey[400]),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                          ),
+                          maxLines: null,
+                          keyboardType: TextInputType.multiline,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      constraints: const BoxConstraints(),
+                      onPressed: isUploading.value
+                          ? null
+                          : () async {
+                              final rawText = textController.text.trim();
+                              if (rawText.isNotEmpty ||
+                                  selectedImage.value != null ||
+                                  resbaAttachment.value != null) {
+                                isUploading.value = true;
+                                try {
+                                  // 裏側で最大200文字制限
+                                  final sendText = rawText.length > 200
+                                      ? rawText.substring(0, 200)
+                                      : rawText;
 
-                              final messageId = await ref
-                                  .read(openChatActionProvider.notifier)
-                                  .sendMessage(
-                                    room.id,
-                                    textController.text.trim(),
-                                    imageUrl: uploadedUrl,
-                                  );
-
-                              // ⚔️ レスバを添付(募集型)
-                              final attachment = resbaAttachment.value;
-                              if (attachment != null && messageId != null) {
-                                final result = await ref
-                                    .read(resbaActionsProvider)
-                                    .createOpenChatResba(
-                                      messageId: messageId,
-                                      theme: attachment.theme,
-                                      choice1: attachment.choice1,
-                                      choice2: attachment.choice2,
+                                  String? uploadedUrl;
+                                  if (selectedImage.value != null) {
+                                    final uploader =
+                                        ref.read(imageUploadProvider);
+                                    uploadedUrl = await uploader.uploadImage(
+                                      file: selectedImage.value!,
+                                      bucketName: 'chat_images',
+                                      folderName: 'open_chat',
                                     );
-                                if (result.error != null && context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(result.error!)),
-                                  );
-                                }
-                                refreshResbas();
-                              }
+                                  }
 
-                              textController.clear();
-                              selectedImage.value = null;
-                              resbaAttachment.value = null;
-                              if (scrollController.hasClients) {
-                                scrollController.animateTo(
-                                  scrollController.position.maxScrollExtent + 100, // 末尾へスクロール
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeOut,
-                                );
+                                  final messageId = await ref
+                                      .read(openChatActionProvider.notifier)
+                                      .sendMessage(
+                                        room.id,
+                                        sendText,
+                                        imageUrl: uploadedUrl,
+                                      );
+
+                                  // ⚔️ レスバを添付(募集型)
+                                  final attachment = resbaAttachment.value;
+                                  if (attachment != null &&
+                                      messageId != null) {
+                                    final result = await ref
+                                        .read(resbaActionsProvider)
+                                        .createOpenChatResba(
+                                          messageId: messageId,
+                                          theme: attachment.theme,
+                                          choice1: attachment.choice1,
+                                          choice2: attachment.choice2,
+                                        );
+                                    if (result.error != null &&
+                                        context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(result.error!)),
+                                      );
+                                    }
+                                    refreshResbas();
+                                  }
+
+                                  textController.clear();
+                                  selectedImage.value = null;
+                                  resbaAttachment.value = null;
+                                  if (scrollController.hasClients) {
+                                    scrollController.animateTo(
+                                      scrollController
+                                              .position.maxScrollExtent +
+                                          100, // 末尾へスクロール
+                                      duration:
+                                          const Duration(milliseconds: 300),
+                                      curve: Curves.easeOut,
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('送信エラー: $e')));
+                                  }
+                                } finally {
+                                  isUploading.value = false;
+                                }
                               }
-                            } catch (e) {
-                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('送信エラー: $e')));
-                            } finally {
-                              isUploading.value = false;
-                            }
-                          }
-                        },
-                        icon: isUploading.value
-                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Icon(Icons.send, color: Colors.blue, size: 24),
-                      ),
-                    ],
-                  ),
-                  if (selectedImage.value != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0, left: 48.0, bottom: 8.0),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              selectedImage.value!,
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
+                            },
+                      icon: isUploading.value
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.send,
+                              color: Colors.blue, size: 24),
+                    ),
+                  ],
+                ),
+                if (selectedImage.value != null)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        top: 8.0, left: 48.0, bottom: 8.0),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            selectedImage.value!,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned(
+                          right: -8,
+                          top: -8,
+                          child: GestureDetector(
+                            onTap: () {
+                              selectedImage.value = null;
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close,
+                                  color: Colors.white, size: 16),
                             ),
                           ),
-                          Positioned(
-                            right: -8,
-                            top: -8,
-                            child: GestureDetector(
-                              onTap: () {
-                                selectedImage.value = null;
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.6),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.close, color: Colors.white, size: 16),
-                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (resbaAttachment.value != null)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        top: 8.0, left: 48.0, bottom: 8.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFAF8FF),
+                        border: Border.all(color: const Color(0xFF7856FF)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('⚔️', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'レスバ: ${resbaAttachment.value!.theme}',
+                              style: AppTextStyles.bold(
+                                  fontSize: 12.5,
+                                  color: const Color(0xFF7856FF)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              resbaAttachment.value = null;
+                            },
+                            child: const Icon(Icons.close,
+                                size: 16, color: Colors.grey),
                           ),
                         ],
                       ),
                     ),
-                  if (resbaAttachment.value != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0, left: 48.0, bottom: 8.0),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFAF8FF),
-                          border: Border.all(color: const Color(0xFF7856FF)),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            const Text('⚔️', style: TextStyle(fontSize: 16)),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'レスバ: ${resbaAttachment.value!.theme}',
-                                style: AppTextStyles.bold(fontSize: 12.5, color: const Color(0xFF7856FF)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                resbaAttachment.value = null;
-                              },
-                              child: const Icon(Icons.close, size: 16, color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+                  ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    ),
+  );
+}
+
+  Widget _buildStatus(String messageId) {
+    String? statusText;
+    Color statusColor = Colors.white70;
+
+    if (messageId.startsWith('temp_')) {
+      statusText = null;
+    } else if (messageId.startsWith('error_')) {
+      statusText = '✕';
+      statusColor = Colors.redAccent;
+    } else {
+      statusText = '送信';
+    }
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (statusText != null)
+          Text(
+            statusText,
+            style: AppTextStyles.notoSans(fontSize: 9, color: statusColor),
+          ),
+        const SizedBox(height: 4),
+      ],
     );
   }
+}
+
+class _OpenChatBubbleTailPainter extends CustomPainter {
+  final Color color;
+  final bool isUserMessage;
+
+  _OpenChatBubbleTailPainter(this.color, this.isUserMessage);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = Path();
+    if (isUserMessage) {
+      path.moveTo(0, 0);
+      path.lineTo(size.width, 0);
+      path.lineTo(0, size.height * 0.8);
+    } else {
+      path.moveTo(size.width, 0);
+      path.lineTo(0, 0);
+      path.lineTo(size.width, size.height * 0.8);
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

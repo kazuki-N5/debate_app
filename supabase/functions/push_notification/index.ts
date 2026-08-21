@@ -1,14 +1,17 @@
 import { NotificationService } from './notification_service.ts';
+
 /**
  * Supabase Edge Function: Notification Trigger
  * FCMでのプッシュ通知送信
  * 
  * MVVMのController(Entry Point)の役割を担います。
- */ Deno.serve(async (req)=>{
+ */
+Deno.serve(async (req: Request) => {
   try {
     const { room_id, user_id } = await req.json();
     console.log(`Notification requested from room_id: ${room_id}, by user: ${user_id}`);
     const service = new NotificationService();
+
     // 1. 連投制限チェック
     const rateLimit = await service.handleRateLimit(user_id);
     if (rateLimit.skipped) {
@@ -20,6 +23,7 @@ import { NotificationService } from './notification_service.ts';
         }
       });
     }
+
     // 2. 通知送信処理
     const { successCount, targetCount } = await service.sendMatchWaitingNotification(room_id, user_id);
     if (targetCount === 0) {
@@ -31,6 +35,7 @@ import { NotificationService } from './notification_service.ts';
         }
       });
     }
+
     return new Response(JSON.stringify({
       message: "Success",
       counts: {
@@ -42,11 +47,11 @@ import { NotificationService } from './notification_service.ts';
         'Content-Type': 'application/json'
       }
     });
-  } catch (error) {
-    const errInfo = error;
-    console.error("Function error:", errInfo.message);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("Function error:", errorMsg);
     return new Response(JSON.stringify({
-      error: errInfo.message
+      error: errorMsg
     }), {
       status: 400,
       headers: {

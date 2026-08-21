@@ -41,13 +41,20 @@ class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
 
   /// 自分の投稿を削除する
   Future<bool> deletePost(String postId) async {
+    // 楽観的UI更新（即座にリストから除去）
+    if (state is AsyncData) {
+      state = AsyncValue.data(
+        state.value!.where((p) => p.id != postId).toList(),
+      );
+    }
     try {
       final supabase = _ref.read(supabaseProvider);
       await supabase.from('bbs_posts').delete().eq('id', postId);
-      await fetchPosts();
       return true;
     } catch (e) {
       debugPrint('deletePost error: $e');
+      // 失敗時は再同期
+      await fetchPosts();
       return false;
     }
   }

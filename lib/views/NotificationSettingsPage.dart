@@ -1,11 +1,12 @@
 // ignore_for_file: file_names
 import 'package:debate_project/provider/notification_settings_provider.dart';
+import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-/// プッシュ通知のカテゴリ別設定画面
+/// プッシュ通知の設定画面（全体マスター + カテゴリ別）
 class NotificationSettingsPage extends HookConsumerWidget {
   const NotificationSettingsPage({super.key});
 
@@ -27,7 +28,11 @@ class NotificationSettingsPage extends HookConsumerWidget {
         backgroundColor: Colors.blue,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
       ),
       backgroundColor: Colors.blue,
       body: settings == null
@@ -37,6 +42,20 @@ class NotificationSettingsPage extends HookConsumerWidget {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // 全体設定
+                _buildSectionTitle('全体設定'),
+                _buildSwitchTile(
+                  icon: Icons.notifications_active,
+                  title: 'プッシュ通知（全体）',
+                  subtitle: 'アプリからのプッシュ通知を受け取る',
+                  value: settings.isNotificationEnabled,
+                  onChanged: (v) {
+                    ref
+                        .read(userProvider.notifier)
+                        .updateNotificationStatus(context, v);
+                  },
+                ),
+                const SizedBox(height: 16),
                 // 説明文
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -45,9 +64,9 @@ class NotificationSettingsPage extends HookConsumerWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
-                    'ここではプッシュ通知（OSに届く通知）の種類ごとのON/OFFを設定できます。\n'
+                    'ここではプッシュ通知（OSに届く通知）のON/OFFや種類ごとの設定ができます。\n'
                     '・アプリ内通知（通知タブ）には影響しません。\n'
-                    '・ホーム画面の「プッシュ通知」スイッチがOFFの場合は、ここでONにしてもプッシュは届きません。',
+                    '・「プッシュ通知（全体）」がOFFの場合は、カテゴリ別設定をONにしてもプッシュ通知は届きません。',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 13,

@@ -39,8 +39,6 @@ class CommunityPage extends HookConsumerWidget {
         floatingActionButton: ListenableBuilder(
           listenable: tabController,
           builder: (context, _) {
-            // 対戦募集タブは内側の⚔️FABで作成するため外側FABは非表示
-            if (tabController.index == 0) return const SizedBox.shrink();
             return Builder(
               builder: (context) {
                 return Padding(
@@ -49,7 +47,9 @@ class CommunityPage extends HookConsumerWidget {
                     heroTag: null, // Heroアニメーションを無効化
                     onPressed: () {
                       final index = tabController.index;
-                      if (index == 1) {
+                      if (index == 0) {
+                        _showCreateResbaDialog(context, ref);
+                      } else if (index == 1) {
                         context.push('/bbsPostCreate');
                       } else if (index == 2) {
                         context.push('/createOpenChat');
@@ -116,11 +116,6 @@ class CommunityPage extends HookConsumerWidget {
                     child: KeepAlivePage(
                       child: Scaffold(
                         backgroundColor: Colors.white,
-                        floatingActionButton: FloatingActionButton(
-                          backgroundColor: const Color(0xFF7856FF),
-                          child: const Text('⚔️', style: TextStyle(fontSize: 22)),
-                          onPressed: () => _showCreateResbaDialog(context, ref),
-                        ),
                         body: RefreshIndicator(
                           onRefresh: () =>
                               ref.read(recruitResbasProvider.notifier).fetch(),

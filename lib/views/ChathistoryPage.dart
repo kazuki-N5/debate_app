@@ -83,111 +83,102 @@ class ChatHistoryPage extends HookConsumerWidget {
       );
     }
 
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: null,
-          backgroundColor: Colors.blue,
-          body: SafeArea(
-            child: Column(
-              children: [
-                Center(
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.9,
-                    margin:
-                        const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    record.theme,
-                    style: AppTextStyles.notoSans(
-                      color: Colors.black,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 20,
-                    ),
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.visible,
-                  ),
-                ),
+    return Scaffold(
+      backgroundColor: Colors.blue,
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => context.pop(),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Center(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                margin:
+                    const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(20),
               ),
-              Expanded(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.blue,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
-                    ),
-                  ),
-                  // --- ▼▼▼ ここから変更 (FutureBuilderをuseFutureの結果で置き換え) ▼▼▼ ---
-                  child: () {
-                    // SharedPreferencesとメッセージ取得の両方の読み込みを待つ
-                    if (messagesSnapshot.connectionState ==
-                            ConnectionState.waiting) {
-                      return Container(); // 何も表示しない
-                    }
-                    if (messagesSnapshot.hasError) {
-                      return Container(); // 何も表示しない
-                    }
-                    if (!messagesSnapshot.hasData) {
-                      return Container(); // 何も表示しない
-                    }
-
-                    final allMessages = messagesSnapshot.data!;
-                    // 非表示IDに含まれないメッセージのみをフィルタリング
-                    final visibleMessages = allMessages
-                        .where(
-                            (chat) => !hiddenMessageIds.value.contains(chat.id))
-                        .toList();
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 16),
-                      itemCount: visibleMessages.length,
-                      itemBuilder: (context, index) {
-                        final chat = visibleMessages[index];
-                        final isUserMessage = chat.senderId == currentUserId;
-
-                        final bool showAvatar = index == 0 ||
-                            visibleMessages[index - 1].senderId !=
-                                chat.senderId;
-
-                        return MessageBubble(
-                          chat: chat,
-                          isUserMessage: isUserMessage,
-                          opponentAvatarUrl: record.opponentAvatarUrl,
-                          myAvatarUrl: myurl,
-                          showAvatar: showAvatar,
-                          onHide: () => hideMessage(chat.id),
-                        );
-                      },
-                    );
-                  }(),
-                  // --- ▲▲▲ ここまで変更 ▲▲▲ ---
+              child: Text(
+                record.theme,
+                style: AppTextStyles.notoSans(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
                 ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.visible,
               ),
-              ],
             ),
           ),
-        ),
-        Positioned(
-          left: 10,
-          bottom: 20,
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new),
-            iconSize: 28.0,
-            color: Colors.black,
-            tooltip: '戻る',
-            onPressed: () => context.pop(),
-            padding: const EdgeInsets.all(12.0),
-            splashRadius: 24.0,
+          Expanded(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              // --- ▼▼▼ ここから変更 (FutureBuilderをuseFutureの結果で置き換え) ▼▼▼ ---
+              child: () {
+                // SharedPreferencesとメッセージ取得の両方の読み込みを待つ
+                if (messagesSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                  return Container(); // 何も表示しない
+                }
+                if (messagesSnapshot.hasError) {
+                  return Container(); // 何も表示しない
+                }
+                if (!messagesSnapshot.hasData) {
+                  return Container(); // 何も表示しない
+                }
+
+                final allMessages = messagesSnapshot.data!;
+                // 非表示IDに含まれないメッセージのみをフィルタリング
+                final visibleMessages = allMessages
+                    .where(
+                        (chat) => !hiddenMessageIds.value.contains(chat.id))
+                    .toList();
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 16),
+                  itemCount: visibleMessages.length,
+                  itemBuilder: (context, index) {
+                    final chat = visibleMessages[index];
+                    final isUserMessage = chat.senderId == currentUserId;
+
+                    final bool showAvatar = index == 0 ||
+                        visibleMessages[index - 1].senderId !=
+                            chat.senderId;
+
+                    return MessageBubble(
+                      chat: chat,
+                      isUserMessage: isUserMessage,
+                      opponentAvatarUrl: record.opponentAvatarUrl,
+                      myAvatarUrl: myurl,
+                      showAvatar: showAvatar,
+                      onHide: () => hideMessage(chat.id),
+                    );
+                  },
+                );
+              }(),
+              // --- ▲▲▲ ここまで変更 ▲▲▲ ---
+            ),
           ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

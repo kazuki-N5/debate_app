@@ -38,13 +38,13 @@ class FloatingSpectatorCommentsOverlayState
   final Random _random = Random();
   double _lastTopRatio = 0.25;
 
-  /// コメントを追加（最大15文字）
+  /// コメントを追加（最大20文字）
   void addComment(String text) {
     if (widget.isMuted) return;
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
-    final displayText = trimmed.length > 15 ? trimmed.substring(0, 15) : trimmed;
+    final displayText = trimmed.length > 20 ? trimmed.substring(0, 20) : trimmed;
 
     // 前回の位置と重なりにくいように適度に散らす
     double nextTopRatio = _lastTopRatio + 0.12 + (_random.nextDouble() * 0.08);
@@ -125,63 +125,25 @@ class _SingleFloatingCommentState extends State<_SingleFloatingComment>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _slideAnimation;
-  late Animation<double> _opacityAnimation;
-  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3800),
+      duration: const Duration(milliseconds: 4500),
     );
 
-    // 右から左へふわっと移動（画面右外から左へ移動）
+    // 右から左へ等速で移動（画面右外から左外へ完全に抜け切るまで）
     _slideAnimation = Tween<double>(
       begin: 1.0,
-      end: -0.4,
+      end: -1.2,
     ).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: Curves.easeOutQuad,
+        curve: Curves.linear,
       ),
     );
-
-    // フェードイン（最初15%）→ 維持 → フェードアウト（最後の25%）
-    _opacityAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0.0, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeIn)),
-        weight: 15,
-      ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(1.0),
-        weight: 60,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 0.0)
-            .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 25,
-      ),
-    ]).animate(_controller);
-
-    // 登場時に少しポコッと大きくなる
-    _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0.8, end: 1.05)
-            .chain(CurveTween(curve: Curves.easeOutBack)),
-        weight: 20,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.05, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 15,
-      ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(1.0),
-        weight: 65,
-      ),
-    ]).animate(_controller);
 
     _controller.forward().then((_) {
       widget.onComplete();
@@ -206,50 +168,41 @@ class _SingleFloatingCommentState extends State<_SingleFloatingComment>
         return Positioned(
           top: topPos,
           left: leftPos,
-          child: Opacity(
-            opacity: _opacityAnimation.value.clamp(0.0, 1.0),
-            child: Transform.scale(
-              scale: _scaleAnimation.value,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: widget.item.backgroundColor,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.25),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
+          child: Stack(
+            children: [
+              // 弾幕風：黒フチ取り（ストローク）
+              Text(
+                widget.item.text,
+                style: TextStyle(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                  foreground: Paint()
+                    ..style = PaintingStyle.stroke
+                    ..strokeWidth = 3.5
+                    ..color = Colors.black,
+                  decoration: TextDecoration.none,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.campaign,
-                      size: 16,
-                      color: Color(0xFFFFD54F),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      widget.item.text,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                        decoration: TextDecoration.none,
-                      ),
+              ),
+              // 弾幕風：内側の白太文字 ＋ ドロップシャドウ
+              Text(
+                widget.item.text,
+                style: const TextStyle(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                  decoration: TextDecoration.none,
+                  shadows: [
+                    Shadow(
+                      offset: Offset(0, 2),
+                      blurRadius: 4,
+                      color: Colors.black54,
                     ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
         );
       },

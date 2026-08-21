@@ -104,7 +104,7 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'IN_BATTLE');
   END IF;
 
-  SELECT user_id INTO v_msg_user FROM dm_messages WHERE id = p_message_id;
+  SELECT sender_id INTO v_msg_user FROM dm_messages WHERE id = p_message_id;
   IF NOT FOUND THEN
     RETURN json_build_object('success', false, 'error', 'MESSAGE_NOT_FOUND');
   END IF;

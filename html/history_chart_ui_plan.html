@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>履歴画面 レーダーチャート表示 UI改善設計書・モックアップ</title>
+<!-- Chart.js for interactive radar charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --primary: #2196F3;
+    --primary-dark: #1976D2;
+    --primary-light: #BBDEFB;
+    --accent: #FF5722;
+    --win-red: #E53935;
+    --lose-gray: #546E7A;
+    --bg-main: #f0f4f8;
+    --card-bg: #FFFFFF;
+    --text-main: #263238;
+    --text-sub: #607D8B;
+    --border: #CFD8DC;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    line-height: 1.6;
+    padding-bottom: 80px;
+  }
+
+  header.top-header {
+    background: linear-gradient(135deg, #1E88E5, #1565C0);
+    color: #fff;
+    padding: 30px 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .header-inner h1 {
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-inner p {
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin: 35px 0 15px;
+    padding-left: 12px;
+    border-left: 5px solid var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    margin-bottom: 24px;
+  }
+
+  /* 課題解説ボックス */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 15px;
+  }
+  .problem-box {
+    background: #FFF8E1;
+    border-left: 4px solid #FFA000;
+    padding: 16px;
+    border-radius: 8px;
+  }
+  .problem-box h3 {
+    font-size: 15px;
+    color: #B76E00;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .problem-box p {
+    font-size: 13px;
+    color: #5D4037;
+  }
+
+  /* 提案案のタブセレクター */
+  .ui-options-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .opt-btn {
+    background: #E3F2FD;
+    border: 2px solid transparent;
+    color: var(--primary-dark);
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .opt-btn:hover {
+    background: #BBDEFB;
+  }
+  .opt-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary-dark);
+    box-shadow: 0 4px 12px rgba(33,150,243,0.3);
+  }
+  .badge-rec {
+    background: #FF5722;
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-left: 4px;
+  }
+
+  /* プレビューコンテナ */
+  .preview-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 30px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .preview-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* スマホモックアップフレーム */
+  .phone-frame {
+    width: 375px;
+    height: 750px;
+    background: #2196F3;
+    border: 12px solid #263238;
+    border-radius: 45px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;
+  }
+  .phone-notch {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140px;
+    height: 24px;
+    background: #263238;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+    z-index: 100;
+  }
+  .phone-appbar {
+    background: #2196F3;
+    color: white;
+    padding: 36px 16px 12px;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+  }
+  .phone-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    background: #2196F3;
+    position: relative;
+  }
+
+  /* スマホ内のスクロールバー非表示 */
+  .phone-content::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 一覧アイテムカード（改善デザイン） */
+  .history-item {
+    background: #f1f3f5;
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    transition: transform 0.15s ease;
+    cursor: pointer;
+  }
+  .history-item:hover {
+    transform: translateY(-2px);
+  }
+
+  .item-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .result-badge {
+    font-size: 18px;
+    font-weight: 800;
+  }
+  .result-win { color: #E53935; }
+  .result-lose { color: #546E7A; }
+
+  .trophy-badge {
+    font-size: 16px;
+    font-weight: 800;
+    margin-left: 6px;
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    margin-left: 10px;
+    overflow: hidden;
+  }
+  .avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #90A4AE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .user-name {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #263238;
+  }
+
+  /* スコアミニバッジ */
+  .mini-score-tag {
+    background: #E3F2FD;
+    color: #1976D2;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .item-theme-box {
+    background: #e2e8f0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    color: #334155;
+    margin-bottom: 6px;
+  }
+  .theme-title {
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .item-bottom-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .btn-tap-detail {
+    color: #2196F3;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* ボトムシート (案A用) */
+  .bottom-sheet {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #FFFFFF;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.25);
+    transform: translateY(105%);
+    transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+    z-index: 50;
+    max-height: 88%;
+    display: flex;
+    flex-direction: column;
+  }
+  .bottom-sheet.open {
+    transform: translateY(0);
+  }
+  .sheet-handle {
+    width: 40px;
+    height: 5px;
+    background: #CBD5E1;
+    border-radius: 3px;
+    margin: 10px auto 6px;
+  }
+  .sheet-header {
+    padding: 10px 18px 8px;
+    border-bottom: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .sheet-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #1E293B;
+  }
+  .btn-close-sheet {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #64748B;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .sheet-body {
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .sheet-chart-container {
+    width: 100%;
+    height: 210px;
+    position: relative;
+    margin: 4px 0 12px;
+  }
+  .sheet-reason-box {
+    background: #F0F9FF;
+    border: 1px solid #BAE6FD;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+  .sheet-reason-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0284C7;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sheet-reason-text {
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.5;
+  }
+  .btn-view-chat {
+    display: block;
+    width: 100%;
+    background: #2196F3;
+    color: white;
+    text-align: center;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(33,150,243,0.3);
+  }
+
+  /* 案B: 統合タブ画面プレビュー */
+  .detail-tabs-bar {
+    display: flex;
+    background: #E2E8F0;
+    border-radius: 10px;
+    padding: 3px;
+    margin-bottom: 12px;
+  }
+  .detail-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #64748B;
+  }
+  .detail-tab.active {
+    background: #FFFFFF;
+    color: #2196F3;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+  }
+
+  /* チャット吹き出しプレビュー */
+  .chat-bubble-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .chat-bubble {
+    max-width: 80%;
+    padding: 8px 12px;
+    border-radius: 14px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .chat-bubble.mine {
+    align-self: flex-end;
+    background: #2196F3;
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .chat-bubble.other {
+    align-self: flex-start;
+    background: #F1F5F9;
+    color: #1E293B;
+    border-bottom-left-radius: 4px;
+  }
+
+  /* 解説カラム */
+  .explanation-col h2 {
+    font-size: 22px;
+    color: #0F172A;
+    margin-bottom: 12px;
+  }
+  .feature-list {
+    list-style: none;
+    margin: 16px 0;
+  }
+  .feature-list li {
+    font-size: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .feature-list li i {
+    color: #10B981;
+    margin-top: 4px;
+  }
+
+  /* 比較表 */
+  table.compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 13px;
+  }
+  table.compare-table th, table.compare-table td {
+    padding: 12px 14px;
+    border: 1px solid #E2E8F0;
+    text-align: left;
+  }
+  table.compare-table th {
+    background: #F8FAFC;
+    color: #475569;
+    font-weight: 700;
+  }
+
+  .code-snippet {
+    background: #1E293B;
+    color: #E2E8F0;
+    padding: 16px;
+    border-radius: 12px;
+    font-family: Consolas, monospace;
+    font-size: 12.5px;
+    overflow-x: auto;
+    margin: 12px 0;
+  }
+
+  .btn-interactive-guide {
+    background: #FEF3C7;
+    border: 1px solid #FDE68A;
+    color: #92400E;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header class="top-header">
+  <div class="header-inner">
+    <h1><i class="fa-solid fa-chart-pie"></i> 履歴画面 レーダーチャート表示 UI改善設計書</h1>
+    <p>情報量増加に伴う画面構成の最適化案と、インタラクティブモックアップ</p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- 1. 現状の課題と改善の背景 -->
+  <div class="card">
+    <h2 style="font-size: 18px; margin-bottom: 12px; color: #1E293B;"><i class="fa-solid fa-circle-exclamation" style="color: #F59E0B;"></i> 現状の課題とUI刷新の必要性</h2>
+    <p style="font-size: 14px; color: #475569;">
+      現在、<code>FinishPage</code>（対戦終了画面）ではAIジャッジによる「5項目のレーダーチャート」および「論理能力%」が表示されています。
+      これを履歴画面でも振り返れるようにしたいですが、現在の履歴一覧カードは「テーマ」「自分の選択」「勝敗理由」がすでに詰め込まれており、ここにレーダーチャート（高さ約200px）をそのまま入れると<strong>1枚のカードが画面の半分以上を占拠し、一覧性が大幅に悪化</strong>します。
+    </p>
+
+    <div class="problem-grid">
+      <div class="problem-box">
+        <h3><i class="fa-solid fa-arrows-up-down"></i> 1カードの肥大化</h3>
+        <p>1画面に1〜2件しか表示できなくなり、過去の勝敗履歴をスクロールして探すのが困難になります。</p>
+      </div>
+      <div class="problem-box">
+        <h3><i class="fa-solid fa-chart-simple"></i> レーダーチャートの視認性</h3>
+        <p>リストの隙間に無理やりチャートを小さく押し込むと、5項目（論理性・説得力・反論力・構成力・マナー）のラベルや数値が読み取れなくなります。</p>
+      </div>
+      <div class="problem-box">
+        <h3><i class="fa-solid fa-layer-group"></i> 階層構造の欠如</h3>
+        <p>「一覧でざっと勝敗を見る」と「特定の試合のAI評価・チャート・ログを詳しく振り返る」の2つの目的が1画面に混在してしまいます。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. UI案セレクター & インタラクティブプレビュー -->
+  <div class="section-title">
+    <i class="fa-solid fa-mobile-screen"></i> UI改善案 インタラクティブ比較モックアップ
+  </div>
+
+  <div class="ui-options-tabs">
+    <button class="opt-btn active" onclick="switchDesign('A')">
+      <i class="fa-solid fa-window-maximize"></i> 案A: ボトムシート（詳細モーダル）型 <span class="badge-rec">おすすめ</span>
+    </button>
+    <button class="opt-btn" onclick="switchDesign('B')">
+      <i class="fa-solid fa-table-columns"></i> 案B: 統合タブ詳細画面型
+    </button>
+    <button class="opt-btn" onclick="switchDesign('C')">
+      <i class="fa-solid fa-chevron-down"></i> 案C: 改良型アコーディオン（インライン）
+    </button>
+  </div>
+
+  <div class="preview-layout">
+    
+    <!-- 左側: スマホモックアップ -->
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-appbar">
+        <span><i class="fa-solid fa-chevron-left" style="font-size: 16px;"></i></span>
+        <span id="appbar-title">履歴</span>
+        <span><i class="fa-solid fa-ellipsis-vertical" style="font-size: 16px;"></i></span>
+      </div>
+
+      <div class="phone-content" id="phone-content">
+        <!-- JSで動的にコンテンツ切り替え -->
+      </div>
+
+      <!-- 案A用 ボトムシート -->
+      <div class="bottom-sheet" id="bottom-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+          <div class="sheet-title">📊 試合詳細・分析</div>
+          <button class="btn-close-sheet" onclick="closeBottomSheet()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="sheet-body">
+          <div style="font-size: 13px; font-weight: 700; color: #1E293B; margin-bottom: 4px;" id="sheet-theme">
+            テーマ: 朝食はパン派かご飯派か
+          </div>
+          <div style="display: flex; gap: 8px; margin-bottom: 8px; font-size: 11px;">
+            <span style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-weight: 600;">あなた: パン派</span>
+            <span style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-weight: 600;">相手: ご飯派</span>
+          </div>
+
+          <!-- チャート -->
+          <div class="sheet-chart-container">
+            <canvas id="modalRadarChart"></canvas>
+          </div>
+
+          <!-- 勝敗理由 -->
+          <div class="sheet-reason-box">
+            <div class="sheet-reason-title">
+              <i class="fa-solid fa-robot"></i> AI判定の理由
+            </div>
+            <div class="sheet-reason-text" id="sheet-reason">
+              「あなた」はパンの手軽さと多様なアレンジについて具体例を挙げて論理的に展開できていました。相手のカロリー面での反論に対しても的確に再反論できており、説得力で上回りました。
+            </div>
+          </div>
+
+          <!-- レスバを見るボタン -->
+          <button class="btn-view-chat" onclick="alert('レスバ（チャット履歴）画面へ遷移します');">
+            <i class="fa-solid fa-comments"></i> レスバ（チャット履歴）を見る
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 右側: 設計解説カラム -->
+    <div class="card explanation-col" id="explanation-box">
+      <!-- JSで動的に解説切り替え -->
+    </div>
+
+  </div>
+
+  <!-- 3. 各案の比較表 -->
+  <div class="section-title">
+    <i class="fa-solid fa-scale-balanced"></i> 各案のメリット・デメリット比較
+  </div>
+
+  <div class="card" style="overflow-x: auto;">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>項目</th>
+          <th>【案A】ボトムシート詳細型 ⭐</th>
+          <th>【案B】統合タブ詳細画面型</th>
+          <th>【案C】改良型アコーディオン</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>一覧性・スクロール感</strong></td>
+          <td><span style="color:#16A34A; font-weight:bold;">◎ 非常に高い</span>（カードが薄くサクサク探せる）</td>
+          <td><span style="color:#16A34A; font-weight:bold;">◎ 非常に高い</span></td>
+          <td><span style="color:#DC2626; font-weight:bold;">△ 低い</span>（展開するとスクロール量大）</td>
+        </tr>
+        <tr>
+          <td><strong>チャートの美しさ・見やすさ</strong></td>
+          <td><span style="color:#16A34A; font-weight:bold;">◎ 広いモーダルで鮮明</span></td>
+          <td><span style="color:#16A34A; font-weight:bold;">◎ 全画面でじっくり閲覧</span></td>
+          <td><span style="color:#D97706; font-weight:bold;">◯ リスト内でやや窮屈</span></td>
+        </tr>
+        <tr>
+          <td><strong>操作の手数（タップ数）</strong></td>
+          <td>1タップで下からスッと表示（閉じるのもスワイプ）</td>
+          <td>1タップで画面遷移</td>
+          <td>0〜1タップ（一覧で直接展開）</td>
+        </tr>
+        <tr>
+          <td><strong>レスバ（チャット）との連携</strong></td>
+          <td>詳細モーダル内からワンタップで移動</td>
+          <td>同一画面内のタブで即座に切り替え可能</td>
+          <td>カード内のボタンから別画面へ移動</td>
+        </tr>
+        <tr>
+          <td><strong>Flutter実装コスト</strong></td>
+          <td><span style="color:#16A34A; font-weight:bold;">小〜中</span>（<code>showModalBottomSheet</code>を利用）</td>
+          <td><span style="color:#D97706; font-weight:bold;">中</span>（新規詳細画面を作成）</td>
+          <td><span style="color:#16A34A; font-weight:bold;">小</span>（既存Widgetに差し込み）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 4. データ構造と実装方針 -->
+  <div class="section-title">
+    <i class="fa-solid fa-code"></i> Flutter 実装方針とデータフロー
+  </div>
+
+  <div class="card">
+    <h3 style="font-size: 16px; margin-bottom: 10px; color: #1E293B;">1. <code>modes/history.dart</code> の拡張</h3>
+    <p style="font-size: 13px; color: #475569;"><code>MatchRecordDisplay</code> に <code>scores</code>（<code>MatchScores?</code>）フィールドを追加します。</p>
+    <div class="code-snippet">
+class MatchRecordDisplay {
+  final String roomid;
+  final String resultString; // "勝利" / "敗北"
+  final int trophyChange;
+  final String opponentName;
+  final String? opponentAvatarUrl;
+  final String theme;
+  final String userChoice;
+  final String reason;
+  final bool? cancel;
+  final String? opponentid;
+  final bool isUnderdog;
+  
+  // ★ 追加: スコア情報（レーダーチャート用）
+  final MatchScores? scores;
+
+  MatchRecordDisplay({
+    required this.roomid,
+    ...
+    this.scores,
+  });
+}
+    </div>
+
+    <h3 style="font-size: 16px; margin: 20px 0 10px; color: #1E293B;">2. <code>provider/history_provider.dart</code> でのパース処理</h3>
+    <p style="font-size: 13px; color: #475569;">Supabaseの <code>match_record</code> テーブルの <code>scores</code> カラムを読み込んでマッピングします。</p>
+    <div class="code-snippet">
+// scoresのパース
+MatchScores? scores;
+if (record['scores'] != null) {
+  if (record['scores'] is Map&lt;String, dynamic&gt;) {
+    scores = MatchScores.fromMap(record['scores'] as Map&lt;String, dynamic&gt;);
+  } else if (record['scores'] is String) {
+    scores = MatchScores.fromJsonString(record['scores'] as String);
+  }
+}
+
+return [
+  MatchRecordDisplay(
+    roomid: roomid,
+    resultString: resultString,
+    trophyChange: trophyChange,
+    opponentName: opponentName,
+    opponentAvatarUrl: opponentAvatarUrl,
+    opponentid: opponentid,
+    theme: theme,
+    userChoice: userChoice,
+    reason: formattedReason,
+    cancel: cancel,
+    scores: scores, // ★ ここに渡す
+  )
+];
+    </div>
+
+    <h3 style="font-size: 16px; margin: 20px 0 10px; color: #1E293B;">3. <code>RadarChartView</code> の活用</h3>
+    <p style="font-size: 13px; color: #475569;"><code>FinishPage.dart</code> で既に使われている <code>RadarChartView</code> は汎用的に作られているため、そのまま履歴画面・ボトムシートでも再利用できます。</p>
+  </div>
+
+</main>
+
+<script>
+let currentMode = 'A';
+let modalChartInstance = null;
+let inlineChartInstance = null;
+
+const sampleRecords = [
+  {
+    id: '1',
+    result: '勝利',
+    trophy: '+8',
+    isWin: true,
+    opponent: 'ディベート王',
+    theme: '朝食はパン派かご飯派か',
+    userChoice: 'パン派',
+    opponentChoice: 'ご飯派',
+    scorePct: 84,
+    reason: '「あなた」は手軽さとアレンジ性の高さを論理的に展開し、相手の栄養面に関する反論に対しても的確に対応できていました。',
+    scores: {
+      my: [85, 90, 80, 85, 80],
+      opp: [70, 75, 65, 70, 75]
+    }
+  },
+  {
+    id: '2',
+    result: '敗北',
+    trophy: '-6',
+    isWin: false,
+    opponent: 'ロジカル太郎',
+    theme: 'AIの進化は人類に幸福をもたらすか',
+    userChoice: '幸福をもたらす',
+    opponentChoice: '脅威となる',
+    scorePct: 68,
+    reason: '相手側の雇用喪失や倫理的課題に対する具体的な懸念の提示に対して、具体的な対策や反証が不足していました。',
+    scores: {
+      my: [65, 70, 60, 75, 70],
+      opp: [88, 85, 90, 80, 85]
+    }
+  },
+  {
+    id: '3',
+    result: '勝利',
+    trophy: '+10',
+    isWin: true,
+    opponent: '匿名論客',
+    theme: '夏休みの宿題は廃止すべきか',
+    userChoice: '廃止すべき',
+    opponentChoice: '存続すべき',
+    scorePct: 91,
+    reason: '自主的な学習習慣の形成という観点から一貫した主張を行い、説得力・構成力ともに非常に高評価でした。',
+    scores: {
+      my: [92, 95, 88, 90, 90],
+      opp: [75, 70, 72, 70, 80]
+    }
+  }
+];
+
+function switchDesign(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.opt-btn').forEach((btn, idx) => {
+    btn.classList.toggle('active', (mode === 'A' && idx === 0) || (mode === 'B' && idx === 1) || (mode === 'C' && idx === 2));
+  });
+
+  renderPhoneContent();
+  renderExplanation();
+}
+
+function renderPhoneContent() {
+  const contentEl = document.getElementById('phone-content');
+  const appbarTitle = document.getElementById('appbar-title');
+  closeBottomSheet();
+
+  if (currentMode === 'A') {
+    appbarTitle.innerText = '対戦履歴 (案A)';
+    contentEl.innerHTML = `
+      <div class="btn-interactive-guide">
+        <i class="fa-solid fa-hand-pointer"></i> カードをタップすると詳細シートが開きます
+      </div>
+      ${sampleRecords.map((r, i) => `
+        <div class="history-item" onclick="openBottomSheet(${i})">
+          <div class="item-top-row">
+            <div style="display:flex; align-items:center;">
+              <span class="result-badge ${r.isWin ? 'result-win' : 'result-lose'}">${r.result}</span>
+              <span class="trophy-badge ${r.isWin ? 'result-win' : 'result-lose'}">${r.trophy}</span>
+            </div>
+            <div class="user-info">
+              <div class="avatar-circle"><i class="fa-solid fa-user"></i></div>
+              <div class="user-name">${r.opponent}</div>
+            </div>
+            <div class="mini-score-tag">
+              <i class="fa-solid fa-brain"></i> ${r.scorePct}%
+            </div>
+          </div>
+          <div class="item-theme-box">
+            <div class="theme-title">テーマ: ${r.theme}</div>
+          </div>
+          <div class="item-bottom-action">
+            <span>タップして分析・判定理由を見る</span>
+            <span class="btn-tap-detail"><i class="fa-solid fa-chart-pie"></i> 詳細 <i class="fa-solid fa-chevron-right"></i></span>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  } else if (currentMode === 'B') {
+    appbarTitle.innerText = '対戦詳細 (案B)';
+    contentEl.innerHTML = `
+      <div style="background: white; border-radius: 16px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+          <div>
+            <span class="result-badge result-win">勝利</span>
+            <span class="trophy-badge result-win">+8</span>
+          </div>
+          <div style="font-size: 13px; font-weight: bold; color: #475569;">vs ディベート王</div>
+        </div>
+        <div class="item-theme-box" style="margin-bottom: 12px;">
+          <strong>テーマ: 朝食はパン派かご飯派か</strong><br>
+          <span style="font-size: 11px;">あなた: パン派 / 相手: ご飯派</span>
+        </div>
+
+        <!-- 統合タブ -->
+        <div class="detail-tabs-bar">
+          <div class="detail-tab active" id="tab-btn-chart" onclick="switchDetailTab('chart')">📊 能力分析・理由</div>
+          <div class="detail-tab" id="tab-btn-chat" onclick="switchDetailTab('chat')">💬 レスバ履歴</div>
+        </div>
+
+        <!-- タブ1: チャート & 理由 -->
+        <div id="tab-content-chart">
+          <div style="width: 100%; height: 180px; position: relative;">
+            <canvas id="inlineRadarChart"></canvas>
+          </div>
+          <div class="sheet-reason-box" style="margin-top: 10px;">
+            <div class="sheet-reason-title"><i class="fa-solid fa-robot"></i> 勝敗の理由</div>
+            <div class="sheet-reason-text">
+              「あなた」は手軽さとアレンジ性の高さを論理的に展開し、相手の栄養面に関する反論に対しても的確に対応できていました。
+            </div>
+          </div>
+        </div>
+
+        <!-- タブ2: チャット履歴 -->
+        <div id="tab-content-chat" style="display: none;">
+          <div class="chat-bubble-container" style="max-height: 280px; overflow-y: auto; padding: 4px;">
+            <div class="chat-bubble other">朝はやはり腹持ちの良いお米を食べるべきだと思います。</div>
+            <div class="chat-bubble mine">パンは短時間で手軽に用意でき、忙しい朝の時間を有効活用できます。</div>
+            <div class="chat-bubble other">しかしパンはGI値が高く、すぐに空腹になって集中力が途切れます。</div>
+            <div class="chat-bubble mine">全粒粉パンや卵・チーズと合わせることでGI値を抑えつつ十分な持続性を得られます。</div>
+          </div>
+        </div>
+      </div>
+    `;
+    setTimeout(initInlineChart, 50);
+  } else if (currentMode === 'C') {
+    appbarTitle.innerText = '対戦履歴 (案C)';
+    contentEl.innerHTML = `
+      <div class="btn-interactive-guide">
+        <i class="fa-solid fa-hand-pointer"></i> アコーディオンを開閉して直接表示
+      </div>
+      ${sampleRecords.map((r, i) => `
+        <div class="history-item" id="accordion-item-${i}">
+          <div class="item-top-row" onclick="toggleAccordion(${i})">
+            <div style="display:flex; align-items:center;">
+              <span class="result-badge ${r.isWin ? 'result-win' : 'result-lose'}">${r.result}</span>
+              <span class="trophy-badge ${r.isWin ? 'result-win' : 'result-lose'}">${r.trophy}</span>
+            </div>
+            <div class="user-info">
+              <div class="avatar-circle"><i class="fa-solid fa-user"></i></div>
+              <div class="user-name">${r.opponent}</div>
+            </div>
+            <i class="fa-solid fa-chevron-down" id="acc-icon-${i}" style="color:#64748B; font-size:12px;"></i>
+          </div>
+          <div class="item-theme-box">
+            <div class="theme-title">テーマ: ${r.theme}</div>
+          </div>
+          
+          <!-- 展開エリア -->
+          <div id="acc-body-${i}" style="display: ${i === 0 ? 'block' : 'none'}; border-top: 1px solid #CBD5E1; padding-top: 10px; margin-top: 8px;">
+            <div style="width: 100%; height: 160px; position: relative;">
+              <canvas id="accRadarChart-${i}"></canvas>
+            </div>
+            <div style="font-size: 11px; color: #475569; margin: 8px 0;">
+              <strong>理由:</strong> ${r.reason}
+            </div>
+            <div style="display:flex; justify-content:flex-end;">
+              <span style="font-size: 12px; color: #2196F3; font-weight:bold; cursor:pointer;" onclick="alert('レスバを見る')">レスバを見る &gt;</span>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    `;
+    setTimeout(() => initAccordionChart(0), 50);
+  }
+}
+
+function renderExplanation() {
+  const box = document.getElementById('explanation-box');
+  if (currentMode === 'A') {
+    box.innerHTML = `
+      <h2>【案A】ボトムシート（詳細モーダル）型 <span class="badge-rec">一番おすすめ</span></h2>
+      <p style="font-size: 14px; color: #475569; margin-bottom: 16px;">
+        履歴一覧カードは「勝敗・相手・テーマ・総合論理%」のみをスッキリとまとめ、タップ時に下からスムーズにモーダルシートを引き出す方式です。
+      </p>
+
+      <h3 style="font-size: 15px; color: #1E293B; margin-top: 16px;">✨ この設計の強み</h3>
+      <ul class="feature-list">
+        <li><i class="fa-solid fa-check"></i> <strong>一覧画面が圧倒的に見やすい</strong>：カードの縦幅がコンパクトなため、過去の対戦一覧をスムーズにスクロール探索できる。</li>
+        <li><i class="fa-solid fa-check"></i> <strong>チャートを大きく綺麗に表示できる</strong>：モーダル内に十分なスペースが取れるため、5項目のレーダーチャートと数値を鮮明に見せられる。</li>
+        <li><i class="fa-solid fa-check"></i> <strong>Flutterとの親和性が抜群</strong>：標準の <code>showModalBottomSheet</code> を呼ぶだけで、アニメーション付きの快適なUIを素早く実装できる。</li>
+      </ul>
+
+      <h3 style="font-size: 15px; color: #1E293B; margin-top: 16px;">📱 ユーザーの操作フロー</h3>
+      <ol style="padding-left: 20px; font-size: 13.5px; color: #334155; line-height: 1.8;">
+        <li>履歴一覧で気になる対戦カードをタップ</li>
+        <li>下から詳細シートがスッと開き、レーダーチャートと判定理由を確認</li>
+        <li>さらに会話の流れを見たい場合は「レスバを見る」ボタンを押す</li>
+      </ol>
+    `;
+  } else if (currentMode === 'B') {
+    box.innerHTML = `
+      <h2>【案B】統合タブ詳細画面型</h2>
+      <p style="font-size: 14px; color: #475569; margin-bottom: 16px;">
+        一覧からタップすると専用の「対戦詳細画面」へ遷移し、同一画面内のタブで「📊 能力分析・判定理由」と「💬 チャットログ」を即座に切り替えられる構成です。
+      </p>
+
+      <h3 style="font-size: 15px; color: #1E293B; margin-top: 16px;">✨ この設計の強み</h3>
+      <ul class="feature-list">
+        <li><i class="fa-solid fa-check"></i> <strong>1画面で全情報が完結</strong>：チャット履歴とAIの評価をタブ1つで行き来できるため、どの発言がどう評価されたかを対比しやすい。</li>
+        <li><i class="fa-solid fa-check"></i> <strong>画面全体を使える</strong>：スマホの画面全体を活用できるため、情報量が多くても窮屈さがない。</li>
+      </ul>
+    `;
+  } else if (currentMode === 'C') {
+    box.innerHTML = `
+      <h2>【案C】改良型アコーディオン（インライン）</h2>
+      <p style="font-size: 14px; color: #475569; margin-bottom: 16px;">
+        画面遷移やモーダルを使わず、一覧画面内のカードをタップするとその場で下方向にアコーディオン展開してチャートと理由を表示する方式です。
+      </p>
+
+      <h3 style="font-size: 15px; color: #1E293B; margin-top: 16px;">⚠️ 注意点</h3>
+      <ul class="feature-list">
+        <li><i class="fa-solid fa-triangle-exclamation" style="color: #F59E0B;"></i> 展開したカードが縦長になるため、連続して複数カードを開くとスクロール位置が狂いやすい。</li>
+        <li><i class="fa-solid fa-triangle-exclamation" style="color: #F59E0B;"></i> チャートの表示領域がやや小さくなり、文字や数値が少し詰まる。</li>
+      </ul>
+    `;
+  }
+}
+
+function openBottomSheet(index) {
+  const record = sampleRecords[index];
+  document.getElementById('sheet-theme').innerText = `テーマ: ${record.theme}`;
+  document.getElementById('sheet-reason').innerText = record.reason;
+  
+  const sheet = document.getElementById('bottom-sheet');
+  sheet.classList.add('open');
+
+  setTimeout(() => {
+    initModalChart(record.scores);
+  }, 100);
+}
+
+function closeBottomSheet() {
+  const sheet = document.getElementById('bottom-sheet');
+  if (sheet) sheet.classList.remove('open');
+}
+
+function initModalChart(scores) {
+  const ctx = document.getElementById('modalRadarChart');
+  if (!ctx) return;
+  if (modalChartInstance) modalChartInstance.destroy();
+
+  modalChartInstance = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['論理性', '説得力', '反論力', '構成力', 'マナー'],
+      datasets: [
+        {
+          label: 'あなた',
+          data: scores.my,
+          backgroundColor: 'rgba(33, 150, 243, 0.25)',
+          borderColor: '#2196F3',
+          borderWidth: 2,
+          pointBackgroundColor: '#2196F3',
+          pointRadius: 3
+        },
+        {
+          label: '対戦相手',
+          data: scores.opp,
+          backgroundColor: 'rgba(244, 67, 54, 0.15)',
+          borderColor: '#F44336',
+          borderWidth: 1.5,
+          pointBackgroundColor: '#F44336',
+          pointRadius: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          min: 0,
+          max: 100,
+          ticks: { display: false, stepSize: 20 },
+          pointLabels: { font: { size: 10, weight: 'bold' }, color: '#475569' }
+        }
+      },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function initInlineChart() {
+  const ctx = document.getElementById('inlineRadarChart');
+  if (!ctx) return;
+  if (inlineChartInstance) inlineChartInstance.destroy();
+
+  inlineChartInstance = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['論理性', '説得力', '反論力', '構成力', 'マナー'],
+      datasets: [
+        {
+          label: 'あなた',
+          data: [85, 90, 80, 85, 80],
+          backgroundColor: 'rgba(33, 150, 243, 0.25)',
+          borderColor: '#2196F3',
+          borderWidth: 2
+        },
+        {
+          label: '相手',
+          data: [70, 75, 65, 70, 75],
+          backgroundColor: 'rgba(244, 67, 54, 0.15)',
+          borderColor: '#F44336',
+          borderWidth: 1.5
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: { min: 0, max: 100, ticks: { display: false } }
+      },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function switchDetailTab(tab) {
+  document.getElementById('tab-btn-chart').classList.toggle('active', tab === 'chart');
+  document.getElementById('tab-btn-chat').classList.toggle('active', tab === 'chat');
+  document.getElementById('tab-content-chart').style.display = tab === 'chart' ? 'block' : 'none';
+  document.getElementById('tab-content-chat').style.display = tab === 'chat' ? 'block' : 'none';
+}
+
+function toggleAccordion(index) {
+  const body = document.getElementById(`acc-body-${index}`);
+  const icon = document.getElementById(`acc-icon-${index}`);
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? 'block' : 'none';
+  icon.className = isHidden ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
+
+  if (isHidden) {
+    initAccordionChart(index);
+  }
+}
+
+function initAccordionChart(index) {
+  const ctx = document.getElementById(`accRadarChart-${index}`);
+  if (!ctx) return;
+  const r = sampleRecords[index];
+  new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['論理性', '説得力', '反論力', '構成力', 'マナー'],
+      datasets: [
+        {
+          label: 'あなた',
+          data: r.scores.my,
+          backgroundColor: 'rgba(33, 150, 243, 0.25)',
+          borderColor: '#2196F3',
+          borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { r: { min: 0, max: 100, ticks: { display: false } } },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+// 初期化
+window.onload = () => {
+  switchDesign('A');
+};
+</script>
+
+</body>
+</html>

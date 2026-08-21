@@ -18,6 +18,7 @@ _$OpenChatRoomImpl _$$OpenChatRoomImplFromJson(Map<String, dynamic> json) =>
       createdAt: DateTime.parse(json['created_at'] as String),
       memberCount: (json['member_count'] as num?)?.toInt(),
       isJoined: json['is_joined'] as bool?,
+      tags: (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList(),
     );
 
 Map<String, dynamic> _$$OpenChatRoomImplToJson(_$OpenChatRoomImpl instance) =>
@@ -32,6 +33,7 @@ Map<String, dynamic> _$$OpenChatRoomImplToJson(_$OpenChatRoomImpl instance) =>
       'created_at': instance.createdAt.toIso8601String(),
       'member_count': instance.memberCount,
       'is_joined': instance.isJoined,
+      'tags': instance.tags,
     };
 
 _$OpenChatMemberImpl _$$OpenChatMemberImplFromJson(Map<String, dynamic> json) =>
@@ -44,33 +46,33 @@ _$OpenChatMemberImpl _$$OpenChatMemberImplFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$$OpenChatMemberImplToJson(
-        _$OpenChatMemberImpl instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'room_id': instance.roomId,
-      'user_id': instance.userId,
-      'role': instance.role,
-      'joined_at': instance.joinedAt.toIso8601String(),
-    };
+  _$OpenChatMemberImpl instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'room_id': instance.roomId,
+  'user_id': instance.userId,
+  'role': instance.role,
+  'joined_at': instance.joinedAt.toIso8601String(),
+};
 
 _$OpenChatMessageImpl _$$OpenChatMessageImplFromJson(
-        Map<String, dynamic> json) =>
-    _$OpenChatMessageImpl(
-      id: json['id'] as String,
-      roomId: json['room_id'] as String,
-      userId: json['user_id'] as String,
-      content: json['content'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      imageUrl: json['image_url'] as String?,
-    );
+  Map<String, dynamic> json,
+) => _$OpenChatMessageImpl(
+  id: json['id'] as String,
+  roomId: json['room_id'] as String,
+  userId: json['user_id'] as String,
+  content: json['content'] as String,
+  createdAt: DateTime.parse(json['created_at'] as String),
+  imageUrl: json['image_url'] as String?,
+);
 
 Map<String, dynamic> _$$OpenChatMessageImplToJson(
-        _$OpenChatMessageImpl instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'room_id': instance.roomId,
-      'user_id': instance.userId,
-      'content': instance.content,
-      'created_at': instance.createdAt.toIso8601String(),
-      'image_url': instance.imageUrl,
-    };
+  _$OpenChatMessageImpl instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'room_id': instance.roomId,
+  'user_id': instance.userId,
+  'content': instance.content,
+  'created_at': instance.createdAt.toIso8601String(),
+  'image_url': instance.imageUrl,
+};

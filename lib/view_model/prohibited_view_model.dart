@@ -259,14 +259,10 @@ class MessageBubble extends HookConsumerWidget {
                       child: GestureDetector(
                         // タップで画像を拡大表示
                         onTap: () {
-                          Navigator.push(
+                          FullScreenImageViewer.show(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => FullScreenImageViewer(
-                                imageUrls: [chat.imageUrl!],
-                                initialIndex: 0,
-                              ),
-                            ),
+                            imageUrls: [chat.imageUrl!],
+                            initialIndex: 0,
                           );
                         },
                         child: ClipRRect(

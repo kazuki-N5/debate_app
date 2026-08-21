@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debateアプリ パフォーマンス・効率化徹底監査レポート</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Noto Sans JP', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            },
+            danger: {
+              50: '#fef2f2',
+              100: '#fee2e2',
+              500: '#ef4444',
+              600: '#dc2626',
+            },
+            warning: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              500: '#f59e0b',
+              600: '#d97706',
+            },
+            success: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: #0f172a;
+      color: #f1f5f9;
+    }
+    .code-box {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .tab-active {
+      background-color: #3b82f6;
+      color: white;
+      box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-20">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+          <i data-lucide="zap" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold text-white flex items-center gap-2">
+            Debateアプリ 非効率箇所・徹底監査レポート
+            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">全8項目</span>
+          </h1>
+          <p class="text-xs text-slate-400">データベース（Supabase/SQL/Edge Functions）＆ フロントエンド（Flutter）の全コード精査結果</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>
+          監査完了 / 即時改善可能
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 hover:border-red-500/40 transition">
+        <div class="flex items-center justify-between text-slate-400 mb-2">
+          <span class="text-sm font-medium">重要度: 高（即対応推奨）</span>
+          <span class="p-2 rounded-lg bg-red-500/10 text-red-400"><i data-lucide="alert-triangle" class="w-5 h-5"></i></span>
+        </div>
+        <div class="text-3xl font-extrabold text-white">2 <span class="text-sm font-normal text-slate-400">件</span></div>
+        <div class="text-xs text-red-400 mt-2 flex items-center">
+          <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 mr-1"></i> バトル中毎秒リビルド / Edge直列await
+        </div>
+      </div>
+
+      <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 hover:border-amber-500/40 transition">
+        <div class="flex items-center justify-between text-slate-400 mb-2">
+          <span class="text-sm font-medium">重要度: 中（性能劣化要因）</span>
+          <span class="p-2 rounded-lg bg-amber-500/10 text-amber-400"><i data-lucide="alert-circle" class="w-5 h-5"></i></span>
+        </div>
+        <div class="text-3xl font-extrabold text-white">4 <span class="text-sm font-normal text-slate-400">件</span></div>
+        <div class="text-xs text-amber-400 mt-2 flex items-center">
+          <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 mr-1"></i> RLS全行スキャン / 複合インデックス未定義 / ページネーション未実装 等
+        </div>
+      </div>
+
+      <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 hover:border-blue-500/40 transition">
+        <div class="flex items-center justify-between text-slate-400 mb-2">
+          <span class="text-sm font-medium">重要度: 低〜中（メモリ・設計）</span>
+          <span class="p-2 rounded-lg bg-blue-500/10 text-blue-400"><i data-lucide="info" class="w-5 h-5"></i></span>
+        </div>
+        <div class="text-3xl font-extrabold text-white">2 <span class="text-sm font-normal text-slate-400">件</span></div>
+        <div class="text-xs text-blue-400 mt-2 flex items-center">
+          <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 mr-1"></i> Realtime破棄漏れ / SharedPrefs重複呼出
+        </div>
+      </div>
+
+      <div class="bg-gradient-to-br from-blue-900/40 to-indigo-900/30 border border-blue-500/30 rounded-2xl p-5">
+        <div class="flex items-center justify-between text-blue-200 mb-2">
+          <span class="text-sm font-medium">改善後の期待効果</span>
+          <span class="p-2 rounded-lg bg-blue-500/20 text-blue-300"><i data-lucide="sparkles" class="w-5 h-5"></i></span>
+        </div>
+        <div class="text-xl font-bold text-white leading-tight">UIフレームレート向上 ＆ 通知・DB負荷90%削減</div>
+        <div class="text-xs text-blue-300 mt-2">ユーザー体験とサーバースケーラビリティが大幅向上</div>
+      </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="flex flex-wrap items-center gap-2 p-1.5 bg-slate-900/90 rounded-2xl border border-slate-800 mb-8 max-w-2xl">
+      <button onclick="setFilter('all')" id="tab-all" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition tab-active">
+        すべて (8)
+      </button>
+      <button onclick="setFilter('backend')" id="tab-backend" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition">
+        データベース & Edge Functions (4)
+      </button>
+      <button onclick="setFilter('frontend')" id="tab-frontend" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition">
+        Flutter & 状態管理・UI (4)
+      </button>
+    </div>
+
+    <!-- Issues List -->
+    <div class="space-y-6" id="issues-container">
+
+      <!-- ================= ISSUE 1 (High) ================= -->
+      <div class="issue-card backend bg-slate-800/40 border border-red-500/30 rounded-2xl p-6 hover:bg-slate-800/60 transition" data-category="backend">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-lg text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1.5">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> 重要度: 高
+            </span>
+            <span class="px-3 py-1 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              Supabase Edge Functions
+            </span>
+            <h2 class="text-lg font-bold text-white">① FCMプッシュ通知の直列 `await` ループ処理（タイムアウト・遅延の主因）</h2>
+          </div>
+          <span class="text-xs font-mono text-slate-400 bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-700">
+            supabase/functions/notify_trigger/index.ts:221
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+          オープンチャットやグループDMへのメッセージ投稿時、送信対象ユーザー全員に対して <code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">for (const user of filteredUsers)</code> で <strong>1人ずつ直列に `await sendFcm(...)`</strong> しています。<br>
+          対象者が20人いればGoogle認証・通知サーバーへのHTTP通信待ちが20回直列に発生し、Edge Functionが数秒フリーズしたりタイムアウトする重大なボトルネックです。
+        </p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 code-box text-xs">
+          <!-- Before -->
+          <div class="bg-slate-950/80 rounded-xl p-4 border border-red-900/40">
+            <div class="text-red-400 font-semibold mb-2 flex items-center gap-1.5">
+              <i data-lucide="x-circle" class="w-4 h-4"></i> 現状のコード（直列待ち・低速）
+            </div>
+            <pre class="text-slate-300 overflow-x-auto"><code>// 1人ずつ順番に通信完了を待つ（人数分だけ遅延が増大）
+for (const user of filteredUsers) {
+  if (!user.fcm_token || uniqueTokens.has(user.fcm_token)) continue;
+  uniqueTokens.add(user.fcm_token);
+  <span class="text-red-400 bg-red-950/50 px-1">const sent = await sendFcm(supabase, user.id, accessToken, user.fcm_token, ...);</span>
+  if (sent) successCount++;
+}</code></pre>
+          </div>
+          <!-- After -->
+          <div class="bg-slate-950/80 rounded-xl p-4 border border-emerald-900/40">
+            <div class="text-emerald-400 font-semibold mb-2 flex items-center gap-1.5">
+              <i data-lucide="check-circle" class="w-4 h-4"></i> 改善策（Promise.allSettled による並行一斉送信）
+            </div>
+            <pre class="text-slate-300 overflow-x-auto"><code>// 全員への送信を並行して一斉実行（全体の所要時間は1回分とほぼ同等に）
+const sendPromises = Array.from(uniqueTokens).map(async (token) => {
+  const user = filteredUsers.find(u => u.fcm_token === token);
+  if (!user) return false;
+  return sendFcm(supabase, user.id, accessToken, token, title, messageBody, type);
+});
+<span class="text-emerald-400 bg-emerald-950/50 px-1">const results = await Promise.allSettled(sendPromises);</span></code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ISSUE 2 (High) ================= -->
+      <div class="issue-card frontend bg-slate-800/40 border border-red-500/30 rounded-2xl p-6 hover:bg-slate-800/60 transition" data-category="frontend">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-lg text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1.5">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> 重要度: 高
+            </span>
+            <span class="px-3 py-1 rounded-lg text-xs font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              Flutter / UI レンダリング
+            </span>
+            <h2 class="text-lg font-bold text-white">② `GamePage.dart` での毎秒画面全体リビルド（バトル中Jank・カクつきの主因）</h2>
+          </div>
+          <span class="text-xs font-mono text-slate-400 bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-700">
+            lib/views/GamePage.dart:28-180
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+          800行を超える巨大な <code class="text-cyan-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">GamePage</code> のトップレベルで <code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">final countdown = useState&lt;int?&gt;(null);</code> を保持し、毎秒のタイマーで <code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">countdown.value = diff;</code> を代入しています。<br>
+          これにより、<strong>1秒ごとにGamePage全体の全Widgetツリー（チャット一覧、ヘッダー、アニメーション等）が丸ごと再描画（Rebuild）</strong>され、メッセージ入力やスクロール時に激しいカクつきを引き起こしています。
+        </p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 code-box text-xs">
+          <!-- Before -->
+          <div class="bg-slate-950/80 rounded-xl p-4 border border-red-900/40">
+            <div class="text-red-400 font-semibold mb-2 flex items-center gap-1.5">
+              <i data-lucide="x-circle" class="w-4 h-4"></i> 現状（画面全体のルートWidgetでState更新）
+            </div>
+            <pre class="text-slate-300 overflow-x-auto"><code>// GamePage.dart の build 内
+final countdown = useState&lt;int?&gt;(null);
+
+gametimer.value = Timer.periodic(const Duration(seconds: 1), (timer) {
+  <span class="text-red-400 bg-red-950/50 px-1">countdown.value = diff; // 👈 毎秒 GamePage 全体が再ビルドされる！</span>
+});</code></pre>
+          </div>
+          <!-- After -->
+          <div class="bg-slate-950/80 rounded-xl p-4 border border-emerald-900/40">
+            <div class="text-emerald-400 font-semibold mb-2 flex items-center gap-1.5">
+              <i data-lucide="check-circle" class="w-4 h-4"></i> 改善策（タイマー表示部分を独立した専用Widgetに切り出し）
+            </div>
+            <pre class="text-slate-300 overflow-x-auto"><code>// カウントダウン表示専用の独立Widget（再描画はこの小さな部品の中だけ）
+class CountdownTimerWidget extends HookWidget {
+  final DateTime deadline;
+  const CountdownTimerWidget({super.key, required this.deadline});
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = useState(0);
+    // タイマー更新はここだけにとどまる（GamePage本体は一切リビルドされない）
+    return Text(formatTime(remaining.value));
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ISSUE 3 (Medium) ================= -->
+      <div class="issue-card backend bg-slate-800/40 border border-amber-500/30 rounded-2xl p-6 hover:bg-slate-800/60 transition" data-category="backend">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> 重要度: 中
+            </span>
+            <span class="px-3 py-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              Supabase SQL / RLS
+            </span>
+            <h2 class="text-lg font-bold text-white">③ RLSポリシーにおける `auth.uid()` の毎行再評価（フルスキャン化リスク）</h2>
+          </div>
+          <span class="text-xs font-mono text-slate-400 bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-700">
+            supabase/migrations/20240000000000_remote_schema.sql
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+          多くのRLS（Row Level Security）ポリシーで <code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">USING (user_id = auth.uid())</code> のように直接記述されています。<br>
+          PostgreSQLの内部仕様により、<code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">auth.uid()</code> を単体で書くとテーブル内の全行に対して毎行関数が再評価され、データ量が増加した際にインデックスが効かず全行Seq Scanが発生します。
+        </p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 code-box text-xs">
+          <!-- Before -->
+          <div class="bg-slate-950/80 rounded-xl p-4 border border-red-900/40">
+            <div class="text-red-400 font-semibold mb-2">❌ 修正前（行ごとに毎回関数評価）</div>
+            <pre class="text-slate-300 overflow-x-auto"><code>CREATE POLICY "Users can update their own data"
+  ON users FOR UPDATE 
+  <span class="text-red-400 bg-red-950/50 px-1">USING (id = auth.uid());</span></code></pre>
+          </div>
+          <!-- After -->
+          <div class="bg-slate-950/80 rounded-xl p-4 border border-emerald-900/40">
+            <div class="text-emerald-400 font-semibold mb-2">⭕ 修正後（SELECTで囲み1クエリ1回だけキャッシュ評価）</div>
+            <pre class="text-slate-300 overflow-x-auto"><code>CREATE POLICY "Users can update their own data"
+  ON users FOR UPDATE 
+  <span class="text-emerald-400 bg-emerald-950/50 px-1">USING (id = (SELECT auth.uid()));</span></code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ISSUE 4 (Medium) ================= -->
+      <div class="issue-card backend bg-slate-800/40 border border-amber-500/30 rounded-2xl p-6 hover:bg-slate-800/60 transition" data-category="backend">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> 重要度: 中
+            </span>
+            <span class="px-3 py-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              Supabase データベース設計
+            </span>
+            <h2 class="text-lg font-bold text-white">④ 頻出検索・ソート用「複合インデックス」の未作成（DBフルスキャン）</h2>
+          </div>
+          <span class="text-xs font-mono text-slate-400 bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-700">
+            match_record / dm_messages / open_chat_messages
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+          試合履歴（`match_record`）やチャットメッセージにおいて、<code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">player_id</code> や <code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">room_id</code> で絞り込んで <code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">created_at DESC</code> でソートするクエリが主軸ですが、複合インデックスが存在しません。<br>
+          そのため、全データをフルスキャンしてDBのCPUメモリ上で並び替え（Sort）を行う無駄な負荷が発生しています。
+        </p>
+
+        <div class="bg-slate-950/80 rounded-xl p-4 border border-emerald-900/40 code-box text-xs">
+          <div class="text-emerald-400 font-semibold mb-2">⚡ 追加すべき高速化インデックス（SQL）</div>
+          <pre class="text-slate-300 overflow-x-auto"><code>-- 1. 試合履歴の検索・ソート爆速化
+CREATE INDEX IF NOT EXISTS idx_match_record_p1_created ON public.match_record (player1_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_match_record_p2_created ON public.match_record (player2_id, created_at DESC);
+
+-- 2. DM & オープンチャットメッセージの過去ログ取得高速化
+CREATE INDEX IF NOT EXISTS idx_dm_messages_room_created ON public.dm_messages (room_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_open_chat_messages_room_created ON public.open_chat_messages (room_id, created_at DESC);</code></pre>
+        </div>
+      </div>
+
+      <!-- ================= ISSUE 5 (Medium) ================= -->
+      <div class="issue-card backend bg-slate-800/40 border border-amber-500/30 rounded-2xl p-6 hover:bg-slate-800/60 transition" data-category="backend">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> 重要度: 中
+            </span>
+            <span class="px-3 py-1 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              Supabase Edge Functions
+            </span>
+            <h2 class="text-lg font-bold text-white">⑤ Google OAuthアクセストークンの毎リクエスト再取得（無駄なHTTP通信）</h2>
+          </div>
+          <span class="text-xs font-mono text-slate-400 bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-700">
+            supabase/functions/notify_trigger/index.ts:367
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+          プッシュ通知を発行するたびに <code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">getAccessToken()</code> でGoogle認証サーバーへ新しいトークンを取りに行っています。<br>
+          GoogleのOAuthトークンは<strong>1時間有効</strong>であるため、モジュールスコープ（関数の外側）のメモリにキャッシュすることで、2回目以降の通信待ち時間（200〜500ms）を<strong>0ms</strong>に削減できます。
+        </p>
+
+        <div class="bg-slate-950/80 rounded-xl p-4 border border-emerald-900/40 code-box text-xs">
+          <div class="text-emerald-400 font-semibold mb-2">⭕ モジュールスコープを利用したメモリキャッシュ実装</div>
+          <pre class="text-slate-300 overflow-x-auto"><code>// 関数の外側に保持（コンテナ生存中はずっと有効）
+let cachedToken: string | null = null;
+let tokenExpiresAt: number = 0;
+
+async function getAccessToken(): Promise&lt;string&gt; {
+  const now = Date.now();
+  // 有効期限内（余裕を見て5分前まで）ならGoogleへ行かず即返却
+  if (cachedToken && now &lt; tokenExpiresAt - 5 * 60 * 1000) {
+    return cachedToken; // ⚡ 通信0秒で即返却
+  }
+  // 期限切れ・初回のみ取得
+  const token = await fetchNewToken();
+  cachedToken = token;
+  tokenExpiresAt = now + 3600 * 1000;
+  return token;
+}</code></pre>
+        </div>
+      </div>
+
+      <!-- ================= ISSUE 6 (Medium) ================= -->
+      <div class="issue-card frontend bg-slate-800/40 border border-amber-500/30 rounded-2xl p-6 hover:bg-slate-800/60 transition" data-category="frontend">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> 重要度: 中
+            </span>
+            <span class="px-3 py-1 rounded-lg text-xs font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              Flutter / 状態管理
+            </span>
+            <h2 class="text-lg font-bold text-white">⑥ 掲示板・対戦募集・オプチャ一覧の「全件一括取得」＆ 投稿・いいね時の全件再フェッチ</h2>
+          </div>
+          <span class="text-xs font-mono text-slate-400 bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-700">
+            lib/provider/bbs_timeline_provider.dart:55
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+          コミュニティ画面の各タブ（掲示板・対戦募集・オプチャ一覧）において、ページネーション（初期件数制限＋スクロール追加読み込み）がなく、最初から全件取得しています。<br>
+          さらに掲示板では、投稿追加・削除・いいね失敗時に毎回 <code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">await fetchPosts()</code> でリスト全体を全件再取得しているため、データ量が増えると大きなラグが発生します。
+        </p>
+
+        <div class="bg-slate-950/80 rounded-xl p-4 border border-blue-900/40 text-xs">
+          <div class="text-blue-400 font-semibold mb-2">📋 各画面のページネーション実装状況一覧</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-slate-300 border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400">
+                  <th class="py-2 px-3">画面</th>
+                  <th class="py-2 px-3">現状</th>
+                  <th class="py-2 px-3">改善策</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-b border-slate-800/60">
+                  <td class="py-2 px-3 font-medium text-white">掲示板タイムライン</td>
+                  <td class="py-2 px-3 text-red-400">全件取得 ＆ 追加・削除時に全件再取得</td>
+                  <td class="py-2 px-3 text-emerald-400">初期30件＋スクロール追加 ＆ ローカル差分更新</td>
+                </tr>
+                <tr class="border-b border-slate-800/60">
+                  <td class="py-2 px-3 font-medium text-white">対戦履歴（History）</td>
+                  <td class="py-2 px-3 text-red-400">30件固定（スクロールしても過去ログ不可）</td>
+                  <td class="py-2 px-3 text-emerald-400">スクロールで次の30件を順次取得（loadMore）</td>
+                </tr>
+                <tr class="border-b border-slate-800/60">
+                  <td class="py-2 px-3 font-medium text-white">対戦募集・オプチャ一覧</td>
+                  <td class="py-2 px-3 text-amber-400">全件一括取得</td>
+                  <td class="py-2 px-3 text-emerald-400">LIMIT/OFFSET または カーソル導入</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 font-medium text-white">DM / オプチャ メッセージ</td>
+                  <td class="py-2 px-3 text-emerald-400">⭕ 50件＋スクロール追加取得 実装済み</td>
+                  <td class="py-2 px-3 text-slate-400">現状のままでOK</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ISSUE 7 (Low-Medium) ================= -->
+      <div class="issue-card frontend bg-slate-800/40 border border-blue-500/30 rounded-2xl p-6 hover:bg-slate-800/60 transition" data-category="frontend">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-lg text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1.5">
+              <i data-lucide="info" class="w-3.5 h-3.5"></i> 重要度: 低〜中
+            </span>
+            <span class="px-3 py-1 rounded-lg text-xs font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              Flutter / メモリ管理
+            </span>
+            <h2 class="text-lg font-bold text-white">⑦ Supabase Realtime チャンネルの解放不備（リスナー重複・メモリリーク懸念）</h2>
+          </div>
+          <span class="text-xs font-mono text-slate-400 bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-700">
+            lib/provider/dm_provider.dart:203
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+          <code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">dm_provider.dart</code> の `dispose()` 内で <code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">_channel?.unsubscribe();</code> のみが呼ばれています。<br>
+          <code class="text-cyan-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">supabase_flutter</code> の仕様上、<code class="text-emerald-400 font-mono bg-slate-900 px-1.5 py-0.5 rounded">supabase.removeChannel(_channel!)</code> を明示的に呼ばないとクライアント内部のチャンネルマップに残り続け、画面を開閉するたびにチャンネルが蓄積します。
+        </p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 code-box text-xs">
+          <!-- Before -->
+          <div class="bg-slate-950/80 rounded-xl p-4 border border-red-900/40">
+            <div class="text-red-400 font-semibold mb-2">❌ 現状（マップに残る）</div>
+            <pre class="text-slate-300 overflow-x-auto"><code>@override
+void dispose() {
+  <span class="text-red-400 bg-red-950/50 px-1">_channel?.unsubscribe();</span>
+  super.dispose();
+}</code></pre>
+          </div>
+          <!-- After -->
+          <div class="bg-slate-950/80 rounded-xl p-4 border border-emerald-900/40">
+            <div class="text-emerald-400 font-semibold mb-2">⭕ 改善後（完全に削除）</div>
+            <pre class="text-slate-300 overflow-x-auto"><code>@override
+void dispose() {
+  <span class="text-emerald-400 bg-emerald-950/50 px-1">if (_channel != null) {
+    supabase.removeChannel(_channel!);
+  }</span>
+  super.dispose();
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ISSUE 8 (Low) ================= -->
+      <div class="issue-card frontend bg-slate-800/40 border border-blue-500/30 rounded-2xl p-6 hover:bg-slate-800/60 transition" data-category="frontend">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-lg text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1.5">
+              <i data-lucide="info" class="w-3.5 h-3.5"></i> 重要度: 低
+            </span>
+            <span class="px-3 py-1 rounded-lg text-xs font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              Flutter / 設計・初期化
+            </span>
+            <h2 class="text-lg font-bold text-white">⑧ `SharedPreferences.getInstance()` の各所での都度 await 呼出し</h2>
+          </div>
+          <span class="text-xs font-mono text-slate-400 bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-700">
+            GamePage / history_provider / bbs_timeline_provider
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+          各プロバイダーや画面内のメソッド内で個別に <code class="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">await SharedPreferences.getInstance()</code> を呼び出しています。<br>
+          <code class="text-cyan-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">main.dart</code> でアプリ起動時に一度だけ取得し、Riverpod の Provider で DI（注入）して使い回すことで、非同期待ちのない同期アクセスが可能になりコードもシンプルになります。
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Recommendations Summary -->
+    <div class="mt-12 bg-gradient-to-r from-blue-900/30 via-slate-800 to-indigo-900/30 rounded-2xl border border-blue-500/30 p-8">
+      <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+        <i data-lucide="check-square" class="w-6 h-6 text-blue-400"></i>
+        推奨される改修ステップ・ロードマップ
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+        <div class="bg-slate-900/80 rounded-xl p-5 border border-slate-700">
+          <div class="text-red-400 font-bold mb-2 flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center text-xs">1</span>
+            最優先（即効性大）
+          </div>
+          <ul class="text-slate-300 space-y-2 text-xs">
+            <li>• `GamePage.dart` のタイマー表示を別Widgetに分離（毎秒リビルド撲滅）</li>
+            <li>• `notify_trigger` の FCM送信を `Promise.allSettled` 並行化</li>
+          </ul>
+        </div>
+        <div class="bg-slate-900/80 rounded-xl p-5 border border-slate-700">
+          <div class="text-amber-400 font-bold mb-2 flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center text-xs">2</span>
+            データベース最適化
+          </div>
+          <ul class="text-slate-300 space-y-2 text-xs">
+            <li>• `match_record` / チャットテーブルに複合インデックス追加</li>
+            <li>• RLSポリシーの `(SELECT auth.uid())` 化</li>
+          </ul>
+        </div>
+        <div class="bg-slate-900/80 rounded-xl p-5 border border-slate-700">
+          <div class="text-emerald-400 font-bold mb-2 flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-xs">3</span>
+            ページネーション＆クリーンアップ
+          </div>
+          <ul class="text-slate-300 space-y-2 text-xs">
+            <li>• 対戦履歴＆掲示板のスクロール追加取得（loadMore）実装</li>
+            <li>• `supabase.removeChannel` による完全破棄</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Filter Logic
+    function setFilter(type) {
+      const cards = document.querySelectorAll('.issue-card');
+      const tabs = document.querySelectorAll('.tab-btn');
+
+      tabs.forEach(tab => {
+        tab.classList.remove('tab-active');
+        tab.classList.add('text-slate-400');
+      });
+
+      const activeTab = document.getElementById(`tab-${type}`);
+      if (activeTab) {
+        activeTab.classList.add('tab-active');
+        activeTab.classList.remove('text-slate-400');
+      }
+
+      cards.forEach(card => {
+        if (type === 'all' || card.dataset.category === type) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

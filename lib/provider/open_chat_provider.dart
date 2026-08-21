@@ -159,6 +159,13 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
   }
 }
 
+/// 説明文などから #ハッシュタグ を抽出するユーティリティ関数
+List<String> extractTagsFromDescription(String text) {
+  final regExp = RegExp(r'#([^\s#]+)');
+  final matches = regExp.allMatches(text);
+  return matches.map((m) => m.group(1)!).toSet().toList();
+}
+
 // 3. アクション（作成、参加、送信など）を行うNotifier
 class OpenChatActionNotifier extends AutoDisposeNotifier<void> {
   @override
@@ -186,15 +193,24 @@ class OpenChatActionNotifier extends AutoDisposeNotifier<void> {
     }
   }
 
-  Future<String?> createRoom(String name, String description, String? iconUrl, {String? backgroundUrl, String? password}) async {
+  Future<String?> createRoom(
+    String name,
+    String description,
+    String? iconUrl, {
+    String? backgroundUrl,
+    String? password,
+    List<String>? tags,
+  }) async {
     final supabase = ref.read(supabaseProvider);
     try {
+      final effectiveTags = tags ?? extractTagsFromDescription(description);
       final response = await supabase.rpc('create_open_chat_room', params: {
         'p_name': name,
         'p_description': description,
         'p_icon_url': iconUrl,
         'p_background_url': backgroundUrl,
         'p_password': password,
+        'p_tags': effectiveTags,
       });
       
       if (response['success'] == true) {

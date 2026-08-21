@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>観戦機能 流れるコメントUIデザイン案プレビュー</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts: Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+
+    /* スマホ画面内のアニメーション（等速移動） */
+    @keyframes flowComment {
+      0% {
+        transform: translateX(360px);
+        opacity: 0;
+      }
+      5% {
+        opacity: 1;
+      }
+      95% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateX(-120%);
+        opacity: 0;
+      }
+    }
+
+    .animate-flow {
+      animation-name: flowComment;
+      animation-timing-function: linear; /* ★等速 */
+      animation-fill-mode: forwards;
+    }
+
+    /* UIスタイル案別のCSS */
+    /* 案A: ニコニコ・弾幕風 (Text Only with Heavy Outline) */
+    .style-danmaku {
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 16px;
+      text-shadow:
+        -1.5px -1.5px 0 #000,
+         1.5px -1.5px 0 #000,
+        -1.5px  1.5px 0 #000,
+         1.5px  1.5px 0 #000,
+         0px 2px 4px rgba(0,0,0,0.8);
+      white-space: nowrap;
+      padding: 2px 4px;
+    }
+
+    /* 案B: ダーク・フロストピル (Glassmorphism Minimal Pill) */
+    .style-frost-pill {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      color: #ffffff;
+      border-radius: 9999px;
+      padding: 6px 14px;
+      font-weight: 700;
+      font-size: 13.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    /* 案C: ネオン・サイバーゲーミング風 (Neon Glow) */
+    .style-neon {
+      background: rgba(10, 15, 30, 0.85);
+      border: 1.5px solid #00f0ff;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.4), inset 0 0 6px rgba(0, 240, 255, 0.2);
+      color: #ffffff;
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-weight: 700;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    /* 案D: ポップ・コミックバブル風 (Pop Comic Badge) */
+    .style-pop {
+      background: #ffffff;
+      color: #1e293b;
+      border: 2px solid #f59e0b;
+      box-shadow: 0 4px 0 #d97706;
+      border-radius: 16px;
+      padding: 5px 14px;
+      font-weight: 900;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    /* 案E: ミニマル・タグ風 (Ultra Compact Tag) */
+    .style-compact {
+      background: rgba(0, 0, 0, 0.6);
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-weight: 600;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    /* チャット吹き出し用 */
+    .bubble-player2 {
+      background-color: #0D47A1;
+      color: white;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 4px;
+    }
+    .bubble-player1 {
+      background-color: white;
+      color: #1e293b;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      border-bottom-left-radius: 4px;
+      border-bottom-right-radius: 16px;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+  <div class="max-w-6xl mx-auto">
+    <!-- ヘッダー -->
+    <header class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-6">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="bg-blue-600 text-white text-xs px-2.5 py-1 rounded-full font-bold">Resba Watch UI</span>
+          <h1 class="text-2xl md:text-3xl font-black">観戦画面「流れるコメント」デザイン案</h1>
+        </div>
+        <p class="text-slate-400 text-sm mt-1">
+          等速（Linear）アニメーション対応 ＆ デザインバリエーション比較シミュレーター
+        </p>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-slate-400 bg-slate-800/80 px-3 py-2 rounded-lg border border-slate-700">
+        <i class="fa-solid fa-bolt text-yellow-400"></i>
+        <span>右のスマホ画面でリアルタイムにコメント送信＆プレビューが可能です</span>
+      </div>
+    </header>
+
+    <!-- メインコンテンツグリッド -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+      <!-- 左側：デザイン案の選択＆比較パネル (7カラム) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- スタイル選択カード -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+          <h2 class="text-lg font-bold flex items-center gap-2 mb-4 text-blue-400">
+            <i class="fa-solid fa-palette"></i>
+            デザイン案を選択（クリックで切り替え）
+          </h2>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="styleOptions">
+
+            <!-- 案A -->
+            <button onclick="selectStyle('danmaku')" id="opt-danmaku" class="style-btn text-left p-4 rounded-xl border-2 border-blue-500 bg-blue-500/10 transition hover:bg-blue-500/20 relative group">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-white text-sm">【案A】ニコニコ・弾幕風</span>
+                <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded font-bold">おすすめ</span>
+              </div>
+              <p class="text-xs text-slate-300 mb-3">背景なし・白文字＋黒太フチ。対戦チャットの視認性を邪魔せずコメントが自然に流れます。</p>
+              <div class="bg-blue-600/40 p-2.5 rounded-lg flex justify-center items-center h-10 overflow-hidden">
+                <span class="style-danmaku text-sm">正論すぎて草ｗｗ</span>
+              </div>
+            </button>
+
+            <!-- 案B -->
+            <button onclick="selectStyle('frost-pill')" id="opt-frost-pill" class="style-btn text-left p-4 rounded-xl border border-slate-700 bg-slate-800/60 transition hover:border-slate-500 relative group">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-white text-sm">【案B】ダーク・フロストピル</span>
+              </div>
+              <p class="text-xs text-slate-300 mb-3">半透明ダーク＋すりガラス背景。現在のピルをモダンかつスタイリッシュに洗練。</p>
+              <div class="bg-blue-600/40 p-2.5 rounded-lg flex justify-center items-center h-10 overflow-hidden">
+                <span class="style-frost-pill !text-xs !py-1 !px-2.5">
+                  <i class="fa-solid fa-bullhorn text-yellow-400 text-xs"></i>
+                  <span>いいぞもっと言え！</span>
+                </span>
+              </div>
+            </button>
+
+            <!-- 案C -->
+            <button onclick="selectStyle('neon')" id="opt-neon" class="style-btn text-left p-4 rounded-xl border border-slate-700 bg-slate-800/60 transition hover:border-slate-500 relative group">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-white text-sm">【案C】ネオン・ゲーミング風</span>
+              </div>
+              <p class="text-xs text-slate-300 mb-3">サイバーシアンの発光ボーダー。eスポーツや対戦ゲームの熱気を演出。</p>
+              <div class="bg-blue-600/40 p-2.5 rounded-lg flex justify-center items-center h-10 overflow-hidden">
+                <span class="style-neon !text-xs !py-1 !px-2.5">
+                  <i class="fa-solid fa-fire text-cyan-400 text-xs"></i>
+                  <span>ここから逆転あるぞ</span>
+                </span>
+              </div>
+            </button>
+
+            <!-- 案D -->
+            <button onclick="selectStyle('pop')" id="opt-pop" class="style-btn text-left p-4 rounded-xl border border-slate-700 bg-slate-800/60 transition hover:border-slate-500 relative group">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-white text-sm">【案D】ポップ・コミック風</span>
+              </div>
+              <p class="text-xs text-slate-300 mb-3">白地＋オレンジの角丸バッジ。賑やかで親しみやすいヤジ・応援スタイル。</p>
+              <div class="bg-blue-600/40 p-2.5 rounded-lg flex justify-center items-center h-10 overflow-hidden">
+                <span class="style-pop !text-xs !py-1 !px-2.5">
+                  <i class="fa-solid fa-comment-dots text-amber-500 text-xs"></i>
+                  <span>論点ズレてて草</span>
+                </span>
+              </div>
+            </button>
+
+            <!-- 案E -->
+            <button onclick="selectStyle('compact')" id="opt-compact" class="style-btn text-left p-4 rounded-xl border border-slate-700 bg-slate-800/60 transition hover:border-slate-500 relative group sm:col-span-2">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-white text-sm">【案E】ミニマル・フローティングタグ</span>
+              </div>
+              <p class="text-xs text-slate-300 mb-2">小型・控えめサイズ（12px）。複数流れても対戦チャットを全く邪魔しない実用性重視。</p>
+              <div class="bg-blue-600/40 p-2 rounded-lg flex justify-center items-center h-9 overflow-hidden">
+                <span class="style-compact">
+                  <i class="fa-regular fa-comment text-slate-300 text-xs"></i>
+                  <span>それは確かにそう</span>
+                </span>
+              </div>
+            </button>
+
+          </div>
+        </div>
+
+        <!-- コメントテスト＆シミュレーター操作 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+          <h2 class="text-lg font-bold flex items-center gap-2 text-cyan-400">
+            <i class="fa-solid fa-sliders"></i>
+            テスト送信＆シミュレーション
+          </h2>
+
+          <div class="flex flex-col sm:flex-row gap-3">
+            <input 
+              type="text" 
+              id="customCommentInput" 
+              maxlength="20" 
+              placeholder="好きなコメントを入力（最大20文字）"
+              class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+              value="ナイス反論！"
+            >
+            <button 
+              onclick="sendCustomComment()" 
+              class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30"
+            >
+              <i class="fa-solid fa-paper-plane"></i>
+              送信して流す
+            </button>
+          </div>
+
+          <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
+            <span class="text-xs text-slate-400 flex items-center gap-1 mr-1">クイック送信:</span>
+            <button onclick="sendQuickComment('正論すぎるｗｗ')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700">正論すぎるｗｗ</button>
+            <button onclick="sendQuickComment('それは反則だろ！')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700">それは反則だろ！</button>
+            <button onclick="sendQuickComment('Bの勝ち確！')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700">Bの勝ち確！</button>
+            <button onclick="sendQuickComment('いい勝負してるな')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700">いい勝負してるな</button>
+          </div>
+
+          <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+            <div class="flex items-center gap-4">
+              <label class="text-xs text-slate-300 font-bold flex items-center gap-2">
+                流れる速度:
+                <select id="speedSelect" onchange="updateSpeed(this.value)" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white">
+                  <option value="3.2">高速 (3.2秒)</option>
+                  <option value="4.0" selected>標準・等速 (4.0秒)</option>
+                  <option value="5.2">ゆったり (5.2秒)</option>
+                </select>
+              </label>
+            </div>
+            <button 
+              id="autoStreamBtn"
+              onclick="toggleAutoStream()" 
+              class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5"
+            >
+              <i class="fa-solid fa-play"></i>
+              <span>自動で連続コメントを流す</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 特徴・仕様まとめ -->
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 text-xs text-slate-400 space-y-2">
+          <div class="font-bold text-slate-300 flex items-center gap-1.5 text-sm mb-1">
+            <i class="fa-solid fa-circle-info text-blue-400"></i>
+            現在の実装仕様との対応
+          </div>
+          <p>• <strong>等速移動 (Curves.linear)</strong>: 加速度（慣性）をなくし、画面右外から左外まで一定スピードでサラサラ流れるように対応済みです。</p>
+          <p>• <strong>文字数制限</strong>: 20文字までに拡張済みです。</p>
+          <p>• <strong>Flutterでの実装</strong>: お好みのUI案を選択いただければ、`floating_spectator_comments.dart` の装飾（Decoration / TextStyle）をそのデザインに差し替えます。</p>
+        </div>
+
+      </div>
+
+      <!-- 右側：スマホ実機風プレビュー画面 (5カラム) -->
+      <div class="lg:col-span-5 flex justify-center">
+        
+        <!-- スマホフレーム -->
+        <div class="w-[360px] h-[720px] bg-black rounded-[40px] p-3 shadow-2xl border-4 border-slate-700 relative overflow-hidden flex flex-col">
+          
+          <!-- ノッチ/ダイナミックアイランド -->
+          <div class="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-5 bg-black rounded-full z-50 flex items-center justify-center">
+            <div class="w-2.5 h-2.5 bg-slate-900 rounded-full border border-slate-800"></div>
+          </div>
+
+          <!-- アプリ本体画面 (Blue背景) -->
+          <div class="w-full h-full bg-[#2196F3] rounded-[30px] flex flex-col relative overflow-hidden text-white select-none">
+            
+            <!-- 上部 AppBar -->
+            <div class="pt-7 pb-2 px-3 flex items-center justify-between border-b border-white/10 relative z-20">
+              <!-- 左: 選択肢アイコン -->
+              <button onclick="toggleChoicePopup()" class="flex items-center gap-1 text-white hover:opacity-80 transition">
+                <i class="fa-solid fa-shapes text-sm"></i>
+                <span class="font-bold text-sm">選択肢</span>
+              </button>
+
+              <!-- 中央: タイマー -->
+              <div class="bg-slate-200 text-slate-800 px-3 py-1 rounded-2xl flex items-center gap-1.5 shadow-sm">
+                <i class="fa-regular fa-clock text-xs text-slate-700"></i>
+                <span class="font-black text-sm tracking-wider" id="previewTimer">9:42</span>
+              </div>
+
+              <!-- 右: コメントトグル & 退出 -->
+              <div class="flex items-center gap-2">
+                <button class="text-white hover:opacity-80 transition"><i class="fa-regular fa-message text-sm"></i></button>
+                <button class="text-white hover:opacity-80 transition"><i class="fa-solid fa-door-open text-base"></i></button>
+              </div>
+            </div>
+
+            <!-- 選択肢展開オーバーレイ (タップ時) -->
+            <div id="choicePopup" class="hidden absolute top-14 left-0 right-0 bg-[#1E88E5] px-4 py-2 text-xs font-bold z-30 shadow-md border-b border-white/20 flex items-center gap-2">
+              <i class="fa-solid fa-shapes text-xs"></i>
+              <span class="truncate">ホスト: きのこ派  /  挑戦者: たけのこ派</span>
+              <button onclick="toggleChoicePopup()" class="ml-auto text-white/70 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- テーマカード -->
+            <div class="mx-3 my-2 bg-slate-200 text-slate-900 rounded-2xl py-2 px-3 text-center shadow-sm z-10">
+              <div class="text-[10px] text-slate-500 font-bold">THEME</div>
+              <div class="font-black text-sm leading-tight">きのこの山 vs たけのこの里 どっちが至高か？</div>
+            </div>
+
+            <!-- チャット履歴エリア -->
+            <div class="flex-1 bg-[#1976D2] rounded-t-3xl p-3 overflow-y-auto space-y-3 relative z-10 flex flex-col justify-end">
+              
+              <!-- 相手（ホスト/player1）のメッセージ -->
+              <div class="flex items-start gap-2 max-w-[85%]">
+                <div class="w-8 h-8 rounded-full bg-slate-300 border border-white flex items-center justify-center text-slate-700 text-xs font-bold shrink-0">
+                  <i class="fa-solid fa-user"></i>
+                </div>
+                <div class="bubble-player1 px-3.5 py-2 text-xs font-medium shadow-sm">
+                  きのこの山の方がチョコの純粋な味を楽しめるから上だろ。
+                </div>
+              </div>
+
+              <!-- 自分側（挑戦者/player2）のメッセージ -->
+              <div class="flex items-start justify-end gap-2 max-w-[85%] ml-auto">
+                <div class="bubble-player2 px-3.5 py-2 text-xs font-medium shadow-sm">
+                  クッキーとチョコの比率の黄金比がたけのこの里の圧倒的勝利なんだよなぁ
+                </div>
+              </div>
+
+              <!-- 相手（ホスト/player1）のメッセージ -->
+              <div class="flex items-start gap-2 max-w-[85%]">
+                <div class="w-8 h-8 rounded-full bg-slate-300 border border-white flex items-center justify-center text-slate-700 text-xs font-bold shrink-0">
+                  <i class="fa-solid fa-user"></i>
+                </div>
+                <div class="bubble-player1 px-3.5 py-2 text-xs font-medium shadow-sm">
+                  手が汚れないメリットを完全に無視してる時点で論外。
+                </div>
+              </div>
+
+            </div>
+
+            <!-- 流れるコメントレイヤー (Stack overlay) -->
+            <div id="commentOverlay" class="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+              <!-- コメントがJSでここに追加されます -->
+            </div>
+
+            <!-- 下部：観戦コメント入力バー -->
+            <div class="bg-white p-2 flex items-center gap-1.5 border-t border-slate-200 z-20">
+              <div class="flex-1 bg-slate-100 border border-slate-300 rounded-full px-3 py-1.5 flex items-center justify-between">
+                <input 
+                  type="text" 
+                  id="phoneInput" 
+                  placeholder="コメントする" 
+                  maxlength="20"
+                  class="bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none w-full"
+                  onkeydown="if(event.key==='Enter') sendFromPhone()"
+                >
+                <span class="text-[10px] text-slate-400 font-bold ml-1" id="phoneCharCount">20</span>
+              </div>
+              <button onclick="sendFromPhone()" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow hover:bg-blue-700 transition shrink-0">
+                <i class="fa-solid fa-paper-plane text-xs"></i>
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // 現在のスタイル設定
+    let currentStyle = 'danmaku';
+    let flowDuration = 4.0; // 秒（等速）
+    let autoInterval = null;
+    let lastLane = 0;
+
+    // スタイル選択
+    function selectStyle(styleName) {
+      currentStyle = styleName;
+      document.querySelectorAll('.style-btn').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'bg-blue-500/10', 'border-2');
+        btn.classList.add('border-slate-700', 'bg-slate-800/60');
+      });
+
+      const activeBtn = document.getElementById('opt-' + styleName);
+      if (activeBtn) {
+        activeBtn.classList.add('border-blue-500', 'bg-blue-500/10', 'border-2');
+        activeBtn.classList.remove('border-slate-700', 'bg-slate-800/60');
+      }
+
+      // サンプルコメントをすぐ1つ流す
+      addFloatingComment("デザインを「" + styleName + "」に変更しました");
+    }
+
+    // 速度更新
+    function updateSpeed(speed) {
+      flowDuration = parseFloat(speed);
+    }
+
+    // 流れるコメントを生成してDOMに追加
+    function addFloatingComment(text) {
+      const overlay = document.getElementById('commentOverlay');
+      if (!overlay) return;
+
+      const el = document.createElement('div');
+      el.className = 'absolute animate-flow';
+      el.style.animationDuration = flowDuration + 's';
+
+      // 画面上部から適度に散らす（重なり防止レーン: 120px ~ 420px）
+      const lanes = [110, 150, 190, 230, 270, 310, 350, 390];
+      let laneIndex;
+      do {
+        laneIndex = Math.floor(Math.random() * lanes.length);
+      } while (laneIndex === lastLane && lanes.length > 1);
+      lastLane = laneIndex;
+
+      el.style.top = lanes[laneIndex] + 'px';
+
+      // スタイルクラスの適用
+      let contentHtml = '';
+      if (currentStyle === 'danmaku') {
+        el.className += ' style-danmaku';
+        contentHtml = text;
+      } else if (currentStyle === 'frost-pill') {
+        el.className += ' style-frost-pill';
+        contentHtml = `<i class="fa-solid fa-bullhorn text-yellow-400 text-xs"></i><span>${text}</span>`;
+      } else if (currentStyle === 'neon') {
+        el.className += ' style-neon';
+        contentHtml = `<i class="fa-solid fa-fire text-cyan-400 text-xs"></i><span>${text}</span>`;
+      } else if (currentStyle === 'pop') {
+        el.className += ' style-pop';
+        contentHtml = `<i class="fa-solid fa-comment-dots text-amber-500 text-xs"></i><span>${text}</span>`;
+      } else if (currentStyle === 'compact') {
+        el.className += ' style-compact';
+        contentHtml = `<i class="fa-regular fa-comment text-slate-300 text-xs"></i><span>${text}</span>`;
+      }
+
+      el.innerHTML = contentHtml;
+      overlay.appendChild(el);
+
+      // アニメーション完了後にDOMから削除
+      setTimeout(() => {
+        el.remove();
+      }, flowDuration * 1000 + 200);
+    }
+
+    // カスタムコメント送信
+    function sendCustomComment() {
+      const input = document.getElementById('customCommentInput');
+      const val = input.value.trim();
+      if (!val) return;
+      addFloatingComment(val);
+      input.value = '';
+    }
+
+    // クイック送信
+    function sendQuickComment(text) {
+      addFloatingComment(text);
+    }
+
+    // スマホ画面からの送信
+    function sendFromPhone() {
+      const input = document.getElementById('phoneInput');
+      const val = input.value.trim();
+      if (!val) return;
+      addFloatingComment(val);
+      input.value = '';
+      document.getElementById('phoneCharCount').textContent = '20';
+    }
+
+    // 文字数カウント連動
+    document.getElementById('phoneInput').addEventListener('input', function(e) {
+      const remain = 20 - e.target.value.length;
+      document.getElementById('phoneCharCount').textContent = remain;
+    });
+
+    // 選択肢ポップアップトグル
+    function toggleChoicePopup() {
+      const popup = document.getElementById('choicePopup');
+      popup.classList.toggle('hidden');
+    }
+
+    // 自動ストリーム
+    const sampleComments = [
+      "草", "それな", "正論パンチ炸裂", "たけのこ派が優勢か？", 
+      "きのこ派頑張れー！", "これはいいレスバ", "どっちも美味しいだろ", 
+      "反論になってなくて草", "手が汚れないのは大事", "判定どうなる！？"
+    ];
+
+    function toggleAutoStream() {
+      const btn = document.getElementById('autoStreamBtn');
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        btn.classList.remove('bg-rose-600', 'hover:bg-rose-500');
+        btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+        btn.innerHTML = `<i class="fa-solid fa-play"></i><span>自動で連続コメントを流す</span>`;
+      } else {
+        btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+        btn.classList.add('bg-rose-600', 'hover:bg-rose-500');
+        btn.innerHTML = `<i class="fa-solid fa-stop"></i><span>ストリームを停止</span>`;
+        
+        // 初回即座に送信
+        addFloatingComment(sampleComments[Math.floor(Math.random() * sampleComments.length)]);
+        
+        // 1.2秒〜2.0秒ごとにランダム送信
+        autoInterval = setInterval(() => {
+          const randText = sampleComments[Math.floor(Math.random() * sampleComments.length)];
+          addFloatingComment(randText);
+        }, 1500);
+      }
+    }
+
+    // 初期起動時サンプルコメント
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => addFloatingComment("観戦スタート！"), 600);
+      setTimeout(() => addFloatingComment("どっちが勝つかな？"), 1800);
+    });
+  </script>
+</body>
+</html>

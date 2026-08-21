@@ -19,6 +19,11 @@ class OpenChatPreviewPage extends HookConsumerWidget {
     // パスワードが設定されているかどうかの判定 (空文字でない場合)
     final bool hasPassword = room.password != null && room.password!.isNotEmpty;
 
+    // タグ一覧（room.tags または説明文から抽出）
+    final tags = (room.tags != null && room.tags!.isNotEmpty)
+        ? room.tags!
+        : (room.description != null ? extractTagsFromDescription(room.description!) : <String>[]);
+
     Future<void> handleJoin() async {
       // 合言葉のチェック
       if (hasPassword && passwordController.text != room.password) {
@@ -51,14 +56,10 @@ class OpenChatPreviewPage extends HookConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('オープンチャット', style: AppTextStyles.bold(fontSize: 18, color: Colors.black)),
-        backgroundColor: Colors.white,
+        title: Text('オープンチャット', style: AppTextStyles.bold(fontSize: 18, color: Colors.white)),
+        backgroundColor: Colors.blue,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
-        ],
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Column(
         children: [
@@ -72,11 +73,11 @@ class OpenChatPreviewPage extends HookConsumerWidget {
                     Image.network(
                       room.backgroundUrl!,
                       width: double.infinity,
-                      height: 250,
+                      height: 220,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
                         width: double.infinity,
-                        height: 250,
+                        height: 220,
                         color: Colors.grey[300],
                         child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
                       ),
@@ -84,63 +85,136 @@ class OpenChatPreviewPage extends HookConsumerWidget {
                   else
                     Container(
                       width: double.infinity,
-                      height: 250,
-                      color: Colors.grey[200],
+                      height: 220,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFE3F2FD), Color(0xFFEDE7F6)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
                       child: const Center(
-                        child: Icon(Icons.forum, size: 80, color: Colors.grey),
+                        child: Icon(Icons.forum_rounded, size: 70, color: Colors.blueAccent),
                       ),
                     ),
                   
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   
-                  // タイトル
+                  // ルーム名
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
                     child: Text(
                       room.name,
-                      style: AppTextStyles.bold(fontSize: 22, color: Colors.black87),
+                      style: AppTextStyles.bold(fontSize: 20, color: Colors.black87),
                       textAlign: TextAlign.center,
                     ),
                   ),
                   
                   const SizedBox(height: 8),
                   
-                  // メンバー数
-                  Text(
-                    'メンバー ${room.memberCount ?? 0}',
-                    style: AppTextStyles.notoSans(fontSize: 14, color: Colors.black54),
+                  // メンバー数 & 合言葉バッジ
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.people_alt_outlined, size: 16, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'メンバー ${room.memberCount ?? 0}',
+                        style: AppTextStyles.notoSans(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                      if (hasPassword) ...[
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.lock, size: 12, color: Color(0xFFD97706)),
+                              SizedBox(width: 3),
+                              Text(
+                                '合言葉あり',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFD97706)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   
+                  // ハッシュタグチップ一覧
+                  if (tags.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: tags.map((tag) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Text(
+                              '#$tag',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 16),
                   
                   // 説明文
                   if (room.description != null && room.description!.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                      child: Text(
-                        room.description!,
-                        style: AppTextStyles.notoSans(fontSize: 14, color: Colors.black87),
-                        textAlign: TextAlign.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 28.0),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Text(
+                          room.description!,
+                          style: AppTextStyles.notoSans(fontSize: 13, color: Colors.black87, height: 1.5),
+                          textAlign: TextAlign.start,
+                        ),
                       ),
                     ),
                     
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
 
                   // パスワード入力欄 (パスワード設定がある場合)
                   if (hasPassword) ...[
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 28.0),
                       child: TextField(
                         controller: passwordController,
                         obscureText: true,
                         decoration: InputDecoration(
                           labelText: '合言葉を入力してください',
-                          prefixIcon: const Icon(Icons.lock_outline),
+                          prefixIcon: const Icon(Icons.key_rounded, color: Color(0xFFD97706)),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                           filled: true,
-                          fillColor: Colors.grey[50],
+                          fillColor: const Color(0xFFF8FAFC),
                         ),
                       ),
                     ),
@@ -156,9 +230,13 @@ class OpenChatPreviewPage extends HookConsumerWidget {
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(
-                top: BorderSide(color: Colors.grey[200]!),
-              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -4),
+                ),
+              ],
             ),
             child: SizedBox(
               width: double.infinity,
@@ -166,20 +244,20 @@ class OpenChatPreviewPage extends HookConsumerWidget {
               child: ElevatedButton(
                 onPressed: isLoading.value ? null : handleJoin,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue, // 緑ではなく青色にする
+                  backgroundColor: Colors.blue,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   elevation: 0,
                 ),
                 child: isLoading.value
                     ? const SizedBox(
-                        width: 24,
-                        height: 24,
+                        width: 22,
+                        height: 22,
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
                     : Text(
-                        '参加',
+                        '参加する',
                         style: AppTextStyles.bold(color: Colors.white, fontSize: 16),
                       ),
               ),

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オープンチャット作成 (ダークモダン)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-[#0f1115] text-gray-300 min-h-screen font-sans">
+    <header class="flex items-center justify-between p-4 border-b border-gray-800/60 bg-[#0f1115]/80 backdrop-blur-xl sticky top-0 z-50">
+        <button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-800 transition">
+            <i class="fas fa-arrow-left text-gray-400"></i>
+        </button>
+        <h1 class="text-white font-medium tracking-wide text-lg">New Space</h1>
+        <button class="text-brand-400 font-medium text-sm px-2">Cancel</button>
+    </header>
+
+    <main class="max-w-md mx-auto p-5 pb-28 pt-6">
+        <!-- アートワーク設定 -->
+        <div class="mb-10">
+            <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-3 ml-2">Visuals</h2>
+            <div class="relative w-full h-44 bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl border border-gray-700/50 overflow-hidden group cursor-pointer hover:border-brand-500/50 transition duration-300 shadow-lg">
+                <!-- 背景 -->
+                <div class="absolute inset-0 flex flex-col items-center justify-center opacity-40 group-hover:opacity-100 transition duration-300">
+                    <i class="fas fa-image text-4xl mb-3 text-gray-500 group-hover:text-brand-400 drop-shadow-lg"></i>
+                    <span class="text-xs font-medium text-gray-400 bg-gray-900/50 px-3 py-1.5 rounded-full backdrop-blur-sm">Add Cover Image</span>
+                </div>
+                <!-- アイコン -->
+                <div class="absolute -bottom-1 left-4 w-20 h-20 bg-gray-900 rounded-2xl border border-gray-700 flex items-center justify-center shadow-xl group-hover:border-brand-500/50 transition duration-300 z-10 translate-y-1/2">
+                    <i class="fas fa-user-circle text-3xl text-gray-600"></i>
+                    <div class="absolute -top-2 -right-2 w-7 h-7 bg-brand-500 rounded-full flex items-center justify-center shadow-lg border-2 border-gray-900">
+                        <i class="fas fa-plus text-white text-[10px]"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ルーム情報 -->
+        <div class="mb-10 space-y-6 mt-14">
+            <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-3 ml-2">Details</h2>
+            
+            <div class="group relative bg-gray-800/30 rounded-2xl p-4 border border-gray-700/50 focus-within:border-brand-500/50 focus-within:bg-gray-800/50 transition duration-300">
+                <input type="text" id="roomName" class="w-full bg-transparent pt-4 pb-1 text-white text-lg focus:outline-none transition peer placeholder-transparent" placeholder="Space Name">
+                <label for="roomName" class="absolute left-4 top-4 text-gray-500 text-sm pointer-events-none transition-all peer-focus:top-2 peer-focus:text-[10px] peer-focus:text-brand-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-[10px]">
+                    Space Name
+                </label>
+            </div>
+
+            <div class="group relative bg-gray-800/30 rounded-2xl p-4 border border-gray-700/50 focus-within:border-brand-500/50 focus-within:bg-gray-800/50 transition duration-300">
+                <textarea id="description" rows="3" class="w-full bg-transparent pt-4 pb-1 text-white focus:outline-none transition peer placeholder-transparent resize-none leading-relaxed" placeholder="Description"></textarea>
+                <label for="description" class="absolute left-4 top-4 text-gray-500 text-sm pointer-events-none transition-all peer-focus:top-2 peer-focus:text-[10px] peer-focus:text-brand-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-[10px]">
+                    Description
+                </label>
+            </div>
+        </div>
+
+        <!-- セキュリティ設定 -->
+        <div class="mb-4">
+            <h2 class="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-3 ml-2">Access</h2>
+            
+            <div class="bg-gray-800/30 rounded-3xl border border-gray-700/50 p-1">
+                <div class="p-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 rounded-full bg-gray-700/50 flex items-center justify-center text-gray-400">
+                            <i class="fas fa-lock text-sm"></i>
+                        </div>
+                        <div>
+                            <div class="text-white font-medium text-sm">Private Space</div>
+                            <div class="text-[11px] text-gray-500 mt-0.5">Require passcode to join</div>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" value="" class="sr-only peer" onchange="const el = document.getElementById('passcode-wrapper'); if(this.checked){el.style.maxHeight='100px'; el.style.opacity='1';}else{el.style.maxHeight='0'; el.style.opacity='0';}">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-500 transition-colors"></div>
+                    </label>
+                </div>
+                
+                <div id="passcode-wrapper" class="overflow-hidden transition-all duration-300" style="max-height: 0; opacity: 0;">
+                    <div class="px-4 pb-4 pt-2">
+                        <div class="relative bg-gray-900/50 rounded-2xl border border-gray-700/50 focus-within:border-brand-500/50 transition">
+                            <input type="text" placeholder="Set Passcode" class="w-full bg-transparent py-3 px-4 text-white focus:outline-none text-center font-mono tracking-widest text-lg placeholder-gray-600">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 下部ボタン -->
+    <div class="fixed bottom-0 left-0 w-full p-5 bg-gradient-to-t from-[#0f1115] via-[#0f1115] to-transparent z-40 backdrop-blur-[2px]">
+        <div class="max-w-md mx-auto">
+            <button class="w-full bg-brand-600 hover:bg-brand-500 text-white font-medium py-4 rounded-2xl shadow-[0_0_20px_rgba(124,58,237,0.2)] hover:shadow-[0_0_30px_rgba(124,58,237,0.4)] transition-all duration-300 flex items-center justify-center space-x-2">
+                <span>Create Space</span>
+                <i class="fas fa-arrow-right text-sm opacity-70"></i>
+            </button>
+        </div>
+    </div>
+</body>
+</html>

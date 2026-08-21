@@ -49,6 +49,36 @@ final chatInboxProvider =
   final myId = ref.read(currentUserIdProvider);
   if (myId == null) return [];
 
+  // ==== インボックス(メッセージ一覧)のリアルタイム更新 ====
+  final dmChannel = supabase.channel('inbox-dm-$myId');
+  dmChannel.onPostgresChanges(
+    event: PostgresChangeEvent.insert,
+    schema: 'public',
+    table: 'dm_messages',
+    callback: (payload) {
+      // 自分が送信したメッセージでなければ一覧を再取得（または単に再取得）
+      ref.invalidateSelf();
+    },
+  ).subscribe();
+
+  final openChatChannel = supabase.channel('inbox-openchat-$myId');
+  openChatChannel.onPostgresChanges(
+    event: PostgresChangeEvent.insert,
+    schema: 'public',
+    table: 'open_chat_messages',
+    callback: (payload) {
+      ref.invalidateSelf();
+    },
+  ).subscribe();
+
+  ref.onDispose(() {
+    try {
+      supabase.removeChannel(dmChannel);
+      supabase.removeChannel(openChatChannel);
+    } catch (_) {}
+  });
+  // ================================================
+
   final items = <ChatInboxItem>[];
 
   // ---------- DM ----------
@@ -116,15 +146,28 @@ final chatInboxProvider =
             .limit(1)
             .maybeSingle();
 
-        // 未読数 (フォールバックは is_read ベース。本番は RPC 側で last_read_at 方式)
+        // 未読数 (last_read_at と created_at の差分で高効率に判定)
         int unread = 0;
         try {
-          final unreadRows = await supabase
+          final myMember = await supabase
+              .from('dm_room_members')
+              .select('last_read_at')
+              .eq('room_id', roomId)
+              .eq('user_id', myId)
+              .maybeSingle();
+          final lastReadAtStr = myMember?['last_read_at'] as String?;
+          final lastReadAt =
+              lastReadAtStr != null ? DateTime.parse(lastReadAtStr) : null;
+
+          var query = supabase
               .from('dm_messages')
               .select('id')
               .eq('room_id', roomId)
-              .eq('sender_id', otherId)
-              .eq('is_read', false);
+              .eq('sender_id', otherId);
+          if (lastReadAt != null) {
+            query = query.gt('created_at', lastReadAt.toIso8601String());
+          }
+          final unreadRows = await query;
           unread = (unreadRows as List<dynamic>).length;
         } catch (e) {
           print('dm unread count error: $e');

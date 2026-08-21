@@ -98,8 +98,20 @@ class ResbaCard extends ConsumerWidget {
       ];
     } else if (invite.isPending && !invite.isTarget && !invite.isSender) {
       // 募集型（ポスト / 返信 / DM / オプチャ / 対戦募集）: 応募者側
-      if (invite.myApplication == null || invite.myApplication == 'cancelled') {
-        // 未応募 or 自分でやめた → 応募できる（再応募可）
+      if (invite.myApplication == 'pending') {
+        actionButtons = [
+          _ActionButton(
+            label: '応募を取り下げ',
+            color: Colors.grey,
+            onTap: () async {
+              final result = await actions.cancelApplication(invite.id);
+              await _showError(context, result.error);
+              onChanged?.call();
+            },
+          ),
+        ];
+      } else {
+        // 未応募 (null) / 自分でやめた (cancelled) / 拒否された (rejected) → 応募できる（再応募可）
         actionButtons = [
           _ActionButton(
             label: '⚔️ 応じる',
@@ -135,21 +147,6 @@ class ResbaCard extends ConsumerWidget {
             },
           ),
         ];
-      } else if (invite.myApplication == 'pending') {
-        actionButtons = [
-          _ActionButton(
-            label: '応募を取り下げ',
-            color: Colors.grey,
-            onTap: () async {
-              final result = await actions.cancelApplication(invite.id);
-              await _showError(context, result.error);
-              onChanged?.call();
-            },
-          ),
-        ];
-      } else {
-        // rejected（拒否された）→ 押せない
-        actionButtons = [];
       }
     } else if (invite.isPending && invite.isSender) {
       // 送信者側: 募集型は申込者を1件ずつ承認、指名型（旧DM）は相手待ち
@@ -207,12 +204,7 @@ class ResbaCard extends ConsumerWidget {
 
     // ---- 状態ラベル ----
     String? statusLabel;
-    if (!invite.isSender &&
-        !invite.isTarget &&
-        invite.myApplication == 'rejected') {
-      // 他の人が承認されたため自動却下された応募者には「拒否されました」を表示
-      statusLabel = '拒否されました';
-    } else if (invite.isAccepted) {
+    if (invite.isAccepted) {
       statusLabel = '対戦中';
     } else if (invite.status == 'declined') {
       statusLabel = '拒否されました';
@@ -227,8 +219,7 @@ class ResbaCard extends ConsumerWidget {
     } else if (invite.isSender) {
       statusLabel = '相手待ち';
     } else if (!invite.isTarget) {
-      // 拒否された場合は「募集中」と表示しない
-      statusLabel = invite.myApplication == 'rejected' ? '拒否されました' : '募集中';
+      statusLabel = '募集中';
     }
 
     final showStatusOnly = actionButtons.isEmpty && statusLabel != null;

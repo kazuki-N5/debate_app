@@ -43,22 +43,22 @@ class UserProfileCard extends StatelessWidget {
                           );
                         },
                         errorBuilder: (context, error, stackTrace) {
-                          return const Center(
+                          return Center(
                             child: Icon(
                               Icons.person,
                               size: 50,
-                              color: Colors.white,
+                              color: Colors.grey[600],
                             ),
                           );
                         },
                       ),
                     )
-                  : const Center(
+                  : Center(
                       // userData.avatar_urlがnullまたは空の場合もアイコンを表示
                       child: Icon(
                         Icons.person,
                         size: 50,
-                        color: Colors.white,
+                        color: Colors.grey[600],
                       ),
                     ),
         ),
@@ -150,22 +150,22 @@ class UserProfileCard2 extends StatelessWidget {
                           );
                         },
                         errorBuilder: (context, error, stackTrace) {
-                          return const Center(
+                          return Center(
                             child: Icon(
                               Icons.person,
                               size: 50,
-                              color: Colors.white,
+                              color: Colors.grey[600],
                             ),
                           );
                         },
                       ),
                     )
-                  : const Center(
+                  : Center(
                       // userData.avatar_urlがnullまたは空の場合もアイコンを表示
                       child: Icon(
                         Icons.person,
                         size: 50,
-                        color: Colors.white,
+                        color: Colors.grey[600],
                       ),
                     ),
         ),

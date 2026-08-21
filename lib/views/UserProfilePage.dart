@@ -10,6 +10,7 @@ import 'package:debate_project/widgets/moderation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class UserProfilePage extends HookConsumerWidget {
   final String userId;
@@ -34,7 +35,11 @@ class UserProfilePage extends HookConsumerWidget {
     final user = state.user;
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('プロフィール')),
+        appBar: AppBar(
+          title: Text('プロフィール', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
+          backgroundColor: Colors.blue,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
         body: const Center(child: Text('ユーザーが見つかりません')),
       );
     }
@@ -65,6 +70,7 @@ class UserProfilePage extends HookConsumerWidget {
                   onTap: () async {
                     if (Supabase.instance.client.auth.currentUser?.id == user.id) {
                       await ref.read(userProvider.notifier).updateHeader();
+                      ref.invalidate(userProfileProvider(user.id));
                     }
                   },
                   child: headerUrl != null && headerUrl.isNotEmpty
@@ -89,15 +95,49 @@ class UserProfilePage extends HookConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                              ? NetworkImage(avatarUrl)
+                        InkWell(
+                          onTap: isSelf
+                              ? () async {
+                                  await ref
+                                      .read(userProvider.notifier)
+                                      .updateAvatar();
+                                  ref.invalidate(
+                                      userProfileProvider(user.id));
+                                }
                               : null,
-                          child: avatarUrl == null || avatarUrl.isEmpty
-                              ? const Icon(Icons.person, size: 40, color: Colors.grey)
-                              : null,
+                          borderRadius: BorderRadius.circular(40),
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 40,
+                                backgroundColor: Colors.grey[300],
+                                backgroundImage: avatarUrl != null &&
+                                        avatarUrl.isNotEmpty
+                                    ? NetworkImage(avatarUrl)
+                                    : null,
+                                child: avatarUrl == null || avatarUrl.isEmpty
+                                    ? Icon(Icons.person,
+                                        size: 40, color: Colors.grey[600])
+                                    : null,
+                              ),
+                              if (isSelf)
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blueAccent,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: Colors.white, width: 2),
+                                    ),
+                                    child: const Icon(Icons.camera_alt,
+                                        size: 14, color: Colors.white),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                         Row(
                           children: [
@@ -153,12 +193,14 @@ class UserProfilePage extends HookConsumerWidget {
                                 }
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (context) => DmRoomPage(
+                                  PageRouteBuilder(
+                                    pageBuilder: (context, _, __) => DmRoomPage(
                                       otherUserId: user.id,
                                       otherUserName: name,
                                       otherUserAvatar: avatarUrl,
                                     ),
+                                    transitionDuration: Duration.zero,
+                                    reverseTransitionDuration: Duration.zero,
                                   ),
                                 );
                               },
@@ -182,9 +224,26 @@ class UserProfilePage extends HookConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      name,
-                      style: AppTextStyles.bold(fontSize: 20),
+                    GestureDetector(
+                      onTap: isSelf
+                          ? () {
+                              context.push('/name2');
+                            }
+                          : null,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            name,
+                            style: AppTextStyles.bold(fontSize: 20),
+                          ),
+                          if (isSelf) ...[
+                            const SizedBox(width: 6),
+                            const Icon(Icons.edit,
+                                size: 16, color: Colors.grey),
+                          ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(

@@ -503,8 +503,7 @@ class ResbaMatchListener extends StateNotifier<bool> {
 
   SupabaseClient get supabase => ref.read(supabaseProvider);
 
-  RealtimeChannel? _senderChannel;
-  RealtimeChannel? _hostChannel;
+  RealtimeChannel? _channel;
   StreamSubscription<AuthState>? _authSub;
   final Set<String> _handledRoomIds = {};
   bool _dialogOpen = false;
@@ -512,9 +511,31 @@ class ResbaMatchListener extends StateNotifier<bool> {
   String? get _userId => ref.read(currentUserIdProvider);
 
   /// 現在進行中のバトル（rooms_v2 で winner 未確定）に参加しているか
+  bool _isReconnecting = false;
+
   bool get _inBattle {
     final room = ref.read(matchingRoomProvider);
     return room.roomId != null && room.winner == null;
+  }
+
+  Future<void> _scheduleReconnect() async {
+    if (_isReconnecting) return;
+    _isReconnecting = true;
+    log('realtime[resba-listener] scheduling single reconnect in 3s...');
+    await Future.delayed(const Duration(seconds: 3));
+    _cleanupChannel();
+    _isReconnecting = false;
+    start();
+  }
+
+  void _cleanupChannel() {
+    state = false;
+    if (_channel != null) {
+      try {
+        supabase.removeChannel(_channel!);
+      } catch (_) {}
+      _channel = null;
+    }
   }
 
   Future<void> start() async {
@@ -527,9 +548,13 @@ class ResbaMatchListener extends StateNotifier<bool> {
     if (state) return;
     state = true;
 
-    // 送信者側: 自分のレスバが承諾されたら
-    _senderChannel = supabase
-        .channel('resba-sender-$myId')
+    _cleanupChannel();
+    state = true;
+
+    // 1つのチャンネルに2つのリスナー（レンズ）を取り付ける
+    _channel = supabase
+        .channel('resba-listener-$myId')
+        // ① 送信者側レンズ: 自分のレスバが承諾されたら
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
           schema: 'public',
@@ -548,13 +573,7 @@ class ResbaMatchListener extends StateNotifier<bool> {
             }
           },
         )
-        .subscribe((status, [error]) {
-          log('realtime[resba-sender] state=$status${error != null ? ' error=$error' : ''}');
-        });
-
-    // ホスト側: 自分のレスバへの応募 INSERT → 応募キューを更新（ダイアログはキュー単位で1つ）
-    _hostChannel = supabase
-        .channel('resba-host-$myId')
+        // ② ホスト側レンズ: 自分のレスバへの応募 INSERT → 応募キューを更新
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
@@ -564,11 +583,14 @@ class ResbaMatchListener extends StateNotifier<bool> {
             await _refreshHostQueue();
           },
         )
-        .subscribe((status, [error]) async {
-          log('realtime[resba-host] state=$status${error != null ? ' error=$error' : ''}');
+        .subscribe((status, [error]) {
+          log('realtime[resba-listener] state=$status${error != null ? ' error=$error' : ''}');
           // 購読確立（初回・再接続時）に現在の応募キューを再取得する
           if (status == RealtimeSubscribeStatus.subscribed) {
-            await _refreshHostQueue();
+            _refreshHostQueue();
+          } else if (status == RealtimeSubscribeStatus.closed ||
+              status == RealtimeSubscribeStatus.channelError) {
+            _scheduleReconnect();
           }
         });
 
@@ -642,8 +664,7 @@ class ResbaMatchListener extends StateNotifier<bool> {
   @override
   void dispose() {
     _authSub?.cancel();
-    if (_senderChannel != null) supabase.removeChannel(_senderChannel!);
-    if (_hostChannel != null) supabase.removeChannel(_hostChannel!);
+    _cleanupChannel();
     super.dispose();
   }
 }

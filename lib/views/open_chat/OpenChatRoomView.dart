@@ -44,8 +44,8 @@ class OpenChatRoomView extends HookConsumerWidget {
 
     useEffect(() {
       void scrollListener() {
-        if (scrollController.position.pixels <=
-            scrollController.position.minScrollExtent) {
+        if (scrollController.position.pixels >=
+            scrollController.position.maxScrollExtent) {
           // 一番上（過去）にスクロールした時
           ref.read(openChatMessagesProvider(room.id).notifier).loadMore();
         }
@@ -53,19 +53,20 @@ class OpenChatRoomView extends HookConsumerWidget {
 
       scrollController.addListener(scrollListener);
       return () => scrollController.removeListener(scrollListener);
-    }, [scrollController]);
+    }, [scrollController, room.id]);
 
     final hasBgImage = room.backgroundUrl != null && room.backgroundUrl!.isNotEmpty;
 
     return Scaffold(
+      extendBodyBehindAppBar: hasBgImage,
       backgroundColor: Colors.blue,
       appBar: AppBar(
-        backgroundColor: hasBgImage ? Colors.black.withValues(alpha: 0.3) : Colors.blue,
+        backgroundColor: hasBgImage ? Colors.transparent : Colors.blue,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           room.name,
-          style: AppTextStyles.bold(color: Colors.white, fontSize: 18),
+          style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
         ),
         actions: [
           PopupMenuButton<String>(
@@ -140,6 +141,8 @@ class OpenChatRoomView extends HookConsumerWidget {
         ],
       ),
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           color: Colors.blue,
           image: hasBgImage
@@ -153,10 +156,13 @@ class OpenChatRoomView extends HookConsumerWidget {
                 )
               : null,
         ),
-        child: Column(
-          children: [
-            Expanded(
-              child: messagesAsync.when(
+        child: SafeArea(
+          top: hasBgImage,
+          bottom: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: messagesAsync.when(
                 loading: () => const Center(
                     child: CircularProgressIndicator(color: Colors.white)),
                 error: (error, stack) => Center(
@@ -181,18 +187,19 @@ class OpenChatRoomView extends HookConsumerWidget {
                   }
                   return ListView.builder(
                     controller: scrollController,
-                    reverse: false,
+                    reverse: true,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 4, vertical: 4),
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];
                       final isUserMessage = message.userId == currentUserId;
+                      final isSending = message.id.startsWith('temp_');
 
                       // アバター表示ロジック：相手の発言かつ、一つ前（古い方）の送信者と異なる場合に表示
                       final showAvatar = !isUserMessage &&
-                          (index == 0 ||
-                              messages[index - 1].userId != message.userId);
+                          (index == messages.length - 1 ||
+                              messages[index + 1].userId != message.userId);
 
                       // このメッセージに付いたレスバ(募集型)
                       final msgResbas = resbas
@@ -206,7 +213,7 @@ class OpenChatRoomView extends HookConsumerWidget {
                         padding: const EdgeInsets.symmetric(
                             vertical: 4.0, horizontal: 4.0),
                         child: Column(
-                          crossAxisAlignment: isUserMessage
+                            crossAxisAlignment: isUserMessage
                               ? CrossAxisAlignment.end
                               : CrossAxisAlignment.start,
                           children: [
@@ -222,10 +229,9 @@ class OpenChatRoomView extends HookConsumerWidget {
                                   if (showAvatar)
                                     CircleAvatar(
                                       radius: 16,
-                                      backgroundColor: Colors.white
-                                          .withValues(alpha: 0.3),
-                                      child: const Icon(Icons.person,
-                                          size: 16, color: Colors.white),
+                                      backgroundColor: Colors.grey[300],
+                                      child: Icon(Icons.person,
+                                          size: 16, color: Colors.grey[600]),
                                     )
                                   else
                                     const SizedBox(width: 32),
@@ -236,9 +242,11 @@ class OpenChatRoomView extends HookConsumerWidget {
                                   const SizedBox(width: 4),
                                 ],
                                 Flexible(
-                                  child: Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
+                                  child: Opacity(
+                                    opacity: isSending ? 0.6 : 1.0,
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
                                       Builder(
                                         builder: (bubbleContext) {
                                           return GestureDetector(
@@ -408,8 +416,9 @@ class OpenChatRoomView extends HookConsumerWidget {
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
+                          ),
                             for (final invite in msgResbas)
                               Padding(
                                 padding: EdgeInsets.only(
@@ -536,9 +545,8 @@ class OpenChatRoomView extends HookConsumerWidget {
                                   }
 
                                   final messageId = await ref
-                                      .read(openChatActionProvider.notifier)
+                                      .read(openChatMessagesProvider(room.id).notifier)
                                       .sendMessage(
-                                        room.id,
                                         sendText,
                                         imageUrl: uploadedUrl,
                                       );
@@ -571,9 +579,7 @@ class OpenChatRoomView extends HookConsumerWidget {
                                   resbaAttachment.value = null;
                                   if (scrollController.hasClients) {
                                     scrollController.animateTo(
-                                      scrollController
-                                              .position.maxScrollExtent +
-                                          100, // 末尾へスクロール
+                                      0, // reverse: true のため先頭（最新）へスクロール
                                       duration:
                                           const Duration(milliseconds: 300),
                                       curve: Curves.easeOut,
@@ -679,7 +685,8 @@ class OpenChatRoomView extends HookConsumerWidget {
         ],
       ),
     ),
-  );
+  ),
+);
 }
 
   Widget _buildStatus(String messageId) {

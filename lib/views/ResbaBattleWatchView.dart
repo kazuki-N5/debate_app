@@ -252,7 +252,22 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
             _checkRobotAnimation();
           },
         )
-        .subscribe();
+        .subscribe((status, [error]) async {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            _load();
+          } else if (status == RealtimeSubscribeStatus.closed ||
+              status == RealtimeSubscribeStatus.channelError) {
+            await Future.delayed(const Duration(seconds: 3));
+            if (!mounted) return;
+            if (_roomChannel != null) {
+              try {
+                await supabase.removeChannel(_roomChannel!);
+              } catch (_) {}
+              _roomChannel = null;
+            }
+            _subscribeRoom(roomId);
+          }
+        });
   }
 
   void _subscribeMessages(String roomId) {
@@ -378,7 +393,7 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
         backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.blue,
-          title: const Text('観戦', style: TextStyle(color: Colors.white)),
+          title: Text('観戦', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
         body: Center(
@@ -738,13 +753,13 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
             if (showAvatar)
               CircleAvatar(
                 radius: 16,
-                backgroundColor: Colors.white.withValues(alpha: 0.3),
+                backgroundColor: Colors.grey[300],
                 backgroundImage: opponentAvatarUrl != null &&
                         opponentAvatarUrl.isNotEmpty
                     ? NetworkImage(opponentAvatarUrl)
                     : null,
                 child: opponentAvatarUrl == null || opponentAvatarUrl.isEmpty
-                    ? const Icon(Icons.person, size: 16, color: Colors.white)
+                    ? Icon(Icons.person, size: 16, color: Colors.grey[600])
                     : null,
               )
             else

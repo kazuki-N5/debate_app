@@ -599,24 +599,21 @@ class RankingDialog extends ConsumerWidget {
                               height: 42,
                               child: user.avatarUrl != null &&
                                       user.avatarUrl!.isNotEmpty
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(6.0),
+                                  ? ClipOval(
                                       child: Image.network(
                                         user.avatarUrl!,
-                                        fit: BoxFit.contain,
+                                        fit: BoxFit.cover,
                                         errorBuilder:
                                             (context, error, stackTrace) {
                                           return Container(
                                             decoration: BoxDecoration(
-                                              color:
-                                                  defaultBadgeBackgroundColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(6.0),
+                                              color: Colors.grey[300],
+                                              shape: BoxShape.circle,
                                             ),
-                                            child: const Icon(
-                                                Icons.shield_outlined,
+                                            child: Icon(
+                                                Icons.person,
                                                 size: 28,
-                                                color: defaultBadgeIconColor),
+                                                color: Colors.grey[600]),
                                           );
                                         },
                                         loadingBuilder: (BuildContext context,
@@ -646,13 +643,12 @@ class RankingDialog extends ConsumerWidget {
                                     )
                                   : Container(
                                       decoration: BoxDecoration(
-                                        color: defaultBadgeBackgroundColor,
-                                        borderRadius:
-                                            BorderRadius.circular(6.0),
+                                        color: Colors.grey[300],
+                                        shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(Icons.help_outline,
+                                      child: Icon(Icons.person,
                                           size: 28,
-                                          color: defaultBadgeIconColor),
+                                          color: Colors.grey[600]),
                                     ),
                             ),
                             const SizedBox(width: 10),

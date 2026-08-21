@@ -60,7 +60,7 @@ class TransferPage extends HookConsumerWidget {
             appBar: AppBar(
               title:
                   Text('引き継ぎ',
-            style: AppTextStyles.bold(color: Colors.white)),
+            style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
               backgroundColor: Colors.blue,
               elevation: 0,
               leading: IconButton(

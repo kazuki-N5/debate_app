@@ -127,13 +127,13 @@ class ChatInboxListTile extends StatelessWidget {
       // DM: 丸アイコン
       return CircleAvatar(
         radius: 22,
-        backgroundColor: Colors.grey[200],
+        backgroundColor: Colors.grey[300],
         backgroundImage: hasAvatar
             ? ResizeImage(CachedNetworkImageProvider(item.avatarUrl!),
                 width: 132)
             : null,
         child: !hasAvatar
-            ? const Icon(CupertinoIcons.person, color: Colors.grey)
+            ? Icon(Icons.person, color: Colors.grey[600])
             : null,
       );
     }

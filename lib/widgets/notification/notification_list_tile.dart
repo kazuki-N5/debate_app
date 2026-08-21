@@ -95,13 +95,13 @@ class NotificationListTile extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 22,
-                    backgroundColor: Colors.grey[200],
+                    backgroundColor: Colors.grey[300],
                     backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                         ? ResizeImage(CachedNetworkImageProvider(avatarUrl),
                             width: 132)
                         : null,
                     child: avatarUrl == null || avatarUrl.isEmpty
-                        ? const Icon(CupertinoIcons.person, color: Colors.grey)
+                        ? Icon(Icons.person, color: Colors.grey[600])
                         : null,
                   ),
                   Positioned(

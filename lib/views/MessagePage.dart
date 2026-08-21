@@ -20,6 +20,7 @@ class MessagePage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final pageController = usePageController(initialPage: 0);
     final selectedSegment = useState<int>(0); // 0: 通知 / 1: メッセージ
 
     final notificationsAsync = ref.watch(notificationProvider);
@@ -34,7 +35,8 @@ class MessagePage extends HookConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('メッセージ', style: AppTextStyles.bold(color: Colors.white)),
+        centerTitle: true,
+        title: Text('メッセージ', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blue,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 1,
@@ -43,29 +45,43 @@ class MessagePage extends HookConsumerWidget {
         children: [
           _SegmentTab(
             selected: selectedSegment.value,
-            onChanged: (index) => selectedSegment.value = index,
+            onChanged: (index) {
+              selectedSegment.value = index;
+              pageController.animateToPage(
+                index,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+              );
+            },
             tab1Label: '通知',
             tab1Count: unreadNotifications,
             tab2Label: 'メッセージ',
             tab2Count: unreadMessages,
           ),
           Expanded(
-            child: selectedSegment.value == 0
-                ? _NotificationList(
-                    notificationsAsync: notificationsAsync,
-                    onTapNotification: (n) =>
-                        _openNotification(context, ref, n),
-                    onRefresh: () => ref
-                        .read(notificationProvider.notifier)
-                        .fetchNotifications(),
-                    onLoadMore: () =>
-                        ref.read(notificationProvider.notifier).loadMore(),
-                  )
-                : _MessageList(
-                    inboxAsync: inboxAsync,
-                    onRefresh: () => ref.refresh(chatInboxProvider.future),
-                    onTapItem: (item) => _openChat(context, ref, item),
-                  ),
+            child: PageView(
+              controller: pageController,
+              onPageChanged: (index) {
+                selectedSegment.value = index;
+              },
+              children: [
+                _NotificationList(
+                  notificationsAsync: notificationsAsync,
+                  onTapNotification: (n) =>
+                      _openNotification(context, ref, n),
+                  onRefresh: () => ref
+                      .read(notificationProvider.notifier)
+                      .fetchNotifications(),
+                  onLoadMore: () =>
+                      ref.read(notificationProvider.notifier).loadMore(),
+                ),
+                _MessageList(
+                  inboxAsync: inboxAsync,
+                  onRefresh: () => ref.refresh(chatInboxProvider.future),
+                  onTapItem: (item) => _openChat(context, ref, item),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -175,12 +191,14 @@ class MessagePage extends HookConsumerWidget {
       if (!context.mounted) return;
       await Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => DmRoomPage(
+        PageRouteBuilder(
+          pageBuilder: (context, _, __) => DmRoomPage(
             otherUserId: item.otherUserId ?? '',
             otherUserName: item.otherUserName ?? item.title,
             otherUserAvatar: item.avatarUrl,
           ),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
         ),
       );
       // 画面から戻ってきたときにも最新の既読状態に更新

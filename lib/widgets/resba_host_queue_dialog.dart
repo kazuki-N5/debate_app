@@ -169,11 +169,12 @@ class _ApplicationTile extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 16,
+                backgroundColor: Colors.grey[300],
                 backgroundImage: avatar != null && avatar.isNotEmpty
                     ? NetworkImage(avatar)
                     : null,
                 child: avatar == null || avatar.isEmpty
-                    ? const Icon(Icons.person, size: 16)
+                    ? Icon(Icons.person, size: 16, color: Colors.grey[600])
                     : null,
               ),
               const SizedBox(width: 8),

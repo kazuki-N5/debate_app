@@ -69,9 +69,21 @@ class NotificationNotifier
             fetchNotifications();
           },
         )
-        .subscribe();
-
-    await fetchNotifications();
+        .subscribe((status, [error]) async {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            await fetchNotifications();
+          } else if (status == RealtimeSubscribeStatus.closed ||
+              status == RealtimeSubscribeStatus.channelError) {
+            await Future.delayed(const Duration(seconds: 3));
+            if (_channel != null) {
+              try {
+                await supabase.removeChannel(_channel!);
+              } catch (_) {}
+              _channel = null;
+            }
+            _init();
+          }
+        });
   }
 
   String _selectQuery() {

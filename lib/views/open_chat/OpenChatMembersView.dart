@@ -19,7 +19,7 @@ class OpenChatMembersView extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('メンバー管理', style: TextStyle(color: Colors.white)),
+        title: Text('メンバー管理', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blueAccent,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -46,7 +46,7 @@ class OpenChatMembersView extends HookConsumerWidget {
                 return ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.grey[300],
-                    child: const Icon(Icons.person, color: Colors.white),
+                    child: Icon(Icons.person, color: Colors.grey[600]),
                   ),
                   title: Row(
                     children: [

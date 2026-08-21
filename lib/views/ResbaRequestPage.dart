@@ -47,7 +47,7 @@ class ResbaRequestPage extends ConsumerWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text('⚔️ レスバの申込',
-            style: AppTextStyles.bold(color: Colors.white)),
+            style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blue,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 1,
@@ -151,13 +151,13 @@ class _NotificationHeader extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: Colors.grey[200],
+                backgroundColor: Colors.grey[300],
                 backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                     ? ResizeImage(CachedNetworkImageProvider(avatarUrl),
                         width: 108)
                     : null,
                 child: avatarUrl == null || avatarUrl.isEmpty
-                    ? const Icon(CupertinoIcons.person, color: Colors.grey)
+                    ? Icon(Icons.person, color: Colors.grey[600])
                     : null,
               ),
               const SizedBox(width: 10),

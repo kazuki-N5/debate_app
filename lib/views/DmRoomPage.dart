@@ -105,13 +105,13 @@ class DmRoomPage extends HookConsumerWidget {
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundColor: Colors.white.withValues(alpha: 0.3),
+              backgroundColor: Colors.grey[300],
               backgroundImage:
                   otherUserAvatar != null && otherUserAvatar!.isNotEmpty
                       ? NetworkImage(otherUserAvatar!)
                       : null,
               child: otherUserAvatar == null || otherUserAvatar!.isEmpty
-                  ? const Icon(Icons.person, size: 16, color: Colors.white)
+                  ? Icon(Icons.person, size: 16, color: Colors.grey[600])
                   : null,
             ),
             const SizedBox(width: 8),
@@ -120,7 +120,7 @@ class DmRoomPage extends HookConsumerWidget {
                 otherUserName,
                 style: AppTextStyles.notoSans(
                   color: Colors.white,
-                  fontSize: 17,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
                 maxLines: 1,
@@ -239,8 +239,7 @@ class DmRoomPage extends HookConsumerWidget {
                                       if (showAvatar)
                                         CircleAvatar(
                                           radius: 16,
-                                          backgroundColor: Colors.white
-                                              .withValues(alpha: 0.3),
+                                          backgroundColor: Colors.grey[300],
                                           backgroundImage: otherUserAvatar !=
                                                       null &&
                                                   otherUserAvatar!.isNotEmpty
@@ -248,8 +247,8 @@ class DmRoomPage extends HookConsumerWidget {
                                               : null,
                                           child: otherUserAvatar == null ||
                                                   otherUserAvatar!.isEmpty
-                                              ? const Icon(Icons.person,
-                                                  color: Colors.white, size: 16)
+                                              ? Icon(Icons.person,
+                                                  color: Colors.grey[600], size: 16)
                                               : null,
                                         )
                                       else
@@ -425,23 +424,6 @@ class DmRoomPage extends HookConsumerWidget {
                                                               color:
                                                                   Colors.black,
                                                               fontSize: 15,
-                                                            ),
-                                                          ),
-                                                        if (msgResbas
-                                                            .isNotEmpty)
-                                                          const Padding(
-                                                            padding:
-                                                                EdgeInsets.only(
-                                                                    top: 6),
-                                                            child: Row(
-                                                              mainAxisSize:
-                                                                  MainAxisSize
-                                                                      .min,
-                                                              children: [
-                                                                ResbaBadge(
-                                                                    text:
-                                                                        'レスバ'),
-                                                              ],
                                                             ),
                                                           ),
                                                       ],

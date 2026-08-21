@@ -76,7 +76,7 @@ class WaittransferPage extends HookConsumerWidget {
       backgroundColor: Colors.blue, // 背景を青色に
       appBar: AppBar(
         title: Text('引き継ぎ情報',
-            style: AppTextStyles.bold(color: Colors.white)),
+            style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blue,
         elevation: 0,
         automaticallyImplyLeading: false, // AppBarの戻るボタンは非表示

@@ -5,6 +5,7 @@ import 'package:debate_project/views/ChosePage.dart';
 import 'package:debate_project/views/FinishPage.dart';
 import 'package:debate_project/views/GamePage.dart';
 import 'package:debate_project/views/HistoryPage.dart';
+import 'package:debate_project/views/HistoryDetailPage.dart';
 import 'package:debate_project/views/HomePage.dart';
 import 'package:debate_project/views/LoginPage.dart';
 import 'package:debate_project/views/Matching.dart';
@@ -86,6 +87,16 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/history',
       pageBuilder: (context, state) => NoTransitionPage(child: const HistoryPage(), key: state.pageKey),
+    ),
+    GoRoute(
+      path: '/history_detail',
+      pageBuilder: (context, state) {
+        final record = state.extra as MatchRecordDisplay;
+        return NoTransitionPage(
+          child: HistoryDetailPage(record: record),
+          key: state.pageKey,
+        );
+      },
     ),
     GoRoute(
       path: '/name2',

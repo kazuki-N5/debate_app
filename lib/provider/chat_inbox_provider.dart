@@ -59,7 +59,13 @@ final chatInboxProvider =
       // 自分が送信したメッセージでなければ一覧を再取得（または単に再取得）
       ref.invalidateSelf();
     },
-  ).subscribe();
+  ).subscribe((status, [error]) async {
+    if (status == RealtimeSubscribeStatus.closed ||
+        status == RealtimeSubscribeStatus.channelError) {
+      await Future.delayed(const Duration(seconds: 3));
+      ref.invalidateSelf();
+    }
+  });
 
   final openChatChannel = supabase.channel('inbox-openchat-$myId');
   openChatChannel.onPostgresChanges(
@@ -69,7 +75,13 @@ final chatInboxProvider =
     callback: (payload) {
       ref.invalidateSelf();
     },
-  ).subscribe();
+  ).subscribe((status, [error]) async {
+    if (status == RealtimeSubscribeStatus.closed ||
+        status == RealtimeSubscribeStatus.channelError) {
+      await Future.delayed(const Duration(seconds: 3));
+      ref.invalidateSelf();
+    }
+  });
 
   ref.onDispose(() {
     try {

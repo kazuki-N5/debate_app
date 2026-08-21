@@ -64,10 +64,59 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
     return messages.where((m) => !blocked.contains(m.senderId)).toList();
   }
 
+  Future<void> _fetchLatestOrCatchUp() async {
+    final supabase = _ref.read(supabaseProvider);
+    try {
+      if (state is AsyncData && state.value != null && state.value!.isNotEmpty) {
+        // すでにメッセージがある場合は、手元の最新メッセージ以降の差分のみ取得
+        final currentList = state.value!;
+        // reverse: true なので index 0 が最も新しいメッセージ
+        final latestMessage = currentList.first;
+        final response = await supabase
+            .from('dm_messages')
+            .select('*')
+            .eq('room_id', roomId)
+            .gt('created_at', latestMessage.createdAt.toIso8601String())
+            .order('created_at', ascending: false);
+
+        final newMessages = (response as List)
+            .map((e) => DmMessage.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+        if (newMessages.isNotEmpty) {
+          final existingIds = currentList.map((m) => m.id).toSet();
+          final uniqueNew = newMessages.where((m) => !existingIds.contains(m.id)).toList();
+          state = AsyncValue.data([...uniqueNew, ...currentList]);
+        }
+      } else {
+        // 初回取得（直近50件）
+        final response = await supabase
+            .from('dm_messages')
+            .select('*')
+            .eq('room_id', roomId)
+            .order('created_at', ascending: false)
+            .limit(50);
+
+        final messages = (response as List)
+            .map((e) => DmMessage.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+        state = AsyncValue.data(_filter(messages));
+        if (messages.length < 50) {
+          hasMore = false;
+        }
+      }
+    } catch (e, st) {
+      if (state is! AsyncData) {
+        state = AsyncValue.error(e, st);
+      }
+    }
+  }
+
   Future<void> _init() async {
     final supabase = _ref.read(supabaseProvider);
 
-    // 1. 先にストリームの購読を開始
+    // 1. ストリームの購読を開始
     _channel = supabase.channel('public:dm_messages:room_id=$roomId')
       .onPostgresChanges(
         event: PostgresChangeEvent.insert,
@@ -91,28 +140,23 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
             }
           }
         }
-      ).subscribe();
-
-    // 2. 直近の50件を取得
-    try {
-      final response = await supabase
-          .from('dm_messages')
-          .select('*')
-          .eq('room_id', roomId)
-          .order('created_at', ascending: false)
-          .limit(50);
-          
-      final messages = (response as List).map((e) => DmMessage.fromJson(e as Map<String, dynamic>)).toList();
-      
-      // DmRoomPageのListViewはreverse: trueなので、降順のままでOK
-      state = AsyncValue.data(_filter(messages));
-      
-      if (messages.length < 50) {
-        hasMore = false;
-      }
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
+      )
+      .subscribe((status, [error]) async {
+        if (status == RealtimeSubscribeStatus.subscribed) {
+          await _fetchLatestOrCatchUp();
+        } else if (status == RealtimeSubscribeStatus.closed ||
+            status == RealtimeSubscribeStatus.channelError) {
+          await Future.delayed(const Duration(seconds: 3));
+          if (!mounted) return;
+          if (_channel != null) {
+            try {
+              await supabase.removeChannel(_channel!);
+            } catch (_) {}
+            _channel = null;
+          }
+          _init();
+        }
+      });
   }
 
   Future<void> loadMore() async {

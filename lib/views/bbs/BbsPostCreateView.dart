@@ -130,11 +130,12 @@ class _BbsPostCreateViewState extends ConsumerState<BbsPostCreateView> {
                         final avatarUrl = user.avatar_url;
                         return CircleAvatar(
                           radius: 20,
+                          backgroundColor: Colors.grey[300],
                           backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                               ? NetworkImage(avatarUrl)
                               : null,
                           child: avatarUrl == null || avatarUrl.isEmpty
-                              ? const Icon(CupertinoIcons.person)
+                              ? Icon(Icons.person, color: Colors.grey[600])
                               : null,
                         );
                       },

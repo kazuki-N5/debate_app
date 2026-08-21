@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:debate_project/modes/bbs_comment.dart';
 import 'package:debate_project/modes/bbs_post.dart';
 import 'package:debate_project/modes/resba_invite.dart';
+import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/bbs_comment_provider.dart';
 import 'package:debate_project/provider/bbs_timeline_provider.dart';
 import 'package:debate_project/provider/image_upload_provider.dart';
@@ -30,12 +31,61 @@ class BbsPostDetailView extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final fetchedPost = useState<BbsPost?>(null);
     final postsAsync = ref.watch(bbsTimelineProvider);
-    final currentPost = postsAsync.maybeWhen(
-      data: (posts) => posts.firstWhere((p) => p.id == post.id, orElse: () => post),
-      orElse: () => post,
-    );
+    final BbsPost currentPost = fetchedPost.value ??
+        postsAsync.maybeWhen<BbsPost>(
+          data: (posts) =>
+              posts.firstWhere((p) => p.id == post.id, orElse: () => post),
+          orElse: () => post,
+        );
     final commentsAsync = ref.watch(bbsCommentProvider(post.id));
+
+    // 画面表示時に最新の投稿データ、コメント、レスバを自動再取得
+    useEffect(() {
+      Future<void> loadLatest() async {
+        try {
+          final supabase = ref.read(supabaseProvider);
+          final currentUserId = ref.read(currentUserIdProvider);
+
+          final response = await supabase
+              .from('bbs_posts')
+              .select('*, users!bbs_posts_user_id_fkey(*)')
+              .eq('id', post.id)
+              .maybeSingle();
+
+          if (response != null) {
+            bool isLiked = false;
+            if (currentUserId != null) {
+              final likeRes = await supabase
+                  .from('bbs_likes')
+                  .select('id')
+                  .eq('post_id', post.id)
+                  .eq('user_id', currentUserId)
+                  .maybeSingle();
+              isLiked = likeRes != null;
+            }
+            final userMap = response['users'] as Map<String, dynamic>?;
+            final postUser = userMap != null ? Users.fromMap(userMap) : null;
+            final latest =
+                BbsPost.fromMap(response, user: postUser, isLikedByMe: isLiked);
+            fetchedPost.value = latest;
+          }
+        } catch (e) {
+          debugPrint('BbsPostDetailView loadLatest error: $e');
+        }
+
+        // コメントとレスバも最新化
+        ref.read(bbsCommentProvider(post.id).notifier).fetchComments();
+        ref.invalidate(postResbaProvider(post.id));
+        try {
+          await ref.read(postResbaProvider(post.id).notifier).fetch();
+        } catch (_) {}
+      }
+
+      loadLatest();
+      return null;
+    }, [post.id]);
     
     final commentController = useMemoized(() => MentionTextEditingController());
     useEffect(() {
@@ -66,7 +116,7 @@ class BbsPostDetailView extends HookConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('投稿', style: AppTextStyles.bold(color: Colors.white)),
+        title: Text('投稿', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blue,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 1,
@@ -236,7 +286,7 @@ class BbsPostDetailView extends HookConsumerWidget {
                             decoration: InputDecoration(
                               isDense: true,
                               border: InputBorder.none,
-                              hintText: 'すてきなコメントを残そう！',
+                              hintText: 'コメントする',
                               counterText: '',
                               hintStyle: AppTextStyles.notoSans(color: Colors.grey[400]),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -563,18 +613,21 @@ class _CommentThreadWidget extends HookConsumerWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => UserProfilePage(userId: comment.userId),
+                    PageRouteBuilder(
+                      pageBuilder: (context, _, __) => UserProfilePage(userId: comment.userId),
+                      transitionDuration: Duration.zero,
+                      reverseTransitionDuration: Duration.zero,
                     ),
                   );
                 },
                 child: CircleAvatar(
                   radius: 18,
+                  backgroundColor: Colors.grey[300],
                   backgroundImage: userAvatar != null && userAvatar.isNotEmpty
                       // 表示サイズ(radius18=36px)に縮小デコードしてカクつきを抑える
                       ? ResizeImage(NetworkImage(userAvatar), width: 108)
                       : null,
-                  child: userAvatar == null || userAvatar.isEmpty ? const Icon(Icons.person) : null,
+                  child: userAvatar == null || userAvatar.isEmpty ? Icon(Icons.person, color: Colors.grey[600]) : null,
                 ),
               ),
               const SizedBox(width: 12),
@@ -743,18 +796,21 @@ class _CommentThreadWidget extends HookConsumerWidget {
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => UserProfilePage(userId: reply.userId),
+                              PageRouteBuilder(
+                                pageBuilder: (context, _, __) => UserProfilePage(userId: reply.userId),
+                                transitionDuration: Duration.zero,
+                                reverseTransitionDuration: Duration.zero,
                               ),
                             );
                           },
                           child: CircleAvatar(
                             radius: 12,
+                            backgroundColor: Colors.grey[300],
                             backgroundImage: rUserAvatar != null && rUserAvatar.isNotEmpty
                                 // 表示サイズ(radius12=24px)に縮小デコードしてカクつきを抑える
                                 ? ResizeImage(NetworkImage(rUserAvatar), width: 72)
                                 : null,
-                            child: rUserAvatar == null || rUserAvatar.isEmpty ? const Icon(Icons.person, size: 14) : null,
+                            child: rUserAvatar == null || rUserAvatar.isEmpty ? Icon(Icons.person, size: 14, color: Colors.grey[600]) : null,
                           ),
                         ),
                         const SizedBox(width: 8),

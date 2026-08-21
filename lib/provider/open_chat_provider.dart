@@ -72,10 +72,61 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
         .toList();
   }
 
+  Future<void> _fetchLatestOrCatchUp() async {
+    final supabase = _ref.read(supabaseProvider);
+    try {
+      if (state is AsyncData && state.value != null && state.value!.isNotEmpty) {
+        // すでにメッセージがある場合は、手元の最新メッセージ以降の差分のみ取得
+        final currentList = state.value!;
+        // reverse: true なので index 0 が最も新しいメッセージ
+        final latestMessage = currentList.first;
+        final response = await supabase
+            .from('open_chat_messages')
+            .select('*')
+            .eq('room_id', roomId)
+            .gt('created_at', latestMessage.createdAt.toIso8601String())
+            .order('created_at', ascending: false);
+
+        final newMessages = (response as List)
+            .map((e) => OpenChatMessage.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+        final filteredNew = _filter(newMessages);
+        if (filteredNew.isNotEmpty) {
+          final existingIds = currentList.map((m) => m.id).toSet();
+          final uniqueNew = filteredNew.where((m) => !existingIds.contains(m.id)).toList();
+          state = AsyncValue.data([...uniqueNew, ...currentList]);
+        }
+      } else {
+        // 初回取得（直近50件）
+        final response = await supabase
+            .from('open_chat_messages')
+            .select('*')
+            .eq('room_id', roomId)
+            .order('created_at', ascending: false)
+            .limit(50);
+
+        final messages = (response as List)
+            .map((e) => OpenChatMessage.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+        state = AsyncValue.data(_filter(messages));
+
+        if (messages.length < 50) {
+          hasMore = false;
+        }
+      }
+    } catch (e, st) {
+      if (state is! AsyncData) {
+        state = AsyncValue.error(e, st);
+      }
+    }
+  }
+
   Future<void> _init() async {
     final supabase = _ref.read(supabaseProvider);
 
-    // 1. 先にストリームの購読を開始する
+    // 1. ストリームの購読を開始する
     _channel = supabase.channel('public:open_chat_messages:room_id=$roomId')
       .onPostgresChanges(
         event: PostgresChangeEvent.insert,
@@ -93,33 +144,29 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
             final currentList = state.value!;
             final filtered = _filter([newMsg]);
             if (filtered.isEmpty) return;
-            // 重複チェック
+            // 重複チェック (送信時の楽観的UIで追加済みの場合は無視)
             if (!currentList.any((msg) => msg.id == newMsg.id)) {
-              state = AsyncValue.data([...currentList, newMsg]);
+              state = AsyncValue.data([newMsg, ...currentList]);
             }
           }
         }
-      ).subscribe();
-
-    // 2. 直近の50件を取得
-    try {
-      final response = await supabase
-          .from('open_chat_messages')
-          .select('*')
-          .eq('room_id', roomId)
-          .order('created_at', ascending: false)
-          .limit(50);
-          
-      final messages = (response as List).map((e) => OpenChatMessage.fromJson(e as Map<String, dynamic>)).toList();
-      // created_atが降順で来るので、昇順（古い順）に直して画面表示用に合わせる
-      state = AsyncValue.data(_filter(messages.reversed.toList()));
-      
-      if (messages.length < 50) {
-        hasMore = false;
-      }
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
+      )
+      .subscribe((status, [error]) async {
+        if (status == RealtimeSubscribeStatus.subscribed) {
+          await _fetchLatestOrCatchUp();
+        } else if (status == RealtimeSubscribeStatus.closed ||
+            status == RealtimeSubscribeStatus.channelError) {
+          await Future.delayed(const Duration(seconds: 3));
+          if (!mounted) return;
+          if (_channel != null) {
+            try {
+              await supabase.removeChannel(_channel!);
+            } catch (_) {}
+            _channel = null;
+          }
+          _init();
+        }
+      });
   }
 
   Future<void> loadMore() async {
@@ -128,7 +175,8 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
     final currentList = state.value!;
     if (currentList.isEmpty) return;
 
-    final oldestMessage = currentList.first;
+    // reverse: true なので、リストの最後 (一番下) が一番古いメッセージ
+    final oldestMessage = currentList.last;
     final supabase = _ref.read(supabaseProvider);
 
     try {
@@ -146,9 +194,57 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
         hasMore = false;
       }
 
-      state = AsyncValue.data([..._filter(olderMessages.reversed.toList()), ...currentList]);
+      state = AsyncValue.data([...currentList, ..._filter(olderMessages)]);
     } catch (e) {
       print('loadMore error: $e');
+    }
+  }
+
+  /// メッセージを送信し、実際のメッセージIDを返す（レスバ添付時に使用）
+  Future<String?> sendMessage(String content, {String? imageUrl}) async {
+    final supabase = _ref.read(supabaseProvider);
+    final myId = supabase.auth.currentUser?.id;
+    if (myId == null) return null;
+
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final tempMsg = OpenChatMessage(
+      id: tempId,
+      roomId: roomId,
+      userId: myId,
+      content: content,
+      createdAt: DateTime.now(),
+      imageUrl: imageUrl,
+    );
+
+    if (state is AsyncData) {
+      final currentList = state.value!;
+      state = AsyncValue.data([tempMsg, ...currentList]);
+    }
+
+    try {
+      final response = await supabase.from('open_chat_messages').insert({
+        'room_id': roomId,
+        'user_id': myId,
+        'content': content,
+        if (imageUrl != null) 'image_url': imageUrl,
+      }).select().single();
+
+      if (state is AsyncData) {
+        final currentList = state.value!;
+        final realMsg = OpenChatMessage.fromJson(response);
+        state = AsyncValue.data(
+          currentList.map((m) => m.id == tempId ? realMsg : m).toList(),
+        );
+      }
+      return response['id'] as String?;
+    } catch (e) {
+      if (state is AsyncData) {
+        final currentList = state.value!;
+        state = AsyncValue.data(
+          currentList.map((m) => m.id == tempId ? m.copyWith(id: 'error_$tempId') : m).toList(),
+        );
+      }
+      rethrow;
     }
   }
 

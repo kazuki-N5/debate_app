@@ -30,7 +30,6 @@ import 'package:debate_project/views/MessagePage.dart';
 import 'package:debate_project/widgets/keep_alive_page.dart';
 import 'package:debate_project/widgets/trophy_count_animation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:showcaseview/showcaseview.dart';
 
 // 前回のトロフィー数を保持してアニメーションの起点にするためのプロバイダー
 final lastTrophyCountProvider = StateProvider<int?>((ref) => null);
@@ -105,12 +104,6 @@ class HomePage extends HookConsumerWidget {
 
     final friendmatch = ref.watch(friendmatchProvider);
     final friendmatchnotifier = ref.watch(friendmatchProvider.notifier);
-
-    void toggleBoolean() {
-      // 現在の isEnabled.value の値を反転させて、再代入します。
-      // これによりWidgetが再ビルドされ、UIが更新されます。
-      isMatching.value = !isMatching.value;
-    }
 
     // HomePageクラスの外に追加
 
@@ -328,26 +321,6 @@ class HomePage extends HookConsumerWidget {
       return null; // useEffect のクリーンアップ関数 (この場合はなし)
     }, [forceupdate, maintenance, review]);
 
-    final profileIconKey = useMemoized(() => GlobalKey());
-
-    useEffect(() {
-      // ウィジェットのビルドが完了した後に実行
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        final prefs = await SharedPreferences.getInstance();
-        final bool hasSeenTutorial =
-            prefs.getBool('hasSeenProfileIconTutorial') ?? false;
-
-        // チュートリアルをまだ見ておらず、キーに紐づくコンテキストが利用可能な場合
-        // _profileIconKey.currentContext が null でないことを確認するのが重要です
-        if (!hasSeenTutorial && profileIconKey.currentContext != null) {
-          // Showcaseを開始
-          ShowCaseWidget.of(profileIconKey.currentContext!)
-              .startShowCase([profileIconKey]);
-        }
-      });
-      return null; // クリーンアップは不要
-    }, const []);
-
     double a = 25;
     double bigicon = 290;
 
@@ -364,116 +337,92 @@ class HomePage extends HookConsumerWidget {
               visitedTabs.value.contains(0)
                   ? const KeepAlivePage(child: CommunityPage())
                   : const SizedBox.shrink(), // 0: コミュニティ
-              ShowCaseWidget(
-                onFinish: () async {
-                  final prefs = await SharedPreferences.getInstance();
-                  // チュートリアルが完了したことを保存し、次回以降は表示しないようにする
-                  await prefs.setBool('hasSeenProfileIconTutorial', true);
-                },
-                builder: (context) {
-                  return Scaffold(
-                    resizeToAvoidBottomInset: false,
-                    body: Container(
-                      color: Colors.blue,
-                      child: Stack(
-                        children: [
-                          // 背景レイヤー：ヘッダーとフッターのみをSafeAreaで囲みます
-                          SafeArea(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // トップセクション (ヘッダー)
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(21, 25, 21, 21),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+              Scaffold(
+                resizeToAvoidBottomInset: false,
+                body: Container(
+                  color: Colors.blue,
+                  child: Stack(
+                    children: [
+                      // 背景レイヤー：ヘッダーとフッターのみをSafeAreaで囲みます
+                      SafeArea(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // トップセクション (ヘッダー)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(21, 25, 21, 21),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  // 左側セクション (プロフィール情報 + 左列アイコン群)
+                                  Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      // 左側セクション (プロフィール情報 + 左列アイコン群)
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                      // プロフィール画像とユーザー情報
+                                      Row(
                                         children: [
-                                          // プロフィール画像とユーザー情報
-                                          Row(
-                                            children: [
-                                              // プロフィール画像
-                                              Showcase(
-                                                key: profileIconKey,
-                                                description: 'アイコンが変更できます',
-                                                tooltipBackgroundColor:
-                                                    Colors.blueAccent,
-                                                textColor: Colors.white,
-                                                targetBorderRadius:
-                                                    BorderRadius.circular(50),
-                                                overlayOpacity: 0.5,
-                                                child: InkWell(
-                                                  onTap: isMatching.value
-                                                      ? () {}
-                                                      : () async {
-                                                          toggleBoolean();
-                                                          await ref
-                                                              .read(userProvider
-                                                                  .notifier)
-                                                              .updateAvatar();
-                                                          // 非同期処理中にWidgetが破棄されることがあるため、
-                                                          // 破棄されていたら再びトグルしない("used after being disposed"対策)
-                                                          if (context.mounted) {
-                                                            toggleBoolean();
-                                                          }
-                                                        },
-                                                  borderRadius:
-                                                      BorderRadius.circular(25),
-                                                  enableFeedback: false,
-                                                  child: Container(
-                                                    width: 50,
-                                                    height: 50,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors
-                                                          .grey[300], // アイコンの背景色
-                                                      shape: BoxShape.circle,
-                                                      border: Border.all(
-                                                          color: Colors.white,
-                                                          width: 2),
-                                                    ),
-                                                    child: ClipOval(
-                                                      child: user.avatar_url !=
-                                                                  null &&
-                                                              user.avatar_url!
-                                                                  .isNotEmpty
-                                                          ? Image.network(
-                                                              user.avatar_url!,
-                                                              fit: BoxFit.cover,
-                                                              errorBuilder:
-                                                                  (context, error,
-                                                                      stackTrace) {
-                                                                print(
-                                                                    '画像読み込みエラー: $error');
-                                                                return Icon(
-                                                                  Icons
-                                                                      .person, // 人物を表すアイコン
-                                                                  color: Colors
-                                                                      .grey[600],
-                                                                  size: 30,
-                                                                );
-                                                              },
-                                                            )
-                                                          : Icon(
-                                                              Icons
-                                                                  .person, // アバターがない場合の初期アイコン
-                                                              color:
-                                                                  Colors.grey[600],
-                                                              size: 30,
-                                                            ),
-                                                    ),
-                                                  ),
-                                                ),
+                                          // プロフィール画像
+                                          InkWell(
+                                            onTap: () {
+                                              ref
+                                                  .read(soundServiceProvider)
+                                                  .playSfx(SfxAssets.normal);
+                                              context.push('/userProfile',
+                                                  extra: user.id);
+                                            },
+                                            borderRadius:
+                                                BorderRadius.circular(25),
+                                            enableFeedback: false,
+                                            child: Container(
+                                              width: 50,
+                                              height: 50,
+                                              decoration: BoxDecoration(
+                                                color: Colors
+                                                    .grey[300], // アイコンの背景色
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                    color: Colors.white,
+                                                    width: 2),
                                               ),
+                                              child: ClipOval(
+                                                child: user.avatar_url !=
+                                                            null &&
+                                                        user.avatar_url!
+                                                            .isNotEmpty
+                                                    ? Image.network(
+                                                        user.avatar_url!,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder:
+                                                            (context, error,
+                                                                stackTrace) {
+                                                          print(
+                                                              '画像読み込みエラー: $error');
+                                                          return Icon(
+                                                            Icons
+                                                                .person, // 人物を表すアイコン
+                                                            color: Colors
+                                                                .grey[600],
+                                                            size: 30,
+                                                          );
+                                                        },
+                                                      )
+                                                    : Icon(
+                                                        Icons
+                                                            .person, // アバターがない場合の初期アイコン
+                                                        color:
+                                                            Colors.grey[600],
+                                                        size: 30,
+                                                      ),
+                                              ),
+                                            ),
+                                          ),
 
-                                              const SizedBox(width: 10),
+                                          const SizedBox(width: 10),
                                               // 名前とトロフィー数
                                               Column(
                                                 crossAxisAlignment:
@@ -754,7 +703,6 @@ class HomePage extends HookConsumerWidget {
                                       padding: const EdgeInsets.all(20.0),
                                       child: Column(
                                         children: [
-
                                           // フレンドと対戦ボタン
                                           Container(
                                             width: double.infinity,
@@ -969,9 +917,7 @@ class HomePage extends HookConsumerWidget {
                         ],
                       ),
                     ),
-                  );
-                },
-              ),
+                  ),
               // 初回タップ時までビルドしない(遅延マウント)
               visitedTabs.value.contains(2)
                   ? const KeepAlivePage(child: MessagePage())

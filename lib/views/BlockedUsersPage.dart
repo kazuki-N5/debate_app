@@ -58,7 +58,7 @@ class BlockedUsersPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('ブロック管理', style: AppTextStyles.bold(color: Colors.white)),
+        title: Text('ブロック管理', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blue,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 1,
@@ -97,7 +97,7 @@ class BlockedUsersPage extends ConsumerWidget {
                             ? NetworkImage(entry.avatarUrl!)
                             : null,
                     child: entry.avatarUrl == null || entry.avatarUrl!.isEmpty
-                        ? const Icon(Icons.person, color: Colors.white)
+                        ? Icon(Icons.person, color: Colors.grey[600])
                         : null,
                   ),
                   title: Text(

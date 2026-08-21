@@ -4,7 +4,6 @@ import 'dart:developer';
 import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
-import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/other_user.dart';
@@ -364,7 +363,6 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
   }
 
   Future<void> waitForMatch(String roomId) async {
-    Future.microtask(() => ref.invalidate(matchRecordsProvider));
     if (isdisposed) return;
     try {
       _subscription = supabase
@@ -391,8 +389,9 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
           // サブスクライブ成功時に初期データを取得することで、
           // 監視開始前に入っていた変更も確実に拾い、かつ冗長なループを回避します
           await fetchmatchupdate();
-        } else if (status == RealtimeSubscribeStatus.channelError) {
-          log('Subscription failed with error: ${error.toString()}');
+        } else if (status == RealtimeSubscribeStatus.closed ||
+            status == RealtimeSubscribeStatus.channelError) {
+          log('Subscription disconnected or failed: status=$status error=$error');
         }
       });
       log('Subscription process initiated.');

@@ -78,7 +78,11 @@ class ChatHistoryPage extends HookConsumerWidget {
 
     if (currentUserId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('チャット履歴')),
+        appBar: AppBar(
+          title: Text('チャット履歴', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
+          backgroundColor: Colors.blue,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
         body: const Center(child: Text('ユーザー情報が取得できません。')),
       );
     }

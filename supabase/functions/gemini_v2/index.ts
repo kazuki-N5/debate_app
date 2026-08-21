@@ -163,11 +163,12 @@ Deno.serve(async (req) => {
 
     console.log(`DeepSeek judgment: winner=${winner}, scores=`, scores);
 
-    // 5. DB保存
+    // 5. DB保存（winnerがすでに確定していない時のみ更新する二重防御）
     const { error: updateError } = await supabase
       .from("rooms_v2")
       .update({ winner, reason, scores })
-      .eq("id", room_id);
+      .eq("id", room_id)
+      .is("winner", null);
 
     if (updateError) {
       // トリガーによる例外(P0001)は、並列リクエストが先に処理を終えただけなので成功扱いとする

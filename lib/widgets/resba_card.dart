@@ -244,7 +244,7 @@ class ResbaCard extends ConsumerWidget {
                   backgroundImage: NetworkImage(invite.senderAvatar!),
                 )
               else
-                const CircleAvatar(radius: 12, child: Icon(Icons.person, size: 14)),
+                CircleAvatar(radius: 12, backgroundColor: Colors.grey[300], child: Icon(Icons.person, size: 14, color: Colors.grey[600])),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -345,7 +345,7 @@ class ResbaCard extends ConsumerWidget {
                   backgroundImage: NetworkImage(app.applicantAvatar!),
                 )
               else
-                const CircleAvatar(radius: 14, child: Icon(Icons.person, size: 16)),
+                CircleAvatar(radius: 14, backgroundColor: Colors.grey[300], child: Icon(Icons.person, size: 16, color: Colors.grey[600])),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(

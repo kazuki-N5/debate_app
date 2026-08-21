@@ -56,7 +56,7 @@ class OpenChatPreviewPage extends HookConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('オープンチャット', style: AppTextStyles.bold(fontSize: 18, color: Colors.white)),
+        title: Text('オープンチャット', style: AppTextStyles.bold(fontSize: 20, color: Colors.white)),
         backgroundColor: Colors.blue,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),

@@ -24,7 +24,7 @@ class NotificationSettingsPage extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('通知設定', style: AppTextStyles.bold(color: Colors.white)),
+        title: Text('通知設定', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blue,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),

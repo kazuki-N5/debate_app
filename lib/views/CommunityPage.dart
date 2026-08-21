@@ -6,7 +6,6 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:debate_project/views/bbs/BbsTimelineView.dart';
 import 'package:debate_project/views/open_chat/OpenChatRoomsView.dart';
-import 'package:debate_project/widgets/fast_page_scroll_physics.dart';
 import 'package:debate_project/widgets/keep_alive_page.dart';
 import 'package:debate_project/widgets/resba_attach_sheet.dart';
 import 'package:debate_project/widgets/resba_card.dart';
@@ -22,94 +21,97 @@ class CommunityPage extends HookConsumerWidget {
     final recruitAsync = ref.watch(recruitResbasProvider);
 
     final tabController = useTabController(initialLength: 3);
-
-    useEffect(() {
-      void listener() {
-        if (tabController.indexIsChanging) {
-          FocusManager.instance.primaryFocus?.unfocus();
-        }
-      }
-      tabController.addListener(listener);
-      return () => tabController.removeListener(listener);
-    }, [tabController]);
+    final pageController = usePageController(initialPage: 0);
 
     return Scaffold(
-        resizeToAvoidBottomInset: false,
-        backgroundColor: const Color(0xFFF3F3F3), // 背景色
-        floatingActionButton: ListenableBuilder(
-          listenable: tabController,
-          builder: (context, _) {
-            return Builder(
-              builder: (context) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 70.0),
-                  child: FloatingActionButton(
-                    heroTag: null, // Heroアニメーションを無効化
-                    onPressed: () {
-                      final index = tabController.index;
-                      if (index == 0) {
-                        _showCreateResbaDialog(context, ref);
-                      } else if (index == 1) {
-                        context.push('/bbsPostCreate');
-                      } else if (index == 2) {
-                        context.push('/createOpenChat');
-                      }
-                    },
-                    backgroundColor: Colors.blue,
-                    shape: const CircleBorder(),
-                    child: const Icon(Icons.add, color: Colors.white, size: 28),
-                  ),
+      resizeToAvoidBottomInset: false,
+      backgroundColor: const Color(0xFFF3F3F3), // 背景色
+      floatingActionButton: ListenableBuilder(
+        listenable: tabController,
+        builder: (context, _) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 70.0),
+            child: FloatingActionButton(
+              heroTag: null, // Heroアニメーションを無効化
+              onPressed: () {
+                final index = tabController.index;
+                if (index == 0) {
+                  _showCreateResbaDialog(context, ref);
+                } else if (index == 1) {
+                  context.push('/bbsPostCreate');
+                } else if (index == 2) {
+                  context.push('/createOpenChat');
+                }
+              },
+              backgroundColor: Colors.blue,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.add, color: Colors.white, size: 28),
+            ),
+          );
+        },
+      ),
+      appBar: AppBar(
+        centerTitle: true,
+        title: Text(
+          'コミュニティ',
+          style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
+        ),
+        backgroundColor: Colors.blue,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 1,
+      ),
+      body: Column(
+        children: [
+          Container(
+            color: Colors.white,
+            child: TabBar(
+              controller: tabController,
+              onTap: (index) {
+                FocusManager.instance.primaryFocus?.unfocus();
+                pageController.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
                 );
               },
-            );
-          },
-        ),
-        appBar: AppBar(
-          title: Text(
-            'コミュニティ',
-            style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
+              labelColor: const Color(0xFF1D9BF0),
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: const Color(0xFF1D9BF0),
+              indicatorWeight: 3,
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelStyle: AppTextStyles.bold(fontSize: 14),
+              unselectedLabelStyle: AppTextStyles.bold(fontSize: 14),
+              dividerColor: const Color(0xFFE6E6E6),
+              tabs: const [
+                Tab(text: '対戦募集'),
+                Tab(text: '掲示板'),
+                Tab(text: 'オープンチャット'),
+              ],
+            ),
           ),
-          backgroundColor: Colors.blue,
-          iconTheme: const IconThemeData(color: Colors.white),
-          elevation: 0,
-          bottom: TabBar(
-            controller: tabController,
-            onTap: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.white,
-            dividerColor: Colors.white30,
-            tabs: [
-              Tab(text: '対戦募集'),
-              Tab(text: '掲示板'),
-              Tab(text: 'オープンチャット'),
-            ],
-          ),
-        ),
-        body: Column(
-          children: [
-            Expanded(
-              child: Builder(
-                builder: (context) {
-                  return NotificationListener<OverscrollNotification>(
-                    onNotification: (OverscrollNotification notification) {
-                      // インデックス2(オープンチャット)で右から左へスワイプしたとき(overscroll > 0)
-                      if (tabController.index == 2 && notification.overscroll > 0) {
-                        if (parentPageController != null && (parentPageController!.page ?? 0) < 1) {
-                          parentPageController!.animateToPage(
-                            1,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOutCubic,
-                          );
-                        }
-                        return true;
-                      }
-                      return false;
-                    },
-                    child: TabBarView(
-                      controller: tabController,
-                      physics: const FastPageScrollPhysics(parent: ClampingScrollPhysics()),
-                      children: [
+          Expanded(
+            child: NotificationListener<OverscrollNotification>(
+              onNotification: (OverscrollNotification notification) {
+                // インデックス2(オープンチャット)で右から左へスワイプしたとき(overscroll > 0)
+                if (tabController.index == 2 && notification.overscroll > 0) {
+                  if (parentPageController != null && (parentPageController!.page ?? 0) < 1) {
+                    parentPageController!.animateToPage(
+                      1,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                    );
+                  }
+                  return true;
+                }
+                return false;
+              },
+              child: PageView(
+                controller: pageController,
+                onPageChanged: (index) {
+                  tabController.animateTo(index);
+                  FocusManager.instance.primaryFocus?.unfocus();
+                },
+                children: [
                   // 対戦募集タブ(レスバ募集型: ポスト/コメントと同じ応募制)
                   // RepaintBoundary: タブ切替中もこのページのレイヤーをキャッシュしてカクつきを防ぐ
                   RepaintBoundary(
@@ -148,7 +150,7 @@ class CommunityPage extends HookConsumerWidget {
                             },
                             loading: () =>
                                 const Center(child: CircularProgressIndicator()),
-                            error: (e, st) => Center(
+                            error: (e, st) => const Center(
                               child: Text(
                                 '読み込みに失敗しました',
                                 style: TextStyle(color: Colors.grey),
@@ -169,9 +171,7 @@ class CommunityPage extends HookConsumerWidget {
                   ),
                 ],
               ),
-             );
-            },
-           ),
+            ),
           ),
         ],
       ),

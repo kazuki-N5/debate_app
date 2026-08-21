@@ -150,7 +150,7 @@ class MessageBubble extends HookConsumerWidget {
               ? NetworkImage(opponentAvatarUrl!)
               : null,
       child: (opponentAvatarUrl == null || opponentAvatarUrl!.isEmpty)
-          ? const Icon(Icons.person, color: Colors.white, size: 20)
+          ? Icon(Icons.person, color: Colors.grey[600], size: 20)
           : null,
     );
   }

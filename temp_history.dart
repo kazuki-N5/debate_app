@@ -52,7 +52,7 @@ class HistoryPage extends HookConsumerWidget {
       backgroundColor: Colors.blue,
       appBar: AppBar(
         title: Text('履歴',
-            style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
+            style: AppTextStyles.bold(color: Colors.white)),
         backgroundColor: Colors.blue,
         elevation: 0,
         leading: IconButton(
@@ -177,11 +177,11 @@ class _MatchHistoryItem extends HookConsumerWidget {
       } else {
         return CircleAvatar(
           radius: avatarRadius,
-          backgroundColor: Colors.grey[300],
-          child: Icon(
+          backgroundColor: Colors.blueGrey[300],
+          child: const Icon(
             Icons.person,
             size: avatarRadius * 1.2,
-            color: Colors.grey[600],
+            color: Colors.white,
           ),
         );
       }
@@ -196,10 +196,8 @@ class _MatchHistoryItem extends HookConsumerWidget {
               if (opponentid != null) {
                 Navigator.push(
                   avatarContext,
-                  PageRouteBuilder(
-                    pageBuilder: (context, _, __) => UserProfilePage(userId: opponentid),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
+                  MaterialPageRoute(
+                    builder: (context) => UserProfilePage(userId: opponentid),
                   ),
                 );
               }
@@ -368,6 +366,260 @@ class _MatchHistoryItem extends HookConsumerWidget {
       );
     }
 
+    // 詳細ボトムシートを表示する関数
+    void showDetailBottomSheet() {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (bottomSheetContext) {
+          final myScore = record.myScore;
+          final opponentScore = record.opponentScore;
+
+          return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(bottomSheetContext).size.height * 0.88,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(24.0),
+                topRight: Radius.circular(24.0),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 上部ドラッグハンドル
+                Container(
+                  width: 40,
+                  height: 5,
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+                // ヘッダー（タイトル＆閉じるボタン）
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.analytics_outlined, color: Colors.blue, size: 22),
+                          const SizedBox(width: 6),
+                          Text(
+                            '試合詳細・分析',
+                            style: AppTextStyles.bold(
+                              fontSize: 18,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.black54),
+                        onPressed: () => Navigator.pop(bottomSheetContext),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                // スクロール可能な詳細コンテンツ
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 勝敗＆対戦相手
+                        Row(
+                          children: [
+                            Text(
+                              resultStatus,
+                              style: AppTextStyles.bold(
+                                fontSize: 20,
+                                color: resultColor,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              trophyChangeString,
+                              style: AppTextStyles.bold(
+                                fontSize: 18,
+                                color: resultColor,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              'vs $opponentName',
+                              style: AppTextStyles.bold(
+                                fontSize: 15,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // テーマ・選択情報コンテナ
+                        if (!isCancelled)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'テーマ: $theme',
+                                  style: AppTextStyles.bold(
+                                    fontSize: 14,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue[50],
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: Colors.blue[200]!),
+                                      ),
+                                      child: Text(
+                                        'あなた: ${record.userChoice}',
+                                        style: AppTextStyles.notoSans(
+                                          fontSize: 12,
+                                          color: Colors.blue[900],
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    if (record.opponentChoice != null &&
+                                        record.opponentChoice != '未選択')
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red[50],
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: Colors.red[200]!),
+                                        ),
+                                        child: Text(
+                                          '相手: ${record.opponentChoice}',
+                                          style: AppTextStyles.notoSans(
+                                            fontSize: 12,
+                                            color: Colors.red[900],
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+                        // レーダーチャート表示
+                        if (myScore != null) ...[
+                          RadarChartView(
+                            myScore: myScore,
+                            opponentScore: opponentScore,
+                            myName: record.myName ?? 'あなた',
+                            opponentName: opponentName,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        // AI判定理由
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12.0),
+                            border: Border.all(
+                              color: Colors.blue.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.smart_toy_outlined,
+                                      size: 18, color: Colors.blue[800]),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'AI判定の理由:',
+                                    style: AppTextStyles.bold(
+                                      fontSize: 15,
+                                      color: Colors.blue[800],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                record.reason,
+                                style: AppTextStyles.notoSans(
+                                  fontSize: 13,
+                                  color: Colors.black87,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // 「レスバを見る」ボタン
+                        if (!isCancelled)
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(bottomSheetContext);
+                                context.push('/chistory', extra: record);
+                              },
+                              icon: const Icon(Icons.forum_outlined, size: 20),
+                              label: Text(
+                                'レスバ（チャット履歴）を見る',
+                                style: AppTextStyles.bold(
+                                  fontSize: 15,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
     final myScore = record.myScore;
 
     return Padding(
@@ -377,7 +629,7 @@ class _MatchHistoryItem extends HookConsumerWidget {
         child: Material(
           color: cardBackgroundColor,
           child: InkWell(
-            onTap: () => context.push('/history_detail', extra: record),
+            onTap: showDetailBottomSheet,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12.0, 10.0, 12.0, 10.0),
               child: Column(

@@ -122,13 +122,14 @@ class BbsPostWidget extends ConsumerWidget {
               },
               child: CircleAvatar(
                 radius: 20,
+                backgroundColor: Colors.grey[300],
                 backgroundImage:
                     userAvatar != null && userAvatar.isNotEmpty
                         // 表示サイズ(radius20=40px)に縮小デコードしてカクつきを抑える
                         ? ResizeImage(NetworkImage(userAvatar), width: 120)
                         : null,
                 child: userAvatar == null || userAvatar.isEmpty
-                    ? const Icon(CupertinoIcons.person)
+                    ? Icon(Icons.person, color: Colors.grey[600])
                     : null,
               ),
             ),

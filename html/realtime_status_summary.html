@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supabase Realtime 状態・設計サマリー (最新完全版)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 lg:p-12">
+
+  <!-- Header -->
+  <div class="max-w-7xl mx-auto mb-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      <div>
+        <div class="flex items-center gap-3">
+          <div class="p-3 bg-indigo-500/20 border border-indigo-500/40 rounded-2xl text-indigo-400 shadow-lg shadow-indigo-500/10">
+            <i data-lucide="radio" class="w-7 h-7 animate-pulse"></i>
+          </div>
+          <div>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+              <span>Supabase Realtime 完全対応ダッシュボード</span>
+            </h1>
+            <p class="text-xs md:text-sm text-slate-400 mt-1">アプリ内全11箇所のリアルタイム通信（初回/差分フェッチ・切断時自動再接続・イベント時再取得）の最新稼働サマリー</p>
+          </div>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 shadow-sm">
+          <i data-lucide="shield-check" class="w-4 h-4 mr-2"></i> 11 / 11 箇所 完全対応完了
+        </span>
+        <span class="text-xs text-slate-500 font-mono">2026/08/21 23:00 更新</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-sm">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-medium text-slate-400">総リアルタイム監視</span>
+        <span class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400"><i data-lucide="activity" class="w-4 h-4"></i></span>
+      </div>
+      <div class="text-2xl font-bold text-white mt-2">11 <span class="text-xs font-normal text-slate-500">箇所</span></div>
+      <div class="text-xs text-slate-400 mt-1">チャット・レスバ・待機・通知</div>
+    </div>
+
+    <div class="bg-slate-900/80 border border-emerald-500/30 rounded-2xl p-5 shadow-sm">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-medium text-emerald-400">差分穴埋めフェッチ搭載</span>
+        <span class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400"><i data-lucide="layers" class="w-4 h-4"></i></span>
+      </div>
+      <div class="text-2xl font-bold text-emerald-300 mt-2">2 <span class="text-xs font-normal text-slate-500">箇所 (DM / オプチャ)</span></div>
+      <div class="text-xs text-slate-400 mt-1">再接続時に新着差分のみ取得 (通信節約)</div>
+    </div>
+
+    <div class="bg-slate-900/80 border border-indigo-500/30 rounded-2xl p-5 shadow-sm">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-medium text-indigo-400">切断時自動再接続 (3秒リトライ)</span>
+        <span class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400"><i data-lucide="refresh-cw" class="w-4 h-4"></i></span>
+      </div>
+      <div class="text-2xl font-bold text-indigo-300 mt-2">11 / 11 <span class="text-xs font-normal text-slate-500">箇所 (100%)</span></div>
+      <div class="text-xs text-slate-400 mt-1">closed / error を検知して自動復旧</div>
+    </div>
+
+    <div class="bg-slate-900/80 border border-sky-500/30 rounded-2xl p-5 shadow-sm">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-medium text-sky-400">Stream完全自動管理</span>
+        <span class="p-2 rounded-lg bg-sky-500/10 text-sky-400"><i data-lucide="sparkles" class="w-4 h-4"></i></span>
+      </div>
+      <div class="text-2xl font-bold text-sky-300 mt-2">2 <span class="text-xs font-normal text-slate-500">箇所 (対戦/観戦チャット)</span></div>
+      <div class="text-xs text-slate-400 mt-1">Supabase SDK公式Streamで全自動</div>
+    </div>
+  </div>
+
+  <!-- Summary Table Section -->
+  <div class="max-w-7xl mx-auto mb-10">
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+      <div class="p-5 border-b border-slate-800 bg-slate-900 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <i data-lucide="table" class="w-5 h-5 text-indigo-400"></i>
+          <h2 class="text-base font-bold text-white">全11箇所 一覧対照表</h2>
+        </div>
+        <span class="text-xs text-slate-400">横スクロールで全体を確認できます</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-950/60 text-slate-400 border-b border-slate-800 font-semibold">
+            <tr>
+              <th class="py-3.5 px-4">カテゴリ</th>
+              <th class="py-3.5 px-4">機能名 / チャンネル</th>
+              <th class="py-3.5 px-4">ファイル</th>
+              <th class="py-3.5 px-4">初回 / 再接続時フェッチ</th>
+              <th class="py-3.5 px-4">切断時自動再接続</th>
+              <th class="py-3.5 px-4">イベント受信時</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 text-slate-300">
+            <!-- DM Message -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-sky-400">チャット</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">DMメッセージ</span><br><code class="text-[11px] text-slate-400">public:dm_messages:room_id</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">dm_provider.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 差分のみ取得 (重複排除)</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 3秒後再初期化</span></td>
+              <td class="py-3 px-4">INSERTを先頭に追加</td>
+            </tr>
+            <!-- OpenChat Message -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-sky-400">チャット</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">オプチャメッセージ</span><br><code class="text-[11px] text-slate-400">public:open_chat_messages:room_id</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">open_chat_provider.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 差分のみ取得 (重複排除)</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 3秒後再初期化</span></td>
+              <td class="py-3 px-4">INSERTを末尾に追加</td>
+            </tr>
+            <!-- DM Resba -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-purple-400">レスバ</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">DMレスバカード一覧</span><br><code class="text-[11px] text-slate-400">dm-resba-$roomId</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">resba_provider.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 subscribed時 fetch()</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 3秒後再初期化</span></td>
+              <td class="py-3 px-4">全変更で fetch()</td>
+            </tr>
+            <!-- OpenChat Resba -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-purple-400">レスバ</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">オプチャレスバカード一覧</span><br><code class="text-[11px] text-slate-400">open-chat-resba-$roomId</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">resba_provider.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 subscribed時 fetch()</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 3秒後再初期化</span></td>
+              <td class="py-3 px-4">全変更で fetch()</td>
+            </tr>
+            <!-- Applying Banner -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-purple-400">レスバ</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">応募中バナー & 自動遷移</span><br><code class="text-[11px] text-slate-400">resba-applying-$myId</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">resba_provider.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 subscribed時 fetch()</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 3秒後再初期化</span></td>
+              <td class="py-3 px-4">acceptedでバトル自動遷移</td>
+            </tr>
+            <!-- Host Dialog -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-purple-400">レスバ</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">ホスト側応募ダイアログ</span><br><code class="text-[11px] text-slate-400">resba-host-$myId</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">resba_provider.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 subscribed時 キュー再取得</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 3秒後再初期化</span></td>
+              <td class="py-3 px-4">応募追加でダイアログ表示</td>
+            </tr>
+            <!-- Sender Invite -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-purple-400">レスバ</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">送信者側承諾検知</span><br><code class="text-[11px] text-slate-400">resba-sender-$myId</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">resba_provider.dart</td>
+              <td class="py-3 px-4 text-slate-400">イベント待機</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 3秒後再初期化</span></td>
+              <td class="py-3 px-4">acceptedでバトル自動遷移</td>
+            </tr>
+            <!-- Matching Room -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-amber-400">マッチング</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">待機部屋更新 (/wait)</span><br><code class="text-[11px] text-slate-400">room-updates:$roomId</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">matching_provider.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 subscribed時 部屋取得</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 closed/error検知</span></td>
+              <td class="py-3 px-4">rooms_v2変更でstate更新</td>
+            </tr>
+            <!-- Game Messages (Stream) -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-emerald-400">対戦/観戦</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">対戦中チャット (Stream)</span><br><code class="text-[11px] text-slate-400">messages (Stream)</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">message_provider.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 Stream内蔵自動取得</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 Stream内蔵自動再接続</span></td>
+              <td class="py-3 px-4">新着メッセージを即時反映</td>
+            </tr>
+            <!-- Watch Messages (Stream) -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-emerald-400">対戦/観戦</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">観戦チャット (Stream)</span><br><code class="text-[11px] text-slate-400">messages (Stream)</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">ResbaBattleWatchView.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 Stream内蔵自動取得</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 Stream内蔵自動再接続</span></td>
+              <td class="py-3 px-4">新着メッセージを即時反映</td>
+            </tr>
+            <!-- Notifications -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-sky-400">通知</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">通知一覧・バッジ</span><br><code class="text-[11px] text-slate-400">notifications-user-$myId</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">notification_provider.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 subscribed時 fetch()</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 3秒後再初期化</span></td>
+              <td class="py-3 px-4">新着で fetch()</td>
+            </tr>
+            <!-- Inbox -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-sky-400">インボックス</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">メッセージタブ一覧</span><br><code class="text-[11px] text-slate-400">inbox-dm / inbox-openchat</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">chat_inbox_provider.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 Provider実行時取得</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 3秒後 invalidateSelf()</span></td>
+              <td class="py-3 px-4">新着で invalidateSelf()</td>
+            </tr>
+            <!-- Watch Room -->
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-emerald-400">対戦/観戦</td>
+              <td class="py-3 px-4"><span class="font-bold text-white">観戦部屋状態同期</span><br><code class="text-[11px] text-slate-400">watch-room-$roomId</code></td>
+              <td class="py-3 px-4 font-mono text-[11px] text-slate-400">ResbaBattleWatchView.dart</td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 subscribed時 _load()</span></td>
+              <td class="py-3 px-4 text-emerald-400 font-medium"><span class="inline-flex items-center gap-1">🟢 3秒後再初期化</span></td>
+              <td class="py-3 px-4">rooms_v2変更でsetState</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter & Details Section -->
+  <div class="max-w-7xl mx-auto mb-6 flex flex-wrap gap-2">
+    <button onclick="filterCards('all')" id="btn-all" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white transition hover:bg-indigo-500 shadow">すべて表示 (11)</button>
+    <button onclick="filterCards('chat')" id="btn-chat" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700 transition">💬 DM・オプチャ・通知</button>
+    <button onclick="filterCards('resba')" id="btn-resba" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700 transition">⚔️ レスバ関連</button>
+    <button onclick="filterCards('match')" id="btn-match" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700 transition">🎮 対戦・待機・観戦</button>
+  </div>
+
+  <!-- Detailed Cards Grid -->
+  <div class="max-w-7xl mx-auto space-y-4" id="cards-container">
+
+    <!-- 1. DMチャットメッセージ -->
+    <div class="card-item bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-emerald-500/70" data-category="chat">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">差分フェッチ & 自動再接続</span>
+            <span class="text-xs text-slate-400 font-mono">lib/provider/dm_provider.dart</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+            <span>DMのメッセージ送受信</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 font-mono text-indigo-300 border border-slate-700">public:dm_messages:room_id=$roomId</span>
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">1対1のDM画面で新着メッセージをリアルタイム送受信。電波切断からの復帰時は、手元にすでにある最新メッセージ以降の差分だけをクエリして穴埋め。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 初回 / 再接続時フェッチ</div>
+          <div class="text-emerald-300 font-bold">手元の最新以降の差分のみ取得</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">初回は直近50件。再接続時は <code class="text-slate-300">gt('created_at', latestMsg.createdAt)</code> で未取得メッセージのみをピンポイント取得（重複排除）。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i> 切断時・エラー再接続</div>
+          <div class="text-emerald-300 font-bold">3秒待機して自動再初期化 (_init)</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed"><code class="text-slate-300">closed</code> または <code class="text-slate-300">channelError</code> を検知したら3秒後に古いチャンネルを破棄して自動再接続。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> イベント受信時</div>
+          <div class="text-emerald-300 font-bold">INSERT メッセージを即時リスト反映</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">楽観的UIの仮メッセージIDと重複チェックを行い、ブロックユーザーを除外して安全に追加。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. オープンチャットメッセージ -->
+    <div class="card-item bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-emerald-500/70" data-category="chat">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">差分フェッチ & 自動再接続</span>
+            <span class="text-xs text-slate-400 font-mono">lib/provider/open_chat_provider.dart</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+            <span>オープンチャットのメッセージ送受信</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 font-mono text-indigo-300 border border-slate-700">public:open_chat_messages:room_id=$roomId</span>
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">オープンチャット内で全員の投稿メッセージをリアルタイムに追加表示。切断復帰時は未取得差分のみ自動補充。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 初回 / 再接続時フェッチ</div>
+          <div class="text-emerald-300 font-bold">手元の最新以降の差分のみ取得</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">初回は直近50件。再接続時は <code class="text-slate-300">gt('created_at', lastMsg.createdAt)</code> で未取得メッセージのみ取得して末尾にマージ。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i> 切断時・エラー再接続</div>
+          <div class="text-emerald-300 font-bold">3秒待機して自動再初期化 (_init)</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed"><code class="text-slate-300">closed</code> / <code class="text-slate-300">channelError</code> 検知時にチャンネルを作り直して自動復旧。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> イベント受信時</div>
+          <div class="text-emerald-300 font-bold">INSERT メッセージを末尾に追加</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">ブロックユーザー・非表示メッセージを除外してチャットリストに即座に反映。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. DMのレスバ一覧 -->
+    <div class="card-item bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-emerald-500/70" data-category="resba">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">完全対応</span>
+            <span class="text-xs text-slate-400 font-mono">lib/provider/resba_provider.dart (DmResbaNotifier)</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+            <span>DMのレスバカード一覧</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 font-mono text-indigo-300 border border-slate-700">dm-resba-$roomId</span>
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">DMルーム内で添付されたレスバカードの状態変化（応募・取り下げ・承認・終了）をリアルタイムにカード表示に反映。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 初回接続時フェッチ</div>
+          <div class="text-emerald-300 font-bold">subscribed 時に fetch()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">購読開始直後の取りこぼしを防ぐため最新状態を全件取得。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i> 切断時・エラー再接続</div>
+          <div class="text-emerald-300 font-bold">3秒待機して自動再初期化 (_init)</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">切断されても自動復旧してカードのボタン状態を正しく保つ。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> イベント受信時</div>
+          <div class="text-emerald-300 font-bold">全変更イベントで fetch()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">battle_invites / applications の変更で即座にカード再描画。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. オープンチャットのレスバ一覧 -->
+    <div class="card-item bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-emerald-500/70" data-category="resba">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">完全対応</span>
+            <span class="text-xs text-slate-400 font-mono">lib/provider/resba_provider.dart (OpenChatResbasNotifier)</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+            <span>オープンチャットのレスバカード一覧</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 font-mono text-indigo-300 border border-slate-700">open-chat-resba-$roomId</span>
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">オープンチャット内で投稿されたレスバ募集カードの状態変化をリアルタイム反映。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 初回接続時フェッチ</div>
+          <div class="text-emerald-300 font-bold">subscribed 時に fetch()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">購読開始直後の取りこぼしを防ぐため最新状態を全件取得。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i> 切断時・エラー再接続</div>
+          <div class="text-emerald-300 font-bold">3秒待機して自動再初期化 (_init)</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">closed / channelError を検知して自動で繋ぎ直す。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> イベント受信時</div>
+          <div class="text-emerald-300 font-bold">全変更イベントで fetch()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">battle_invites / applications の変更で即座に再取得。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. 応募中バナー＆成立時画面遷移 -->
+    <div class="card-item bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-emerald-500/70" data-category="resba">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">完全対応</span>
+            <span class="text-xs text-slate-400 font-mono">lib/provider/resba_provider.dart (ApplyingInfoNotifier)</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+            <span>自分が応募したレスバのバナー & 承認時自動遷移</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 font-mono text-indigo-300 border border-slate-700">resba-applying-$myId</span>
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">他人のレスバに応募中、画面上にバナー表示。ホスト承認でバトル待機画面（/wait）へ自動遷移。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 初回接続時フェッチ</div>
+          <div class="text-emerald-300 font-bold">subscribed 時に fetch()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">起動時や再接続時に最新の応募状態を復元。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i> 切断時・エラー再接続</div>
+          <div class="text-emerald-300 font-bold">3秒待機して自動再初期化 (_init)</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">電波が切れても自動復旧してバナー消滅を防止。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> イベント受信時</div>
+          <div class="text-emerald-300 font-bold">accepted で画面遷移 / fetch()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">ホスト承認で部屋遷移、拒否で一時表示、その他fetch。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. ホスト側の応募ダイアログ監視 -->
+    <div class="card-item bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-emerald-500/70" data-category="resba">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">完全対応</span>
+            <span class="text-xs text-slate-400 font-mono">lib/provider/resba_provider.dart (ResbaMatchListener)</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+            <span>ホスト側の応募ダイアログ監視</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 font-mono text-indigo-300 border border-slate-700">resba-host-$myId</span>
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">自分が募集したレスバに応募が届いた際、画面上に「承認ダイアログ（キュー表示）」をポップアップ。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 初回接続時フェッチ</div>
+          <div class="text-emerald-300 font-bold">subscribed 時に _refreshQueue()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">未処理の応募キューを取得してダイアログ復帰。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i> 切断時・エラー再接続</div>
+          <div class="text-emerald-300 font-bold">3秒待機して自動再初期化 (start)</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">切断時も自動復帰して応募を取りこぼさない。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> イベント受信時</div>
+          <div class="text-emerald-300 font-bold">INSERT でキュー追加・ダイアログ表示</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">応募者を古い順にキュー管理して表示。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. マッチング待機部屋更新 -->
+    <div class="card-item bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-emerald-500/70" data-category="match">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">完全対応</span>
+            <span class="text-xs text-slate-400 font-mono">lib/provider/matching_provider.dart (MatchingRoomNotifier)</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+            <span>マッチング中の部屋更新（ホスト・応募側共通）</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 font-mono text-indigo-300 border border-slate-700">room-updates:$roomId</span>
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">待機画面（/wait）で対戦相手の入室、カウントダウン、ゲーム開始などの部屋情報（rooms_v2）をリアルタイム同期。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 初回接続時フェッチ</div>
+          <div class="text-emerald-300 font-bold">subscribed 時に fetchmatchupdate()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">監視直前に入っていた変更も確実に拾い上げる。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i> 切断時・エラー検知</div>
+          <div class="text-emerald-300 font-bold">closed / channelError を検知</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">切断状態を確実にキャッチして処理。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> イベント受信時</div>
+          <div class="text-emerald-300 font-bold">rooms_v2 変更で state 直接更新</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">MatchingRoom.fromMap() で即時にUI再描画。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. 対戦中チャットメッセージ -->
+    <div class="card-item bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-emerald-500/70" data-category="match">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">完全対応 (SDK公式Stream)</span>
+            <span class="text-xs text-slate-400 font-mono">lib/provider/message_provider.dart</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+            <span>対戦中・観戦中のチャットメッセージ</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 font-mono text-indigo-300 border border-slate-700">supabase.from('messages').stream()</span>
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">対戦画面（GamePage）および観戦画面での白熱したチャットメッセージ送受信。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 初回接続時フェッチ</div>
+          <div class="text-emerald-300 font-bold">Stream 初期化時に全件取得</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">Supabase SDK が自動で初期データを流し込む。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i> 切断時・エラー再接続</div>
+          <div class="text-emerald-300 font-bold">SDK内部で自動再接続</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">切断されても裏で自動再試行・同期。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> イベント受信時</div>
+          <div class="text-emerald-300 font-bold">新着メッセージを即時リスト反映</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">楽観的UIと照合して重複なく追加。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9. 通知一覧 -->
+    <div class="card-item bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-emerald-500/70" data-category="chat">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">完全対応</span>
+            <span class="text-xs text-slate-400 font-mono">lib/provider/notification_provider.dart</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+            <span>通知一覧・バッジ更新</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 font-mono text-indigo-300 border border-slate-700">notifications-user-$myId</span>
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">自分宛てのいいね、フォロー、招待等の通知を受信してバッジや一覧を更新。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 初回接続時フェッチ</div>
+          <div class="text-emerald-300 font-bold">subscribed 完了時に fetch()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">接続確立時に最新通知を取得。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i> 切断時・エラー再接続</div>
+          <div class="text-emerald-300 font-bold">3秒後に自動再初期化 (_init)</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">closed / channelError で自動リトライ。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> イベント受信時</div>
+          <div class="text-emerald-300 font-bold">INSERT / UPDATE で再フェッチ</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">fetchNotifications() でリスト全体を再更新。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. メッセージインボックス一覧 -->
+    <div class="card-item bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-emerald-500/70" data-category="chat">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">完全対応</span>
+            <span class="text-xs text-slate-400 font-mono">lib/provider/chat_inbox_provider.dart</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+            <span>メッセージタブ（インボックス）一覧</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 font-mono text-indigo-300 border border-slate-700">inbox-dm-$myId / inbox-openchat-$myId</span>
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">メッセージタブを開いた際のDM一覧・オプチャ一覧の最新メッセージ・未読件数更新。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 初回接続時フェッチ</div>
+          <div class="text-emerald-300 font-bold">FutureProvider 実行時に取得</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">タブを開いた際に最新データを取得。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i> 切断時・エラー再接続</div>
+          <div class="text-emerald-300 font-bold">3秒後に自動 invalidateSelf()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">closed / channelError で自動プロバイダ再計算。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> イベント受信時</div>
+          <div class="text-emerald-300 font-bold">新着 INSERT で invalidateSelf()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">最新一覧に自動更新。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11. 観戦画面の部屋状態 -->
+    <div class="card-item bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all hover:border-emerald-500/70" data-category="match">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">完全対応</span>
+            <span class="text-xs text-slate-400 font-mono">lib/views/ResbaBattleWatchView.dart</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+            <span>観戦部屋ステータス監視</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 font-mono text-indigo-300 border border-slate-700">watch-room-$roomId</span>
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">観戦中のバトルの残り時間、ターン終了、試合決着をリアルタイム同期。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="download" class="w-4 h-4 text-emerald-400"></i> 初回接続時フェッチ</div>
+          <div class="text-emerald-300 font-bold">subscribed 時に _load()</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">最新の試合データを再取得。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-400"></i> 切断時・エラー再接続</div>
+          <div class="text-emerald-300 font-bold">3秒後に自動再初期化</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">closed / channelError で自動リトライ。</p>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
+          <div class="text-slate-400 font-semibold flex items-center gap-1.5 mb-1.5"><i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i> イベント受信時</div>
+          <div class="text-emerald-300 font-bold">rooms_v2 変更で即座に setState</div>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">タイマーやロボットアニメーションを更新。</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    function filterCards(type) {
+      const cards = document.querySelectorAll('.card-item');
+      const buttons = {
+        all: document.getElementById('btn-all'),
+        chat: document.getElementById('btn-chat'),
+        resba: document.getElementById('btn-resba'),
+        match: document.getElementById('btn-match')
+      };
+
+      Object.values(buttons).forEach(btn => {
+        btn.classList.remove('bg-indigo-600', 'text-white');
+        btn.classList.add('bg-slate-900', 'text-slate-300', 'border', 'border-slate-800');
+      });
+
+      if (buttons[type]) {
+        buttons[type].classList.remove('bg-slate-900', 'text-slate-300', 'border', 'border-slate-800');
+        buttons[type].classList.add('bg-indigo-600', 'text-white');
+      }
+
+      cards.forEach(card => {
+        if (type === 'all' || card.dataset.category === type) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -183,7 +183,7 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('⚔️ マイレスバ', style: AppTextStyles.bold(color: Colors.white)),
+        title: Text('⚔️ マイレスバ', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blue,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 1,
@@ -371,6 +371,7 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
                 children: [
                   CircleAvatar(
                     radius: 12,
+                    backgroundColor: Colors.grey[300],
                     backgroundImage:
                         firstApp.applicantAvatar != null &&
                                 firstApp.applicantAvatar!.isNotEmpty
@@ -378,7 +379,7 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
                             : null,
                     child: firstApp.applicantAvatar == null ||
                             firstApp.applicantAvatar!.isEmpty
-                        ? const Icon(Icons.person, size: 14)
+                        ? Icon(Icons.person, size: 14, color: Colors.grey[600])
                         : null,
                   ),
                   const SizedBox(width: 6),
@@ -536,12 +537,13 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
               children: [
                 CircleAvatar(
                   radius: 12,
+                  backgroundColor: Colors.grey[300],
                   backgroundImage:
                       info.hostAvatar != null && info.hostAvatar!.isNotEmpty
                           ? NetworkImage(info.hostAvatar!)
                           : null,
                   child: info.hostAvatar == null || info.hostAvatar!.isEmpty
-                      ? const Icon(Icons.person, size: 14)
+                      ? Icon(Icons.person, size: 14, color: Colors.grey[600])
                       : null,
                 ),
                 const SizedBox(width: 6),

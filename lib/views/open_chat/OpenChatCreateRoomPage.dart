@@ -210,7 +210,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
         ),
         title: Text(
           'オープンチャットを作成',
-          style: AppTextStyles.bold(color: Colors.white, fontSize: 17),
+          style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
         ),
         actions: [
           Padding(

@@ -1,6 +1,7 @@
 // ignore_for_file: file_names, use_build_context_synchronously
 import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/view_model/prohibited_view_model.dart';
+import 'package:debate_project/widgets/app_confirm_dialog.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -77,33 +78,16 @@ Future<void> showBlockUserDialog({
   required String targetName,
   VoidCallback? onBlocked,
 }) async {
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAppConfirmDialog(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      backgroundColor: Colors.white,
-      title: const Text('ユーザーをブロック'),
-      content: Text(
-        '$targetNameさんをブロックしますか？\n'
+    title: 'ユーザーをブロック',
+    message: '$targetNameさんをブロックしますか？\n'
         'ブロックすると、このユーザーの投稿・メッセージが表示されなくなり、'
         'DM・対戦申し込みもできなくなります。\n'
         '※ランダムマッチングでは引き続き対戦することがあります。',
-        style: AppTextStyles.notoSans(
-          color: Colors.black.withValues(alpha: 0.8),
-          fontSize: 14,
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('キャンセル'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-          onPressed: () => Navigator.pop(dialogContext, true),
-          child: const Text('ブロック'),
-        ),
-      ],
-    ),
+    cancelText: 'キャンセル',
+    confirmText: 'ブロック',
+    isDestructive: true,
   );
   if (confirmed != true || !context.mounted) return;
 
@@ -126,29 +110,13 @@ Future<void> showUnblockUserDialog({
   required String targetName,
   VoidCallback? onUnblocked,
 }) async {
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAppConfirmDialog(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      backgroundColor: Colors.white,
-      title: const Text('ブロックを解除'),
-      content: Text(
-        '$targetNameさんのブロックを解除しますか？',
-        style: AppTextStyles.notoSans(
-          color: Colors.black.withValues(alpha: 0.8),
-          fontSize: 14,
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('キャンセル'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(dialogContext, true),
-          child: const Text('解除する'),
-        ),
-      ],
-    ),
+    title: 'ブロックを解除',
+    message: '$targetNameさんのブロックを解除しますか？',
+    cancelText: 'キャンセル',
+    confirmText: '解除する',
+    isDestructive: false,
   );
   if (confirmed != true || !context.mounted) return;
 

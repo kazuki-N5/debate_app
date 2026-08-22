@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:debate_project/provider/block_provider.dart';
@@ -53,6 +54,7 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
   final String roomId;
   RealtimeChannel? _channel;
   bool hasMore = true;
+  bool _isDisposed = false;
 
   DmMessagesNotifier(this._ref, this.roomId) : super(const AsyncValue.loading()) {
     _init();
@@ -113,8 +115,9 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
     }
   }
 
-  Future<void> _init() async {
+  Future<void> _init({String reason = '初回接続'}) async {
     final supabase = _ref.read(supabaseProvider);
+    log('🔌 [DMメッセージ] 接続開始 (理由: $reason, roomId: $roomId)');
 
     // 1. ストリームの購読を開始
     _channel = supabase.channel('public:dm_messages:room_id=$roomId')
@@ -143,18 +146,22 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
       )
       .subscribe((status, [error]) async {
         if (status == RealtimeSubscribeStatus.subscribed) {
+          log('✅ [DMメッセージ] 接続成功 (理由: $reason, roomId: $roomId)');
           await _fetchLatestOrCatchUp();
-        } else if (status == RealtimeSubscribeStatus.closed ||
-            status == RealtimeSubscribeStatus.channelError) {
+        } else if (!_isDisposed && mounted &&
+            (status == RealtimeSubscribeStatus.closed ||
+                status == RealtimeSubscribeStatus.channelError ||
+                status == RealtimeSubscribeStatus.timedOut)) {
+          log('⚠️ [DMメッセージ] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
           await Future.delayed(const Duration(seconds: 3));
-          if (!mounted) return;
+          if (!mounted || _isDisposed) return;
           if (_channel != null) {
             try {
               await supabase.removeChannel(_channel!);
             } catch (_) {}
             _channel = null;
           }
-          _init();
+          _init(reason: '再接続 ($status)');
         }
       });
   }
@@ -245,11 +252,13 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     if (_channel != null) {
       try {
         final supabase = _ref.read(supabaseProvider);
         supabase.removeChannel(_channel!);
       } catch (_) {}
+      _channel = null;
     }
     super.dispose();
   }

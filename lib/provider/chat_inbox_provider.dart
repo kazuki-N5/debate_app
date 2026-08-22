@@ -1,4 +1,5 @@
 // ignore_for_file: file_names, avoid_print
+import 'dart:developer';
 import 'package:debate_project/modes/open_chat.dart';
 import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -49,6 +50,8 @@ final chatInboxProvider =
   final myId = ref.read(currentUserIdProvider);
   if (myId == null) return [];
 
+  var isDisposed = false;
+
   // ==== インボックス(メッセージ一覧)のリアルタイム更新 ====
   final dmChannel = supabase.channel('inbox-dm-$myId');
   dmChannel.onPostgresChanges(
@@ -56,14 +59,23 @@ final chatInboxProvider =
     schema: 'public',
     table: 'dm_messages',
     callback: (payload) {
-      // 自分が送信したメッセージでなければ一覧を再取得（または単に再取得）
-      ref.invalidateSelf();
+      if (!isDisposed) {
+        ref.invalidateSelf();
+      }
     },
   ).subscribe((status, [error]) async {
-    if (status == RealtimeSubscribeStatus.closed ||
-        status == RealtimeSubscribeStatus.channelError) {
+    if (isDisposed) return;
+    if (status == RealtimeSubscribeStatus.subscribed) {
+      log('✅ [DMインボックス] 接続成功 (userId: $myId)');
+    } else if (!isDisposed &&
+        (status == RealtimeSubscribeStatus.closed ||
+            status == RealtimeSubscribeStatus.channelError ||
+            status == RealtimeSubscribeStatus.timedOut)) {
+      log('⚠️ [DMインボックス] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
       await Future.delayed(const Duration(seconds: 3));
-      ref.invalidateSelf();
+      if (!isDisposed) {
+        ref.invalidateSelf();
+      }
     }
   });
 
@@ -73,17 +85,28 @@ final chatInboxProvider =
     schema: 'public',
     table: 'open_chat_messages',
     callback: (payload) {
-      ref.invalidateSelf();
+      if (!isDisposed) {
+        ref.invalidateSelf();
+      }
     },
   ).subscribe((status, [error]) async {
-    if (status == RealtimeSubscribeStatus.closed ||
-        status == RealtimeSubscribeStatus.channelError) {
+    if (isDisposed) return;
+    if (status == RealtimeSubscribeStatus.subscribed) {
+      log('✅ [オプチャインボックス] 接続成功 (userId: $myId)');
+    } else if (!isDisposed &&
+        (status == RealtimeSubscribeStatus.closed ||
+            status == RealtimeSubscribeStatus.channelError ||
+            status == RealtimeSubscribeStatus.timedOut)) {
+      log('⚠️ [オプチャインボックス] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
       await Future.delayed(const Duration(seconds: 3));
-      ref.invalidateSelf();
+      if (!isDisposed) {
+        ref.invalidateSelf();
+      }
     }
   });
 
   ref.onDispose(() {
+    isDisposed = true;
     try {
       supabase.removeChannel(dmChannel);
       supabase.removeChannel(openChatChannel);

@@ -1,5 +1,4 @@
 // ignore_for_file: file_names, use_build_context_synchronously
-import 'dart:async';
 import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/material.dart';
@@ -17,8 +16,6 @@ class ResbaApplyingBanner extends ConsumerStatefulWidget {
 }
 
 class _ResbaApplyingBannerState extends ConsumerState<ResbaApplyingBanner> {
-  Timer? _clearTimer;
-
   @override
   void initState() {
     super.initState();
@@ -29,53 +26,13 @@ class _ResbaApplyingBannerState extends ConsumerState<ResbaApplyingBanner> {
   }
 
   @override
-  void dispose() {
-    _clearTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final infoAsync = ref.watch(applyingInfoProvider);
     final info = infoAsync.valueOrNull;
     if (info == null) return const SizedBox.shrink();
 
     if (!info.isPending) {
-      // 拒否・取消: 「⚔️ 拒否されました」を白テキストで表示し、すぐ消える
-      _clearTimer ??= Timer(const Duration(milliseconds: 800), () {
-        if (mounted) ref.read(applyingInfoProvider.notifier).clear();
-      });
-      return SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('⚔️', style: TextStyle(fontSize: 14)),
-                  SizedBox(width: 8),
-                  Text(
-                    '拒否されました',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     return SafeArea(

@@ -30,6 +30,7 @@ import 'package:debate_project/views/open_chat/OpenChatRoomView.dart';
 import 'package:debate_project/views/open_chat/OpenChatCreateRoomPage.dart';
 import 'package:debate_project/views/open_chat/OpenChatPreviewPage.dart';
 import 'package:debate_project/views/ResbaBattleWatchView.dart';
+import 'package:debate_project/widgets/ios_swipe_back.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -78,21 +79,21 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: '/setting',
-      pageBuilder: (context, state) => NoTransitionPage(child: const SettingPage(), key: state.pageKey),
+      pageBuilder: (context, state) => InstantSwipePage(child: const SettingPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/notification_settings',
-      pageBuilder: (context, state) => NoTransitionPage(child: const NotificationSettingsPage(), key: state.pageKey),
+      pageBuilder: (context, state) => InstantSwipePage(child: const NotificationSettingsPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/history',
-      pageBuilder: (context, state) => NoTransitionPage(child: const HistoryPage(), key: state.pageKey),
+      pageBuilder: (context, state) => InstantSwipePage(child: const HistoryPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/history_detail',
       pageBuilder: (context, state) {
         final record = state.extra as MatchRecordDisplay;
-        return NoTransitionPage(
+        return InstantSwipePage(
           child: HistoryDetailPage(record: record),
           key: state.pageKey,
         );
@@ -100,13 +101,13 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: '/name2',
-      pageBuilder: (context, state) => NoTransitionPage(child: const NamePageChange(), key: state.pageKey),
+      pageBuilder: (context, state) => InstantSwipePage(child: const NamePageChange(), key: state.pageKey),
     ),
     GoRoute(
       path: '/chistory',
       pageBuilder: (context, state) {
         final record = state.extra as MatchRecordDisplay;
-        return NoTransitionPage(
+        return InstantSwipePage(
           child: ChatHistoryPage(record: record),
           key: state.pageKey,
         );
@@ -114,7 +115,7 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: '/transfer',
-      pageBuilder: (context, state) => NoTransitionPage(child: const TransferPage(), key: state.pageKey),
+      pageBuilder: (context, state) => InstantSwipePage(child: const TransferPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/waittransfer',
@@ -122,17 +123,17 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: '/pay',
-      pageBuilder: (context, state) => NoTransitionPage(child: const PayPage(), key: state.pageKey),
+      pageBuilder: (context, state) => InstantSwipePage(child: const PayPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/createOpenChat',
-      pageBuilder: (context, state) => NoTransitionPage(child: const OpenChatCreateRoomPage(), key: state.pageKey),
+      pageBuilder: (context, state) => InstantSwipePage(child: const OpenChatCreateRoomPage(), key: state.pageKey),
     ),
     GoRoute(
       path: '/open_chat_preview',
       pageBuilder: (context, state) {
         final room = state.extra as OpenChatRoom;
-        return NoTransitionPage(
+        return InstantSwipePage(
           child: OpenChatPreviewPage(room: room),
           key: state.pageKey,
         );
@@ -142,7 +143,7 @@ final GoRouter router = GoRouter(
       path: '/userProfile',
       pageBuilder: (context, state) {
         final userId = state.extra as String;
-        return NoTransitionPage(
+        return InstantSwipePage(
           child: HeroControllerScope.none(child: UserProfilePage(userId: userId)),
           key: state.pageKey,
         );
@@ -150,7 +151,7 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: '/bbsPostCreate',
-      pageBuilder: (context, state) => NoTransitionPage(
+      pageBuilder: (context, state) => InstantSwipePage(
         child: const BbsPostCreateView(),
         key: state.pageKey,
       ),
@@ -159,7 +160,7 @@ final GoRouter router = GoRouter(
       path: '/bbsPostDetail',
       pageBuilder: (context, state) {
         final post = state.extra as BbsPost;
-        return NoTransitionPage(
+        return InstantSwipePage(
           child: HeroControllerScope.none(child: BbsPostDetailView(post: post)),
           key: state.pageKey,
         );
@@ -167,7 +168,7 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: '/myResbas',
-      pageBuilder: (context, state) => NoTransitionPage(
+      pageBuilder: (context, state) => InstantSwipePage(
         child: const MyResbaListPage(),
         key: state.pageKey,
       ),
@@ -176,7 +177,7 @@ final GoRouter router = GoRouter(
       path: '/resbaWatch',
       pageBuilder: (context, state) {
         final invite = state.extra as ResbaInvite;
-        return NoTransitionPage(
+        return InstantSwipePage(
           child: ResbaBattleWatchView(invite: invite),
           key: state.pageKey,
         );
@@ -187,7 +188,7 @@ final GoRouter router = GoRouter(
       pageBuilder: (context, state) {
         final args =
             state.extra as ({String inviteId, AppNotification? notification});
-        return NoTransitionPage(
+        return InstantSwipePage(
           child: ResbaRequestPage(
             inviteId: args.inviteId,
             notification: args.notification,
@@ -200,7 +201,7 @@ final GoRouter router = GoRouter(
       path: '/openChatRoom',
       pageBuilder: (context, state) {
         final room = state.extra as OpenChatRoom;
-        return NoTransitionPage(
+        return InstantSwipePage(
           child: HeroControllerScope.none(child: OpenChatRoomView(room: room)),
           key: state.pageKey,
         );
@@ -208,7 +209,7 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: '/blocked_users',
-      pageBuilder: (context, state) => NoTransitionPage(
+      pageBuilder: (context, state) => InstantSwipePage(
         child: const BlockedUsersPage(),
         key: state.pageKey,
       ),

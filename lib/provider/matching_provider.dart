@@ -74,7 +74,8 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
   // gomatchstateはUI側のref.listenで代用するため削除します
   // void gomatchstate() async { ... }
 
-  void setupPresenceChannel(String roomId) {
+  void setupPresenceChannel(String roomId, {String reason = '初回接続'}) {
+    log('🔌 [対戦Presence] 接続開始 (理由: $reason, roomId: $roomId)');
     // 既存のチャンネルがあればクリーンアップ
     if (_presenceChannel != null) {
       supabase.removeChannel(_presenceChannel!);
@@ -158,22 +159,35 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
         )
         .subscribe((status, [error]) async {
           if (status == RealtimeSubscribeStatus.subscribed) {
-            log('--- Subscribed to Realtime ---');
+            log('✅ [対戦Presence] 接続成功 (理由: $reason, roomId: $roomId)');
             // 自分の状態をトラック開始
             final myUserId = ref.read(currentUserIdProvider);
-            await _presenceChannel!.track({
-              'user_id': myUserId,
-              'online_at': DateTime.now().toIso8601String(),
-            });
+            if (myUserId != null && _presenceChannel != null) {
+              await _presenceChannel!.track({
+                'user_id': myUserId,
+                'online_at': DateTime.now().toIso8601String(),
+              });
+            }
 
             // 3秒後にテスト用のBroadcastを送る
             Future.delayed(const Duration(seconds: 3), () async {
               log('--- Sending test broadcast HELLO... ---');
-              await _presenceChannel!.sendBroadcastMessage(
-                event: 'test_hello',
-                payload: {'from': myUserId, 'text': 'HELLO!'},
-              );
+              if (_presenceChannel != null && myUserId != null) {
+                await _presenceChannel!.sendBroadcastMessage(
+                  event: 'test_hello',
+                  payload: {'from': myUserId, 'text': 'HELLO!'},
+                );
+              }
             });
+          } else if (!isdisposed &&
+              (status == RealtimeSubscribeStatus.closed ||
+                  status == RealtimeSubscribeStatus.channelError ||
+                  status == RealtimeSubscribeStatus.timedOut)) {
+            log('⚠️ [対戦Presence] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
+            await Future.delayed(const Duration(seconds: 3));
+            if (!isdisposed && _presenceChannel != null) {
+              setupPresenceChannel(roomId, reason: '再接続 ($status)');
+            }
           }
         });
   }
@@ -362,8 +376,9 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     }
   }
 
-  Future<void> waitForMatch(String roomId) async {
+  Future<void> waitForMatch(String roomId, {String reason = '初回接続'}) async {
     if (isdisposed) return;
+    log('🔌 [通常マッチング待機] 接続開始 (理由: $reason, roomId: $roomId)');
     try {
       _subscription = supabase
           .channel('room-updates:$roomId')
@@ -383,15 +398,27 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
                 }
               })
           .subscribe((status, [error]) async {
-        log('Subscription status: $status');
+        log('realtime[room-updates] status: $status');
         if (status == RealtimeSubscribeStatus.subscribed) {
-          log('Successfully subscribed. Fetching initial state.');
+          log('✅ [通常マッチング待機] 接続成功 (理由: $reason, roomId: $roomId)');
           // サブスクライブ成功時に初期データを取得することで、
           // 監視開始前に入っていた変更も確実に拾い、かつ冗長なループを回避します
           await fetchmatchupdate();
-        } else if (status == RealtimeSubscribeStatus.closed ||
-            status == RealtimeSubscribeStatus.channelError) {
-          log('Subscription disconnected or failed: status=$status error=$error');
+        } else if (!isdisposed &&
+            (status == RealtimeSubscribeStatus.closed ||
+                status == RealtimeSubscribeStatus.channelError ||
+                status == RealtimeSubscribeStatus.timedOut)) {
+          log('⚠️ [通常マッチング待機] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
+          await Future.delayed(const Duration(seconds: 3));
+          if (!isdisposed && state.roomId == roomId) {
+            if (_subscription != null) {
+              try {
+                await supabase.removeChannel(_subscription!);
+              } catch (_) {}
+              _subscription = null;
+            }
+            waitForMatch(roomId, reason: '再接続 ($status)');
+          }
         }
       });
       log('Subscription process initiated.');

@@ -4,6 +4,7 @@ import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
+import 'package:debate_project/widgets/app_confirm_dialog.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,7 +57,7 @@ class ResbaCard extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('対戦を開始できませんでした')));
+            .showSnackBar(const SnackBar(content: Text('エラーが発生しました（エラーコード: 8109）')));
       }
     }
   }
@@ -68,35 +69,7 @@ class ResbaCard extends ConsumerWidget {
     // ---- 状態に応じたアクションボタン ----
     List<Widget> actionButtons = [];
 
-    if (invite.isPending && invite.isTarget) {
-      // 指名型: 承諾 / 拒否
-      actionButtons = [
-        _ActionButton(
-          label: '⚔️ 承諾して対戦',
-          color: const Color(0xFF00BA7C),
-          onTap: () async {
-            final result = await actions.respond(invite.id, true);
-            if (result.error != null) {
-              await _showError(context, result.error);
-            } else if (result.roomId != null) {
-              onChanged?.call();
-              await _startBattle(context, ref, result.roomId!);
-            } else {
-              onChanged?.call();
-            }
-          },
-        ),
-        _ActionButton(
-          label: '拒否',
-          color: Colors.grey,
-          onTap: () async {
-            final result = await actions.respond(invite.id, false);
-            await _showError(context, result.error);
-            onChanged?.call();
-          },
-        ),
-      ];
-    } else if (invite.isPending && !invite.isTarget && !invite.isSender) {
+    if (invite.isPending && !invite.isSender) {
       // 募集型（ポスト / 返信 / DM / オプチャ / 対戦募集）: 応募者側
       if (invite.myApplication == 'pending') {
         actionButtons = [
@@ -120,23 +93,13 @@ class ResbaCard extends ConsumerWidget {
               // 応募できるのは1試合のみ: 応募中なら入れ替え確認
               final applying = ref.read(applyingInfoProvider).valueOrNull;
               if (applying != null && applying.isPending) {
-                final swap = await showDialog<bool>(
+                final swap = await showAppConfirmDialog(
                   context: context,
-                  builder: (dialogContext) => AlertDialog(
-                    title: const Text('⚔️ 応募できるのは1試合までです'),
-                    content: const Text(
-                        '今の応募を取り消して、この申し込みにしますか？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(dialogContext, false),
-                        child: const Text('いいえ'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(dialogContext, true),
-                        child: const Text('はい（入れ替え）'),
-                      ),
-                    ],
-                  ),
+                  title: '応募できるのは1試合までです',
+                  message: '今の応募を取り消して、この申し込みに入れ替えますか？',
+                  cancelText: 'いいえ',
+                  confirmText: 'はい（入れ替え）',
+                  isDestructive: false,
                 );
                 if (swap != true) return;
                 await actions.cancelMyPendingApplications();
@@ -149,8 +112,8 @@ class ResbaCard extends ConsumerWidget {
         ];
       }
     } else if (invite.isPending && invite.isSender) {
-      // 送信者側: 募集型は申込者を1件ずつ承認、指名型（旧DM）は相手待ち
-      if (!invite.isTarget && invite.firstApplication != null) {
+      // 送信者側: 申込者を1件ずつ承認
+      if (invite.firstApplication != null) {
         return _buildPostHostCard(context, ref, invite.firstApplication!);
       }
       actionButtons = [
@@ -212,17 +175,13 @@ class ResbaCard extends ConsumerWidget {
       statusLabel = '取り下げられました';
     } else if (invite.status == 'finished') {
       statusLabel = '対戦終了';
-    } else if (invite.isTarget) {
-      statusLabel = '相手待ち';
-    } else if (invite.isSender && !invite.isTarget) {
-      statusLabel = '申込待ち';
     } else if (invite.isSender) {
-      statusLabel = '相手待ち';
-    } else if (!invite.isTarget) {
+      statusLabel = '申込待ち';
+    } else {
       statusLabel = '募集中';
     }
 
-    final showStatusOnly = actionButtons.isEmpty && statusLabel != null;
+    final showStatusOnly = actionButtons.isEmpty;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -248,13 +207,11 @@ class ResbaCard extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  invite.isTarget
-                      ? '⚔️ ${invite.senderName ?? '名無し'}さんからレスバが届きました'
-                      : '⚔️ レスバ',
+                  '⚔️ レスバ',
                   style: AppTextStyles.bold(fontSize: 12.5),
                 ),
               ),
-              if (statusLabel != null && showStatusOnly)
+              if (showStatusOnly)
                 Text(
                   statusLabel,
                   style: AppTextStyles.notoSans(

@@ -4,6 +4,7 @@ import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/router/router.dart';
 import 'package:debate_project/utils/date_formatter.dart';
+import 'package:debate_project/widgets/app_confirm_dialog.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +18,7 @@ class MyResbaListPage extends ConsumerStatefulWidget {
 }
 
 class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
+  late final PageController _pageController;
   List<ResbaInvite> _invites = [];
   bool _loading = true;
   int _tabIndex = 0; // 0: 募集中 / 1: 届いた応募 / 2: 応募中 / 3: 履歴
@@ -24,7 +26,14 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _tabIndex);
     _fetch();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetch() async {
@@ -36,23 +45,6 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
         _invites = list;
         _loading = false;
       });
-    }
-  }
-
-  List<ResbaInvite> get _current {
-    switch (_tabIndex) {
-      case 0: // 募集中（応募ゼロ）
-        return _invites
-            .where((i) => i.isPending && i.applicationCount == 0)
-            .toList();
-      case 1: // 届いた応募（応募あり）
-        return _invites
-            .where((i) => i.isPending && i.applicationCount > 0)
-            .toList();
-      case 3: // 履歴
-        return _invites.where((i) => !i.isPending).toList();
-      default:
-        return [];
     }
   }
 
@@ -81,22 +73,13 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
 
   /// 自分の応募を取り消す
   Future<void> _cancelMyApplication(ApplyingInfo info) async {
-    final ok = await showDialog<bool>(
+    final ok = await showAppConfirmDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('⚔️ 応募を取り消しますか？'),
-        content: Text('「${info.theme}」への応募を取り消します。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('いいえ'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('取り消す'),
-          ),
-        ],
-      ),
+      title: '応募を取り消しますか？',
+      message: '「${info.theme}」への応募を取り消します。',
+      cancelText: 'いいえ',
+      confirmText: '取り消す',
+      isDestructive: false,
     );
     if (ok != true) return;
     final result =
@@ -109,22 +92,13 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
   }
 
   Future<void> _withdraw(ResbaInvite invite) async {
-    final ok = await showDialog<bool>(
+    final ok = await showAppConfirmDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('⚔️ 取り下げますか？'),
-        content: Text('「${invite.theme}」の募集を取り下げます。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('いいえ'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('取り下げる'),
-          ),
-        ],
-      ),
+      title: '募集を取り下げますか？',
+      message: '「${invite.theme}」の募集を取り下げます。',
+      cancelText: 'いいえ',
+      confirmText: '取り下げる',
+      isDestructive: false,
     );
     if (ok != true) return;
     final result = await ref.read(resbaActionsProvider).cancel(invite.id);
@@ -136,23 +110,13 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
   }
 
   Future<void> _delete(ResbaInvite invite) async {
-    final ok = await showDialog<bool>(
+    final ok = await showAppConfirmDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('⚔️ 削除しますか？'),
-        content: Text('「${invite.theme}」を一覧から完全に削除します（元に戻せません）。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('いいえ'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('削除する'),
-          ),
-        ],
-      ),
+      title: '募集を完全に削除しますか？',
+      message: '「${invite.theme}」を一覧から完全に削除します（元に戻せません）。',
+      cancelText: 'いいえ',
+      confirmText: '削除する',
+      isDestructive: true,
     );
     if (ok != true) return;
     final result = await ref.read(resbaActionsProvider).deleteResba(invite.id);
@@ -176,14 +140,19 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final current = _current;
+    final recruitingList =
+        _invites.where((i) => i.isPending && i.applicationCount == 0).toList();
+    final receivedList =
+        _invites.where((i) => i.isPending && i.applicationCount > 0).toList();
+    final historyList = _invites.where((i) => !i.isPending).toList();
     final applyingInfo = ref.watch(applyingInfoProvider).valueOrNull;
     final isApplying = applyingInfo != null && applyingInfo.isPending;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('⚔️ マイレスバ', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
+        title: Text('⚔️ マイレスバ',
+            style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blue,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 1,
@@ -191,56 +160,48 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
       body: Column(
         children: [
           // セグメント
-          Row(
-            children: [
-              _segButton('募集中', 0),
-              _segButton('届いた応募', 1),
-              _segButton('応募中', 2),
-              _segButton('履歴', 3),
-            ],
+          Container(
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Color(0xFFE6E6E6)),
+              ),
+            ),
+            child: Row(
+              children: [
+                _segButton('募集中', 0),
+                _segButton('届いた応募', 1),
+                _segButton('応募中', 2),
+                _segButton('履歴', 3),
+              ],
+            ),
           ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
-                : _tabIndex == 2
-                    ? RefreshIndicator(
-                        onRefresh: _fetch,
-                        child: !isApplying
-                            ? Center(
-                                child: Text(
-                                  '現在応募中のレスバはありません',
-                                  style: AppTextStyles.notoSans(
-                                      color: Colors.grey, fontSize: 15),
-                                ),
-                              )
-                            : ListView(
-                                padding: const EdgeInsets.all(12),
-                                children: [
-                                  _buildApplyingCard(applyingInfo),
-                                ],
-                              ),
-                      )
-                    : current.isEmpty
-                        ? Center(
-                            child: Text(
-                              _tabIndex == 0
-                                  ? '募集中のレスバはありません'
-                                  : _tabIndex == 1
-                                      ? '届いた応募はありません'
-                                      : '履歴はありません',
-                              style: AppTextStyles.notoSans(
-                                  color: Colors.grey, fontSize: 15),
-                            ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: _fetch,
-                            child: ListView.builder(
-                              padding: const EdgeInsets.all(12),
-                              itemCount: current.length,
-                              itemBuilder: (context, index) =>
-                                  _buildCard(current[index]),
-                            ),
-                          ),
+                : PageView(
+                    controller: _pageController,
+                    onPageChanged: (index) {
+                      setState(() => _tabIndex = index);
+                    },
+                    children: [
+                      _buildInviteListTab(
+                        list: recruitingList,
+                        emptyMessage: '募集中のレスバはありません',
+                      ),
+                      _buildInviteListTab(
+                        list: receivedList,
+                        emptyMessage: '届いた応募はありません',
+                      ),
+                      _buildApplyingTab(
+                        applyingInfo: applyingInfo,
+                        isApplying: isApplying,
+                      ),
+                      _buildInviteListTab(
+                        list: historyList,
+                        emptyMessage: '履歴はありません',
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -251,7 +212,17 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
     final selected = _tabIndex == index;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _tabIndex = index),
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (_tabIndex != index) {
+            setState(() => _tabIndex = index);
+            _pageController.animateToPage(
+              index,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+            );
+          }
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
@@ -272,6 +243,65 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildInviteListTab({
+    required List<ResbaInvite> list,
+    required String emptyMessage,
+  }) {
+    return RefreshIndicator(
+      onRefresh: _fetch,
+      child: list.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                const SizedBox(height: 160),
+                Center(
+                  child: Text(
+                    emptyMessage,
+                    style: AppTextStyles.notoSans(
+                        color: Colors.grey, fontSize: 15),
+                  ),
+                ),
+              ],
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(12),
+              itemCount: list.length,
+              itemBuilder: (context, index) => _buildCard(list[index]),
+            ),
+    );
+  }
+
+  Widget _buildApplyingTab({
+    required ApplyingInfo? applyingInfo,
+    required bool isApplying,
+  }) {
+    return RefreshIndicator(
+      onRefresh: _fetch,
+      child: !isApplying || applyingInfo == null
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                const SizedBox(height: 160),
+                Center(
+                  child: Text(
+                    '現在応募中のレスバはありません',
+                    style: AppTextStyles.notoSans(
+                        color: Colors.grey, fontSize: 15),
+                  ),
+                ),
+              ],
+            )
+          : ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(12),
+              children: [
+                _buildApplyingCard(applyingInfo),
+              ],
+            ),
     );
   }
 

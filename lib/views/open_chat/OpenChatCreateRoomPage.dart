@@ -136,7 +136,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
       final name = nameController.text.trim();
       if (name.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('オープンチャット名を入力してください')),
+          const SnackBar(content: Text('クラブ名を入力してください')),
         );
         return;
       }
@@ -178,7 +178,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
         if (context.mounted) {
           if (error == null) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('オープンチャットを作成しました')),
+              const SnackBar(content: Text('クラブを作成しました')),
             );
             context.pop();
           } else {
@@ -201,7 +201,9 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF007AFF),
+        backgroundColor: Colors.blue,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -209,7 +211,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'オープンチャットを作成',
+          'クラブを作成',
           style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
         ),
         actions: [
@@ -285,7 +287,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                             children: [
                               // 背景画像の上側にオーバーレイ表示する注記テキスト
                               const Text(
-                                'この画像はオープンチャットのプロフィールおよびトークルームの背景に適用されます。',
+                                'この画像はクラブのプロフィールおよびトークルームの背景に適用されます。',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
@@ -388,7 +390,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
 
               const SizedBox(height: 38),
 
-              // 2. オープンチャット名を入力（もとの枠スタイル）
+              // 2. クラブ名を入力（もとの枠スタイル）
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
@@ -397,7 +399,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                     const Row(
                       children: [
                         Text(
-                          'オープンチャット名を入力',
+                          'クラブ名を入力',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
@@ -422,7 +424,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                       buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
                       style: const TextStyle(fontSize: 15, color: Color(0xFF1C1C1E)),
                       decoration: InputDecoration(
-                        hintText: 'オープンチャット名を入力',
+                        hintText: 'クラブ名を入力',
                         hintStyle: const TextStyle(color: Color(0xFFC7C7CC), fontSize: 14),
                         filled: true,
                         fillColor: const Color(0xFFF8FAFC),
@@ -536,7 +538,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'ハッシュタグを設定すると、ユーザーが検索した時にこのオープンチャットが見つかりやすくなります。',
+                      'ハッシュタグを設定すると、ユーザーが検索した時にこのクラブが見つかりやすくなります。',
                       style: TextStyle(fontSize: 11, color: Color(0xFF8E8E93), height: 1.4),
                     ),
                     const SizedBox(height: 12),

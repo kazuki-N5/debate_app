@@ -1,10 +1,9 @@
 // ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/modes/history.dart';
-import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/view_model/prohibited_view_model.dart';
-import 'package:debate_project/widgets/radar_chart_view.dart';
+import 'package:debate_project/widgets/moderation.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -156,7 +155,6 @@ class _MatchHistoryItem extends HookConsumerWidget {
     final bool isCancelled = record.cancel ?? false;
     final String? opponentid = record.opponentid;
     final String roomid = record.roomid;
-    final supabase = ref.read(supabaseProvider);
 
     // --- UI Constants ---
     final Color cardBackgroundColor = Colors.grey[200] ?? Colors.grey;
@@ -230,131 +228,26 @@ class _MatchHistoryItem extends HookConsumerWidget {
                     text: 'ブロック',
                     onTap: () {
                       navigator.pop();
-                      showDialog(
-                        context: avatarContext,
-                        builder: (BuildContext dialogContext) {
-                          return AlertDialog(
-                            backgroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(27.0),
-                            ),
-                            title: Text(
-                              'ユーザーをブロック',
-                              style: AppTextStyles.bold(
-                                color: Colors.black,
-                                fontSize: 20,
-                              ),
-                            ),
-                            content: SingleChildScrollView(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${record.opponentName}さんをブロックしますか？\nブロックすると、このユーザーの投稿・メッセージが表示されなくなり、DM・対戦申し込みもできなくなります。\n※ランダムマッチングでは引き続き対戦することがあります。',
-                                    style: AppTextStyles.notoSans(
-                                      color: Colors.black.withValues(alpha: 0.8),
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            actionsPadding:
-                                const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                            actionsAlignment: MainAxisAlignment.end,
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(dialogContext).pop();
-                                },
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.black,
-                                  backgroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20.0),
-                                    side: const BorderSide(
-                                        color: Colors.black, width: 1.5),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20.0, vertical: 10.0),
-                                  textStyle: AppTextStyles.bold(
-                                      fontSize: 15),
-                                ),
-                                child: const Text('キャンセル'),
-                              ),
-                              const SizedBox(width: 1),
-                              ElevatedButton(
-                                onPressed: () async {
-                                  final dialogNavigator = Navigator.of(dialogContext);
-                                  final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-                                  try {
-                                    // ① Supabaseにブロック情報を挿入
-                                    await supabase.from('brock_user').insert({
-                                      'user_id': ref.read(currentUserIdProvider),
-                                      'block_user_id': opponentid,
-                                    });
-
-                                    // ② ブロック一覧プロバイダを更新(全画面に反映)
-                                    await ref.read(blockedUserIdsProvider.notifier).refresh();
-
-                                    // ③ SharedPreferencesにブロックしたroomidを保存
-                                    final prefs = await SharedPreferences.getInstance();
-                                    const key = 'blocked_room_ids'; // 保存キー
-                                    
-                                    // 既存のリストを取得
-                                    final List<String> blockedRoomIds = prefs.getStringList(key) ?? [];
-                                    
-                                    // 新しいIDを追加（重複を避ける）
-                                    if (!blockedRoomIds.contains(roomid)) {
-                                      blockedRoomIds.add(roomid);
-                                      await prefs.setStringList(key, blockedRoomIds);
-                                    }
-
-                                    // ④ プロバイダを無効化し、履歴リストを再読み込み・再フィルタリングさせる
-                                    ref.invalidate(matchRecordsProvider);
-
-                                    // ④ ダイアログを閉じる
-                                    dialogNavigator.pop();
-
-                                    // ④ ユーザーに完了を通知
-                                    scaffoldMessenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text('${record.opponentName}さんをブロックしました。'),
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-
-                                  } catch (error) {
-                                    print('ブロック処理に失敗しました: $error');
-                                    // エラー時もダイアログを閉じる
-                                    dialogNavigator.pop();
-                                    // ユーザーにエラーを通知
-                                    scaffoldMessenger.showSnackBar(
-                                      const SnackBar(
-                                        content: Text('ブロック処理に失敗しました。'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20.0),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 24.0, vertical: 12.0),
-                                  elevation: 2,
-                                  textStyle: AppTextStyles.bold(
-                                      fontSize: 15),
-                                ),
-                                child: const Text('はい'),
-                              ),
-                            ],
-                          );
+                      if (opponentid == null) return;
+                      showBlockUserDialog(
+                        context: context,
+                        ref: ref,
+                        targetUserId: opponentid,
+                        targetName: record.opponentName,
+                        onBlocked: () async {
+                          try {
+                            final prefs = await SharedPreferences.getInstance();
+                            const key = 'blocked_room_ids';
+                            final List<String> blockedRoomIds =
+                                prefs.getStringList(key) ?? [];
+                            if (!blockedRoomIds.contains(roomid)) {
+                              blockedRoomIds.add(roomid);
+                              await prefs.setStringList(key, blockedRoomIds);
+                            }
+                            ref.invalidate(matchRecordsProvider);
+                          } catch (e) {
+                            print('History blocked_room_ids save error: $e');
+                          }
                         },
                       );
                     },

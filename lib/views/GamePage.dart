@@ -274,9 +274,12 @@ class GamePage extends HookConsumerWidget {
 
       // 観戦コメント（ヤジ）のRealtime Broadcastを購読
       RealtimeChannel? spectatorChannel;
-      if (room.roomId != null) {
-        spectatorChannel = supabase.channel('spectator:room:${room.roomId}');
-        spectatorChannel
+      bool isDisposed = false;
+      void subscribeSpectator(String roomId, {String reason = '初回接続'}) {
+        if (!context.mounted || isDisposed) return;
+        log('🔌 [対戦中観戦コメント] 接続開始 (理由: $reason, roomId: $roomId)');
+        spectatorChannel = supabase.channel('spectator:room:$roomId');
+        spectatorChannel!
             .onBroadcast(
               event: 'spectator_comment',
               callback: (payload) {
@@ -286,13 +289,40 @@ class GamePage extends HookConsumerWidget {
                 }
               },
             )
-            .subscribe();
+            .subscribe((status, [error]) async {
+              if (isDisposed) return;
+              if (status == RealtimeSubscribeStatus.subscribed) {
+                log('✅ [対戦中観戦コメント] 接続成功 (理由: $reason, roomId: $roomId)');
+              } else if (!isDisposed && context.mounted &&
+                  (status == RealtimeSubscribeStatus.closed ||
+                      status == RealtimeSubscribeStatus.channelError ||
+                      status == RealtimeSubscribeStatus.timedOut)) {
+                log('⚠️ [対戦中観戦コメント] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
+                await Future.delayed(const Duration(seconds: 3));
+                if (!context.mounted || isDisposed) return;
+                if (spectatorChannel != null) {
+                  try {
+                    await supabase.removeChannel(spectatorChannel!);
+                  } catch (_) {}
+                  spectatorChannel = null;
+                }
+                subscribeSpectator(roomId, reason: '再接続 ($status)');
+              }
+            });
+      }
+
+      if (room.roomId != null) {
+        subscribeSpectator(room.roomId!);
       }
 
       return () {
+        isDisposed = true;
         gametimer.value?.cancel();
         if (spectatorChannel != null) {
-          supabase.removeChannel(spectatorChannel);
+          try {
+            supabase.removeChannel(spectatorChannel!);
+          } catch (_) {}
+          spectatorChannel = null;
         }
       };
     }, [room.roomId]);

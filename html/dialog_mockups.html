@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ダイアログUI モックアッププレビュー（修正版）</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+    .font-rounded {
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+    }
+    /* スマホ画面枠用のアスペクト比とスタイル */
+    .phone-screen {
+      width: 375px;
+      height: 740px;
+      border-radius: 44px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 10px #1e293b, 0 0 0 12px #334155;
+    }
+    /* アニメーション */
+    @keyframes popIn {
+      0% { transform: scale(0.93); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop-in {
+      animation: popIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes toastFade {
+      0% { opacity: 0; transform: translate(-50%, 20px); }
+      15% { opacity: 1; transform: translate(-50%, 0); }
+      85% { opacity: 1; transform: translate(-50%, 0); }
+      100% { opacity: 0; transform: translate(-50%, -20px); }
+    }
+    .animate-toast {
+      animation: toastFade 2.2s forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+
+  <!-- ヘッダー -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl shadow-md shadow-blue-500/20">
+          <i class="fa-solid fa-layer-group"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold font-rounded text-slate-900">ダイアログ UI モックアップ（修正版）</h1>
+          <p class="text-xs text-slate-500">アイコンなしのすっきりした共通確認ダイアログ ＆ バグ報告ダイアログ</p>
+        </div>
+      </div>
+      
+      <!-- メイン切り替えタブ -->
+      <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200" id="mainTabs">
+        <button onclick="switchMainTab('confirm')" id="mainTab-confirm" class="px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-blue-600 shadow-sm">
+          <i class="fa-solid fa-circle-check mr-1.5"></i> 共通確認ダイアログ（アイコンなし）
+        </button>
+        <button onclick="switchMainTab('report')" id="mainTab-report" class="px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900">
+          <i class="fa-solid fa-bug mr-1.5"></i> バグ報告・機能提案
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- 左側：スマホプレビュー画面 -->
+      <div class="lg:col-span-5 flex flex-col items-center">
+        <div class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-mobile-screen"></i> スマホ画面プレビュー（操作可能）
+        </div>
+        
+        <!-- スマホフレーム -->
+        <div class="phone-screen bg-slate-900 overflow-hidden relative flex flex-col select-none">
+          
+          <!-- ノッチ/ステータスバー -->
+          <div class="h-11 bg-transparent px-6 flex items-center justify-between text-white text-xs z-30 font-medium">
+            <span>12:00</span>
+            <div class="w-20 h-4 bg-black rounded-full mx-auto"></div>
+            <div class="flex items-center gap-1.5">
+              <i class="fa-solid fa-signal text-[10px]"></i>
+              <i class="fa-solid fa-wifi text-[10px]"></i>
+              <i class="fa-solid fa-battery-full text-xs"></i>
+            </div>
+          </div>
+
+          <!-- アプリ背景（シミュレーション画面） -->
+          <div class="flex-1 bg-gradient-to-b from-blue-500 to-sky-400 relative p-4 flex flex-col justify-between overflow-hidden">
+            
+            <!-- ホーム背景のダミーコンテンツ -->
+            <div class="space-y-4 pt-4">
+              <div class="flex items-center justify-between text-white">
+                <div class="flex items-center gap-2">
+                  <div class="w-10 h-10 rounded-full bg-white/30 backdrop-blur-sm border-2 border-white flex items-center justify-center font-bold">
+                    User
+                  </div>
+                  <div>
+                    <div class="font-bold text-sm">レスバ王</div>
+                    <div class="text-xs text-white/80">🏆 1,450 pt</div>
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white"><i class="fa-solid fa-bell text-xs"></i></div>
+                  <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white"><i class="fa-solid fa-gear text-xs"></i></div>
+                </div>
+              </div>
+
+              <!-- ダミーカード -->
+              <div class="bg-white/90 backdrop-blur rounded-2xl p-4 shadow-lg border border-white/40">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-bold">⚔️ 応募中</span>
+                  <span class="text-xs text-slate-400">3分前</span>
+                </div>
+                <h3 class="font-bold text-slate-800 text-sm mb-1">「AIは人間の仕事を奪うべきか？」</h3>
+                <p class="text-xs text-slate-600">自分：肯定派 / 相手：募集中</p>
+              </div>
+
+              <div class="bg-white/90 backdrop-blur rounded-2xl p-4 shadow-lg border border-white/40 opacity-85">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full font-bold">💬 レスバ募集</span>
+                  <span class="text-xs text-slate-400">10分前</span>
+                </div>
+                <h3 class="font-bold text-slate-800 text-sm mb-1">「朝食はパン派かご飯派か」</h3>
+                <p class="text-xs text-slate-600">パン派で対戦相手を待っています</p>
+              </div>
+            </div>
+
+            <!-- スマホ画面下部のアクションボタン -->
+            <div class="mt-auto pt-4">
+              <button onclick="openDialog()" class="w-full py-3.5 bg-white text-blue-600 font-rounded font-bold rounded-2xl shadow-xl flex items-center justify-center gap-2 hover:bg-slate-50 active:scale-95 transition-transform">
+                <i class="fa-solid fa-arrow-pointer"></i> <span>ダイアログを開く</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- ============================================== -->
+          <!-- モーダル・ダイアログ オーバーレイ -->
+          <!-- ============================================== -->
+          <div id="dialogOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-[2px] z-50 flex items-center justify-center p-6 transition-opacity duration-200">
+            
+            <!-- ① 共通確認ダイアログ（アイコンなし・洗練デザイン） -->
+            <div id="dialogConfirm" class="w-full bg-white rounded-3xl p-6 shadow-2xl animate-pop-in relative border border-slate-100 flex flex-col text-center">
+              
+              <!-- タイトル（アイコンなし、すっきり太字） -->
+              <h3 id="confirmTitle" class="text-base sm:text-lg font-bold font-rounded text-slate-900 mb-2 leading-snug">
+                応募を取り消しますか？
+              </h3>
+              
+              <!-- メッセージ本文 -->
+              <p id="confirmMessage" class="text-xs text-slate-500 leading-relaxed mb-6">
+                「AIは人間の仕事を奪うべきか？」への応募を取り消します。
+              </p>
+
+              <!-- ボタン2列（角丸ボタンスタイル） -->
+              <div class="w-full grid grid-cols-2 gap-2.5">
+                <button onclick="closeDialog('キャンセルしました')" class="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs font-rounded transition-colors active:scale-95">
+                  いいえ
+                </button>
+                <button id="confirmActionBtn" onclick="closeDialog('処理を実行しました')" class="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs font-rounded shadow-md shadow-blue-500/25 transition-colors active:scale-95">
+                  取り消す
+                </button>
+              </div>
+            </div>
+
+            <!-- ② バグ報告・機能提案ダイアログ (Bug Report Dialog) -->
+            <div id="dialogReport" class="hidden w-full bg-white rounded-3xl p-5 shadow-2xl animate-pop-in relative border border-slate-100 flex flex-col">
+              
+              <!-- 上部タブ（バグ報告 / 機能提案） -->
+              <div class="flex bg-slate-100 p-1 rounded-2xl mb-3.5">
+                <button id="reportSubTabBug" onclick="switchReportSubTab('bug')" class="flex-1 py-1.5 rounded-xl text-xs font-bold font-rounded transition-all bg-white text-red-600 shadow-sm flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-bug"></i> バグ報告
+                </button>
+                <button id="reportSubTabFeature" onclick="switchReportSubTab('feature')" class="flex-1 py-1.5 rounded-xl text-xs font-bold font-rounded transition-all text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-lightbulb"></i> 機能提案
+                </button>
+              </div>
+
+              <!-- 説明文 -->
+              <p id="reportDesc" class="text-[11px] text-slate-500 mb-2.5 leading-relaxed">
+                発生した不具合の状況や再現手順を詳しく教えてください。
+              </p>
+
+              <!-- テキストエリア -->
+              <div class="relative mb-3">
+                <textarea id="reportInput" oninput="handleReportInput(this)" rows="4" maxlength="150" placeholder="例: ○○画面でボタンを押すとアプリが強制終了する..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"></textarea>
+                <div class="absolute bottom-2.5 right-3 text-[10px] text-slate-400 font-mono">
+                  <span id="reportCharCount">0</span> / 150
+                </div>
+              </div>
+
+              <!-- ボタン2列 -->
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="closeDialog()" class="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs font-rounded transition-colors">
+                  キャンセル
+                </button>
+                <button id="reportSubmitBtn" onclick="submitReport()" disabled class="py-2.5 px-3 rounded-xl bg-blue-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs font-rounded shadow-sm transition-all flex items-center justify-center gap-1.5">
+                  <span id="reportBtnText">送信する</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- トースト通知 -->
+          <div id="toastMessage" class="hidden absolute bottom-16 left-1/2 -translate-x-1/2 bg-slate-800/95 backdrop-blur text-white text-xs px-4 py-2.5 rounded-full shadow-2xl z-50 pointer-events-none flex items-center gap-2 border border-white/10 whitespace-nowrap font-medium">
+            <i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+            <span id="toastText">操作が完了しました</span>
+          </div>
+
+          <!-- ホームインジケーター -->
+          <div class="h-5 bg-transparent flex items-center justify-center z-30">
+            <div class="w-32 h-1 bg-white/60 rounded-full"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右側：仕様・解説・プリセット操作パネル -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- ① 共通確認ダイアログの解説 & プリセット切り替え -->
+        <div id="panel-confirm" class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-6">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 font-bold text-xs mb-2">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> 10箇所以上を一括共通化
+            </div>
+            <h2 class="text-xl font-bold font-rounded text-slate-900">共通確認ダイアログ（アイコンなし）</h2>
+            <p class="text-xs text-slate-500 mt-1">
+              アイコンをなくし、タイトル・本文・2つのアクションボタンのみですっきりと統一感のあるデザインに仕上げています。
+            </p>
+          </div>
+
+          <!-- プリセット切り替えボタン -->
+          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-2.5">
+            <div class="text-xs font-bold text-slate-700 flex items-center justify-between">
+              <span><i class="fa-solid fa-sliders mr-1"></i> 左のプレビューで各シーンをテスト：</span>
+              <span class="text-[10px] text-slate-400">クリックでプレビュー即時反映</span>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <!-- 通常アクション（青ボタン） -->
+              <button onclick="setConfirmPreset('cancel_apply')" class="p-3 text-left bg-white hover:border-blue-400 border border-slate-200 rounded-xl text-xs transition-all active:scale-95 shadow-sm">
+                <div class="flex items-center justify-between mb-0.5">
+                  <span class="font-bold text-slate-800">応募の取り消し</span>
+                  <span class="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">通常</span>
+                </div>
+                <div class="text-[11px] text-slate-400">HomePage / MyResbaListPage</div>
+              </button>
+
+              <button onclick="setConfirmPreset('withdraw')" class="p-3 text-left bg-white hover:border-blue-400 border border-slate-200 rounded-xl text-xs transition-all active:scale-95 shadow-sm">
+                <div class="flex items-center justify-between mb-0.5">
+                  <span class="font-bold text-slate-800">募集の取り下げ</span>
+                  <span class="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">通常</span>
+                </div>
+                <div class="text-[11px] text-slate-400">MyResbaListPage</div>
+              </button>
+
+              <button onclick="setConfirmPreset('swap')" class="p-3 text-left bg-white hover:border-blue-400 border border-slate-200 rounded-xl text-xs transition-all active:scale-95 shadow-sm">
+                <div class="flex items-center justify-between mb-0.5">
+                  <span class="font-bold text-slate-800">応募の入れ替え</span>
+                  <span class="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">通常</span>
+                </div>
+                <div class="text-[11px] text-slate-400">resba_card (応募上限1件時)</div>
+              </button>
+
+              <button onclick="setConfirmPreset('leave_room')" class="p-3 text-left bg-white hover:border-blue-400 border border-slate-200 rounded-xl text-xs transition-all active:scale-95 shadow-sm">
+                <div class="flex items-center justify-between mb-0.5">
+                  <span class="font-bold text-slate-800">オープンチャット退室</span>
+                  <span class="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">通常</span>
+                </div>
+                <div class="text-[11px] text-slate-400">OpenChatRoomView</div>
+              </button>
+
+              <!-- 危険アクション（赤ボタン） -->
+              <button onclick="setConfirmPreset('delete')" class="p-3 text-left bg-red-50/40 hover:border-red-400 border border-red-200/80 rounded-xl text-xs transition-all active:scale-95 shadow-sm">
+                <div class="flex items-center justify-between mb-0.5">
+                  <span class="font-bold text-red-600">募集の完全削除</span>
+                  <span class="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">削除系（赤）</span>
+                </div>
+                <div class="text-[11px] text-slate-400">MyResbaListPage</div>
+              </button>
+
+              <button onclick="setConfirmPreset('block')" class="p-3 text-left bg-red-50/40 hover:border-red-400 border border-red-200/80 rounded-xl text-xs transition-all active:scale-95 shadow-sm">
+                <div class="flex items-center justify-between mb-0.5">
+                  <span class="font-bold text-red-600">ユーザーブロック</span>
+                  <span class="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">ブロック（赤）</span>
+                </div>
+                <div class="text-[11px] text-slate-400">moderation / DM / チャット</div>
+              </button>
+
+              <button onclick="setConfirmPreset('kick')" class="p-3 text-left bg-red-50/40 hover:border-red-400 border border-red-200/80 rounded-xl text-xs transition-all active:scale-95 shadow-sm">
+                <div class="flex items-center justify-between mb-0.5">
+                  <span class="font-bold text-red-600">メンバー削除（キック）</span>
+                  <span class="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">キック（赤）</span>
+                </div>
+                <div class="text-[11px] text-slate-400">OpenChatMembersView</div>
+              </button>
+
+              <button onclick="setConfirmPreset('unblock')" class="p-3 text-left bg-white hover:border-blue-400 border border-slate-200 rounded-xl text-xs transition-all active:scale-95 shadow-sm">
+                <div class="flex items-center justify-between mb-0.5">
+                  <span class="font-bold text-slate-800">ブロック解除</span>
+                  <span class="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">解除（青）</span>
+                </div>
+                <div class="text-[11px] text-slate-400">BlockedUsersPage / プロフィール</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- コード実装イメージ -->
+          <div class="space-y-2">
+            <div class="text-xs font-bold text-slate-700">Flutter共通関数の呼び出しイメージ：</div>
+            <div class="bg-slate-900 text-slate-200 p-4 rounded-2xl text-xs font-mono leading-relaxed overflow-x-auto">
+              <span class="text-slate-500">// 1つの共通関数で全箇所を置き換え</span><br>
+              <span class="text-purple-400">final</span> ok = <span class="text-purple-400">await</span> showAppConfirmDialog(<br>
+              &nbsp;&nbsp;context: context,<br>
+              &nbsp;&nbsp;title: <span class="text-emerald-400">'応募を取り消しますか？'</span>,<br>
+              &nbsp;&nbsp;message: <span class="text-emerald-400">'「AIは人間の仕事を〜」への応募を取り消します。'</span>,<br>
+              &nbsp;&nbsp;cancelText: <span class="text-emerald-400">'いいえ'</span>,<br>
+              &nbsp;&nbsp;confirmText: <span class="text-emerald-400">'取り消す'</span>,<br>
+              &nbsp;&nbsp;isDestructive: <span class="text-amber-400">false</span>, <span class="text-slate-500">// 削除やブロック時は true (赤ボタン)</span><br>
+              );
+            </div>
+          </div>
+        </div>
+
+        <!-- ② バグ報告・機能提案ダイアログの解説 -->
+        <div id="panel-report" class="hidden bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-6">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 font-bold text-xs mb-2">
+              <i class="fa-solid fa-comments"></i> SettingPage.dart 専用UI
+            </div>
+            <h2 class="text-xl font-bold font-rounded text-slate-900">バグ報告・機能提案ダイアログ</h2>
+            <p class="text-xs text-slate-500 mt-1">
+              標準の無機質なAlertDialogから、タブ切り替え・文字数カウンター付きの専用フィードバック入力カードへ刷新。
+            </p>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+              <h4 class="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-toggle-on text-indigo-500"></i> バグ報告 / 機能提案の切り替え
+              </h4>
+              <p class="text-slate-600 leading-relaxed">
+                ユーザーが「不具合」なのか「欲しい新機能の提案」なのかをタブで選べ、説明文やプレースホルダーが自動切り替えされます。
+              </p>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+              <h4 class="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-keyboard text-emerald-500"></i> 文字数カウンターと送信ボタン制御
+              </h4>
+              <p class="text-slate-600 leading-relaxed">
+                未入力時はボタンが無効化され、1文字以上入力すると活性化。リアルタイム文字数（0/150）と送信中ローディングに対応します。
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let currentMainTab = 'confirm';
+    let currentReportType = 'bug';
+
+    // メイン切り替えタブ
+    function switchMainTab(tab) {
+      currentMainTab = tab;
+
+      const btnConfirm = document.getElementById('mainTab-confirm');
+      const btnReport = document.getElementById('mainTab-report');
+      const panelConfirm = document.getElementById('panel-confirm');
+      const panelReport = document.getElementById('panel-report');
+
+      const dConfirm = document.getElementById('dialogConfirm');
+      const dReport = document.getElementById('dialogReport');
+
+      if (tab === 'confirm') {
+        btnConfirm.className = "px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-blue-600 shadow-sm";
+        btnReport.className = "px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900";
+        panelConfirm.classList.remove('hidden');
+        panelReport.classList.add('hidden');
+        dConfirm.classList.remove('hidden');
+        dReport.classList.add('hidden');
+      } else {
+        btnReport.className = "px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-blue-600 shadow-sm";
+        btnConfirm.className = "px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900";
+        panelReport.classList.remove('hidden');
+        panelConfirm.classList.add('hidden');
+        dReport.classList.remove('hidden');
+        dConfirm.classList.add('hidden');
+      }
+
+      openDialog();
+    }
+
+    // ダイアログを開く
+    function openDialog() {
+      document.getElementById('dialogOverlay').classList.remove('hidden');
+    }
+
+    // ダイアログを閉じる
+    function closeDialog(toastMsg = null) {
+      document.getElementById('dialogOverlay').classList.add('hidden');
+      if (toastMsg) {
+        showToast(toastMsg);
+      }
+    }
+
+    // トースト表示
+    function showToast(text) {
+      const toast = document.getElementById('toastMessage');
+      const toastText = document.getElementById('toastText');
+      toastText.innerText = text;
+      toast.classList.remove('hidden');
+      toast.classList.remove('animate-toast');
+      void toast.offsetWidth;
+      toast.classList.add('animate-toast');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2200);
+    }
+
+    // プリセット切り替え（アイコンなしバージョン）
+    function setConfirmPreset(preset) {
+      const title = document.getElementById('confirmTitle');
+      const msg = document.getElementById('confirmMessage');
+      const btn = document.getElementById('confirmActionBtn');
+
+      if (preset === 'cancel_apply') {
+        title.innerText = '応募を取り消しますか？';
+        msg.innerText = '「AIは人間の仕事を奪うべきか？」への応募を取り消します。この操作はすぐに反映されます。';
+        btn.innerText = '取り消す';
+        btn.className = "w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs font-rounded shadow-md shadow-blue-500/25 transition-colors active:scale-95";
+      } else if (preset === 'withdraw') {
+        title.innerText = '募集を取り下げますか？';
+        msg.innerText = '「朝食はパン派かご飯派か」の募集を取り下げます。他ユーザーからの申し込みはできなくなります。';
+        btn.innerText = '取り下げる';
+        btn.className = "w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs font-rounded shadow-md shadow-blue-500/25 transition-colors active:scale-95";
+      } else if (preset === 'swap') {
+        title.innerText = '応募できるのは1試合までです';
+        msg.innerText = '今の応募を取り消して、この申し込みに入れ替えますか？';
+        btn.innerText = 'はい（入れ替え）';
+        btn.className = "w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs font-rounded shadow-md shadow-blue-500/25 transition-colors active:scale-95";
+      } else if (preset === 'leave_room') {
+        title.innerText = '退室の確認';
+        msg.innerText = 'このオープンチャットから退室しますか？';
+        btn.innerText = '退室する';
+        btn.className = "w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs font-rounded shadow-md shadow-blue-500/25 transition-colors active:scale-95";
+      } else if (preset === 'delete') {
+        title.innerText = '募集を完全に削除しますか？';
+        msg.innerText = '「朝食はパン派かご飯派か」を一覧から完全に削除します（元に戻せません）。';
+        btn.innerText = '削除する';
+        btn.className = "w-full py-2.5 px-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs font-rounded shadow-md shadow-red-500/25 transition-colors active:scale-95";
+      } else if (preset === 'block') {
+        title.innerText = 'ユーザーをブロック';
+        msg.innerText = '対戦相手さんをブロックしますか？\nブロックするとメッセージが表示されなくなり、対戦申し込みもできなくなります。';
+        btn.innerText = 'ブロックする';
+        btn.className = "w-full py-2.5 px-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs font-rounded shadow-md shadow-red-500/25 transition-colors active:scale-95";
+      } else if (preset === 'kick') {
+        title.innerText = 'メンバーの削除';
+        msg.innerText = 'このメンバーをオープンチャットから削除（退出）しますか？';
+        btn.innerText = '削除する';
+        btn.className = "w-full py-2.5 px-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs font-rounded shadow-md shadow-red-500/25 transition-colors active:scale-95";
+      } else if (preset === 'unblock') {
+        title.innerText = 'ブロックを解除';
+        msg.innerText = '対戦相手さんのブロックを解除しますか？';
+        btn.innerText = '解除する';
+        btn.className = "w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs font-rounded shadow-md shadow-blue-500/25 transition-colors active:scale-95";
+      }
+
+      if (currentMainTab !== 'confirm') {
+        switchMainTab('confirm');
+      } else {
+        openDialog();
+      }
+    }
+
+    // バグ報告 / 機能提案サブタブ
+    function switchReportSubTab(type) {
+      currentReportType = type;
+      const tabBug = document.getElementById('reportSubTabBug');
+      const tabFeat = document.getElementById('reportSubTabFeature');
+      const desc = document.getElementById('reportDesc');
+      const input = document.getElementById('reportInput');
+
+      if (type === 'bug') {
+        tabBug.className = "flex-1 py-1.5 rounded-xl text-xs font-bold font-rounded transition-all bg-white text-red-600 shadow-sm flex items-center justify-center gap-1.5";
+        tabFeat.className = "flex-1 py-1.5 rounded-xl text-xs font-bold font-rounded transition-all text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1.5";
+        desc.innerText = '発生した不具合の状況や再現手順を詳しく教えてください。';
+        input.placeholder = '例: ○○画面でボタンを押すとアプリが強制終了する...';
+      } else {
+        tabFeat.className = "flex-1 py-1.5 rounded-xl text-xs font-bold font-rounded transition-all bg-white text-amber-600 shadow-sm flex items-center justify-center gap-1.5";
+        tabBug.className = "flex-1 py-1.5 rounded-xl text-xs font-bold font-rounded transition-all text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1.5";
+        desc.innerText = '「こんな機能があったらもっと面白い」というアイデアを教えてください！';
+        input.placeholder = '例: 観戦中に拍手を送れるスタンプ機能が欲しいです...';
+      }
+    }
+
+    // 入力文字数カウント & 送信ボタン制御
+    function handleReportInput(el) {
+      const len = el.value.trim().length;
+      document.getElementById('reportCharCount').innerText = el.value.length;
+      const btn = document.getElementById('reportSubmitBtn');
+      btn.disabled = (len === 0);
+    }
+
+    // レポート送信
+    function submitReport() {
+      const btn = document.getElementById('reportSubmitBtn');
+      const btnText = document.getElementById('reportBtnText');
+      const input = document.getElementById('reportInput');
+
+      btnText.innerText = '送信中...';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        btnText.innerText = '送信する';
+        input.value = '';
+        document.getElementById('reportCharCount').innerText = '0';
+        closeDialog(currentReportType === 'bug' ? 'バグ報告を送信しました。ご協力感謝します！' : '機能提案を送信しました！ありがとうございます！');
+      }, 700);
+    }
+  </script>
+</body>
+</html>

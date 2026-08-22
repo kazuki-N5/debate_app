@@ -5,6 +5,7 @@ import 'package:debate_project/provider/open_chat_provider.dart';
 import 'package:debate_project/modes/open_chat.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/widgets/app_confirm_dialog.dart';
 import 'package:debate_project/widgets/moderation.dart';
 
 class OpenChatMembersView extends HookConsumerWidget {
@@ -20,7 +21,9 @@ class OpenChatMembersView extends HookConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('メンバー管理', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Colors.blue,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: membersAsync.when(
@@ -101,47 +104,32 @@ class OpenChatMembersView extends HookConsumerWidget {
     );
   }
 
-  void _confirmKick(BuildContext context, WidgetRef ref, OpenChatMember targetMember) {
-    showDialog(
+  Future<void> _confirmKick(
+      BuildContext context, WidgetRef ref, OpenChatMember targetMember) async {
+    final confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (context) {
-        bool isLoading = false;
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('メンバーの削除'),
-              content: const Text('このメンバーをオープンチャットから削除しますか？'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('キャンセル'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  onPressed: isLoading ? null : () async {
-                    setState(() => isLoading = true);
-                    final error = await ref.read(openChatActionProvider.notifier).kickMember(room.id, targetMember.userId);
-                    setState(() => isLoading = false);
-                    
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      if (error == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メンバーを削除しました')));
-                        ref.invalidate(openChatMembersProvider(room.id));
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('エラー: $error')));
-                      }
-                    }
-                  },
-                  child: isLoading
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('削除する', style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            );
-          }
-        );
-      },
+      title: 'メンバーの削除',
+      message: 'このメンバーをクラブから削除（退出）しますか？',
+      cancelText: 'キャンセル',
+      confirmText: '削除する',
+      isDestructive: true,
     );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final error = await ref
+        .read(openChatActionProvider.notifier)
+        .kickMember(room.id, targetMember.userId);
+
+    if (!context.mounted) return;
+
+    if (error == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('メンバーを削除しました')));
+      ref.invalidate(openChatMembersProvider(room.id));
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('エラー: $error')));
+    }
   }
 }

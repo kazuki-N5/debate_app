@@ -85,7 +85,6 @@ class ResbaInvite {
   final int? senderTrophy;
   final String attachType; // post / comment / dm / open_chat / recruit
   final String? attachId; // recruit(対戦募集)は添付先なし
-  final String? targetUserId;
   final String theme;
   final String? choice1;
   final String? choice2;
@@ -95,7 +94,6 @@ class ResbaInvite {
   final DateTime createdAt;
   final DateTime? respondedAt;
   final bool isSender;
-  final bool isTarget;
   final String? myApplication; // pending / accepted / rejected / cancelled
   final ResbaApplication? firstApplication; // ポスト型・ホストのみ
   final int applicationCount; // 応募数（pending）
@@ -108,7 +106,6 @@ class ResbaInvite {
     this.senderTrophy,
     required this.attachType,
     this.attachId,
-    this.targetUserId,
     required this.theme,
     this.choice1,
     this.choice2,
@@ -118,7 +115,6 @@ class ResbaInvite {
     required this.createdAt,
     this.respondedAt,
     this.isSender = false,
-    this.isTarget = false,
     this.myApplication,
     this.firstApplication,
     this.applicationCount = 0,
@@ -133,7 +129,6 @@ class ResbaInvite {
       senderTrophy: json['sender_trophy'] as int?,
       attachType: json['attach_type'] as String,
       attachId: json['attach_id'] as String?,
-      targetUserId: json['target_user_id'] as String?,
       theme: json['theme'] as String? ?? 'レスバ対戦',
       choice1: json['choice1'] as String?,
       choice2: json['choice2'] as String?,
@@ -145,7 +140,6 @@ class ResbaInvite {
           ? DateTime.parse(json['responded_at'] as String).toLocal()
           : null,
       isSender: json['is_sender'] as bool? ?? false,
-      isTarget: json['is_target'] as bool? ?? false,
       myApplication: json['my_application'] as String?,
       firstApplication: json['first_application'] != null
           ? ResbaApplication.fromJson(

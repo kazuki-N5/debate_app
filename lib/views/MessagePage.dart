@@ -38,6 +38,8 @@ class MessagePage extends HookConsumerWidget {
         centerTitle: true,
         title: Text('メッセージ', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blue,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 1,
       ),
@@ -396,10 +398,10 @@ class _MessageList extends StatelessWidget {
     return inboxAsync.when(
       data: (items) {
         if (items.isEmpty) {
-          return _EmptyMessage(
+          return const _EmptyMessage(
             icon: Icons.chat_bubble_outline,
             text: 'メッセージはまだありません',
-            subText: 'DMやオープンチャットの\nやり取りがここに表示されます',
+            subText: 'DMやクラブの\nやり取りがここに表示されます',
           );
         }
         return RefreshIndicator(

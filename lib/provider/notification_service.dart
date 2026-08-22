@@ -1,8 +1,10 @@
 // ignore_for_file: file_names, avoid_print, use_build_context_synchronously
+import 'dart:convert';
+import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:io';
+import 'package:debate_project/router/router.dart';
 
 /// 通知関連のサービスを管理するProvider
 final notificationServiceProvider = Provider<NotificationService>((ref) {
@@ -47,8 +49,22 @@ class NotificationService {
     await _localNotifications.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse details) {
-        // 通知がタップされた時の処理をここに記述
         print('Notification tapped: ${details.payload}');
+        if (details.payload != null && details.payload!.isNotEmpty) {
+          try {
+            final data = jsonDecode(details.payload!) as Map<String, dynamic>;
+            final type = data['type'];
+            final inviteId = data['invite_id'];
+            if (type == 'resba_invite' && inviteId != null && inviteId.toString().isNotEmpty) {
+              router.push(
+                '/resbaRequest',
+                extra: (inviteId: inviteId.toString(), notification: null),
+              );
+            }
+          } catch (e) {
+            print('Error handling notification tap payload: $e');
+          }
+        }
       },
     );
 
@@ -72,10 +88,43 @@ class NotificationService {
   /// フォアグラウンドで通知を受け取った時のリスナー
   void _listenToForegroundMessages() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Foreground message received (notification suppressed): ${message.notification?.title}');
-      
-      // アプリ操作中（フォアグラウンド）は通知を出さない方針のため、
-      // ここでの _localNotifications.show は行いません。
+      final type = message.data['type'];
+      print('Foreground message received: type=$type, title=${message.notification?.title}');
+
+      // DMからのレスバ招待（resba_invite）のみ、フォアグラウンド（操作中）でも通知バナーを表示
+      if (type == 'resba_invite') {
+        final title = message.notification?.title ?? 'レスバの対戦申し込みが届きました！';
+        final body = message.notification?.body ?? 'レスバの対戦申し込みが届きました';
+
+        final androidDetails = AndroidNotificationDetails(
+          _channel.id,
+          _channel.name,
+          channelDescription: _channel.description,
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          showWhen: true,
+        );
+
+        const darwinDetails = DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: false,
+          presentSound: true,
+        );
+
+        final notificationDetails = NotificationDetails(
+          android: androidDetails,
+          iOS: darwinDetails,
+        );
+
+        _localNotifications.show(
+          id: (DateTime.now().millisecondsSinceEpoch ~/ 1000) & 0x7FFFFFFF,
+          title: title,
+          body: body,
+          notificationDetails: notificationDetails,
+          payload: jsonEncode(message.data),
+        );
+      }
     });
   }
 

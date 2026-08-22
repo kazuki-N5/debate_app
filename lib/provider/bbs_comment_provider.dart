@@ -71,13 +71,18 @@ class BbsCommentNotifier extends StateNotifier<AsyncValue<List<BbsComment>>> {
         'p_user_id': currentUserId,
       });
 
+      debugPrint('[RESBA_LOG] bbsCommentProvider.fetchComments for postId: $postId, total response: ${(response as List).length}');
       List<BbsComment> allComments = [];
 
       for (var item in response) {
         final userData = item['users'];
         final user = userData != null ? Users.fromMap(userData) : null;
         final isLiked = item['is_liked_by_me'] ?? false;
-        allComments.add(BbsComment.fromMap(item, user: user, isLikedByMe: isLiked));
+        final comment = BbsComment.fromMap(item, user: user, isLikedByMe: isLiked);
+        if (comment.hasResba) {
+          debugPrint('[RESBA_LOG] Found comment WITH resba: id=${comment.id}, content=${comment.content}');
+        }
+        allComments.add(comment);
       }
 
       // ブロック済みユーザーのコメントを除外

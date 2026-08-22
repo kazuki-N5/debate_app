@@ -240,6 +240,28 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
     }
   }
 
+  Future<void> _fetchLatestRoomData(String roomId) async {
+    try {
+      final roomData = await supabase
+          .from('rooms_v2')
+          .select()
+          .eq('id', roomId)
+          .maybeSingle();
+      if (roomData != null && mounted && !_isDisposed) {
+        final room = MatchingRoom.fromMap(roomData);
+        setState(() {
+          if (_room?.updatedAt != room.updatedAt || _deadline == null) {
+            _updateDeadline(room);
+          }
+          _room = room;
+        });
+        _checkRobotAnimation();
+      }
+    } catch (e) {
+      log('最新ルームデータの取得エラー: $e');
+    }
+  }
+
   void _subscribeRoom(String roomId, {String reason = '初回接続'}) async {
     if (!mounted || _isDisposed) return;
 
@@ -284,7 +306,9 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
           if (status == RealtimeSubscribeStatus.subscribed) {
             log('✅ [観戦ルーム同期] 接続成功 (理由: $reason, roomId: $roomId)');
             _isRoomReconnecting = false;
-            _load();
+            if (reason != '初回接続') {
+              await _fetchLatestRoomData(roomId);
+            }
           } else if (status == RealtimeSubscribeStatus.closed ||
               status == RealtimeSubscribeStatus.channelError ||
               status == RealtimeSubscribeStatus.timedOut) {

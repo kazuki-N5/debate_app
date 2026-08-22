@@ -68,19 +68,22 @@ class BbsPostDetailView extends HookConsumerWidget {
             final userMap = response['users'] as Map<String, dynamic>?;
             final postUser = userMap != null ? Users.fromMap(userMap) : null;
             final latest =
-                BbsPost.fromMap(response, user: postUser, isLikedByMe: isLiked);
+                BbsPost.fromMap(response, user: postUser, isLikedByMe: isLiked)
+                    .copyWith(hasResba: currentPost.hasResba);
             fetchedPost.value = latest;
+            debugPrint('[RESBA_LOG] BbsPostDetailView.loadLatest loaded post: ${latest.id}, hasResba: ${latest.hasResba}');
           }
         } catch (e) {
-          debugPrint('BbsPostDetailView loadLatest error: $e');
+          debugPrint('[RESBA_LOG] BbsPostDetailView loadLatest error: $e');
         }
 
         // コメントとレスバも最新化
         ref.read(bbsCommentProvider(post.id).notifier).fetchComments();
-        ref.invalidate(postResbaProvider(post.id));
         try {
           await ref.read(postResbaProvider(post.id).notifier).fetch();
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('[RESBA_LOG] BbsPostDetailView postResbaProvider.fetch error: $e');
+        }
       }
 
       loadLatest();
@@ -109,8 +112,11 @@ class BbsPostDetailView extends HookConsumerWidget {
     final resbasAsync = ref.watch(postResbaProvider(post.id));
     final resbas = resbasAsync.valueOrNull ?? const <ResbaInvite>[];
 
+    debugPrint('[RESBA_LOG] BbsPostDetailView build: postId=${post.id}, currentPost.hasResba=${currentPost.hasResba}, resbasAsync.status=${resbasAsync.isLoading ? "loading" : resbasAsync.hasError ? "error" : "data"}, resbasCount=${resbas.length}');
+
     void refreshResba() {
-      ref.invalidate(postResbaProvider(post.id));
+      debugPrint('[RESBA_LOG] refreshResba called for postId: ${post.id}');
+      ref.read(postResbaProvider(post.id).notifier).fetch();
     }
 
     return Scaffold(
@@ -129,7 +135,6 @@ class BbsPostDetailView extends HookConsumerWidget {
                 await ref.read(bbsTimelineProvider.notifier).fetchPosts();
                 await ref.read(bbsCommentProvider(post.id).notifier).fetchComments();
                 // ポストに付いたレスバ（⚔️）も再読み込みする
-                ref.invalidate(postResbaProvider(post.id));
                 try {
                   await ref.read(postResbaProvider(post.id).notifier).fetch();
                 } catch (_) {
@@ -365,7 +370,7 @@ class BbsPostDetailView extends HookConsumerWidget {
                             selectedImage.value = null;
                             resbaAttachment.value = null;
                             if (attachment != null) {
-                              ref.invalidate(postResbaProvider(post.id));
+                              ref.read(postResbaProvider(post.id).notifier).fetch();
                             }
                             if (!context.mounted) return;
                             focusNode.unfocus(); // キーボードを閉じる
@@ -501,6 +506,8 @@ class _PostResbaSection extends HookConsumerWidget {
         .toList();
     final hasPendingByMe = activeResbas.any((r) => r.isSender && r.isPending);
 
+    debugPrint('[RESBA_LOG] _PostResbaSection build: postId=${post.id}, totalResbas=${resbas.length}, activeResbas=${activeResbas.length}, myId=$myId, postOwnerId=${post.userId}, hasPendingByMe=$hasPendingByMe');
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Column(
@@ -578,11 +585,16 @@ class _CommentThreadWidget extends HookConsumerWidget {
   /// コメントに付いたアクティブなレスバカード
   /// （対戦中・終了後の観戦ログ閲覧カードも含む）
   List<Widget> _resbaCardsFor(String attachId) {
-    return resbas
+    final matches = resbas
         .where((r) =>
             r.attachType == 'comment' &&
             r.attachId == attachId &&
             (r.isPending || r.isAccepted || r.status == 'finished'))
+        .toList();
+    if (matches.isNotEmpty) {
+      debugPrint('[RESBA_UI_LOG] [CommentThread] Rendering ${matches.length} ResbaCards for comment: $attachId');
+    }
+    return matches
         .map((r) => Padding(
               padding: const EdgeInsets.only(top: 8),
               child: ResbaCard(invite: r, onChanged: onResbaChanged),
@@ -600,6 +612,9 @@ class _CommentThreadWidget extends HookConsumerWidget {
     
     // 投稿主かどうか
     final isOwner = comment.userId == post.userId;
+    if (comment.hasResba) {
+      debugPrint('[RESBA_UI_LOG] [CommentThread] comment.hasResba is TRUE for comment: ${comment.id}, content: ${comment.content}');
+    }
 
     return Padding(
       padding: const EdgeInsets.all(16.0),

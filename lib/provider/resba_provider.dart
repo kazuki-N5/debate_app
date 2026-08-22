@@ -1,6 +1,8 @@
 // ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
+import 'package:flutter/foundation.dart';
 import 'package:debate_project/modes/resba_invite.dart';
 import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/match_error_provider.dart';
@@ -27,15 +29,32 @@ class PostResbaNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>> {
 
   Future<void> fetch() async {
     try {
+      final myId = ref.read(currentUserIdProvider);
+      debugPrint('[RESBA_LOG] PostResbaNotifier.fetch started for postId: $postId, myId: $myId');
       final response = await supabase.rpc('get_post_resbas', params: {
         'p_post_id': postId,
-        'p_user_id': ref.read(currentUserIdProvider),
+        'p_user_id': myId,
       });
-      final list = (response as List)
+      debugPrint('[RESBA_LOG] PostResbaNotifier.fetch response: $response (type: ${response.runtimeType})');
+
+      List<dynamic> rawList = [];
+      if (response is List) {
+        rawList = response;
+      } else if (response is String) {
+        // JSON文字列の場合
+        rawList = (response.isNotEmpty) ? (jsonDecode(response) as List) : [];
+      }
+
+      final list = rawList
           .map((e) => ResbaInvite.fromJson(e as Map<String, dynamic>))
           .toList();
+      debugPrint('[RESBA_LOG] PostResbaNotifier.fetch parsed ${list.length} invites.');
+      for (final inv in list) {
+        debugPrint('[RESBA_LOG]  - invite id: ${inv.id}, attachType: ${inv.attachType}, attachId: ${inv.attachId}, status: ${inv.status}, isSender: ${inv.isSender}, myApp: ${inv.myApplication}');
+      }
       state = AsyncValue.data(list);
     } catch (e, st) {
+      debugPrint('[RESBA_LOG] PostResbaNotifier.fetch ERROR: $e\n$st');
       state = AsyncValue.error(e, st);
     }
   }
@@ -353,15 +372,27 @@ class ResbaActions {
   /// 自分がホストの「保留中の応募」全件（古い順・応募キュー表示用）
   Future<List<HostApplication>> getMyPendingHostApplications() async {
     try {
+      debugPrint('[RESBA_LOG] getMyPendingHostApplications started for userId: $_userId');
       final response = await supabase.rpc(
           'get_my_pending_host_applications', params: {
         'p_user_id': _userId,
       });
-      return (response as List)
+      debugPrint('[RESBA_LOG] getMyPendingHostApplications response: $response (type: ${response.runtimeType})');
+
+      List<dynamic> rawList = [];
+      if (response is List) {
+        rawList = response;
+      } else if (response is String) {
+        rawList = response.isNotEmpty ? (jsonDecode(response) as List) : [];
+      }
+
+      final list = rawList
           .map((e) => HostApplication.fromJson(e as Map<String, dynamic>))
           .toList();
-    } catch (e) {
-      log('get_my_pending_host_applications error: $e');
+      debugPrint('[RESBA_LOG] getMyPendingHostApplications parsed ${list.length} applications.');
+      return list;
+    } catch (e, st) {
+      debugPrint('[RESBA_LOG] getMyPendingHostApplications ERROR: $e\n$st');
       return [];
     }
   }
@@ -459,6 +490,8 @@ class ResbaActions {
       'NOT_TARGET': '8107',
       'NOT_HOST': '8107',
       'NOT_POST_OWNER': '8107',
+      'NOT_COMMENT_OWNER': '8107',
+      'NOT_MESSAGE_OWNER': '8107',
       'BLOCKED': '8108',
       'ROOM_JOIN_FAILED': '8109',
       'RECRUITMENT_LIMIT_EXCEEDED': '8110',
@@ -466,6 +499,9 @@ class ResbaActions {
       'ALREADY_APPLIED': '8112',
       'SELF_INVITE': '8113',
       'SELF_APPLY': '8113',
+      'POST_NOT_FOUND': '8114',
+      'COMMENT_NOT_FOUND': '8114',
+      'MESSAGE_NOT_FOUND': '8114',
     };
     final numericCode = errorCodeMap[code?.toString()] ?? '8999';
     return 'エラーが発生しました（エラーコード: $numericCode）';
@@ -645,34 +681,50 @@ class ResbaMatchListener extends StateNotifier<bool> {
 
   /// 応募キューを再取得し、未対応があればダイアログを開く
   Future<void> _refreshHostQueue() async {
+    debugPrint('[RESBA_LOG] _refreshHostQueue triggered. dialogOpen=$_dialogOpen, inBattle=$_inBattle');
     await ref.read(pendingHostApplicationsProvider.notifier).fetch();
     if (!_dialogOpen) await _maybeOpenQueueDialog();
   }
 
   /// 応募が溜まっていたら「応募キュー」ダイアログを開く（同時に1つだけ）
   Future<void> _maybeOpenQueueDialog() async {
-    if (_dialogOpen) return;
+    if (_dialogOpen) {
+      debugPrint('[RESBA_LOG] _maybeOpenQueueDialog skipped: dialog already open');
+      return;
+    }
     // 対戦フロー中（待機・選択・試合・リザルト）はダイアログを表示しない
-    if (_inBattle) return;
+    if (_inBattle) {
+      debugPrint('[RESBA_LOG] _maybeOpenQueueDialog skipped: user is in battle');
+      return;
+    }
     try {
       final currentPath =
           router.routerDelegate.currentConfiguration.uri.path;
       const battlePaths = {'/wait', '/chose', '/game', '/finish'};
-      if (battlePaths.contains(currentPath)) return;
+      if (battlePaths.contains(currentPath)) {
+        debugPrint('[RESBA_LOG] _maybeOpenQueueDialog skipped: currentPath=$currentPath is battlePath');
+        return;
+      }
     } catch (_) {}
 
     final items = ref
             .read(pendingHostApplicationsProvider)
             .valueOrNull ??
         const <HostApplication>[];
+    debugPrint('[RESBA_LOG] _maybeOpenQueueDialog items count: ${items.length}');
     if (items.isEmpty) return;
     final ctx = navigatorKey.currentContext;
-    if (ctx == null) return;
+    if (ctx == null) {
+      debugPrint('[RESBA_LOG] _maybeOpenQueueDialog skipped: navigatorKey.currentContext is null');
+      return;
+    }
     _dialogOpen = true;
     try {
+      debugPrint('[RESBA_LOG] Showing showHostApplicationQueueDialog with ${items.length} items!');
       await showHostApplicationQueueDialog(ref);
     } finally {
       _dialogOpen = false;
+      debugPrint('[RESBA_LOG] showHostApplicationQueueDialog closed.');
     }
   }
 

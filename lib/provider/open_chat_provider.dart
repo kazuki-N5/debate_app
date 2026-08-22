@@ -35,6 +35,7 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
   RealtimeChannel? _channel;
   bool hasMore = true;
   bool _isDisposed = false;
+  bool _isReconnecting = false;
   // 端末内で非表示にしたメッセージID(「非表示」機能)
   Set<String> _hiddenMessageIds = {};
 
@@ -93,11 +94,12 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
             .map((e) => OpenChatMessage.fromJson(e as Map<String, dynamic>))
             .toList();
 
-        final filteredNew = _filter(newMessages);
-        if (filteredNew.isNotEmpty) {
+        if (newMessages.isNotEmpty) {
           final existingIds = currentList.map((m) => m.id).toSet();
-          final uniqueNew = filteredNew.where((m) => !existingIds.contains(m.id)).toList();
-          state = AsyncValue.data([...uniqueNew, ...currentList]);
+          final uniqueNew = _filter(newMessages.where((m) => !existingIds.contains(m.id)).toList());
+          if (uniqueNew.isNotEmpty) {
+            state = AsyncValue.data([...uniqueNew, ...currentList]);
+          }
         }
       } else {
         // 初回取得（直近50件）
@@ -127,10 +129,23 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
 
   Future<void> _init({String reason = '初回接続'}) async {
     final supabase = _ref.read(supabaseProvider);
+
+    if (_channel != null) {
+      final old = _channel!;
+      _channel = null;
+      try {
+        await supabase.removeChannel(old);
+      } catch (_) {}
+    }
+    if (_isDisposed || !mounted) return;
+
     log('🔌 [オプチャメッセージ] 接続開始 (理由: $reason, roomId: $roomId)');
 
     // 1. ストリームの購読を開始する
-    _channel = supabase.channel('public:open_chat_messages:room_id=$roomId')
+    final channel = supabase.channel('public:open_chat_messages:room_id=$roomId');
+    _channel = channel;
+
+    channel
       .onPostgresChanges(
         event: PostgresChangeEvent.insert,
         schema: 'public',
@@ -155,22 +170,24 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
         }
       )
       .subscribe((status, [error]) async {
+        if (_isDisposed || !mounted || _channel != channel) return;
+
         if (status == RealtimeSubscribeStatus.subscribed) {
           log('✅ [オプチャメッセージ] 接続成功 (理由: $reason, roomId: $roomId)');
+          _isReconnecting = false;
           await _fetchLatestOrCatchUp();
-        } else if (!_isDisposed && mounted &&
-            (status == RealtimeSubscribeStatus.closed ||
-                status == RealtimeSubscribeStatus.channelError ||
-                status == RealtimeSubscribeStatus.timedOut)) {
+        } else if (status == RealtimeSubscribeStatus.closed ||
+            status == RealtimeSubscribeStatus.channelError ||
+            status == RealtimeSubscribeStatus.timedOut) {
+          if (_isReconnecting) return;
+          _isReconnecting = true;
           log('⚠️ [オプチャメッセージ] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
           await Future.delayed(const Duration(seconds: 3));
-          if (!mounted || _isDisposed) return;
-          if (_channel != null) {
-            try {
-              await supabase.removeChannel(_channel!);
-            } catch (_) {}
-            _channel = null;
+          if (!mounted || _isDisposed || _channel != channel) {
+            _isReconnecting = false;
+            return;
           }
+          _isReconnecting = false;
           _init(reason: '再接続 ($status)');
         }
       });

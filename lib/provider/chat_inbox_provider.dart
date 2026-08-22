@@ -51,6 +51,7 @@ final chatInboxProvider =
   if (myId == null) return [];
 
   var isDisposed = false;
+  var isReconnecting = false;
 
   // ==== インボックス(メッセージ一覧)のリアルタイム更新 ====
   final dmChannel = supabase.channel('inbox-dm-$myId');
@@ -67,10 +68,13 @@ final chatInboxProvider =
     if (isDisposed) return;
     if (status == RealtimeSubscribeStatus.subscribed) {
       log('✅ [DMインボックス] 接続成功 (userId: $myId)');
+      isReconnecting = false;
     } else if (!isDisposed &&
         (status == RealtimeSubscribeStatus.closed ||
             status == RealtimeSubscribeStatus.channelError ||
             status == RealtimeSubscribeStatus.timedOut)) {
+      if (isReconnecting) return;
+      isReconnecting = true;
       log('⚠️ [DMインボックス] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
       await Future.delayed(const Duration(seconds: 3));
       if (!isDisposed) {
@@ -93,10 +97,13 @@ final chatInboxProvider =
     if (isDisposed) return;
     if (status == RealtimeSubscribeStatus.subscribed) {
       log('✅ [オプチャインボックス] 接続成功 (userId: $myId)');
+      isReconnecting = false;
     } else if (!isDisposed &&
         (status == RealtimeSubscribeStatus.closed ||
             status == RealtimeSubscribeStatus.channelError ||
             status == RealtimeSubscribeStatus.timedOut)) {
+      if (isReconnecting) return;
+      isReconnecting = true;
       log('⚠️ [オプチャインボックス] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
       await Future.delayed(const Duration(seconds: 3));
       if (!isDisposed) {

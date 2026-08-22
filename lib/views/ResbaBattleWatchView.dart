@@ -62,6 +62,8 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
   bool _isSendingComment = false;
   bool _showFullChoice = false;
   bool _isDisposed = false;
+  bool _isRoomReconnecting = false;
+  bool _isSpectatorReconnecting = false;
 
   @override
   void initState() {
@@ -238,10 +240,23 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
     }
   }
 
-  void _subscribeRoom(String roomId, {String reason = '初回接続'}) {
+  void _subscribeRoom(String roomId, {String reason = '初回接続'}) async {
+    if (!mounted || _isDisposed) return;
+
+    if (_roomChannel != null) {
+      final old = _roomChannel!;
+      _roomChannel = null;
+      try {
+        await supabase.removeChannel(old);
+      } catch (_) {}
+    }
+    if (!mounted || _isDisposed) return;
+
     log('🔌 [観戦ルーム同期] 接続開始 (理由: $reason, roomId: $roomId)');
-    _roomChannel = supabase
-        .channel('watch-room-$roomId')
+    final channel = supabase.channel('watch-room-$roomId');
+    _roomChannel = channel;
+
+    channel
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
@@ -264,22 +279,24 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
           },
         )
         .subscribe((status, [error]) async {
+          if (!mounted || _isDisposed || _roomChannel != channel) return;
+
           if (status == RealtimeSubscribeStatus.subscribed) {
             log('✅ [観戦ルーム同期] 接続成功 (理由: $reason, roomId: $roomId)');
+            _isRoomReconnecting = false;
             _load();
-          } else if (!_isDisposed && mounted &&
-              (status == RealtimeSubscribeStatus.closed ||
-                  status == RealtimeSubscribeStatus.channelError ||
-                  status == RealtimeSubscribeStatus.timedOut)) {
+          } else if (status == RealtimeSubscribeStatus.closed ||
+              status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            if (_isRoomReconnecting) return;
+            _isRoomReconnecting = true;
             log('⚠️ [観戦ルーム同期] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
             await Future.delayed(const Duration(seconds: 3));
-            if (!mounted || _isDisposed) return;
-            if (_roomChannel != null) {
-              try {
-                await supabase.removeChannel(_roomChannel!);
-              } catch (_) {}
-              _roomChannel = null;
+            if (!mounted || _isDisposed || _roomChannel != channel) {
+              _isRoomReconnecting = false;
+              return;
             }
+            _isRoomReconnecting = false;
             _subscribeRoom(roomId, reason: '再接続 ($status)');
           }
         });
@@ -297,10 +314,23 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
         });
   }
 
-  void _subscribeSpectatorBroadcast(String roomId, {String reason = '初回接続'}) {
+  void _subscribeSpectatorBroadcast(String roomId, {String reason = '初回接続'}) async {
+    if (!mounted || _isDisposed) return;
+
+    if (_spectatorBroadcastChannel != null) {
+      final old = _spectatorBroadcastChannel!;
+      _spectatorBroadcastChannel = null;
+      try {
+        await supabase.removeChannel(old);
+      } catch (_) {}
+    }
+    if (!mounted || _isDisposed) return;
+
     log('🔌 [観戦コメント] 接続開始 (理由: $reason, roomId: $roomId)');
-    _spectatorBroadcastChannel = supabase.channel('spectator:room:$roomId');
-    _spectatorBroadcastChannel!
+    final channel = supabase.channel('spectator:room:$roomId');
+    _spectatorBroadcastChannel = channel;
+
+    channel
         .onBroadcast(
           event: 'spectator_comment',
           callback: (payload) {
@@ -311,21 +341,23 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
           },
         )
         .subscribe((status, [error]) async {
+          if (!mounted || _isDisposed || _spectatorBroadcastChannel != channel) return;
+
           if (status == RealtimeSubscribeStatus.subscribed) {
             log('✅ [観戦コメント] 接続成功 (理由: $reason, roomId: $roomId)');
-          } else if (!_isDisposed && mounted &&
-              (status == RealtimeSubscribeStatus.closed ||
-                  status == RealtimeSubscribeStatus.channelError ||
-                  status == RealtimeSubscribeStatus.timedOut)) {
+            _isSpectatorReconnecting = false;
+          } else if (status == RealtimeSubscribeStatus.closed ||
+              status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            if (_isSpectatorReconnecting) return;
+            _isSpectatorReconnecting = true;
             log('⚠️ [観戦コメント] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
             await Future.delayed(const Duration(seconds: 3));
-            if (!mounted || _isDisposed) return;
-            if (_spectatorBroadcastChannel != null) {
-              try {
-                await supabase.removeChannel(_spectatorBroadcastChannel!);
-              } catch (_) {}
-              _spectatorBroadcastChannel = null;
+            if (!mounted || _isDisposed || _spectatorBroadcastChannel != channel) {
+              _isSpectatorReconnecting = false;
+              return;
             }
+            _isSpectatorReconnecting = false;
             _subscribeSpectatorBroadcast(roomId, reason: '再接続 ($status)');
           }
         });

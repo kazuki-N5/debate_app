@@ -55,6 +55,7 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
   RealtimeChannel? _channel;
   bool hasMore = true;
   bool _isDisposed = false;
+  bool _isReconnecting = false;
 
   DmMessagesNotifier(this._ref, this.roomId) : super(const AsyncValue.loading()) {
     _init();
@@ -117,10 +118,23 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
 
   Future<void> _init({String reason = '初回接続'}) async {
     final supabase = _ref.read(supabaseProvider);
+
+    if (_channel != null) {
+      final old = _channel!;
+      _channel = null;
+      try {
+        await supabase.removeChannel(old);
+      } catch (_) {}
+    }
+    if (_isDisposed || !mounted) return;
+
     log('🔌 [DMメッセージ] 接続開始 (理由: $reason, roomId: $roomId)');
 
     // 1. ストリームの購読を開始
-    _channel = supabase.channel('public:dm_messages:room_id=$roomId')
+    final channel = supabase.channel('public:dm_messages:room_id=$roomId');
+    _channel = channel;
+
+    channel
       .onPostgresChanges(
         event: PostgresChangeEvent.insert,
         schema: 'public',
@@ -145,22 +159,24 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
         }
       )
       .subscribe((status, [error]) async {
+        if (_isDisposed || !mounted || _channel != channel) return;
+
         if (status == RealtimeSubscribeStatus.subscribed) {
           log('✅ [DMメッセージ] 接続成功 (理由: $reason, roomId: $roomId)');
+          _isReconnecting = false;
           await _fetchLatestOrCatchUp();
-        } else if (!_isDisposed && mounted &&
-            (status == RealtimeSubscribeStatus.closed ||
-                status == RealtimeSubscribeStatus.channelError ||
-                status == RealtimeSubscribeStatus.timedOut)) {
+        } else if (status == RealtimeSubscribeStatus.closed ||
+            status == RealtimeSubscribeStatus.channelError ||
+            status == RealtimeSubscribeStatus.timedOut) {
+          if (_isReconnecting) return;
+          _isReconnecting = true;
           log('⚠️ [DMメッセージ] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
           await Future.delayed(const Duration(seconds: 3));
-          if (!mounted || _isDisposed) return;
-          if (_channel != null) {
-            try {
-              await supabase.removeChannel(_channel!);
-            } catch (_) {}
-            _channel = null;
+          if (!mounted || _isDisposed || _channel != channel) {
+            _isReconnecting = false;
+            return;
           }
+          _isReconnecting = false;
           _init(reason: '再接続 ($status)');
         }
       });

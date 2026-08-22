@@ -56,6 +56,7 @@ class DmResbaNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>> {
   final String roomId;
   RealtimeChannel? _channel;
   bool _isDisposed = false;
+  bool _isReconnecting = false;
 
   DmResbaNotifier(this.ref, this.roomId) : super(const AsyncValue.loading()) {
     _init();
@@ -63,10 +64,21 @@ class DmResbaNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>> {
 
   SupabaseClient get supabase => ref.read(supabaseProvider);
 
-  void _init({String reason = '初回接続'}) {
+  void _init({String reason = '初回接続'}) async {
+    if (_channel != null) {
+      final old = _channel!;
+      _channel = null;
+      try {
+        await supabase.removeChannel(old);
+      } catch (_) {}
+    }
+    if (_isDisposed || !mounted) return;
+
     log('🔌 [DMレスバ一覧] 接続開始 (理由: $reason, roomId: $roomId)');
-    _channel = supabase
-        .channel('dm-resba-$roomId')
+    final channel = supabase.channel('dm-resba-$roomId');
+    _channel = channel;
+
+    channel
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
@@ -85,22 +97,24 @@ class DmResbaNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>> {
           callback: (_) => fetch(),
         )
         .subscribe((status, [error]) async {
+          if (_isDisposed || !mounted || _channel != channel) return;
+
           if (status == RealtimeSubscribeStatus.subscribed) {
             log('✅ [DMレスバ一覧] 接続成功 (理由: $reason, roomId: $roomId)');
+            _isReconnecting = false;
             await fetch();
-          } else if (!_isDisposed && mounted &&
-              (status == RealtimeSubscribeStatus.closed ||
-                  status == RealtimeSubscribeStatus.channelError ||
-                  status == RealtimeSubscribeStatus.timedOut)) {
+          } else if (status == RealtimeSubscribeStatus.closed ||
+              status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            if (_isReconnecting) return;
+            _isReconnecting = true;
             log('⚠️ [DMレスバ一覧] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
             await Future.delayed(const Duration(seconds: 3));
-            if (!mounted || _isDisposed) return;
-            if (_channel != null) {
-              try {
-                await supabase.removeChannel(_channel!);
-              } catch (_) {}
-              _channel = null;
+            if (!mounted || _isDisposed || _channel != channel) {
+              _isReconnecting = false;
+              return;
             }
+            _isReconnecting = false;
             _init(reason: '再接続 ($status)');
           }
         });
@@ -519,11 +533,15 @@ class ResbaMatchListener extends StateNotifier<bool> {
     return room.roomId != null && room.winner == null;
   }
 
-  Future<void> _scheduleReconnect([String reason = '切断']) async {
-    if (_isReconnecting) return;
+  Future<void> _scheduleReconnect(RealtimeChannel channel, [String reason = '切断']) async {
+    if (_isReconnecting || _channel != channel) return;
     _isReconnecting = true;
     log('⚠️ [レスバ対戦検知リスナー] 切断/エラー/タイムアウト検知 (理由: $reason) ➔ 3秒後に再接続');
     await Future.delayed(const Duration(seconds: 3));
+    if (_channel != channel) {
+      _isReconnecting = false;
+      return;
+    }
     _cleanupChannel();
     _isReconnecting = false;
     start(reason: '再接続 ($reason)');
@@ -532,10 +550,11 @@ class ResbaMatchListener extends StateNotifier<bool> {
   void _cleanupChannel() {
     state = false;
     if (_channel != null) {
-      try {
-        supabase.removeChannel(_channel!);
-      } catch (_) {}
+      final old = _channel!;
       _channel = null;
+      try {
+        supabase.removeChannel(old);
+      } catch (_) {}
     }
   }
 
@@ -546,8 +565,7 @@ class ResbaMatchListener extends StateNotifier<bool> {
       _ensureAuthRetry();
       return;
     }
-    if (state) return;
-    state = true;
+    if (state && _channel != null) return;
 
     _cleanupChannel();
     state = true;
@@ -555,8 +573,10 @@ class ResbaMatchListener extends StateNotifier<bool> {
     log('🔌 [レスバ対戦検知リスナー] 接続開始 (理由: $reason, userId: $myId)');
 
     // 1つのチャンネルに2つのリスナー（レンズ）を取り付ける
-    _channel = supabase
-        .channel('resba-listener-$myId')
+    final channel = supabase.channel('resba-listener-$myId');
+    _channel = channel;
+
+    channel
         // ① 送信者側レンズ: 自分のレスバが承諾されたら
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
@@ -589,15 +609,17 @@ class ResbaMatchListener extends StateNotifier<bool> {
           },
         )
         .subscribe((status, [error]) {
+          if (_channel != channel) return;
           log('realtime[resba-listener] state=$status${error != null ? ' error=$error' : ''}');
           // 購読確立（初回・再接続時）に現在の応募キューを再取得する
           if (status == RealtimeSubscribeStatus.subscribed) {
             log('✅ [レスバ対戦検知リスナー] 接続成功 (理由: $reason, userId: $myId)');
+            _isReconnecting = false;
             _refreshHostQueue();
           } else if (status == RealtimeSubscribeStatus.closed ||
               status == RealtimeSubscribeStatus.channelError ||
               status == RealtimeSubscribeStatus.timedOut) {
-            _scheduleReconnect('$status${error != null ? ' ($error)' : ''}');
+            _scheduleReconnect(channel, '$status${error != null ? ' ($error)' : ''}');
           }
         });
 
@@ -741,6 +763,7 @@ class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
   final Ref ref;
   RealtimeChannel? _channel;
   bool _isDisposed = false;
+  bool _isReconnecting = false;
   bool _isManualCancelling = false;
 
   ApplyingInfoNotifier(this.ref) : super(const AsyncValue.loading()) {
@@ -755,11 +778,23 @@ class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
       state = const AsyncValue.data(null);
       return;
     }
+
+    if (_channel != null) {
+      final old = _channel!;
+      _channel = null;
+      try {
+        await supabase.removeChannel(old);
+      } catch (_) {}
+    }
+    if (_isDisposed || !mounted) return;
+
     log('🔌 [レスバ応募中バナー] 接続開始 (理由: $reason, userId: $myId)');
     await fetch();
     // 自分の応募の INSERT / UPDATE（承認・拒否・取消）を購読して即時反映
-    _channel = supabase
-        .channel('resba-applying-$myId')
+    final channel = supabase.channel('resba-applying-$myId');
+    _channel = channel;
+
+    channel
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
@@ -809,25 +844,26 @@ class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
           },
         )
         .subscribe((status, [error]) async {
+          if (_isDisposed || !mounted || _channel != channel) return;
           log('realtime[resba-applying] state=$status${error != null ? ' error=$error' : ''}');
           if (status == RealtimeSubscribeStatus.subscribed) {
             log('✅ [レスバ応募中バナー] 接続成功 (理由: $reason, userId: $myId)');
+            _isReconnecting = false;
             // 購読完了時（初回・再接続時）に取りこぼしがないよう再フェッチ
             await fetch();
-          } else if (!_isDisposed && mounted &&
-              (status == RealtimeSubscribeStatus.closed ||
-                  status == RealtimeSubscribeStatus.channelError ||
-                  status == RealtimeSubscribeStatus.timedOut)) {
+          } else if (status == RealtimeSubscribeStatus.closed ||
+              status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            if (_isReconnecting) return;
+            _isReconnecting = true;
             log('⚠️ [レスバ応募中バナー] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
             // 切断・エラー・タイムアウト時は数秒待ってから再接続を試みる
             await Future.delayed(const Duration(seconds: 3));
-            if (!mounted || _isDisposed) return;
-            if (_channel != null) {
-              try {
-                await supabase.removeChannel(_channel!);
-              } catch (_) {}
-              _channel = null;
+            if (!mounted || _isDisposed || _channel != channel) {
+              _isReconnecting = false;
+              return;
             }
+            _isReconnecting = false;
             _init(reason: '再接続 ($status)'); // チャンネルを作り直す
           }
         });
@@ -928,6 +964,7 @@ class OpenChatResbasNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>
   final String roomId;
   RealtimeChannel? _channel;
   bool _isDisposed = false;
+  bool _isReconnecting = false;
 
   OpenChatResbasNotifier(this.ref, this.roomId) : super(const AsyncValue.loading()) {
     _init();
@@ -935,10 +972,21 @@ class OpenChatResbasNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>
 
   SupabaseClient get supabase => ref.read(supabaseProvider);
 
-  void _init({String reason = '初回接続'}) {
+  void _init({String reason = '初回接続'}) async {
+    if (_channel != null) {
+      final old = _channel!;
+      _channel = null;
+      try {
+        await supabase.removeChannel(old);
+      } catch (_) {}
+    }
+    if (_isDisposed || !mounted) return;
+
     log('🔌 [オプチャレスバ一覧] 接続開始 (理由: $reason, roomId: $roomId)');
-    _channel = supabase
-        .channel('open-chat-resba-$roomId')
+    final channel = supabase.channel('open-chat-resba-$roomId');
+    _channel = channel;
+
+    channel
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
@@ -957,22 +1005,24 @@ class OpenChatResbasNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>
           callback: (_) => fetch(),
         )
         .subscribe((status, [error]) async {
+          if (_isDisposed || !mounted || _channel != channel) return;
+
           if (status == RealtimeSubscribeStatus.subscribed) {
             log('✅ [オプチャレスバ一覧] 接続成功 (理由: $reason, roomId: $roomId)');
+            _isReconnecting = false;
             await fetch();
-          } else if (!_isDisposed && mounted &&
-              (status == RealtimeSubscribeStatus.closed ||
-                  status == RealtimeSubscribeStatus.channelError ||
-                  status == RealtimeSubscribeStatus.timedOut)) {
+          } else if (status == RealtimeSubscribeStatus.closed ||
+              status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            if (_isReconnecting) return;
+            _isReconnecting = true;
             log('⚠️ [オプチャレスバ一覧] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
             await Future.delayed(const Duration(seconds: 3));
-            if (!mounted || _isDisposed) return;
-            if (_channel != null) {
-              try {
-                await supabase.removeChannel(_channel!);
-              } catch (_) {}
-              _channel = null;
+            if (!mounted || _isDisposed || _channel != channel) {
+              _isReconnecting = false;
+              return;
             }
+            _isReconnecting = false;
             _init(reason: '再接続 ($status)');
           }
         });

@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:debate_project/provider/chat_inbox_provider.dart';
 import 'package:debate_project/utils/date_formatter.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/count_badge.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -89,23 +90,8 @@ class ChatInboxListTile extends StatelessWidget {
                         ),
                         if (item.unreadCount > 0) ...[
                           const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF91880),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              item.unreadCount.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                          CountBadge(
+                            count: item.unreadCount,
                           ),
                         ],
                       ],

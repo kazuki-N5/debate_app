@@ -41,6 +41,8 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
   bool isdisposed = false;
   RealtimeChannel? _subscription;
   RealtimeChannel? _presenceChannel;
+  bool _isPresenceReconnecting = false;
+  bool _isSubscriptionReconnecting = false;
   Timer? _offlineTimer;
   int _countdownSeconds = 20; // 追加
 
@@ -52,20 +54,23 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     return null;
   }
 
-//アプリのライフサイクルでホームに戻ったときと戻ったときの丁稚　キャンセルマッチを実装
-  Future<void> fetchmatchupdate() async {
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      // アプリがバックグラウンドに行った時の処理（必要に応じて）
+    }
+  }
+
+  Future fetchmatchupdate() async {
     try {
-      final roomdata = await supabase
+      final response = await supabase
           .from('rooms_v2')
           .select()
           .eq('id', state.roomId!)
           .single();
-
-      if (!isdisposed) {
-        state = MatchingRoom.fromMap(roomdata);
-      }
-
-      // gomatchstate();
+      state = MatchingRoom.fromMap(response);
     } catch (e) {
       log(e.toString());
     }
@@ -75,31 +80,39 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
   // void gomatchstate() async { ... }
 
   void setupPresenceChannel(String roomId, {String reason = '初回接続'}) {
+    if (isdisposed) return;
     log('🔌 [対戦Presence] 接続開始 (理由: $reason, roomId: $roomId)');
     // 既存のチャンネルがあればクリーンアップ
     if (_presenceChannel != null) {
-      supabase.removeChannel(_presenceChannel!);
+      final old = _presenceChannel!;
       _presenceChannel = null;
+      try {
+        supabase.removeChannel(old);
+      } catch (_) {}
     }
+    if (isdisposed) return;
 
     // チャンネルの作成 (両ユーザーで共通のroomIdをKeyとして指定)
-    _presenceChannel = supabase.channel(
+    final channel = supabase.channel(
       roomId,
       opts: RealtimeChannelConfig(
         key: roomId,
       ),
     );
+    _presenceChannel = channel;
+
     // 【GitHub Issue #43561 回避策：Dart版実装】
     // 高レイヤーのonPresenceSync/Join/Leaveが本番環境で発火しない不具合があるため、
     // 内部的な Phoenix イベントである 'presence_state' と 'presence_diff' を直接リスニングします。
-    _presenceChannel!
+    channel
         // ignore: invalid_use_of_internal_member
         .onEvents(
           'presence_state',
           ChannelFilter(),
           (payload, [_]) {
+            if (isdisposed || _presenceChannel != channel) return;
             log('★★★ MANUAL Presence State (RAW): $payload');
-            final currentPresences = _presenceChannel!.presenceState();
+            final currentPresences = channel.presenceState();
             log('--- Current Presences Total: ${currentPresences.length}');
 
             // 初期状態チェック: 相手がいなければタイマー開始
@@ -123,29 +136,35 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
           'presence_diff',
           ChannelFilter(),
           (payload, [_]) {
+            if (isdisposed || _presenceChannel != channel) return;
             log('★★★ MANUAL Presence Diff (RAW): $payload');
             final Map<String, dynamic> joins = payload['joins'] ?? {};
             final Map<String, dynamic> leaves = payload['leaves'] ?? {};
             final opponentId = _opponentId;
 
             if (opponentId != null) {
-              // 相手が戻ってきたかチェック
-              bool opponentJoined = joins.values.any((user) =>
-                  (user['metas'] as List)
-                      .any((m) => m['user_id'] == opponentId));
+              bool opponentJoined = joins.values.any((userPresences) {
+                if (userPresences is List) {
+                  return userPresences
+                      .any((p) => p['user_id'] == opponentId);
+                }
+                return false;
+              });
+
+              bool opponentLeft = leaves.values.any((userPresences) {
+                if (userPresences is List) {
+                  return userPresences
+                      .any((p) => p['user_id'] == opponentId);
+                }
+                return false;
+              });
 
               if (opponentJoined) {
-                log('✅ 相手（$opponentId）が復帰しました。タイマーを停止します。');
+                log('★★★ Opponent $opponentId JOINED/ACTIVE!');
                 _offlineTimer?.cancel();
                 ref.read(opponentOfflineStatusProvider.notifier).state = null;
-              }
-
-              // 相手が離脱したかチェック
-              bool opponentLeft = leaves.values.any((user) =>
-                  (user['metas'] as List)
-                      .any((m) => m['user_id'] == opponentId));
-
-              if (opponentLeft) {
+              } else if (opponentLeft) {
+                log('★★★ Opponent $opponentId LEFT/OFFLINE! Starting timer...');
                 _startOfflineTimer();
               }
             }
@@ -158,12 +177,15 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
           },
         )
         .subscribe((status, [error]) async {
+          if (isdisposed || _presenceChannel != channel) return;
+
           if (status == RealtimeSubscribeStatus.subscribed) {
             log('✅ [対戦Presence] 接続成功 (理由: $reason, roomId: $roomId)');
+            _isPresenceReconnecting = false;
             // 自分の状態をトラック開始
             final myUserId = ref.read(currentUserIdProvider);
-            if (myUserId != null && _presenceChannel != null) {
-              await _presenceChannel!.track({
+            if (myUserId != null && _presenceChannel == channel) {
+              await channel.track({
                 'user_id': myUserId,
                 'online_at': DateTime.now().toIso8601String(),
               });
@@ -172,17 +194,18 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
             // 3秒後にテスト用のBroadcastを送る
             Future.delayed(const Duration(seconds: 3), () async {
               log('--- Sending test broadcast HELLO... ---');
-              if (_presenceChannel != null && myUserId != null) {
-                await _presenceChannel!.sendBroadcastMessage(
+              if (_presenceChannel == channel && myUserId != null && !isdisposed) {
+                await channel.sendBroadcastMessage(
                   event: 'test_hello',
                   payload: {'from': myUserId, 'text': 'HELLO!'},
                 );
               }
             });
-          } else if (!isdisposed &&
-              (status == RealtimeSubscribeStatus.closed ||
-                  status == RealtimeSubscribeStatus.channelError ||
-                  status == RealtimeSubscribeStatus.timedOut)) {
+          } else if (status == RealtimeSubscribeStatus.closed ||
+              status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            if (_isPresenceReconnecting) return;
+            _isPresenceReconnecting = true;
             log('⚠️ [対戦Presence] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
             await Future.delayed(const Duration(seconds: 3));
             if (!isdisposed && _presenceChannel != null) {
@@ -371,6 +394,21 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
         ref.read(friendmatchProvider.notifier).state = false;
       }
     } catch (e) {
+      log('Error during join_room_v2: $e');
+      ref.read(friendmatchProvider.notifier).state = false;
+    }
+  }
+
+  Future<void> makeFriendMatch(String roomId, String title) async {
+    final response = await supabase.rpc('create_room_v2', params: {
+      'p_title': title,
+      'p_room_id': roomId,
+    });
+    if (response != null) {
+      state = MatchingRoom.fromMap(response);
+      waitForMatch(roomId);
+      setupPresenceChannel(roomId);
+    } else {
       log('インターネットに接続しましょう');
       ref.read(friendmatchProvider.notifier).state = false;
     }
@@ -380,8 +418,19 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     if (isdisposed) return;
     log('🔌 [通常マッチング待機] 接続開始 (理由: $reason, roomId: $roomId)');
     try {
-      _subscription = supabase
-          .channel('room-updates:$roomId')
+      if (_subscription != null) {
+        final old = _subscription!;
+        _subscription = null;
+        try {
+          await supabase.removeChannel(old);
+        } catch (_) {}
+      }
+      if (isdisposed) return;
+
+      final channel = supabase.channel('room-updates:$roomId');
+      _subscription = channel;
+
+      channel
           .onPostgresChanges(
               event: PostgresChangeEvent.all,
               schema: 'public',
@@ -398,27 +447,27 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
                 }
               })
           .subscribe((status, [error]) async {
+        if (isdisposed || _subscription != channel) return;
         log('realtime[room-updates] status: $status');
         if (status == RealtimeSubscribeStatus.subscribed) {
           log('✅ [通常マッチング待機] 接続成功 (理由: $reason, roomId: $roomId)');
+          _isSubscriptionReconnecting = false;
           // サブスクライブ成功時に初期データを取得することで、
           // 監視開始前に入っていた変更も確実に拾い、かつ冗長なループを回避します
           await fetchmatchupdate();
-        } else if (!isdisposed &&
-            (status == RealtimeSubscribeStatus.closed ||
-                status == RealtimeSubscribeStatus.channelError ||
-                status == RealtimeSubscribeStatus.timedOut)) {
+        } else if (status == RealtimeSubscribeStatus.closed ||
+            status == RealtimeSubscribeStatus.channelError ||
+            status == RealtimeSubscribeStatus.timedOut) {
+          if (_isSubscriptionReconnecting) return;
+          _isSubscriptionReconnecting = true;
           log('⚠️ [通常マッチング待機] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
           await Future.delayed(const Duration(seconds: 3));
-          if (!isdisposed && state.roomId == roomId) {
-            if (_subscription != null) {
-              try {
-                await supabase.removeChannel(_subscription!);
-              } catch (_) {}
-              _subscription = null;
-            }
-            waitForMatch(roomId, reason: '再接続 ($status)');
+          if (isdisposed || state.roomId != roomId || _subscription != channel) {
+            _isSubscriptionReconnecting = false;
+            return;
           }
+          _isSubscriptionReconnecting = false;
+          waitForMatch(roomId, reason: '再接続 ($status)');
         }
       });
       log('Subscription process initiated.');

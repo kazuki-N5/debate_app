@@ -30,6 +30,7 @@ import 'package:debate_project/views/MessagePage.dart';
 
 import 'package:debate_project/widgets/keep_alive_page.dart';
 import 'package:debate_project/widgets/trophy_count_animation.dart';
+import 'package:debate_project/widgets/count_badge.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 // 前回のトロフィー数を保持してアニメーションの起点にするためのプロバイダー
@@ -1016,25 +1017,10 @@ class HomePage extends HookConsumerWidget {
         if (unreadCount > 0)
           Positioned(
             right: -10,
-            top: -8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              constraints: const BoxConstraints(minWidth: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF91880),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white, width: 1),
-              ),
-              child: Text(
-                unreadCount > 99 ? '99+' : '$unreadCount',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  height: 1.2,
-                ),
-              ),
+            top: -7,
+            child: CountBadge(
+              count: unreadCount,
+              border: Border.all(color: Colors.white, width: 1.5),
             ),
           ),
       ],

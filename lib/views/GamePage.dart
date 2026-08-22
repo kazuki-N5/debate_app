@@ -275,11 +275,25 @@ class GamePage extends HookConsumerWidget {
       // 観戦コメント（ヤジ）のRealtime Broadcastを購読
       RealtimeChannel? spectatorChannel;
       bool isDisposed = false;
-      void subscribeSpectator(String roomId, {String reason = '初回接続'}) {
+      bool isReconnecting = false;
+
+      void subscribeSpectator(String roomId, {String reason = '初回接続'}) async {
         if (!context.mounted || isDisposed) return;
+
+        if (spectatorChannel != null) {
+          final old = spectatorChannel!;
+          spectatorChannel = null;
+          try {
+            await supabase.removeChannel(old);
+          } catch (_) {}
+        }
+        if (!context.mounted || isDisposed) return;
+
         log('🔌 [対戦中観戦コメント] 接続開始 (理由: $reason, roomId: $roomId)');
-        spectatorChannel = supabase.channel('spectator:room:$roomId');
-        spectatorChannel!
+        final channel = supabase.channel('spectator:room:$roomId');
+        spectatorChannel = channel;
+
+        channel
             .onBroadcast(
               event: 'spectator_comment',
               callback: (payload) {
@@ -290,22 +304,23 @@ class GamePage extends HookConsumerWidget {
               },
             )
             .subscribe((status, [error]) async {
-              if (isDisposed) return;
+              if (isDisposed || !context.mounted || spectatorChannel != channel) return;
+
               if (status == RealtimeSubscribeStatus.subscribed) {
                 log('✅ [対戦中観戦コメント] 接続成功 (理由: $reason, roomId: $roomId)');
-              } else if (!isDisposed && context.mounted &&
-                  (status == RealtimeSubscribeStatus.closed ||
-                      status == RealtimeSubscribeStatus.channelError ||
-                      status == RealtimeSubscribeStatus.timedOut)) {
+                isReconnecting = false;
+              } else if (status == RealtimeSubscribeStatus.closed ||
+                  status == RealtimeSubscribeStatus.channelError ||
+                  status == RealtimeSubscribeStatus.timedOut) {
+                if (isReconnecting) return;
+                isReconnecting = true;
                 log('⚠️ [対戦中観戦コメント] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
                 await Future.delayed(const Duration(seconds: 3));
-                if (!context.mounted || isDisposed) return;
-                if (spectatorChannel != null) {
-                  try {
-                    await supabase.removeChannel(spectatorChannel!);
-                  } catch (_) {}
-                  spectatorChannel = null;
+                if (!context.mounted || isDisposed || spectatorChannel != channel) {
+                  isReconnecting = false;
+                  return;
                 }
+                isReconnecting = false;
                 subscribeSpectator(roomId, reason: '再接続 ($status)');
               }
             });

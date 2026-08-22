@@ -16,6 +16,7 @@ class NotificationNotifier
   final Ref _ref;
   RealtimeChannel? _channel;
   bool _isDisposed = false;
+  bool _isReconnecting = false;
 
   /// 追加取得できる通知が残っているか
   bool hasMore = true;
@@ -41,12 +42,23 @@ class NotificationNotifier
       return;
     }
 
+    if (_channel != null) {
+      final old = _channel!;
+      _channel = null;
+      try {
+        await supabase.removeChannel(old);
+      } catch (_) {}
+    }
+    if (_isDisposed || !mounted) return;
+
     log('🔌 [通知] 接続開始 (理由: $reason, userId: $myId)');
 
     // 新着通知のRealtime購読 (user_id が自分宛ての insert / update のみ)
     //   insert: 新しい通知行 / update: いいね集約の件数加算 を即時反映
-    _channel = supabase
-        .channel('notifications-user-$myId')
+    final channel = supabase.channel('notifications-user-$myId');
+    _channel = channel;
+
+    channel
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
@@ -74,22 +86,24 @@ class NotificationNotifier
           },
         )
         .subscribe((status, [error]) async {
+          if (_isDisposed || !mounted || _channel != channel) return;
+
           if (status == RealtimeSubscribeStatus.subscribed) {
             log('✅ [通知] 接続成功 (理由: $reason, userId: $myId)');
+            _isReconnecting = false;
             await fetchNotifications();
-          } else if (!_isDisposed && mounted &&
-              (status == RealtimeSubscribeStatus.closed ||
-                  status == RealtimeSubscribeStatus.channelError ||
-                  status == RealtimeSubscribeStatus.timedOut)) {
+          } else if (status == RealtimeSubscribeStatus.closed ||
+              status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            if (_isReconnecting) return;
+            _isReconnecting = true;
             log('⚠️ [通知] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
             await Future.delayed(const Duration(seconds: 3));
-            if (!mounted || _isDisposed) return;
-            if (_channel != null) {
-              try {
-                await supabase.removeChannel(_channel!);
-              } catch (_) {}
-              _channel = null;
+            if (!mounted || _isDisposed || _channel != channel) {
+              _isReconnecting = false;
+              return;
             }
+            _isReconnecting = false;
             _init(reason: '再接続 ($status)');
           }
         });

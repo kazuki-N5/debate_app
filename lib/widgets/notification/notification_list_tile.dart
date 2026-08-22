@@ -207,32 +207,6 @@ class NotificationListTile extends StatelessWidget {
                         ),
                       ),
                     ],
-                    // 未読ドット
-                    if (isUnread)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF1D9BF0),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '未読',
-                              style: AppTextStyles.notoSans(
-                                fontSize: 10,
-                                color: const Color(0xFF1D9BF0),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                   ],
                 ),
               ),

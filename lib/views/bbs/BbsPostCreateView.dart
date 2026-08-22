@@ -51,16 +51,19 @@ class _BbsPostCreateViewState extends ConsumerState<BbsPostCreateView> {
       }
 
       final postId = await ref.read(bbsTimelineProvider.notifier).addPost(content, imageUrls: imageUrls);
+      debugPrint('[RESBA_UI_LOG] [CreatePost] Created post id: $postId');
 
       // レスバを付ける（ポストにレスバが付く）
       final attachment = resbaAttachment;
       if (attachment != null && postId != null) {
+        debugPrint('[RESBA_UI_LOG] [CreatePost] Attaching resba: theme=${attachment.theme}, choice1=${attachment.choice1}, choice2=${attachment.choice2}');
         final result = await ref.read(resbaActionsProvider).createPostResba(
               postId: postId,
               theme: attachment.theme,
               choice1: attachment.choice1,
               choice2: attachment.choice2,
             );
+        debugPrint('[RESBA_UI_LOG] [CreatePost] createPostResba result: error=${result.error}, roomId=${result.roomId}');
         if (result.error != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.error!)));
         } else {

@@ -72,12 +72,17 @@ class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
         'p_user_id': currentUserId,
       });
 
+      debugPrint('[RESBA_LOG] bbsTimelineProvider.fetchPosts response length: ${(response as List).length}');
       List<BbsPost> posts = [];
       for (var item in response) {
         final userData = item['users'];
         final user = userData != null ? Users.fromMap(userData) : null;
         final isLiked = item['is_liked_by_me'] ?? false;
-        posts.add(BbsPost.fromMap(item, user: user, isLikedByMe: isLiked));
+        final post = BbsPost.fromMap(item, user: user, isLikedByMe: isLiked);
+        if (post.hasResba) {
+          debugPrint('[RESBA_LOG] Found post WITH resba: id=${post.id}, content=${post.content}');
+        }
+        posts.add(post);
       }
 
       // ブロック済みユーザー・非表示投稿を除外
@@ -88,6 +93,7 @@ class BbsTimelineNotifier extends StateNotifier<AsyncValue<List<BbsPost>>> {
 
       state = AsyncValue.data(posts);
     } catch (e, st) {
+      debugPrint('[RESBA_LOG] bbsTimelineProvider.fetchPosts ERROR: $e\n$st');
       state = AsyncValue.error(e, st);
     }
   }

@@ -13,7 +13,7 @@ class CountBadge extends StatelessWidget {
   const CountBadge({
     super.key,
     required this.count,
-    this.backgroundColor = const Color(0xFF1D9BF0),
+    this.backgroundColor = const Color(0xFF4FAFF5),
     this.textColor = Colors.white,
     this.fontSize = 11.5,
     this.minSize = 21,

@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>レスバUI改善モックアップ - Debata</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,900;1,900&family=Noto+Sans+JP:wght@400;500;700;900&family=Tourney:wght@900&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans JP"', 'sans-serif'],
+            vs: ['"Tourney"', '"Montserrat"', 'sans-serif'],
+            display: ['"Montserrat"', '"Noto Sans JP"', 'sans-serif'],
+          },
+          colors: {
+            resba: {
+              DEFAULT: '#7856FF',
+              50: '#F5F3FF',
+              100: '#ECE8FF',
+              200: '#DDD6FE',
+              300: '#C4B5FD',
+              400: '#A78BFA',
+              500: '#7856FF',
+              600: '#673DE6',
+              700: '#5224D0',
+              800: '#4017A8',
+              900: '#2E0E7D',
+            },
+            duelRed: {
+              DEFAULT: '#FF385C',
+              light: '#FFEAEF',
+              border: '#FF8DA1'
+            },
+            duelBlue: {
+              DEFAULT: '#0084FF',
+              light: '#E6F3FF',
+              border: '#7CC2FF'
+            }
+          },
+          boxShadow: {
+            'neon-purple': '0 0 20px rgba(120, 86, 255, 0.4)',
+            'neon-red': '0 0 15px rgba(255, 56, 92, 0.35)',
+            'neon-blue': '0 0 15px rgba(0, 132, 255, 0.35)',
+            'card': '0 4px 20px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04)',
+            'bottom-sheet': '0 -10px 40px rgba(0, 0, 0, 0.25)',
+          },
+          animation: {
+            'pulse-subtle': 'pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'bounce-gentle': 'bounceGentle 2s infinite',
+            'shimmer': 'shimmer 2s infinite linear',
+          },
+          keyframes: {
+            bounceGentle: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-4px)' },
+            },
+            shimmer: {
+              '0%': { backgroundPosition: '-200% 0' },
+              '100%': { backgroundPosition: '200% 0' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .vs-text {
+      background: linear-gradient(135deg, #FF385C 0%, #FFB800 50%, #0084FF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.03);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-resba-200">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-resba-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-resba-500/20">
+          <i data-lucide="swords" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 leading-tight">レスバUI改善モックアップ</h1>
+          <p class="text-xs text-slate-500 font-medium">送信ボトムシート & レスバカード の洗練デザイン提案</p>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- Theme Toggle Switch -->
+        <div class="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200 text-xs font-semibold">
+          <button id="btn-theme-modern" onclick="setCardTheme('modern')" class="px-3 py-1.5 rounded-lg transition-all shadow-sm bg-white text-resba-700">
+            モダン・VSスタイル
+          </button>
+          <button id="btn-theme-cyber" onclick="setCardTheme('cyber')" class="px-3 py-1.5 rounded-lg transition-all text-slate-500 hover:text-slate-800">
+            ネオン・バトルスタイル
+          </button>
+        </div>
+
+        <button onclick="openBottomSheet()" class="hidden sm:inline-flex items-center space-x-2 bg-gradient-to-r from-resba to-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-resba-500/25 hover:shadow-lg hover:from-resba-600 hover:to-indigo-700 active:scale-95 transition-all">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>レスバを仕掛ける (下から開く)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- Left Column: Explanation / Before & After Highlights (5 cols) -->
+    <div class="lg:col-span-5 space-y-6 order-2 lg:order-1">
+      
+      <!-- Summary Card -->
+      <div class="bg-white rounded-2xl p-6 shadow-card border border-slate-200/80">
+        <div class="flex items-center space-x-2.5 text-resba mb-3">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+          <h2 class="text-base font-bold text-slate-900">UI改善のポイント解説</h2>
+        </div>
+        <p class="text-sm text-slate-600 leading-relaxed mb-4">
+          従来の「灰色の入力欄が3つ並んだだけの事務的なボトムシート」と「テキストが淡々と並んだカード」を、<strong class="text-slate-800 font-bold">直感的でバトルの熱量が伝わるUI</strong>へと全面的にブラッシュアップしました。
+        </p>
+
+        <!-- Feature List -->
+        <div class="space-y-3.5">
+          <div class="flex items-start space-x-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <div class="p-2 rounded-lg bg-red-100 text-duelRed shrink-0 mt-0.5">
+              <i data-lucide="split" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="text-xs font-bold text-slate-800">赤 vs 青 の「VSスプリット」選択肢UI</h3>
+              <p class="text-xs text-slate-500 mt-0.5">単なる「選択肢1/2」ではなく、陣営A（あなた）と陣営B（相手）が対立するビジュアルでバトルの対立構図を直感的に演出。</p>
+            </div>
+          </div>
+
+          <div class="flex items-start space-x-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <div class="p-2 rounded-lg bg-amber-100 text-amber-600 shrink-0 mt-0.5">
+              <i data-lucide="zap" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="text-xs font-bold text-slate-800">ワンタップ「テーマ候補」&「選択肢プリセット」</h3>
+              <p class="text-xs text-slate-500 mt-0.5">「きのこたけのこ」「賛成 vs 反対」など定番プリセットを用意。文字入力の手間を激減させ、投稿ハードルを下げます。</p>
+            </div>
+          </div>
+
+          <div class="flex items-start space-x-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <div class="p-2 rounded-lg bg-resba-100 text-resba shrink-0 mt-0.5">
+              <i data-lucide="flame" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="text-xs font-bold text-slate-800">状態（ステータス）のドラマチックな差別化</h3>
+              <p class="text-xs text-slate-500 mt-0.5">「🔥 募集中」「⚡ 挑戦者あり」「🔴 ライブ対戦中」「🏆 決着」の4つの状態を鮮やかなバッジと構成でメリハリ化。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Before vs After Comparison Card -->
+      <div class="bg-white rounded-2xl p-6 shadow-card border border-slate-200/80">
+        <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
+          <span>現状 vs 改善後の比較</span>
+          <span class="text-xs px-2 py-0.5 bg-slate-100 rounded-md text-slate-500 font-normal">Diff</span>
+        </h3>
+        
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="p-3 rounded-xl bg-rose-50/70 border border-rose-100">
+            <span class="font-bold text-rose-700 block mb-1.5 flex items-center"><i data-lucide="x-circle" class="w-3.5 h-3.5 mr-1"></i> 現状の課題</span>
+            <ul class="space-y-1 text-slate-600 list-disc list-inside text-[11px] leading-snug">
+              <li>灰色テキスト欄が縦に3つ並び事務的でダサい</li>
+              <li>選択肢の対立感・VS感が皆無</li>
+              <li>お題をゼロから考えるのが面倒</li>
+              <li>カードが薄紫枠のみで地味、ゲーム感・レスバ感がない</li>
+            </ul>
+          </div>
+
+          <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100">
+            <span class="font-bold text-emerald-700 block mb-1.5 flex items-center"><i data-lucide="check-circle-2" class="w-3.5 h-3.5 mr-1"></i> 改善後</span>
+            <ul class="space-y-1 text-slate-600 list-disc list-inside text-[11px] leading-snug">
+              <li>赤vs青のデュエル型スプリット入力</li>
+              <li>ワンタップ定番候補チップ</li>
+              <li>グラデーションとVS演出でワクワクするバトル感</li>
+              <li>LIVE観戦者数や勝敗リボンなどリッチなカード表現</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Tester -->
+      <div class="bg-gradient-to-br from-resba-900 to-slate-900 text-white rounded-2xl p-6 shadow-card">
+        <div class="flex items-center space-x-2 text-resba-300 text-xs font-bold uppercase tracking-wider mb-2">
+          <i data-lucide="play" class="w-4 h-4"></i>
+          <span>インタラクティブ操作</span>
+        </div>
+        <h3 class="text-base font-bold mb-2">画面上の操作を試してみましょう</h3>
+        <p class="text-xs text-slate-300 mb-4 leading-relaxed">
+          右側のスマホプレビュー内で「＋ レスバを仕掛ける」ボタンを押すと、改善後のボトムシートがアニメーションとともに立ち上がります。候補チップをタップして実際に作成できます。
+        </p>
+        <button onclick="openBottomSheet()" class="w-full bg-resba text-white font-bold py-3 rounded-xl shadow-neon-purple hover:bg-resba-400 active:scale-98 transition flex items-center justify-center space-x-2 text-sm">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>ボトムシートを開いてテストする</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Interactive Phone Simulator (7 cols) -->
+    <div class="lg:col-span-7 flex flex-col items-center order-1 lg:order-2">
+      
+      <!-- Phone Frame Container -->
+      <div class="w-full max-w-[420px] bg-slate-900 rounded-[44px] p-3.5 shadow-2xl shadow-slate-900/30 border-4 border-slate-800 relative">
+        
+        <!-- Phone Speaker & Camera Notch -->
+        <div class="absolute top-6 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-800 rounded-full z-40 flex items-center justify-center">
+          <div class="w-10 h-1 bg-slate-700 rounded-full mr-2"></div>
+          <div class="w-2 h-2 bg-slate-700 rounded-full"></div>
+        </div>
+
+        <!-- Phone Screen Inside -->
+        <div id="phone-screen" class="w-full bg-slate-50 rounded-[34px] overflow-hidden flex flex-col h-[780px] relative font-sans text-slate-800">
+          
+          <!-- Status Bar -->
+          <div class="h-10 pt-2 px-6 flex items-center justify-between text-xs font-semibold text-slate-600 bg-white select-none z-10">
+            <span>09:41</span>
+            <div class="flex items-center space-x-1.5">
+              <i data-lucide="signal" class="w-3.5 h-3.5"></i>
+              <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
+              <i data-lucide="battery" class="w-4 h-4"></i>
+            </div>
+          </div>
+
+          <!-- App Header -->
+          <div class="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between z-10">
+            <div class="flex items-center space-x-2">
+              <div class="w-8 h-8 rounded-full bg-resba/10 flex items-center justify-center text-resba font-bold text-sm">
+                ⚔️
+              </div>
+              <div>
+                <h2 class="text-sm font-bold text-slate-900">タイムライン</h2>
+                <p class="text-[10px] text-slate-400">レスバ・ディベート掲示板</p>
+              </div>
+            </div>
+            <!-- Filter Tabs -->
+            <div class="flex items-center bg-slate-100 p-0.5 rounded-lg text-[11px] font-semibold">
+              <button onclick="filterStatus('all')" id="tab-all" class="px-2.5 py-1 rounded-md bg-white text-resba shadow-sm transition">すべて</button>
+              <button onclick="filterStatus('recruiting')" id="tab-recruiting" class="px-2 py-1 rounded-md text-slate-500 hover:text-slate-800 transition">募集</button>
+              <button onclick="filterStatus('live')" id="tab-live" class="px-2 py-1 rounded-md text-slate-500 hover:text-slate-800 transition">LIVE</button>
+            </div>
+          </div>
+
+          <!-- Cards Scrollable Area -->
+          <div id="cards-container" class="flex-1 overflow-y-auto p-3.5 space-y-3.5 custom-scrollbar pb-24">
+            
+            <!-- CARD 1: 募集中 (Recruiting) -->
+            <div class="resba-card-wrapper" data-status="recruiting">
+              <div class="resba-card bg-white rounded-2xl border-2 border-resba-300 shadow-sm p-3.5 transition-all hover:shadow-md relative overflow-hidden">
+                <!-- Header Badge -->
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center space-x-2">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80" class="w-6 h-6 rounded-full object-cover border border-slate-200" alt="Avatar">
+                    <span class="text-xs font-bold text-slate-800">ひろゆき風ボット</span>
+                    <span class="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full font-bold border border-amber-200">🏆 1,420</span>
+                  </div>
+                  <!-- Status Tag -->
+                  <div class="flex items-center space-x-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm animate-pulse-subtle">
+                    <span>🔥 挑戦者募集中</span>
+                  </div>
+                </div>
+
+                <!-- Theme Title -->
+                <h3 class="text-sm font-black text-slate-900 mb-2.5 leading-snug">
+                  「AIが発達してもプログラマーの仕事はなくならない？」
+                </h3>
+
+                <!-- VS Split Arena -->
+                <div class="grid grid-cols-11 gap-1 items-center bg-slate-50 rounded-xl p-2 border border-slate-200/80 mb-3">
+                  <!-- Side A (Host) -->
+                  <div class="col-span-5 flex flex-col items-start bg-white p-2 rounded-lg border-l-4 border-duelRed shadow-xs">
+                    <span class="text-[9px] font-bold text-duelRed uppercase tracking-wider">ホストの主張</span>
+                    <span class="text-xs font-bold text-slate-800 truncate w-full mt-0.5">なくならない (賛成)</span>
+                  </div>
+
+                  <!-- VS Emblem -->
+                  <div class="col-span-1 flex items-center justify-center">
+                    <span class="font-vs text-sm font-black italic vs-text tracking-tighter">VS</span>
+                  </div>
+
+                  <!-- Side B (Challenger Placeholder) -->
+                  <div class="col-span-5 flex flex-col items-end bg-white p-2 rounded-lg border-r-4 border-duelBlue shadow-xs">
+                    <span class="text-[9px] font-bold text-duelBlue uppercase tracking-wider">挑戦者の立場</span>
+                    <span class="text-xs font-bold text-slate-800 truncate w-full text-right mt-0.5">なくなる (反対)</span>
+                  </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="flex space-x-2">
+                  <button onclick="handleAccept(this)" class="flex-1 bg-gradient-to-r from-resba to-indigo-600 hover:from-resba-600 hover:to-indigo-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-md shadow-resba-500/20 active:scale-98 transition flex items-center justify-center space-x-1.5">
+                    <i data-lucide="swords" class="w-3.5 h-3.5"></i>
+                    <span>⚔️ 応じる (受けて立つ)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- CARD 2: 申込あり (Pending Approval - Host View) -->
+            <div class="resba-card-wrapper" data-status="recruiting">
+              <div class="resba-card bg-gradient-to-br from-white to-amber-50/40 rounded-2xl border-2 border-amber-300 shadow-sm p-3.5 transition-all hover:shadow-md relative">
+                <!-- Header Badge -->
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-slate-700 flex items-center">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 mr-1.5 animate-ping"></span>
+                    あなたの募集に申込が届きました！
+                  </span>
+                  <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    ⚡ 承認待ち
+                  </span>
+                </div>
+
+                <!-- Challenger Profile Card -->
+                <div class="flex items-center space-x-2.5 bg-white p-2.5 rounded-xl border border-amber-200/80 mb-2.5 shadow-xs">
+                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80" class="w-8 h-8 rounded-full object-cover border border-slate-200" alt="Applicant">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center space-x-1.5">
+                      <span class="text-xs font-bold text-slate-900 truncate">論理派カズキ</span>
+                      <span class="text-[9px] text-amber-600 font-bold bg-amber-50 px-1 py-0.2 rounded border border-amber-200">🏆 1,890</span>
+                    </div>
+                    <p class="text-[10px] text-slate-500 truncate">勝率 68% • 「受けて立ちます。全力で論破します」</p>
+                  </div>
+                </div>
+
+                <!-- Theme -->
+                <div class="text-xs font-bold text-slate-800 mb-3 px-1">
+                  お題：<span class="text-slate-900 font-extrabold">「きのこの山 vs たけのこの里、真の王者はどっち？」</span>
+                </div>
+
+                <!-- Dual Actions -->
+                <div class="grid grid-cols-2 gap-2">
+                  <button onclick="handleApprove(this)" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs py-2 rounded-xl shadow-sm active:scale-98 transition flex items-center justify-center space-x-1">
+                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                    <span>承認して対戦開始</span>
+                  </button>
+                  <button onclick="handleReject(this)" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs py-2 rounded-xl active:scale-98 transition flex items-center justify-center space-x-1">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    <span>見送る</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- CARD 3: 対戦中・LIVE観戦可能 (Live Battle) -->
+            <div class="resba-card-wrapper" data-status="live">
+              <div class="resba-card bg-white rounded-2xl border-2 border-indigo-500 shadow-md shadow-indigo-500/10 p-3.5 transition-all relative overflow-hidden">
+                <!-- Glowing Top Accent -->
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-duelRed via-purple-500 to-duelBlue"></div>
+
+                <!-- Header Live Banner -->
+                <div class="flex items-center justify-between mb-2 mt-0.5">
+                  <div class="flex items-center space-x-1.5">
+                    <span class="relative flex h-2.5 w-2.5">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <span class="text-[11px] font-black text-rose-600 tracking-wide">LIVE 対戦中</span>
+                  </div>
+                  <!-- Audience Count -->
+                  <div class="flex items-center space-x-1 text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
+                    <i data-lucide="eye" class="w-3 h-3 text-slate-400"></i>
+                    <span>38人が観戦中</span>
+                  </div>
+                </div>
+
+                <!-- Theme -->
+                <h3 class="text-xs font-black text-slate-900 mb-2.5 leading-snug">
+                  「完全テレワーク vs 週5出社、生産性が高いのはどっち？」
+                </h3>
+
+                <!-- Matchup Versus Visual -->
+                <div class="bg-gradient-to-r from-rose-50/60 via-purple-50/40 to-blue-50/60 rounded-xl p-2.5 border border-slate-200/80 mb-3 flex items-center justify-between">
+                  <!-- Fighter Left -->
+                  <div class="flex items-center space-x-2">
+                    <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop&q=80" class="w-7 h-7 rounded-full object-cover border-2 border-duelRed" alt="User 1">
+                    <div>
+                      <div class="text-[11px] font-bold text-slate-800 leading-none">タロウ</div>
+                      <div class="text-[9px] font-bold text-duelRed mt-0.5">テレワーク派</div>
+                    </div>
+                  </div>
+
+                  <!-- VS Badge -->
+                  <div class="px-2 py-0.5 bg-white/90 backdrop-blur rounded-full shadow-xs border border-slate-200/60">
+                    <span class="font-vs text-xs font-black italic vs-text">VS</span>
+                  </div>
+
+                  <!-- Fighter Right -->
+                  <div class="flex items-center space-x-2 flex-row-reverse text-right">
+                    <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&auto=format&fit=crop&q=80" class="w-7 h-7 rounded-full object-cover border-2 border-duelBlue" alt="User 2">
+                    <div>
+                      <div class="text-[11px] font-bold text-slate-800 leading-none">サトシ</div>
+                      <div class="text-[9px] font-bold text-duelBlue mt-0.5">出社派</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Progress / Round Bar -->
+                <div class="flex items-center justify-between text-[10px] text-slate-400 font-semibold mb-2.5 px-0.5">
+                  <span>第2ラウンド / 3ターン目</span>
+                  <span class="text-resba font-bold">残り 0:42</span>
+                </div>
+
+                <!-- Action Button -->
+                <button onclick="alert('観戦ルームへ遷移します（Live Watch）')" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm active:scale-98 transition flex items-center justify-center space-x-1.5">
+                  <i data-lucide="tv" class="w-3.5 h-3.5 text-rose-400"></i>
+                  <span>👁️ リアルタイムで観戦する</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- CARD 4: 対戦終了 (Finished) -->
+            <div class="resba-card-wrapper" data-status="all">
+              <div class="resba-card bg-white rounded-2xl border border-slate-200 shadow-xs p-3.5 opacity-90 hover:opacity-100 transition-all">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[10px] font-bold text-slate-400 flex items-center">
+                    <i data-lucide="check-check" class="w-3 h-3 mr-1"></i> 対戦終了 • 2時間前
+                  </span>
+                  <span class="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    🏆 勝敗決着
+                  </span>
+                </div>
+                <div class="text-xs font-bold text-slate-800 mb-2">
+                  「朝型生活 vs 夜型生活、人生の幸福度が高いのは？」
+                </div>
+                <div class="bg-slate-50 rounded-xl p-2 flex items-center justify-between text-xs mb-2.5 border border-slate-100">
+                  <div class="flex items-center space-x-1.5">
+                    <span class="text-amber-500 font-bold">👑 WINNER</span>
+                    <span class="font-bold text-slate-700">朝型派 (54票)</span>
+                  </div>
+                  <span class="text-slate-400 text-[11px]">vs 夜型派 (21票)</span>
+                </div>
+                <button onclick="alert('観戦ログ・AIジャッジ結果を開きます')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] py-2 rounded-lg transition flex items-center justify-center space-x-1">
+                  <i data-lucide="file-text" class="w-3 h-3 text-slate-500"></i>
+                  <span>観戦ログ & 判定結果を見る</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Floating Action Button inside Phone -->
+          <div class="absolute bottom-4 left-4 right-4 z-20">
+            <button onclick="openBottomSheet()" class="w-full bg-gradient-to-r from-resba to-indigo-600 text-white font-black py-3.5 px-4 rounded-2xl shadow-neon-purple flex items-center justify-center space-x-2 active:scale-95 transition-all hover:brightness-110">
+              <i data-lucide="swords" class="w-5 h-5"></i>
+              <span class="text-sm tracking-wide">⚔️ レスバを仕掛ける</span>
+            </button>
+          </div>
+
+          <!-- Bottom Sheet Backdrop & Container (Interactive Modal) -->
+          <div id="bottom-sheet-backdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs z-40 opacity-0 pointer-events-none transition-opacity duration-300" onclick="closeBottomSheet()"></div>
+          
+          <div id="bottom-sheet" class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[28px] z-50 transform translate-y-full transition-transform duration-300 ease-out shadow-bottom-sheet flex flex-col max-h-[85%] border-t border-slate-100">
+            
+            <!-- Drag Handle Indicator -->
+            <div class="pt-2.5 pb-1 flex justify-center cursor-pointer" onclick="closeBottomSheet()">
+              <div class="w-10 h-1 bg-slate-300 rounded-full hover:bg-slate-400 transition"></div>
+            </div>
+
+            <!-- Sheet Header -->
+            <div class="px-5 py-2.5 flex items-center justify-between border-b border-slate-100">
+              <div class="flex items-center space-x-2">
+                <div class="w-7 h-7 rounded-lg bg-resba/10 text-resba flex items-center justify-center font-bold text-sm">
+                  ⚔️
+                </div>
+                <div>
+                  <h3 class="text-sm font-black text-slate-900">レスバを仕掛ける</h3>
+                  <p class="text-[10px] text-slate-400">相手が応じると1対1のディベートが始まります</p>
+                </div>
+              </div>
+              <button onclick="closeBottomSheet()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition">
+                <i data-lucide="x" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <!-- Sheet Form Content (Scrollable) -->
+            <div class="p-5 overflow-y-auto space-y-4 custom-scrollbar">
+              
+              <!-- 1. Theme Input Section -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-slate-800 flex items-center space-x-1">
+                    <span>🔥 テーマ・お題</span>
+                    <span class="text-[10px] text-rose-500 bg-rose-50 px-1 rounded font-semibold">必須</span>
+                  </label>
+                  <span id="theme-counter" class="text-[10px] text-slate-400 font-medium">0 / 60</span>
+                </div>
+                
+                <div class="relative group">
+                  <input type="text" id="input-theme" oninput="updateThemeCount()" placeholder="例：AIは人間の仕事を奪うか？" maxlength="60"
+                    class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 placeholder-slate-400 font-medium focus:bg-white focus:border-resba focus:ring-2 focus:ring-resba/20 outline-none transition">
+                </div>
+
+                <!-- Quick Theme Suggestion Chips -->
+                <div class="pt-1">
+                  <span class="text-[10px] text-slate-400 font-semibold block mb-1.5">⚡ 定番テーマから選ぶ:</span>
+                  <div class="flex flex-wrap gap-1.5">
+                    <button type="button" onclick="setPreset('AIは人間の仕事を奪うか？', '奪う（賛成）', '奪わない（反対）')" class="text-[10px] font-medium bg-slate-100 hover:bg-resba-50 hover:text-resba hover:border-resba-200 border border-slate-200 text-slate-600 px-2 py-1 rounded-lg transition active:scale-95">
+                      🤖 AI vs 人間の仕事
+                    </button>
+                    <button type="button" onclick="setPreset('きのこの山 vs たけのこの里', 'きのこの山派', 'たけのこの里派')" class="text-[10px] font-medium bg-slate-100 hover:bg-resba-50 hover:text-resba hover:border-resba-200 border border-slate-200 text-slate-600 px-2 py-1 rounded-lg transition active:scale-95">
+                      🍄 きのこ vs たけのこ
+                    </button>
+                    <button type="button" onclick="setPreset('朝型生活 vs 夜型生活', '朝型が最強', '夜型が至高')" class="text-[10px] font-medium bg-slate-100 hover:bg-resba-50 hover:text-resba hover:border-resba-200 border border-slate-200 text-slate-600 px-2 py-1 rounded-lg transition active:scale-95">
+                      🌅 朝型 vs 夜型
+                    </button>
+                    <button type="button" onclick="setPreset('自炊 vs 外食・デリバリー', '自炊派', '外食・デリバリー派')" class="text-[10px] font-medium bg-slate-100 hover:bg-resba-50 hover:text-resba hover:border-resba-200 border border-slate-200 text-slate-600 px-2 py-1 rounded-lg transition active:scale-95">
+                      🍳 自炊 vs 外食
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Choices Input Section (VS Duel Style) -->
+              <div class="space-y-2 pt-1">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-slate-800 flex items-center space-x-1">
+                    <span>⚔️ 対立する選択肢（陣営）</span>
+                    <span class="text-[10px] text-slate-400 font-normal">任意</span>
+                  </label>
+                  
+                  <!-- Choice Preset Buttons -->
+                  <div class="flex space-x-1">
+                    <button type="button" onclick="setChoicesPreset('賛成', '反対')" class="text-[9px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded transition">賛成/反対</button>
+                    <button type="button" onclick="setChoicesPreset('あり', 'なし')" class="text-[9px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded transition">あり/なし</button>
+                    <button type="button" onclick="setChoicesPreset('好き', '嫌い')" class="text-[9px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded transition">好き/嫌い</button>
+                  </div>
+                </div>
+
+                <!-- Dual VS Inputs Container -->
+                <div class="bg-gradient-to-r from-red-50/50 via-slate-50 to-blue-50/50 p-3 rounded-2xl border border-slate-200 relative">
+                  
+                  <div class="grid grid-cols-11 gap-2 items-center">
+                    <!-- Choice 1 (Red / Host) -->
+                    <div class="col-span-5 space-y-1">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold text-duelRed flex items-center">
+                          <span class="w-1.5 h-1.5 rounded-full bg-duelRed mr-1"></span> あなた (陣営A)
+                        </span>
+                      </div>
+                      <input type="text" id="input-choice1" placeholder="例：賛成" maxlength="30"
+                        class="w-full bg-white border-2 border-red-200 focus:border-duelRed focus:ring-1 focus:ring-duelRed/30 rounded-xl px-2.5 py-2 text-xs text-slate-800 placeholder-slate-400 font-medium outline-none transition">
+                    </div>
+
+                    <!-- VS Emblem -->
+                    <div class="col-span-1 flex items-center justify-center">
+                      <div class="w-6 h-6 rounded-full bg-white shadow-xs border border-slate-200 flex items-center justify-center">
+                        <span class="font-vs text-[10px] font-black italic vs-text">VS</span>
+                      </div>
+                    </div>
+
+                    <!-- Choice 2 (Blue / Challenger) -->
+                    <div class="col-span-5 space-y-1">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold text-duelBlue flex items-center">
+                          <span class="w-1.5 h-1.5 rounded-full bg-duelBlue mr-1"></span> 相手 (陣営B)
+                        </span>
+                      </div>
+                      <input type="text" id="input-choice2" placeholder="例：反対" maxlength="30"
+                        class="w-full bg-white border-2 border-blue-200 focus:border-duelBlue focus:ring-1 focus:ring-duelBlue/30 rounded-xl px-2.5 py-2 text-xs text-slate-800 placeholder-slate-400 font-medium outline-none transition">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Battle Rule Preview (Optional Accordion) -->
+              <div class="border border-slate-200/80 rounded-xl p-2.5 bg-slate-50/80 text-[11px] text-slate-600 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <i data-lucide="timer" class="w-4 h-4 text-resba"></i>
+                  <span>ルール: <strong>各ターン 90秒</strong> / <strong>全3ターン勝負</strong></span>
+                </div>
+                <span class="text-[10px] text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 font-bold">標準設定</span>
+              </div>
+
+              <!-- 4. Submit & Cancel Buttons -->
+              <div class="pt-2 flex space-x-2">
+                <button type="button" onclick="closeBottomSheet()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs py-3 rounded-xl transition">
+                  キャンセル
+                </button>
+                <button type="button" onclick="submitResba()" class="flex-[2] bg-gradient-to-r from-resba via-indigo-600 to-resba-700 hover:brightness-110 text-white font-extrabold text-xs py-3 rounded-xl shadow-md shadow-resba-500/25 active:scale-98 transition flex items-center justify-center space-x-1.5">
+                  <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                  <span>⚔️ この内容でレスバを送る</span>
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2.5 transform translate-y-[-20px] opacity-0 pointer-events-none transition-all duration-300 text-xs font-bold border border-slate-700">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-message">レスバを投稿しました！</span>
+  </div>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Theme Switcher (Modern vs Cyber Neon)
+    let currentTheme = 'modern';
+    function setCardTheme(theme) {
+      currentTheme = theme;
+      const btnModern = document.getElementById('btn-theme-modern');
+      const btnCyber = document.getElementById('btn-theme-cyber');
+      const cards = document.querySelectorAll('.resba-card');
+
+      if (theme === 'cyber') {
+        btnCyber.className = 'px-3 py-1.5 rounded-lg transition-all shadow-sm bg-slate-900 text-white';
+        btnModern.className = 'px-3 py-1.5 rounded-lg transition-all text-slate-500 hover:text-slate-800';
+        
+        cards.forEach(card => {
+          card.classList.add('bg-slate-900', 'text-white', 'border-resba-500', 'shadow-neon-purple');
+          card.classList.remove('bg-white');
+          // Adjust child elements for dark cyber theme
+          card.querySelectorAll('h3, .text-slate-900, .text-slate-800').forEach(el => {
+            el.classList.add('text-white');
+            el.classList.remove('text-slate-900', 'text-slate-800');
+          });
+        });
+      } else {
+        btnModern.className = 'px-3 py-1.5 rounded-lg transition-all shadow-sm bg-white text-resba-700';
+        btnCyber.className = 'px-3 py-1.5 rounded-lg transition-all text-slate-500 hover:text-slate-800';
+        
+        cards.forEach(card => {
+          card.classList.remove('bg-slate-900', 'text-white', 'border-resba-500', 'shadow-neon-purple');
+          card.classList.add('bg-white');
+          card.querySelectorAll('.text-white').forEach(el => {
+            if (!el.classList.contains('font-extrabold') && !el.closest('button')) {
+              el.classList.remove('text-white');
+              el.classList.add('text-slate-900');
+            }
+          });
+        });
+      }
+    }
+
+    // Filter Status Handler
+    function filterStatus(status) {
+      const cards = document.querySelectorAll('.resba-card-wrapper');
+      ['all', 'recruiting', 'live'].forEach(s => {
+        const tab = document.getElementById('tab-' + s);
+        if (s === status) {
+          tab.className = 'px-2.5 py-1 rounded-md bg-white text-resba shadow-sm transition font-bold';
+        } else {
+          tab.className = 'px-2 py-1 rounded-md text-slate-500 hover:text-slate-800 transition';
+        }
+      });
+
+      cards.forEach(card => {
+        const cardStatus = card.getAttribute('data-status');
+        if (status === 'all' || cardStatus === status || (status === 'recruiting' && cardStatus === 'recruiting')) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    // Bottom Sheet Control
+    function openBottomSheet() {
+      const sheet = document.getElementById('bottom-sheet');
+      const backdrop = document.getElementById('bottom-sheet-backdrop');
+      sheet.classList.remove('translate-y-full');
+      backdrop.classList.remove('opacity-0', 'pointer-events-none');
+      document.getElementById('input-theme').focus();
+    }
+
+    function closeBottomSheet() {
+      const sheet = document.getElementById('bottom-sheet');
+      const backdrop = document.getElementById('bottom-sheet-backdrop');
+      sheet.classList.add('translate-y-full');
+      backdrop.classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    // Theme Preset Input Handler
+    function setPreset(theme, choice1, choice2) {
+      const themeInput = document.getElementById('input-theme');
+      const c1Input = document.getElementById('input-choice1');
+      const c2Input = document.getElementById('input-choice2');
+
+      themeInput.value = theme;
+      c1Input.value = choice1;
+      c2Input.value = choice2;
+      updateThemeCount();
+    }
+
+    function setChoicesPreset(c1, c2) {
+      document.getElementById('input-choice1').value = c1;
+      document.getElementById('input-choice2').value = c2;
+    }
+
+    function updateThemeCount() {
+      const count = document.getElementById('input-theme').value.length;
+      document.getElementById('theme-counter').innerText = `${count} / 60`;
+    }
+
+    // Toast Notification
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-message').innerText = message;
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[-20px]');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-20px]');
+      }, 3000);
+    }
+
+    // Submit Resba & Add Card to List
+    function submitResba() {
+      const theme = document.getElementById('input-theme').value.trim();
+      const c1 = document.getElementById('input-choice1').value.trim() || '賛成';
+      const c2 = document.getElementById('input-choice2').value.trim() || '反対';
+
+      if (!theme) {
+        alert('テーマを入力してください！');
+        return;
+      }
+
+      // Prepend new card to the container
+      const container = document.getElementById('cards-container');
+      const newCardHtml = `
+        <div class="resba-card-wrapper" data-status="recruiting">
+          <div class="resba-card bg-white rounded-2xl border-2 border-resba-400 shadow-md shadow-resba-500/10 p-3.5 transition-all hover:shadow-lg relative overflow-hidden animate-pulse-subtle">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center space-x-2">
+                <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop&q=80" class="w-6 h-6 rounded-full object-cover border border-slate-200" alt="You">
+                <span class="text-xs font-bold text-slate-800">あなた (ホスト)</span>
+                <span class="text-[10px] text-resba bg-resba-50 px-1.5 py-0.5 rounded-full font-bold border border-resba-200">募集中</span>
+              </div>
+              <span class="text-[10px] text-slate-400">たった今</span>
+            </div>
+
+            <h3 class="text-sm font-black text-slate-900 mb-2.5 leading-snug">
+              「${escapeHtml(theme)}」
+            </h3>
+
+            <div class="grid grid-cols-11 gap-1 items-center bg-slate-50 rounded-xl p-2 border border-slate-200/80 mb-3">
+              <div class="col-span-5 flex flex-col items-start bg-white p-2 rounded-lg border-l-4 border-duelRed shadow-xs">
+                <span class="text-[9px] font-bold text-duelRed uppercase tracking-wider">あなたの立場</span>
+                <span class="text-xs font-bold text-slate-800 truncate w-full mt-0.5">${escapeHtml(c1)}</span>
+              </div>
+              <div class="col-span-1 flex items-center justify-center">
+                <span class="font-vs text-sm font-black italic vs-text tracking-tighter">VS</span>
+              </div>
+              <div class="col-span-5 flex flex-col items-end bg-white p-2 rounded-lg border-r-4 border-duelBlue shadow-xs">
+                <span class="text-[9px] font-bold text-duelBlue uppercase tracking-wider">相手の立場</span>
+                <span class="text-xs font-bold text-slate-800 truncate w-full text-right mt-0.5">${escapeHtml(c2)}</span>
+              </div>
+            </div>
+
+            <div class="flex space-x-2">
+              <button onclick="this.closest('.resba-card-wrapper').remove(); showToast('募集を取り下げました');" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs py-2.5 rounded-xl transition">
+                取り下げる
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      container.insertAdjacentHTML('afterbegin', newCardHtml);
+      closeBottomSheet();
+      showToast('⚔️ レスバの募集を投稿しました！');
+      lucide.createIcons();
+
+      // Reset fields
+      document.getElementById('input-theme').value = '';
+      document.getElementById('input-choice1').value = '';
+      document.getElementById('input-choice2').value = '';
+      updateThemeCount();
+    }
+
+    function handleAccept(btn) {
+      btn.innerText = '✅ 申込完了（承認待ち）';
+      btn.className = 'flex-1 bg-slate-200 text-slate-600 font-bold text-xs py-2.5 rounded-xl cursor-default';
+      showToast('⚔️ レスバに応募しました！ホストの承認をお待ちください。');
+    }
+
+    function handleApprove(btn) {
+      showToast('⚔️ 承認しました！対戦ルームへ移動します...');
+    }
+
+    function handleReject(btn) {
+      const card = btn.closest('.resba-card-wrapper');
+      card.remove();
+      showToast('申込を見送りました。');
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;'
+        }[tag] || tag)
+      );
+    }
+  </script>
+</body>
+</html>

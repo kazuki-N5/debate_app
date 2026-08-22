@@ -200,7 +200,7 @@ class ResbaCard extends ConsumerWidget {
               if (invite.senderAvatar != null && invite.senderAvatar!.isNotEmpty)
                 CircleAvatar(
                   radius: 12,
-                  backgroundImage: NetworkImage(invite.senderAvatar!),
+                  backgroundImage: ResizeImage(NetworkImage(invite.senderAvatar!), width: 72),
                 )
               else
                 CircleAvatar(radius: 12, backgroundColor: Colors.grey[300], child: Icon(Icons.person, size: 14, color: Colors.grey[600])),
@@ -299,7 +299,7 @@ class ResbaCard extends ConsumerWidget {
               if (app.applicantAvatar != null && app.applicantAvatar!.isNotEmpty)
                 CircleAvatar(
                   radius: 14,
-                  backgroundImage: NetworkImage(app.applicantAvatar!),
+                  backgroundImage: ResizeImage(NetworkImage(app.applicantAvatar!), width: 84),
                 )
               else
                 CircleAvatar(radius: 14, backgroundColor: Colors.grey[300], child: Icon(Icons.person, size: 16, color: Colors.grey[600])),

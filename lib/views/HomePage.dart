@@ -6,6 +6,7 @@ import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:debate_project/provider/app_config_provider.dart';
 import 'package:debate_project/provider/app_config_service.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
+import 'package:debate_project/provider/chat_inbox_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/notification_provider.dart';
 import 'package:debate_project/provider/resba_provider.dart';
@@ -42,13 +43,19 @@ class HomePage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = useState<int>(1); // 初期値をホーム(1)に変更
-    // メッセージタブの未読通知数 (ナビアイコンのバッジ用)
+    // メッセージタブの未読数 (通知 + DM/オプチャの合算)
     final unreadNotifications = ref
             .watch(notificationProvider)
             .valueOrNull
             ?.where((n) => !n.isRead)
             .length ??
         0;
+    final unreadMessages = ref
+            .watch(chatInboxProvider)
+            .valueOrNull
+            ?.fold<int>(0, (sum, item) => sum + item.unreadCount) ??
+        0;
+    final totalUnreadCount = unreadNotifications + unreadMessages;
     // 一度訪れたタブだけをビルドして保持する(遅延マウントで起動時・切替時の負荷を軽減)
     final visitedTabs = useState<Set<int>>({1}); // ホーム(1)は最初から表示
     final isMatching = useState<bool>(false);
@@ -965,7 +972,7 @@ class HomePage extends HookConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildMessageIcon(
-                    currentIndex.value == 2 ? 0 : unreadNotifications,
+                    currentIndex.value == 2 ? 0 : totalUnreadCount,
                     active: false,
                   ),
                   Text("メッセージ",

@@ -221,10 +221,13 @@ class BbsPostWidget extends ConsumerWidget {
                     ),
                   if (post.hasResba) ...[
                     const SizedBox(height: 6),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: ResbaBadge(text: 'レスバ付き'),
-                    ),
+                    Builder(builder: (context) {
+                      debugPrint('[RESBA_UI_LOG] [Timeline] Rendering ResbaBadge for post: ${post.id}, title: ${post.content}');
+                      return const Align(
+                        alignment: Alignment.centerLeft,
+                        child: ResbaBadge(text: 'レスバ付き'),
+                      );
+                    }),
                   ],
                   if (post.imageUrls != null && post.imageUrls!.isNotEmpty) ...[
                     const SizedBox(height: 8),

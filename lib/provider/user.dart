@@ -436,6 +436,28 @@ class UserNotifier extends StateNotifier<Users> {
     }
   }
 
+  Future<void> updateBio(String bio) async {
+    final myuser = _ref.read(currentUserIdProvider);
+    if (myuser == null) {
+      print('エラー: ユーザーがログインしていません。');
+      return;
+    }
+
+    final String bioToUpdate = bio.trim();
+
+    try {
+      await supabase
+          .from('users')
+          .update({'bio': bioToUpdate}).eq('id', myuser);
+
+      print('自己紹介の更新に成功しました');
+      await fetchUser(myuser);
+    } catch (e) {
+      print('自己紹介の更新中にエラーが発生しました: $e');
+      rethrow;
+    }
+  }
+
   Future<void> saveTransferCredentials(String id, String password) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(SharedPrefKeys.transferId, id);

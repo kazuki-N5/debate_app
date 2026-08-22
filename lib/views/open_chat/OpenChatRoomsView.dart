@@ -66,7 +66,7 @@ class OpenChatRoomsView extends HookConsumerWidget {
                   if (rooms.isEmpty) {
                     return Center(
                       child: Text(
-                        'オープンチャットが見つかりません',
+                        'クラブが見つかりません',
                         style: AppTextStyles.notoSans(
                           color: Colors.grey,
                           fontSize: 16,

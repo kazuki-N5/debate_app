@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>プロフィール画面 タブモックアップ (ポスト / 返信 / メディア)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f3f4f6;
+    }
+    /* スレッド連結線 */
+    .thread-line {
+      position: absolute;
+      top: 48px;
+      bottom: -16px;
+      left: 20px;
+      width: 2px;
+      background-color: #cfd9de;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center p-4 md:p-8 min-h-screen text-slate-800">
+
+  <!-- ヘッダー解説 -->
+  <div class="max-w-md w-full mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+    <h1 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+      <i class="fa-brands fa-x-twitter text-blue-500"></i>
+      プロフィール画面 UI モックアップ
+    </h1>
+    <p class="text-xs text-slate-500 mt-1">
+      「ポスト」「返信（X風スレッド表示）」「メディア（画像付きのみ抽出）」の挙動とデザインのプレビューです。タブをタップして切り替えられます。
+    </p>
+  </div>
+
+  <!-- モバイル実機風コンテナ -->
+  <div class="max-w-md w-full bg-white shadow-xl rounded-3xl overflow-hidden border border-slate-300 flex flex-col relative" style="min-height: 840px;">
+    
+    <!-- 戻るボタン（オーバーレイ） -->
+    <div class="absolute top-4 left-4 z-30">
+      <button class="w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center backdrop-blur-sm shadow hover:bg-black/60 transition">
+        <i class="fa-solid fa-chevron-left text-sm pr-0.5"></i>
+      </button>
+    </div>
+
+    <!-- ヘッダー画像 -->
+    <div class="relative w-full h-36 bg-gradient-to-r from-blue-400 to-indigo-500">
+      <img src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80" alt="ヘッダー" class="w-full h-full object-cover">
+      <!-- カメラアイコン -->
+      <div class="absolute bottom-3 right-3 w-7 h-7 rounded-full bg-black/50 text-white border border-white flex items-center justify-center text-xs">
+        <i class="fa-solid fa-camera"></i>
+      </div>
+    </div>
+
+    <!-- プロフィール上部情報 (アバター重ね配置) -->
+    <div class="px-4 pb-3 relative">
+      <!-- アバター＆アクションボタン -->
+      <div class="flex justify-between items-end">
+        <!-- アバター (最前面でヘッダーに重ねる) -->
+        <div class="relative -mt-10 z-10">
+          <div class="w-20 h-20 rounded-full border-4 border-white shadow-md bg-slate-200 overflow-hidden relative">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80" alt="アバター" class="w-full h-full object-cover">
+          </div>
+          <div class="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-blue-500 border-2 border-white text-white flex items-center justify-center text-[10px]">
+            <i class="fa-solid fa-camera"></i>
+          </div>
+        </div>
+
+        <!-- 4つのアクションボタン -->
+        <div class="flex items-center gap-1 text-slate-600 mb-1">
+          <button class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 transition" title="ブロック">
+            <i class="fa-solid fa-ban text-sm"></i>
+          </button>
+          <button class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 transition" title="通報">
+            <i class="fa-regular fa-flag text-sm"></i>
+          </button>
+          <button class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 transition" title="DM">
+            <i class="fa-regular fa-envelope text-base"></i>
+          </button>
+          <button class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 transition text-pink-500" title="いいね/フォロー">
+            <i class="fa-solid fa-heart text-base"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- ユーザー名・ID -->
+      <div class="mt-2">
+        <div class="flex items-center gap-1">
+          <h2 class="text-xl font-bold text-slate-900 leading-tight">なやはや</h2>
+          <i class="fa-solid fa-pen text-xs text-slate-400"></i>
+        </div>
+        <p class="text-sm text-slate-500">@5c9475e9-0bcf-4</p>
+      </div>
+
+      <!-- フォロー数 -->
+      <div class="flex gap-4 mt-2 text-sm">
+        <div><span class="font-bold text-slate-900">12</span> <span class="text-slate-500 text-xs">フォロー中</span></div>
+        <div><span class="font-bold text-slate-900">48</span> <span class="text-slate-500 text-xs">フォロワー</span></div>
+      </div>
+
+      <!-- 自己紹介文 -->
+      <div class="mt-2 text-sm text-slate-800 leading-snug">
+        Flutterでアプリ開発中です！ディベートと議論が好きです。気軽に絡んでください。
+      </div>
+    </div>
+
+    <!-- 3タブバー (ポスト / 返信 / メディア) -->
+    <div class="border-b border-slate-200 sticky top-0 bg-white z-20 flex">
+      <button onclick="switchTab('posts')" id="tab-posts" class="flex-1 py-3 text-center text-sm font-bold border-b-2 border-blue-500 text-slate-900 transition flex items-center justify-center gap-1.5">
+        ポスト
+      </button>
+      <button onclick="switchTab('replies')" id="tab-replies" class="flex-1 py-3 text-center text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-700 transition flex items-center justify-center gap-1.5">
+        返信
+      </button>
+      <button onclick="switchTab('media')" id="tab-media" class="flex-1 py-3 text-center text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-700 transition flex items-center justify-center gap-1.5">
+        メディア
+      </button>
+    </div>
+
+    <!-- タブコンテンツ領域 -->
+    <div class="flex-1 bg-white overflow-y-auto custom-scrollbar">
+
+      <!-- ================= 1. ポスト タブ ================= -->
+      <div id="content-posts" class="divide-y divide-slate-100 block">
+        <!-- 投稿1（テキストのみ） -->
+        <div class="p-4 hover:bg-slate-50 transition cursor-pointer">
+          <div class="flex gap-3">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-full object-cover bg-slate-200 shrink-0">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1 text-sm">
+                <span class="font-bold text-slate-900">なやはや</span>
+                <span class="text-xs text-slate-400">· 3時間前</span>
+              </div>
+              <p class="text-sm text-slate-800 mt-1">今日の議題「AIによる自動コーディングはエンジニアをどう変えるか」について議論したいです！</p>
+              <div class="flex justify-between items-center text-slate-400 text-xs mt-3 max-w-xs">
+                <span class="flex items-center gap-1 hover:text-blue-500"><i class="fa-regular fa-comment"></i> 3</span>
+                <span class="flex items-center gap-1 hover:text-pink-500"><i class="fa-regular fa-heart"></i> 12</span>
+                <span class="flex items-center gap-1 hover:text-green-500"><i class="fa-regular fa-bookmark"></i></span>
+                <span class="flex items-center gap-1 hover:text-slate-600"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 投稿2（画像あり） -->
+        <div class="p-4 hover:bg-slate-50 transition cursor-pointer">
+          <div class="flex gap-3">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-full object-cover bg-slate-200 shrink-0">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1 text-sm">
+                <span class="font-bold text-slate-900">なやはや</span>
+                <span class="text-xs text-slate-400">· 13時間前</span>
+              </div>
+              <p class="text-sm text-slate-800 mt-1">参考資料をまとめました。論理構成の分析ノートです。</p>
+              <div class="mt-2.5 rounded-2xl overflow-hidden border border-slate-200 max-h-52">
+                <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop&q=80" class="w-full h-full object-cover">
+              </div>
+              <div class="flex justify-between items-center text-slate-400 text-xs mt-3 max-w-xs">
+                <span class="flex items-center gap-1 hover:text-blue-500"><i class="fa-regular fa-comment"></i> 1</span>
+                <span class="flex items-center gap-1 hover:text-pink-500"><i class="fa-regular fa-heart"></i> 8</span>
+                <span class="flex items-center gap-1 hover:text-green-500"><i class="fa-regular fa-bookmark"></i></span>
+                <span class="flex items-center gap-1 hover:text-slate-600"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ================= 2. 返信 タブ (X/Twitter スタイル) ================= -->
+      <div id="content-replies" class="divide-y divide-slate-100 hidden">
+        
+        <!-- 返信スレッド1 (元投稿 ＋ 自分の返信) -->
+        <div class="p-4 hover:bg-slate-50 transition cursor-pointer">
+          <!-- 上段: 返信先の元ポスト -->
+          <div class="relative flex gap-3 pb-3">
+            <!-- 縦のスレッド線 -->
+            <div class="thread-line"></div>
+            
+            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-full object-cover bg-slate-200 shrink-0 z-10">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1 text-sm">
+                <span class="font-bold text-slate-900">田中 太郎</span>
+                <span class="text-xs text-slate-400">@tanaka · 昨日</span>
+              </div>
+              <p class="text-sm text-slate-600 mt-1">
+                最近のディベートではデータとエビデンスの提示が最重要視されていますね。
+              </p>
+            </div>
+          </div>
+
+          <!-- 下段: なやはや（本人）の返信 -->
+          <div class="flex gap-3 pt-1">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-full object-cover bg-slate-200 shrink-0 z-10">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1 text-sm">
+                <span class="font-bold text-slate-900">なやはや</span>
+                <span class="text-xs text-slate-400">· 5時間前</span>
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5 mb-1">
+                返信先: <span class="text-blue-500">@tanaka</span> さん
+              </div>
+              <p class="text-sm text-slate-800">
+                まったく同感です！定性的な主張だけでは説得力に欠けるので、具体的な統計数値を引用することが勝敗を分けますね。
+              </p>
+              <div class="flex justify-between items-center text-slate-400 text-xs mt-3 max-w-xs">
+                <span class="flex items-center gap-1 hover:text-blue-500"><i class="fa-regular fa-comment"></i> 0</span>
+                <span class="flex items-center gap-1 hover:text-pink-500"><i class="fa-solid fa-heart text-pink-500"></i> 4</span>
+                <span class="flex items-center gap-1 hover:text-green-500"><i class="fa-regular fa-bookmark"></i></span>
+                <span class="flex items-center gap-1 hover:text-slate-600"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 返信スレッド2 (画像付きの返信) -->
+        <div class="p-4 hover:bg-slate-50 transition cursor-pointer">
+          <!-- 上段: 返信先の元ポスト -->
+          <div class="relative flex gap-3 pb-3">
+            <div class="thread-line"></div>
+            <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-full object-cover bg-slate-200 shrink-0 z-10">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1 text-sm">
+                <span class="font-bold text-slate-900">佐藤 健</span>
+                <span class="text-xs text-slate-400">@satou · 2日前</span>
+              </div>
+              <p class="text-sm text-slate-600 mt-1">おすすめの参考書があれば教えてほしいです！</p>
+            </div>
+          </div>
+
+          <!-- 下段: なやはや（本人）の返信（画像付き） -->
+          <div class="flex gap-3 pt-1">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-full object-cover bg-slate-200 shrink-0 z-10">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1 text-sm">
+                <span class="font-bold text-slate-900">なやはや</span>
+                <span class="text-xs text-slate-400">· 1日前</span>
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5 mb-1">
+                返信先: <span class="text-blue-500">@satou</span> さん
+              </div>
+              <p class="text-sm text-slate-800">
+                こちらの一冊がおすすめです！基礎から応用まで網羅されています。
+              </p>
+              <div class="mt-2.5 rounded-2xl overflow-hidden border border-slate-200 max-h-44">
+                <img src="https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&auto=format&fit=crop&q=80" class="w-full h-full object-cover">
+              </div>
+              <div class="flex justify-between items-center text-slate-400 text-xs mt-3 max-w-xs">
+                <span class="flex items-center gap-1 hover:text-blue-500"><i class="fa-regular fa-comment"></i> 1</span>
+                <span class="flex items-center gap-1 hover:text-pink-500"><i class="fa-regular fa-heart"></i> 6</span>
+                <span class="flex items-center gap-1 hover:text-green-500"><i class="fa-regular fa-bookmark"></i></span>
+                <span class="flex items-center gap-1 hover:text-slate-600"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- ================= 3. メディア タブ (画像が含まれるポスト・返信をタイムライン形式で表示) ================= -->
+      <div id="content-media" class="divide-y divide-slate-100 hidden">
+        
+        <!-- 1. 画像付き通常ポスト -->
+        <div class="p-4 hover:bg-slate-50 transition cursor-pointer">
+          <div class="flex gap-3">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-full object-cover bg-slate-200 shrink-0">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1 text-sm">
+                <span class="font-bold text-slate-900">なやはや</span>
+                <span class="text-xs text-slate-400">· 13時間前</span>
+              </div>
+              <p class="text-sm text-slate-800 mt-1">参考資料をまとめました。論理構成の分析ノートです。</p>
+              <!-- 添付画像 -->
+              <div class="mt-2.5 rounded-2xl overflow-hidden border border-slate-200 max-h-60">
+                <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop&q=80" class="w-full h-full object-cover">
+              </div>
+              <div class="flex justify-between items-center text-slate-400 text-xs mt-3 max-w-xs">
+                <span class="flex items-center gap-1 hover:text-blue-500"><i class="fa-regular fa-comment"></i> 1</span>
+                <span class="flex items-center gap-1 hover:text-pink-500"><i class="fa-regular fa-heart"></i> 8</span>
+                <span class="flex items-center gap-1 hover:text-green-500"><i class="fa-regular fa-bookmark"></i></span>
+                <span class="flex items-center gap-1 hover:text-slate-600"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 画像付き返信（スレッド形式） -->
+        <div class="p-4 hover:bg-slate-50 transition cursor-pointer">
+          <!-- 上段: 返信先の元ポスト -->
+          <div class="relative flex gap-3 pb-3">
+            <div class="thread-line"></div>
+            <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-full object-cover bg-slate-200 shrink-0 z-10">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1 text-sm">
+                <span class="font-bold text-slate-900">佐藤 健</span>
+                <span class="text-xs text-slate-400">@satou · 2日前</span>
+              </div>
+              <p class="text-sm text-slate-600 mt-1">おすすめの参考書があれば教えてほしいです！</p>
+            </div>
+          </div>
+
+          <!-- 下段: なやはや（本人）の返信（画像付き） -->
+          <div class="flex gap-3 pt-1">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-full object-cover bg-slate-200 shrink-0 z-10">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1 text-sm">
+                <span class="font-bold text-slate-900">なやはや</span>
+                <span class="text-xs text-slate-400">· 1日前</span>
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5 mb-1">
+                返信先: <span class="text-blue-500">@satou</span> さん
+              </div>
+              <p class="text-sm text-slate-800">
+                こちらの一冊がおすすめです！基礎から応用まで網羅されています。
+              </p>
+              <!-- 添付画像 -->
+              <div class="mt-2.5 rounded-2xl overflow-hidden border border-slate-200 max-h-60">
+                <img src="https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&auto=format&fit=crop&q=80" class="w-full h-full object-cover">
+              </div>
+              <div class="flex justify-between items-center text-slate-400 text-xs mt-3 max-w-xs">
+                <span class="flex items-center gap-1 hover:text-blue-500"><i class="fa-regular fa-comment"></i> 1</span>
+                <span class="flex items-center gap-1 hover:text-pink-500"><i class="fa-regular fa-heart"></i> 6</span>
+                <span class="flex items-center gap-1 hover:text-green-500"><i class="fa-regular fa-bookmark"></i></span>
+                <span class="flex items-center gap-1 hover:text-slate-600"><i class="fa-solid fa-arrow-up-from-bracket"></i></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 技術仕様＆解説カード -->
+  <div class="max-w-md w-full mt-6 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-xs text-slate-600 space-y-4">
+    <h3 class="font-bold text-sm text-slate-900 border-b pb-2 flex items-center gap-2">
+      <i class="fa-solid fa-code text-indigo-500"></i>
+      実装・データ取得仕様の解説
+    </h3>
+
+    <!-- 1. 返信タブの仕様 -->
+    <div>
+      <h4 class="font-bold text-slate-800 text-xs flex items-center gap-1.5 mb-1">
+        <span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+        1. 「返信」タブ（X/Twitter スタイル）の仕組み
+      </h4>
+      <ul class="list-disc pl-4 space-y-1 text-slate-600">
+        <li><strong>取得クエリ</strong>: <code>parent_post_id IS NOT NULL</code> かつ <code>user_id = 対象ユーザー</code> の投稿（リプライ）を取得。</li>
+        <li><strong>親投稿の結合</strong>: 各リプライの <code>parent_post_id</code> をキーにして親投稿（元ポスト）の情報（投稿者名・アバター・本文）を同時に取得。</li>
+        <li><strong>UI構造</strong>: 上部に「親ポスト」、下部に「ユーザーの返信」を配置し、親アバターの下から返信アバターまで <strong>縦の連結線（スレッドライン）</strong> を引いて表示します。</li>
+      </ul>
+    </div>
+
+    <!-- 2. メディアタブの仕様 -->
+    <div>
+      <h4 class="font-bold text-slate-800 text-xs flex items-center gap-1.5 mb-1">
+        <span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+        2. 「メディア」タブ（画像付きのみ抽出）の仕組み
+      </h4>
+      <ul class="list-disc pl-4 space-y-1 text-slate-600">
+        <li><strong>取得クエリ</strong>: <code>user_id = 対象ユーザー</code> かつ <code>image_url IS NOT NULL AND image_url != ''</code> の投稿（ポスト・返信問わず）を取得。</li>
+        <li><strong>表示形式</strong>: グリッド表示（または画像付きタイムライン形式）で一覧化。タップすると該当投稿の詳細へ遷移できます。</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tab) {
+      // タブボタンのアクティブ切り替え
+      const tabs = ['posts', 'replies', 'media'];
+      tabs.forEach(t => {
+        const btn = document.getElementById('tab-' + t);
+        const content = document.getElementById('content-' + t);
+        if (t === tab) {
+          btn.className = 'flex-1 py-3 text-center text-sm font-bold border-b-2 border-blue-500 text-slate-900 transition flex items-center justify-center gap-1.5';
+          content.classList.remove('hidden');
+          content.classList.add(t === 'media' ? 'block' : (t === 'replies' ? 'divide-y' : 'divide-y'));
+        } else {
+          btn.className = 'flex-1 py-3 text-center text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-700 transition flex items-center justify-center gap-1.5';
+          content.classList.add('hidden');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

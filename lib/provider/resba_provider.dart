@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:debate_project/modes/resba_invite.dart';
 import 'package:debate_project/provider/block_provider.dart';
+import 'package:debate_project/provider/match_error_provider.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
@@ -54,6 +55,7 @@ class DmResbaNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>> {
   final Ref ref;
   final String roomId;
   RealtimeChannel? _channel;
+  bool _isDisposed = false;
 
   DmResbaNotifier(this.ref, this.roomId) : super(const AsyncValue.loading()) {
     _init();
@@ -61,7 +63,8 @@ class DmResbaNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>> {
 
   SupabaseClient get supabase => ref.read(supabaseProvider);
 
-  void _init() {
+  void _init({String reason = '初回接続'}) {
+    log('🔌 [DMレスバ一覧] 接続開始 (理由: $reason, roomId: $roomId)');
     _channel = supabase
         .channel('dm-resba-$roomId')
         .onPostgresChanges(
@@ -83,18 +86,22 @@ class DmResbaNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>> {
         )
         .subscribe((status, [error]) async {
           if (status == RealtimeSubscribeStatus.subscribed) {
+            log('✅ [DMレスバ一覧] 接続成功 (理由: $reason, roomId: $roomId)');
             await fetch();
-          } else if (status == RealtimeSubscribeStatus.closed ||
-              status == RealtimeSubscribeStatus.channelError) {
+          } else if (!_isDisposed && mounted &&
+              (status == RealtimeSubscribeStatus.closed ||
+                  status == RealtimeSubscribeStatus.channelError ||
+                  status == RealtimeSubscribeStatus.timedOut)) {
+            log('⚠️ [DMレスバ一覧] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
             await Future.delayed(const Duration(seconds: 3));
-            if (!mounted) return;
+            if (!mounted || _isDisposed) return;
             if (_channel != null) {
               try {
                 await supabase.removeChannel(_channel!);
               } catch (_) {}
               _channel = null;
             }
-            _init();
+            _init(reason: '再接続 ($status)');
           }
         });
   }
@@ -116,8 +123,12 @@ class DmResbaNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     if (_channel != null) {
-      supabase.removeChannel(_channel!);
+      try {
+        supabase.removeChannel(_channel!);
+      } catch (_) {}
+      _channel = null;
     }
     super.dispose();
   }
@@ -262,24 +273,6 @@ class ResbaActions {
         'p_choice2': choice2 ?? '',
       });
 
-  /// 指名型（comment / dm）の承諾・拒否。承諾時は roomId を返す
-  Future<ResbaResult> respond(String inviteId, bool approve) async {
-    try {
-      final response = await supabase.rpc('respond_resba', params: {
-        'p_invite_id': inviteId,
-        'p_user_id': _userId,
-        'p_approve': approve,
-      });
-      if (response['success'] == true) {
-        return (error: null, roomId: response['room_id'] as String?);
-      }
-      return (error: _errorMessage(response['error']), roomId: null);
-    } catch (e) {
-      log('respond_resba error: $e');
-      return (error: 'エラーが発生しました: $e', roomId: null);
-    }
-  }
-
   /// ポスト型レスバへの応募（⚔️ 応じる）
   Future<ResbaResult> apply(String inviteId) async {
     try {
@@ -300,7 +293,7 @@ class ResbaActions {
       return (error: _errorMessage(response['error']), roomId: null);
     } catch (e) {
       log('resba apply_post_resba error: $e');
-      return (error: 'エラーが発生しました', roomId: null);
+      return (error: _errorMessage('UNKNOWN'), roomId: null);
     }
   }
 
@@ -320,7 +313,7 @@ class ResbaActions {
       return (error: _errorMessage(response['error']), roomId: null);
     } catch (e) {
       log('approve_post_resba error: $e');
-      return (error: 'エラーが発生しました: $e', roomId: null);
+      return (error: _errorMessage('UNKNOWN'), roomId: null);
     }
   }
 
@@ -436,24 +429,32 @@ class ResbaActions {
       return (error: _errorMessage(response['error']), roomId: null);
     } catch (e) {
       log('resba $fn error: $e');
-      return (error: 'エラーが発生しました', roomId: null);
+      return (error: _errorMessage('UNKNOWN'), roomId: null);
     }
   }
 
-  String? _errorMessage(dynamic code) {
-    if (code == 'IN_BATTLE') return '対戦中のため送信できません';
-    if (code == 'SENDER_IN_BATTLE') return '相手が対戦中のため、今は承諾できません';
-    if (code == 'APPLICANT_IN_BATTLE') return '応募者が対戦中のため、今は承認できません';
-    if (code == 'RECRUITMENT_LIMIT_EXCEEDED') return '募集中のレスバが上限（3件）に達しています';
-    if (code == 'ALREADY_APPLYING') return '現在応募中のレスバがあります。先にキャンセルしてください';
-    if (code == 'ALREADY_APPLIED') return 'このレスバには応募済みです';
-    if (code == 'INVITE_CLOSED') return 'このレスバは受付終了しています';
-    if (code == 'NOT_TARGET') return 'このレスバの相手ではないため操作できません';
-    if (code == 'NOT_HOST') return 'このレスバの投稿者ではないため操作できません';
-    if (code == 'NOT_POST_OWNER') return '自分のポストにのみレスバを付けられます';
-    if (code == 'SELF_INVITE' || code == 'SELF_APPLY') return '自分自身には送信できません';
-    if (code == 'BLOCKED') return 'ブロックされているため、この操作はできません';
-    return '失敗しました: $code';
+  String _errorMessage(dynamic code) {
+    const errorCodeMap = {
+      'INVITE_NOT_FOUND': '8101',
+      'INVITE_CLOSED': '8102',
+      'APPLICATION_NOT_FOUND': '8103',
+      'APPLICATION_CLOSED': '8104',
+      'SENDER_IN_BATTLE': '8105',
+      'APPLICANT_IN_BATTLE': '8105',
+      'IN_BATTLE': '8106',
+      'NOT_TARGET': '8107',
+      'NOT_HOST': '8107',
+      'NOT_POST_OWNER': '8107',
+      'BLOCKED': '8108',
+      'ROOM_JOIN_FAILED': '8109',
+      'RECRUITMENT_LIMIT_EXCEEDED': '8110',
+      'ALREADY_APPLYING': '8111',
+      'ALREADY_APPLIED': '8112',
+      'SELF_INVITE': '8113',
+      'SELF_APPLY': '8113',
+    };
+    final numericCode = errorCodeMap[code?.toString()] ?? '8999';
+    return 'エラーが発生しました（エラーコード: $numericCode）';
   }
 }
 
@@ -518,14 +519,14 @@ class ResbaMatchListener extends StateNotifier<bool> {
     return room.roomId != null && room.winner == null;
   }
 
-  Future<void> _scheduleReconnect() async {
+  Future<void> _scheduleReconnect([String reason = '切断']) async {
     if (_isReconnecting) return;
     _isReconnecting = true;
-    log('realtime[resba-listener] scheduling single reconnect in 3s...');
+    log('⚠️ [レスバ対戦検知リスナー] 切断/エラー/タイムアウト検知 (理由: $reason) ➔ 3秒後に再接続');
     await Future.delayed(const Duration(seconds: 3));
     _cleanupChannel();
     _isReconnecting = false;
-    start();
+    start(reason: '再接続 ($reason)');
   }
 
   void _cleanupChannel() {
@@ -538,7 +539,7 @@ class ResbaMatchListener extends StateNotifier<bool> {
     }
   }
 
-  Future<void> start() async {
+  Future<void> start({String reason = '初回接続'}) async {
     final myId = _userId;
     if (myId == null) {
       // 認証セッション復元前: サインイン後に再実行する
@@ -550,6 +551,8 @@ class ResbaMatchListener extends StateNotifier<bool> {
 
     _cleanupChannel();
     state = true;
+
+    log('🔌 [レスバ対戦検知リスナー] 接続開始 (理由: $reason, userId: $myId)');
 
     // 1つのチャンネルに2つのリスナー（レンズ）を取り付ける
     _channel = supabase
@@ -570,6 +573,8 @@ class ResbaMatchListener extends StateNotifier<bool> {
             if (newData['status'] == 'accepted') {
               final roomId = newData['battle_room_id']?.toString();
               if (roomId != null) await navigateToBattle(roomId);
+            } else if (newData['status'] == 'declined') {
+              ref.read(matchErrorServiceProvider).showMatchEndMessage('拒否されました', 0.68);
             }
           },
         )
@@ -587,10 +592,12 @@ class ResbaMatchListener extends StateNotifier<bool> {
           log('realtime[resba-listener] state=$status${error != null ? ' error=$error' : ''}');
           // 購読確立（初回・再接続時）に現在の応募キューを再取得する
           if (status == RealtimeSubscribeStatus.subscribed) {
+            log('✅ [レスバ対戦検知リスナー] 接続成功 (理由: $reason, userId: $myId)');
             _refreshHostQueue();
           } else if (status == RealtimeSubscribeStatus.closed ||
-              status == RealtimeSubscribeStatus.channelError) {
-            _scheduleReconnect();
+              status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            _scheduleReconnect('$status${error != null ? ' ($error)' : ''}');
           }
         });
 
@@ -607,6 +614,11 @@ class ResbaMatchListener extends StateNotifier<bool> {
         start();
       }
     });
+  }
+
+  /// 応募キューを再取得し、未対応があればダイアログを開く（外部からの呼び出し用）
+  Future<void> checkAndShowPendingDialog() async {
+    await _refreshHostQueue();
   }
 
   /// 応募キューを再取得し、未対応があればダイアログを開く
@@ -728,6 +740,8 @@ final applyingInfoProvider =
 class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
   final Ref ref;
   RealtimeChannel? _channel;
+  bool _isDisposed = false;
+  bool _isManualCancelling = false;
 
   ApplyingInfoNotifier(this.ref) : super(const AsyncValue.loading()) {
     _init();
@@ -735,12 +749,13 @@ class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
 
   SupabaseClient get supabase => ref.read(supabaseProvider);
 
-  Future<void> _init() async {
+  Future<void> _init({String reason = '初回接続'}) async {
     final myId = ref.read(currentUserIdProvider);
     if (myId == null) {
       state = const AsyncValue.data(null);
       return;
     }
+    log('🔌 [レスバ応募中バナー] 接続開始 (理由: $reason, userId: $myId)');
     await fetch();
     // 自分の応募の INSERT / UPDATE（承認・拒否・取消）を購読して即時反映
     _channel = supabase
@@ -759,16 +774,16 @@ class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
             log('realtime[resba-applying] event: status=${newData['status']}');
             final status = newData['status'] as String?;
             if (status == 'rejected') {
-              // ホストに拒否された: 「⚔️ 拒否されました」を一時表示する
-              state = AsyncValue.data(ApplyingInfo(
-                applicationId: newData['id'] as String,
-                inviteId: newData['invite_id'] as String,
-                theme: '',
-                status: 'rejected',
-                attachType: '',
-                attachId: '',
-                createdAt: DateTime.now(),
-              ));
+              // ホストに拒否された: 「拒否されました」を白いテキストで表示する
+              ref.read(matchErrorServiceProvider).showMatchEndMessage('拒否されました', 0.68);
+              state = const AsyncValue.data(null);
+            } else if (status == 'cancelled') {
+              // ホストによる取り下げ、または24時間期限切れ/システム削除時
+              if (!_isManualCancelling) {
+                ref.read(matchErrorServiceProvider).showMatchEndMessage('削除されました', 0.68);
+              }
+              _isManualCancelling = false;
+              state = const AsyncValue.data(null);
             } else if (status == 'accepted') {
               // 承認されて対戦が成立した場合、画面遷移を行う（元のresba-applicantの機能）
               final inviteId = newData['invite_id']?.toString();
@@ -796,20 +811,24 @@ class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
         .subscribe((status, [error]) async {
           log('realtime[resba-applying] state=$status${error != null ? ' error=$error' : ''}');
           if (status == RealtimeSubscribeStatus.subscribed) {
+            log('✅ [レスバ応募中バナー] 接続成功 (理由: $reason, userId: $myId)');
             // 購読完了時（初回・再接続時）に取りこぼしがないよう再フェッチ
             await fetch();
-          } else if (status == RealtimeSubscribeStatus.closed ||
-              status == RealtimeSubscribeStatus.channelError) {
-            // 切断・エラー時は数秒待ってから再接続を試みる
+          } else if (!_isDisposed && mounted &&
+              (status == RealtimeSubscribeStatus.closed ||
+                  status == RealtimeSubscribeStatus.channelError ||
+                  status == RealtimeSubscribeStatus.timedOut)) {
+            log('⚠️ [レスバ応募中バナー] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
+            // 切断・エラー・タイムアウト時は数秒待ってから再接続を試みる
             await Future.delayed(const Duration(seconds: 3));
-            if (!mounted) return;
+            if (!mounted || _isDisposed) return;
             if (_channel != null) {
               try {
                 await supabase.removeChannel(_channel!);
               } catch (_) {}
               _channel = null;
             }
-            _init(); // チャンネルを作り直す
+            _init(reason: '再接続 ($status)'); // チャンネルを作り直す
           }
         });
   }
@@ -837,6 +856,7 @@ class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
 
   /// 応募を取り消す（バナーから）
   Future<void> cancelApplication() async {
+    _isManualCancelling = true;
     await ref.read(resbaActionsProvider).cancelMyPendingApplications();
     await fetch();
   }
@@ -848,7 +868,13 @@ class ApplyingInfoNotifier extends StateNotifier<AsyncValue<ApplyingInfo?>> {
 
   @override
   void dispose() {
-    if (_channel != null) supabase.removeChannel(_channel!);
+    _isDisposed = true;
+    if (_channel != null) {
+      try {
+        supabase.removeChannel(_channel!);
+      } catch (_) {}
+      _channel = null;
+    }
     super.dispose();
   }
 }
@@ -901,6 +927,7 @@ class OpenChatResbasNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>
   final Ref ref;
   final String roomId;
   RealtimeChannel? _channel;
+  bool _isDisposed = false;
 
   OpenChatResbasNotifier(this.ref, this.roomId) : super(const AsyncValue.loading()) {
     _init();
@@ -908,7 +935,8 @@ class OpenChatResbasNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>
 
   SupabaseClient get supabase => ref.read(supabaseProvider);
 
-  void _init() {
+  void _init({String reason = '初回接続'}) {
+    log('🔌 [オプチャレスバ一覧] 接続開始 (理由: $reason, roomId: $roomId)');
     _channel = supabase
         .channel('open-chat-resba-$roomId')
         .onPostgresChanges(
@@ -930,18 +958,22 @@ class OpenChatResbasNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>
         )
         .subscribe((status, [error]) async {
           if (status == RealtimeSubscribeStatus.subscribed) {
+            log('✅ [オプチャレスバ一覧] 接続成功 (理由: $reason, roomId: $roomId)');
             await fetch();
-          } else if (status == RealtimeSubscribeStatus.closed ||
-              status == RealtimeSubscribeStatus.channelError) {
+          } else if (!_isDisposed && mounted &&
+              (status == RealtimeSubscribeStatus.closed ||
+                  status == RealtimeSubscribeStatus.channelError ||
+                  status == RealtimeSubscribeStatus.timedOut)) {
+            log('⚠️ [オプチャレスバ一覧] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
             await Future.delayed(const Duration(seconds: 3));
-            if (!mounted) return;
+            if (!mounted || _isDisposed) return;
             if (_channel != null) {
               try {
                 await supabase.removeChannel(_channel!);
               } catch (_) {}
               _channel = null;
             }
-            _init();
+            _init(reason: '再接続 ($status)');
           }
         });
   }
@@ -967,8 +999,12 @@ class OpenChatResbasNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>
 
   @override
   void dispose() {
+    _isDisposed = true;
     if (_channel != null) {
-      supabase.removeChannel(_channel!);
+      try {
+        supabase.removeChannel(_channel!);
+      } catch (_) {}
+      _channel = null;
     }
     super.dispose();
   }

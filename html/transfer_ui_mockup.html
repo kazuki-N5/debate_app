@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>データ引き継ぎ UIモックアップ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: #0f172a;
+    }
+    /* モバイルプレビュー用のスタイル */
+    .phone-screen {
+      width: 375px;
+      height: 750px;
+      border-radius: 40px;
+      overflow: hidden;
+      border: 8px solid #334155;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    /* スクロールバー非表示 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100 p-6 flex flex-col items-center justify-center">
+
+  <!-- ヘッダー解説 -->
+  <div class="max-w-4xl w-full mb-6 text-center">
+    <h1 class="text-2xl font-bold text-white mb-2">データ引き継ぎ UIモックアップ（フラット・青背景）</h1>
+    <p class="text-slate-400 text-sm">
+      ご要望通り、<span class="text-blue-400 font-semibold">「青背景 ＋ 白い2枚のカード」</span>をベースに、
+      <span class="text-emerald-400 font-semibold">ボタンやタイルの影をすべて無くしたフラット仕様</span>、
+      <span class="text-amber-400 font-semibold">ワンタップコピー機能</span>を追加したデザインです。
+    </p>
+    <div class="mt-4 flex justify-center gap-4 text-xs">
+      <span class="bg-blue-900/60 text-blue-300 border border-blue-700 px-3 py-1 rounded-full">✓ 青背景 & 白カード2枚</span>
+      <span class="bg-blue-900/60 text-blue-300 border border-blue-700 px-3 py-1 rounded-full">✓ 影なしフラット（No Shadow）</span>
+      <span class="bg-emerald-900/60 text-emerald-300 border border-emerald-700 px-3 py-1 rounded-full">✓ コピーボタン搭載</span>
+      <span class="bg-slate-800 text-slate-400 border border-slate-700 px-3 py-1 rounded-full">✓ アラート・有効期限なし</span>
+    </div>
+  </div>
+
+  <!-- 2画面並列プレビューコンテナ -->
+  <div class="flex flex-wrap items-center justify-center gap-8 max-w-5xl w-full">
+
+    <!-- 画面1: TransferPage（引き継ぎメイン画面） -->
+    <div class="flex flex-col items-center">
+      <div class="text-sm font-bold text-slate-300 mb-2 flex items-center gap-2">
+        <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">1</span>
+        引き継ぎ画面 (TransferPage)
+      </div>
+      
+      <div class="phone-screen bg-blue-600 flex flex-col relative select-none">
+        
+        <!-- ステータスバー -->
+        <div class="h-10 bg-blue-600 flex items-center justify-between px-6 text-white text-xs font-semibold pt-2 z-10">
+          <span>12:00</span>
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-signal text-[10px]"></i>
+            <i class="fa-solid fa-wifi text-[10px]"></i>
+            <i class="fa-solid fa-battery-full text-xs"></i>
+          </div>
+        </div>
+
+        <!-- AppBar (フラット・影なし) -->
+        <div class="h-12 bg-blue-600 flex items-center justify-between px-4 z-10">
+          <button class="text-white text-lg p-2 active:opacity-70">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <h2 class="text-white text-lg font-bold">引き継ぎ</h2>
+          <div class="w-8"></div>
+        </div>
+
+        <!-- スクロール可能なカード配置エリア -->
+        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4 no-scrollbar">
+          
+          <!-- 上のカード: データ送信 (フラット・影なし) -->
+          <div class="bg-white rounded-2xl p-6 text-slate-800">
+            <h3 class="text-lg font-bold text-slate-900 mb-2">データ送信</h3>
+            <p class="text-xs text-slate-500 leading-relaxed mb-5">
+              IdとPasswordを発行します。<br>
+              引き継ぎする機種で下の入力ボタンを押して実行してください。<br>
+              引き継ぎが完了するとこのデータは初期化されます。<br>
+              引き継ぎ中はゲームをプレイできません。
+            </p>
+            <div class="flex justify-center">
+              <!-- フラットな青ボタン（影なし・elevation 0） -->
+              <button onclick="goToWaitScreen()" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold rounded-xl text-sm transition-colors text-center">
+                実行
+              </button>
+            </div>
+          </div>
+
+          <!-- 下のカード: データ取得 (フラット・影なし) -->
+          <div class="bg-white rounded-2xl p-6 text-slate-800">
+            <h3 class="text-lg font-bold text-slate-900 mb-2">データ取得</h3>
+            <p class="text-xs text-slate-500 leading-relaxed mb-4">
+              発行されたidとpasswordを入力してください。<br>
+              現在のデータではプレイできなくなり、引き継ぎされた側の機種は初期化されます。
+            </p>
+
+            <!-- 入力フォーム -->
+            <div class="space-y-3 mb-5">
+              <div>
+                <input type="text" id="inputId" maxlength="6" placeholder="Id (6文字)" oninput="checkInputState()"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all tracking-wider font-mono uppercase">
+              </div>
+              <div>
+                <input type="text" id="inputPw" maxlength="6" placeholder="Password (6文字)" oninput="checkInputState()"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all tracking-wider font-mono">
+              </div>
+            </div>
+
+            <!-- 入力ボタン (フラット・無効時は半透明) -->
+            <div class="flex justify-center">
+              <button id="submitBtn" disabled onclick="alert('データ引き継ぎを実行します')"
+                class="w-full py-3.5 bg-blue-600 text-white font-bold rounded-xl text-sm transition-colors opacity-50 cursor-not-allowed">
+                入力
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- 画面2: WaittransferPage（待機画面・コピーボタン搭載） -->
+    <div class="flex flex-col items-center">
+      <div class="text-sm font-bold text-slate-300 mb-2 flex items-center gap-2">
+        <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs">2</span>
+        待機画面 (WaittransferPage)
+      </div>
+
+      <div class="phone-screen bg-blue-600 flex flex-col justify-between relative select-none">
+        
+        <!-- ステータスバー -->
+        <div class="h-10 bg-blue-600 flex items-center justify-between px-6 text-white text-xs font-semibold pt-2 z-10">
+          <span>12:00</span>
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-signal text-[10px]"></i>
+            <i class="fa-solid fa-wifi text-[10px]"></i>
+            <i class="fa-solid fa-battery-full text-xs"></i>
+          </div>
+        </div>
+
+        <!-- AppBar (フラット・影なし) -->
+        <div class="h-12 bg-blue-600 flex items-center justify-center px-4 z-10">
+          <h2 class="text-white text-lg font-bold">引き継ぎ情報</h2>
+        </div>
+
+        <!-- 中央コンテンツ -->
+        <div class="flex-1 flex flex-col justify-center px-5 py-4">
+          
+          <div class="text-center text-white mb-6 font-medium text-sm leading-relaxed">
+            以下のIDとパスワードを<br>新しい端末で入力してください。
+          </div>
+
+          <!-- 白いカード: ID・パスワード表示 ＋ コピーボタン (フラット・影なし) -->
+          <div class="bg-white rounded-2xl p-6 text-slate-800 space-y-5">
+            
+            <!-- 引き継ぎID行 -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs text-slate-500 font-medium">
+                <span>引き継ぎID:</span>
+                <span id="idCopiedTag" class="text-[10px] text-emerald-600 font-bold opacity-0 transition-opacity">コピーしました!</span>
+              </div>
+              <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+                <span id="transferIdVal" class="text-xl font-bold tracking-widest text-slate-900 font-mono">8F3K9A</span>
+                <!-- コピーボタン -->
+                <button onclick="copyText('8F3K9A', 'idCopiedTag')" class="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                  <i class="fa-regular fa-copy"></i>
+                  <span>コピー</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- パスワード行 -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs text-slate-500 font-medium">
+                <span>パスワード:</span>
+                <span id="pwCopiedTag" class="text-[10px] text-emerald-600 font-bold opacity-0 transition-opacity">コピーしました!</span>
+              </div>
+              <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+                <span id="transferPwVal" class="text-xl font-bold tracking-widest text-slate-900 font-mono">X7M2P9</span>
+                <!-- コピーボタン -->
+                <button onclick="copyText('X7M2P9', 'pwCopiedTag')" class="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                  <i class="fa-regular fa-copy"></i>
+                  <span>コピー</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- ID・パスワードをまとめてコピーするボタン -->
+            <button onclick="copyBoth('8F3K9A', 'X7M2P9')" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors">
+              <i class="fa-solid fa-copy"></i>
+              <span>IDとパスワードを両方コピー</span>
+            </button>
+
+          </div>
+
+          <!-- 注意文（シンプル配置・アラートなし） -->
+          <p class="text-[11px] text-blue-100 text-center mt-6 leading-relaxed px-2">
+            注意: この情報は一度きり有効です。新しい端末で引き継ぎを完了すると、このIDとパスワードは無効になります。
+          </p>
+
+        </div>
+
+        <!-- 画面下部: キャンセルボタン (フラット・赤) -->
+        <div class="p-5">
+          <button onclick="cancelTransfer()" class="w-full py-3.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold rounded-xl text-sm transition-colors text-center">
+            キャンセルして戻る
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="fixed bottom-6 bg-slate-900/90 text-white border border-slate-700 px-4 py-2.5 rounded-full text-xs font-medium opacity-0 pointer-events-none transition-all transform translate-y-2 z-50 flex items-center gap-2 shadow-lg">
+    <i class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toastMsg">クリップボードにコピーしました</span>
+  </div>
+
+  <script>
+    // 入力状態によるボタン有効化
+    function checkInputState() {
+      const id = document.getElementById('inputId').value;
+      const pw = document.getElementById('inputPw').value;
+      const btn = document.getElementById('submitBtn');
+
+      if (id.length === 6 && pw.length === 6) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        btn.classList.add('hover:bg-blue-700', 'active:bg-blue-800');
+      } else {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.classList.remove('hover:bg-blue-700', 'active:bg-blue-800');
+      }
+    }
+
+    // コピー処理
+    function copyText(text, tagId) {
+      navigator.clipboard.writeText(text);
+      
+      const tag = document.getElementById(tagId);
+      tag.classList.remove('opacity-0');
+      setTimeout(() => tag.classList.add('opacity-0'), 1500);
+
+      showToast(`「${text}」をコピーしました`);
+    }
+
+    // 両方コピー
+    function copyBoth(id, pw) {
+      const text = `引き継ぎID: ${id}\nパスワード: ${pw}`;
+      navigator.clipboard.writeText(text);
+      showToast('IDとパスワードをまとめてコピーしました');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.remove('opacity-0', 'translate-y-2');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+      }, 2000);
+    }
+
+    function goToWaitScreen() {
+      showToast('IDとパスワードを発行しました（画面2へ遷移）');
+    }
+
+    function cancelTransfer() {
+      showToast('引き継ぎをキャンセルしました');
+    }
+  </script>
+</body>
+</html>

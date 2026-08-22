@@ -14,6 +14,7 @@ interface RequestBody {
   actor_name?: string;
   room_id?: string;
   sender_id?: string;
+  invite_id?: string;
 }
 
 interface NotificationSettings {
@@ -49,7 +50,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 個別通知 (いいね/フォロー/返信/レスバ)
-    const { user_id, actor_name } = body;
+    const { user_id, actor_name, invite_id } = body;
     if (!user_id || !type) {
       return new Response(
         JSON.stringify({ error: "user_id and type are required" }),
@@ -64,7 +65,7 @@ Deno.serve(async (req: Request) => {
     // 受信者のFCMトークンを取得 (トークン保有者のみ)
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("fcm_token, notification_settings(is_notification_enabled, like_enabled, comment_enabled, follow_enabled, match_waiting_enabled)")
+      .select("fcm_token, notification_settings(is_notification_enabled, like_enabled, comment_enabled, follow_enabled, dm_enabled, open_chat_enabled, match_waiting_enabled)")
       .eq("id", user_id)
       .not("fcm_token", "is", null)
       .maybeSingle();
@@ -95,7 +96,8 @@ Deno.serve(async (req: Request) => {
       user.fcm_token,
       title,
       messageBody,
-      type
+      type,
+      invite_id
     );
 
     return new Response(
@@ -257,9 +259,7 @@ function isPushEnabled(type: string, settings?: NotificationSettings): boolean {
     case "follow":
       return settings.follow_enabled !== false;
     case "resba_invite":
-    case "resba_accepted":
-    case "resba_declined":
-      return settings.match_waiting_enabled !== false;
+      return settings.dm_enabled !== false || settings.match_waiting_enabled !== false;
     default:
       return true;
   }
@@ -319,9 +319,15 @@ async function sendFcm(
   fcmToken: string,
   title: string,
   body: string,
-  type: string
+  type: string,
+  inviteId?: string
 ): Promise<boolean> {
   try {
+    const fcmData: Record<string, string> = { type };
+    if (inviteId) {
+      fcmData.invite_id = inviteId;
+    }
+
     const res = await fetch(
       `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`,
       {
@@ -339,7 +345,7 @@ async function sendFcm(
               priority: "high",
               notification: { channel_id: "high_importance_channel_v4" },
             },
-            data: { type },
+            data: fcmData,
           },
         }),
       }

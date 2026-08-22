@@ -298,21 +298,26 @@ class SettingPage extends HookConsumerWidget {
   
 
 class BugReportDialogContent extends HookConsumerWidget {
-  // HookConsumerWidgetではコンストラクタにKeyを渡すのが一般的です
   const BugReportDialogContent({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Hooksを使ってStateとControllerを管理します
-    // これによりinitStateやdisposeが不要になります
     final bugController = useTextEditingController();
     final isSending = useState(false);
-    final supabase = ref.read(supabaseProvider);
+    final isFeatureRequest = useState(false); // false: バグ報告 / true: 機能提案
+    final textLength = useState(0);
 
+    final supabase = ref.read(supabaseProvider);
     final userId = ref.read(currentUserIdProvider);
 
-    // 端末情報を取得する非同期関数
-    // buildメソッド内で定義するか、別のファイルに切り出します
+    useEffect(() {
+      void listener() {
+        textLength.value = bugController.text.length;
+      }
+      bugController.addListener(listener);
+      return () => bugController.removeListener(listener);
+    }, [bugController]);
+
     Future<String> getDeviceInfo() async {
       DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
       String deviceData = 'Unknown Device';
@@ -333,16 +338,13 @@ class BugReportDialogContent extends HookConsumerWidget {
       return deviceData;
     }
 
-    // バグ報告をSupabaseに送信する非同期関数
     Future<void> sendBugReport() async {
-      if (bugController.text.trim().isEmpty) {
-        return;
-      }
+      final text = bugController.text.trim();
+      if (text.isEmpty) return;
 
-      // setStateの代わりに .value を使って状態を更新します
       isSending.value = true;
-
-      final bugDescription = bugController.text.trim();
+      final typePrefix = isFeatureRequest.value ? '【機能提案】' : '【バグ報告】';
+      final bugDescription = '$typePrefix $text';
       final deviceInfo = await getDeviceInfo();
 
       try {
@@ -354,12 +356,18 @@ class BugReportDialogContent extends HookConsumerWidget {
 
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('バグ報告を送信しました。ご協力ありがとうございます！')),
+          SnackBar(
+            content: Text(isFeatureRequest.value
+                ? '機能提案を送信しました！ご協力ありがとうございます！'
+                : 'バグ報告を送信しました。ご協力ありがとうございます！'),
+          ),
         );
         Navigator.of(context).pop();
       } catch (e) {
-        // エラーが発生した場合も考慮します
         if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('送信に失敗しました。時間をおいてお試しください。')),
+        );
       } finally {
         if (context.mounted) {
           isSending.value = false;
@@ -367,112 +375,294 @@ class BugReportDialogContent extends HookConsumerWidget {
       }
     }
 
-    // --- UI部分はここから ---
-    // 元のコードのUI実装をそのまま利用します
+    final hasInput = textLength.value > 0;
+
     return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-      },
-      child: AlertDialog(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Dialog(
         backgroundColor: Colors.white,
+        elevation: 12,
+        shadowColor: Colors.black.withValues(alpha: 0.25),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
+          borderRadius: BorderRadius.circular(24.0),
         ),
-        title: Text(
-          'バグを報告&機能提案',
-          style: AppTextStyles.bold(
-            color: Colors.black,
-            fontSize: 20,
-          ),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '発生したバグの内容と、再現手順を詳しく教えてください。\n欲しい機能を教えて下さい。',
-                style: AppTextStyles.notoSans(
-                  color: Colors.black.withValues(alpha: 0.8),
-                  fontSize: 15,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: bugController,
-                maxLines: 6,
-                maxLength: 150,
-                // isSending.valueで状態を読み取ります
-                enabled: !isSending.value,
-                style: AppTextStyles.notoSans(color: Colors.black, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: '例: ○○の画面で○○をするとアプリがクラッシュする...',
-                  hintStyle: AppTextStyles.notoSans(color: Colors.grey[500]),
-                  filled: true,
-                  fillColor: const Color(0xFFF3F3F3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                    borderSide: BorderSide.none,
+        insetPadding:
+            const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 18.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 上部セグメントタブ（バグ報告 / 機能提案）
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9), // slate-100
+                    borderRadius: BorderRadius.circular(16.0),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 12.0),
+                  child: Row(
+                    children: [
+                      // バグ報告タブ
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => isFeatureRequest.value = false,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: !isFeatureRequest.value
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12.0),
+                              boxShadow: !isFeatureRequest.value
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black
+                                            .withValues(alpha: 0.06),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.bug_report,
+                                  size: 16,
+                                  color: !isFeatureRequest.value
+                                      ? Colors.red
+                                      : const Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'バグ報告',
+                                  style: AppTextStyles.bold(
+                                    fontSize: 13,
+                                    color: !isFeatureRequest.value
+                                        ? Colors.red
+                                        : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      // 機能提案タブ
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => isFeatureRequest.value = true,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isFeatureRequest.value
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12.0),
+                              boxShadow: isFeatureRequest.value
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black
+                                            .withValues(alpha: 0.06),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.lightbulb_outline,
+                                  size: 16,
+                                  color: isFeatureRequest.value
+                                      ? const Color(0xFFD97706) // amber-600
+                                      : const Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '機能提案',
+                                  style: AppTextStyles.bold(
+                                    fontSize: 13,
+                                    color: isFeatureRequest.value
+                                        ? const Color(0xFFD97706)
+                                        : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                // 説明文
+                Text(
+                  isFeatureRequest.value
+                      ? '「こんな機能があったらもっと面白い」というアイデアを教えてください！'
+                      : '発生した不具合の状況や再現手順を詳しく教えてください。',
+                  style: AppTextStyles.notoSans(
+                    color: const Color(0xFF64748B), // slate-500
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // テキスト入力エリア
+                Stack(
+                  children: [
+                    TextField(
+                      controller: bugController,
+                      maxLines: 5,
+                      maxLength: 150,
+                      enabled: !isSending.value,
+                      style: AppTextStyles.notoSans(
+                        color: const Color(0xFF0F172A),
+                        fontSize: 13.5,
+                      ),
+                      buildCounter: (
+                        _, {
+                        required currentLength,
+                        required isFocused,
+                        maxLength,
+                      }) =>
+                          null, // デフォルトの文字数カウントを非表示にしてカスタム配置
+                      decoration: InputDecoration(
+                        hintText: isFeatureRequest.value
+                            ? '例: 観戦中に拍手を送れるスタンプ機能が欲しいです...'
+                            : '例: ○○画面でボタンを押すとアプリが強制終了する...',
+                        hintStyle: AppTextStyles.notoSans(
+                          color: const Color(0xFF94A3B8),
+                          fontSize: 13,
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC), // slate-50
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14.0),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE2E8F0), // slate-200
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14.0),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14.0),
+                          borderSide: const BorderSide(
+                            color: Colors.blue,
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.fromLTRB(
+                            14.0, 12.0, 14.0, 26.0),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      right: 12,
+                      child: Text(
+                        '${textLength.value} / 150',
+                        style: AppTextStyles.notoSans(
+                          fontSize: 11,
+                          color: const Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // アクションボタン列
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                const Color(0xFFF1F5F9), // slate-100
+                            foregroundColor:
+                                const Color(0xFF334155), // slate-700
+                            elevation: 0,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          onPressed: isSending.value
+                              ? null
+                              : () => Navigator.of(context).pop(),
+                          child: Text(
+                            'キャンセル',
+                            style: AppTextStyles.bold(
+                              fontSize: 13.5,
+                              color: const Color(0xFF334155),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            disabledBackgroundColor: const Color(0xFFE2E8F0),
+                            foregroundColor: Colors.white,
+                            disabledForegroundColor: const Color(0xFF94A3B8),
+                            elevation: hasInput && !isSending.value ? 2 : 0,
+                            shadowColor:
+                                Colors.blue.withValues(alpha: 0.35),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          onPressed:
+                              hasInput && !isSending.value ? sendBugReport : null,
+                          child: isSending.value
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  '送信する',
+                                  style: AppTextStyles.bold(
+                                    fontSize: 13.5,
+                                    color: hasInput && !isSending.value
+                                        ? Colors.white
+                                        : const Color(0xFF94A3B8),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-        actionsPadding:
-            const EdgeInsets.fromLTRB(20, 8, 20, 16),
-        actionsAlignment: MainAxisAlignment.end,
-        actions: [
-          TextButton(
-            onPressed: isSending.value
-                ? null
-                : () {
-                    Navigator.of(context).pop();
-                  },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.black,
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20.0),
-                side: const BorderSide(
-                    color: Colors.black, width: 1.5),
-              ),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20.0, vertical: 10.0),
-              textStyle:
-                  AppTextStyles.bold(fontSize: 15),
-            ),
-            child: const Text('キャンセル'),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: isSending.value ? null : sendBugReport,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20.0),
-              ),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 24.0, vertical: 12.0),
-              elevation: 2,
-              textStyle:
-                  AppTextStyles.bold(fontSize: 15),
-            ),
-            child: isSending.value
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text('送信'),
-          ),
-        ],
       ),
     );
   }

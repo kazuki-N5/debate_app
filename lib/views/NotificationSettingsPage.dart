@@ -109,8 +109,8 @@ class NotificationSettingsPage extends HookConsumerWidget {
                 ),
                 _buildSwitchTile(
                   icon: Icons.groups,
-                  title: 'オプチャ',
-                  subtitle: 'オープンチャットの新着',
+                  title: 'クラブ',
+                  subtitle: '参加中クラブの新着',
                   value: settings.openChatEnabled,
                   onChanged: (v) =>
                       notifier.setCategory('open_chat_enabled', v),

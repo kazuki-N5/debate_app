@@ -85,7 +85,7 @@ class CommunityPage extends HookConsumerWidget {
               tabs: const [
                 Tab(text: '対戦募集'),
                 Tab(text: '掲示板'),
-                Tab(text: 'オープンチャット'),
+                Tab(text: 'クラブ'),
               ],
             ),
           ),

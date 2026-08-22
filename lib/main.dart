@@ -66,6 +66,13 @@ class MyApp extends ConsumerWidget {
           Theme.of(context).textTheme,
         ),
         primarySwatch: Colors.blue,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          elevation: 0,
+        ),
       ),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>レスバ申し込みUI モックアップ（枠線なし・シンプル版）</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen">
+
+  <!-- ヘッダー -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <span class="text-xl">⚔️</span>
+        <h1 class="font-bold text-base text-slate-800">レスバ申し込み UIモック（枠線なし・シンプル版）</h1>
+      </div>
+      <div class="text-xs text-slate-500 font-medium">
+        枠線をなくしたシンプルなダイアログデザイン
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- 1. ダイアログ表示プレビュー（スマホ画面） -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div class="mb-4">
+        <h2 class="font-bold text-base text-slate-800 flex items-center gap-2">
+          <span>📱</span> 申込みが来た時のダイアログ画面（枠線なし）
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">
+          ダイアログ内の枠線をすべてなくし、余計な青枠・紫枠のないすっきりしたデザインです。
+        </p>
+      </div>
+
+      <!-- スマホ実機プレビュー -->
+      <div class="flex justify-center">
+        <div class="w-full max-w-[360px] bg-slate-900 rounded-[40px] p-3 shadow-2xl relative overflow-hidden flex flex-col border-4 border-slate-700">
+          
+          <!-- ダイナミックアイランド -->
+          <div class="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-4 bg-black rounded-full z-40"></div>
+
+          <!-- スマホ内画面 -->
+          <div class="w-full h-[540px] bg-slate-200 rounded-[30px] overflow-hidden flex flex-col relative justify-center items-center p-3">
+            
+            <!-- 背景タイムライン（うっすら） -->
+            <div class="absolute inset-0 bg-white opacity-40 pointer-events-none p-3 space-y-3">
+              <div class="h-8 bg-blue-500 rounded-lg"></div>
+              <div class="h-20 bg-slate-100 rounded-lg"></div>
+              <div class="h-24 bg-slate-100 rounded-lg"></div>
+              <div class="h-20 bg-slate-100 rounded-lg"></div>
+            </div>
+
+            <!-- 暗黙オーバーレイ -->
+            <div class="absolute inset-0 bg-black/40 z-10"></div>
+
+            <!-- ダイアログ本体 -->
+            <div class="w-full bg-white rounded-2xl shadow-2xl z-20 overflow-hidden">
+              
+              <!-- ダイアログ ヘッダー -->
+              <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                <span class="text-base">⚔️</span>
+                <span class="font-bold text-sm text-slate-800">申し込み（残り1件）</span>
+              </div>
+
+              <!-- ダイアログ 本文（枠線なし・直接配置） -->
+              <div class="p-4 space-y-3">
+                
+                <!-- 相手情報 (誰からの応募か) -->
+                <div class="flex items-center gap-2.5">
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" class="w-9 h-9 rounded-full object-cover">
+                  <div class="min-w-0 flex-1">
+                    <div class="font-bold text-sm text-slate-900 truncate">
+                      論理的思考タロウ さんが応じました
+                    </div>
+                    <div class="text-xs text-slate-500">
+                      🏆 1,420
+                    </div>
+                  </div>
+                </div>
+
+                <!-- テーマ & 選択肢 (何に対する応募か) -->
+                <div class="space-y-0.5 pt-1">
+                  <div class="font-bold text-sm text-slate-900 leading-snug">
+                    ⚔️ AI時代にプログラマーの需要は増えるか減るか？
+                  </div>
+                  <div class="text-xs text-slate-500">
+                    選択肢：増える vs 減る
+                  </div>
+                </div>
+
+                <!-- アクションボタン -->
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                  <button class="py-2.5 bg-[#00BA7C] text-white rounded-full font-bold text-xs text-center shadow-xs">
+                    ✅ 承認して対戦
+                  </button>
+                  <button class="py-2.5 bg-slate-400 text-white rounded-full font-bold text-xs text-center">
+                    拒否
+                  </button>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. パターン別の見え方（選択肢なし / 選択肢あり） -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+      <h2 class="font-bold text-base text-slate-800">
+        📋 ダイアログ内コンテンツの表示パターン（枠線なし）
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <!-- パターン A: 選択肢あり -->
+        <div class="space-y-2">
+          <div class="text-xs font-bold text-slate-500">パターン1：選択肢がある場合</div>
+          <div class="bg-slate-50 rounded-xl p-4 space-y-3">
+            <div class="flex items-center gap-2.5">
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" class="w-9 h-9 rounded-full object-cover">
+              <div class="min-w-0 flex-1">
+                <div class="font-bold text-sm text-slate-900 truncate">
+                  論理的思考タロウ さんが応じました
+                </div>
+                <div class="text-xs text-slate-500">
+                  🏆 1,420
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-0.5 pt-1">
+              <div class="font-bold text-sm text-slate-900 leading-snug">
+                ⚔️ AI時代にプログラマーの需要は増えるか減るか？
+              </div>
+              <div class="text-xs text-slate-500">
+                選択肢：増える vs 減る
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2">
+              <button class="py-2.5 bg-[#00BA7C] text-white rounded-full font-bold text-xs text-center shadow-xs">
+                ✅ 承認して対戦
+              </button>
+              <button class="py-2.5 bg-slate-400 text-white rounded-full font-bold text-xs text-center">
+                拒否
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- パターン B: 選択肢なし（自由対戦） -->
+        <div class="space-y-2">
+          <div class="text-xs font-bold text-slate-500">パターン2：選択肢がない場合（テーマのみ）</div>
+          <div class="bg-slate-50 rounded-xl p-4 space-y-3">
+            <div class="flex items-center gap-2.5">
+              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces" class="w-9 h-9 rounded-full object-cover">
+              <div class="min-w-0 flex-1">
+                <div class="font-bold text-sm text-slate-900 truncate">
+                  夜更かしフクロウ さんが応じました
+                </div>
+                <div class="text-xs text-slate-500">
+                  🏆 980
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-0.5 pt-1">
+              <div class="font-bold text-sm text-slate-900 leading-snug">
+                ⚔️ 朝型生活 vs 夜型生活の合理性について
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2">
+              <button class="py-2.5 bg-[#00BA7C] text-white rounded-full font-bold text-xs text-center shadow-xs">
+                ✅ 承認して対戦
+              </button>
+              <button class="py-2.5 bg-slate-400 text-white rounded-full font-bold text-xs text-center">
+                拒否
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+</body>
+</html>

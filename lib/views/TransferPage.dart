@@ -56,13 +56,15 @@ class TransferPage extends HookConsumerWidget {
             FocusScope.of(context).unfocus();
           },
           child: Scaffold(
-            backgroundColor: Colors.blue, // 少し濃いめの青
+            backgroundColor: Colors.blue,
             appBar: AppBar(
-              title:
-                  Text('引き継ぎ',
-            style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
+              title: Text(
+                '引き継ぎ',
+                style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
+              ),
               backgroundColor: Colors.blue,
               elevation: 0,
+              scrolledUnderElevation: 0,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
                 onPressed: () => router.pop(),
@@ -81,12 +83,8 @@ class TransferPage extends HookConsumerWidget {
                     _buildTransferSection(
                       context: context,
                       title: 'データ送信',
-                      description: '''
- IdとPasswordを発行します。
- 引き継ぎする機種で下の入力ボタンを押して実行してください。
- 引き継ぎが完了するとこのデータは初期化されます。
- 引き継ぎ中はゲームをプレイできません
- ''',
+                      description:
+                          'IdとPasswordを発行します。\n引き継ぎする機種で下の入力ボタンを押して実行してください。\n引き継ぎが完了するとこのデータは初期化されます。\n引き継ぎ中はゲームをプレイできません。',
                       buttonText: '実行',
                       onButtonPressed: () async {
                         isLoading.value = true;
@@ -99,7 +97,7 @@ class TransferPage extends HookConsumerWidget {
                                         'ユーザーIDが取得できません。ログイン状態を確認してください。')),
                               );
                             }
-                            return; // finallyブロックが実行されるので isLoading.value = false は不要
+                            return;
                           }
 
                           final transferDetails =
@@ -107,8 +105,7 @@ class TransferPage extends HookConsumerWidget {
 
                           if (transferDetails != null &&
                               transferDetails['transfer_id'] != null &&
-                              transferDetails['transfer_password'] !=
-                                  null) {
+                              transferDetails['transfer_password'] != null) {
                             await usernotifier.saveTransferCredentials(
                               transferDetails['transfer_id']!,
                               transferDetails['transfer_password']!,
@@ -117,7 +114,6 @@ class TransferPage extends HookConsumerWidget {
                               router.go('/waittransfer');
                             }
                           } else {
-                            // initiateTransfer が null を返した場合 (成功も失敗もせず、単にnullを返した場合)
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -127,33 +123,27 @@ class TransferPage extends HookConsumerWidget {
                             }
                           }
                         } catch (e) {
-                          // エラーハンドリング
                           if (context.mounted) {
-                           
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('データ送信に失敗しました。')),
                             );
                           }
-                          print(
-                              'Error during data transfer initiation: $e');
+                          print('Error during data transfer initiation: $e');
                         } finally {
-                          // 成功時、失敗時（catch）、早期リターン（userid == null）のいずれの場合も実行
                           isLoading.value = false;
                         }
                       },
                       showInputFields: false,
-                      isButtonEnabled: true, // 送信ボタンは常に有効
+                      isButtonEnabled: true,
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
 
                     // 下のデータ取得セクション
                     _buildTransferSection(
                       context: context,
                       title: 'データ取得',
-                      description: '''
- 発行されたidとpasswordを入力してください。
- 現在のデータではプレイできなくなり、引き継ぎされた側の機種は初期化されます。
- ''',
+                      description:
+                          '発行されたidとpasswordを入力してください。\n現在のデータではプレイできなくなり、引き継ぎされた側の機種は初期化されます。',
                       buttonText: '入力',
                       onButtonPressed: () async {
                         final id = idController.text;
@@ -171,11 +161,10 @@ class TransferPage extends HookConsumerWidget {
                         }
 
                         try {
-                          final result =
-                              await usernotifier.completeTransfer(
-                                  transferId: id,
-                                  password: password,
-                                  receiverId: userid);
+                          final result = await usernotifier.completeTransfer(
+                              transferId: id,
+                              password: password,
+                              receiverId: userid);
                           if (result != null &&
                               result.startsWith(
                                   "Data transfer completed successfully.")) {
@@ -184,9 +173,7 @@ class TransferPage extends HookConsumerWidget {
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('エラーが発生しました')),
+                              const SnackBar(content: Text('エラーが発生しました')),
                             );
                           }
                           isLoading.value = false;
@@ -197,8 +184,7 @@ class TransferPage extends HookConsumerWidget {
                       showInputFields: true,
                       idTextController: idController,
                       passwordTextController: passwordController,
-                      isButtonEnabled: isDataAcquisitionButtonEnabled
-                          .value, // 計算された有効状態を渡す
+                      isButtonEnabled: isDataAcquisitionButtonEnabled.value,
                     ),
                   ],
                 ),
@@ -206,20 +192,19 @@ class TransferPage extends HookConsumerWidget {
             ),
           ),
         ),
-        // ★ ローディング表示 (Scaffold全体を覆うようにStackの最前面に配置)
+        // ローディング表示
         if (isLoading.value)
           Container(
-            // ★ 薄い白で画面全体を覆う
             color: Colors.white.withValues(alpha: 0.3),
             child: const Center(
-              child: CircularProgressIndicator(), // くるくるマーク
+              child: CircularProgressIndicator(),
             ),
           ),
       ],
     );
   }
 
-  // 各引き継ぎセクションの共通UIを生成するヘルパーメソッド
+  // 各引き継ぎセクションの共通UIを生成するヘルパーメソッド (フラット・影なし)
   Widget _buildTransferSection({
     required BuildContext context,
     required String title,
@@ -229,21 +214,13 @@ class TransferPage extends HookConsumerWidget {
     required bool showInputFields,
     TextEditingController? idTextController,
     TextEditingController? passwordTextController,
-    bool isButtonEnabled = true, // ボタンの有効/無効状態を制御するフラグ
+    bool isButtonEnabled = true,
   }) {
     return Container(
-      padding: const EdgeInsets.all(25.0),
+      padding: const EdgeInsets.all(22.0),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            spreadRadius: 3,
-            blurRadius: 7,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,77 +229,97 @@ class TransferPage extends HookConsumerWidget {
           Text(
             title,
             style: AppTextStyles.bold(
-              fontSize: 20.0,
+              fontSize: 18.0,
               color: Colors.black87,
             ),
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 10),
           Text(
             description,
             style: AppTextStyles.notoSans(
-              fontSize: 14.0,
+              fontSize: 13.0,
               color: Colors.black54,
-              height: 1.6,
+              height: 1.5,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           if (showInputFields) ...[
             TextField(
               controller: idTextController,
               decoration: InputDecoration(
-                hintText: 'Id',
+                hintText: 'Id (6文字)',
+                hintStyle: AppTextStyles.notoSans(fontSize: 14, color: Colors.grey),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: const BorderSide(color: Colors.blue, width: 1.5),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 15.0, vertical: 18.0),
+                    horizontal: 16.0, vertical: 14.0),
                 counterText: '',
               ),
               keyboardType: TextInputType.text,
               maxLength: 6,
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 12),
             TextField(
               controller: passwordTextController,
               decoration: InputDecoration(
-                hintText: 'Password',
+                hintText: 'Password (6文字)',
+                hintStyle: AppTextStyles.notoSans(fontSize: 14, color: Colors.grey),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: const BorderSide(color: Colors.blue, width: 1.5),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 15.0,
-                  vertical: 18.0,
+                  horizontal: 16.0,
+                  vertical: 14.0,
                 ),
                 counterText: '',
               ),
               keyboardType: TextInputType.visiblePassword,
               maxLength: 6,
             ),
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
           ],
-          Center(
+          SizedBox(
+            width: double.infinity,
             child: ElevatedButton(
-              onPressed: isButtonEnabled
-                  ? onButtonPressed
-                  : null, // 有効状態に基づいてonPressedを設定
+              onPressed: isButtonEnabled ? onButtonPressed : null,
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
-                backgroundColor: Colors.blueAccent,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 50.0, vertical: 16.0),
+                backgroundColor: Colors.blue,
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                padding: const EdgeInsets.symmetric(vertical: 14.0),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.0),
+                  borderRadius: BorderRadius.circular(12.0),
                 ),
-                elevation: 5,
-                disabledForegroundColor:
-                    Colors.white.withValues(alpha: 0.7), // 無効時のテキスト色
-                disabledBackgroundColor:
-                    Colors.blueAccent.withValues(alpha: 0.5), // 無効時の背景色
+                disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
+                disabledBackgroundColor: Colors.blue.withValues(alpha: 0.4),
               ),
               child: Text(
                 buttonText,
-                style: AppTextStyles.bold(
-                    fontSize: 17.0),
+                style: AppTextStyles.bold(fontSize: 16.0),
               ),
             ),
           ),

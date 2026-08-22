@@ -42,8 +42,9 @@ class _HostApplicationQueueDialogState
     if (queue.isEmpty && !_autoClosed) {
       _autoClosed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _autoClosed) Navigator.of(context).pop();
+        if (mounted) Navigator.of(context).pop();
       });
+      return const SizedBox.shrink();
     }
 
     final maxHeight = MediaQuery.of(context).size.height * 0.6;
@@ -62,52 +63,32 @@ class _HostApplicationQueueDialogState
               children: [
                 // ヘッダー
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 8, 6),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                   child: Row(
                     children: [
                       const Text('⚔️', style: TextStyle(fontSize: 18)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          '申し込み（${queue.length}件）',
+                          queue.length > 1
+                              ? '申し込み（残り${queue.length}件）'
+                              : '申し込み',
                           style: AppTextStyles.bold(
                               fontSize: 15, color: Colors.black87),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close,
-                            size: 20, color: Colors.grey),
                       ),
                     ],
                   ),
                 ),
                 const Divider(height: 1),
-                Flexible(
-                  child: queue.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.all(28),
-                          child: Text(
-                            'すべて処理しました',
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
-                          ),
-                        )
-                      : ListView.separated(
-                          shrinkWrap: true,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemCount: queue.length,
-                          separatorBuilder: (_, __) => const Divider(
-                              height: 1, indent: 16, endIndent: 16),
-                          itemBuilder: (context, index) {
-                            final application = queue[index];
-                            return _ApplicationTile(
-                              application: application,
-                              onApprove: () => _handle(application, true),
-                              onReject: () => _handle(application, false),
-                            );
-                          },
-                        ),
-                ),
+                if (queue.isEmpty)
+                  const SizedBox.shrink()
+                else
+                  _ApplicationTile(
+                    application: queue.first,
+                    onApprove: () => _handle(queue.first, true, queue.length),
+                    onReject: () => _handle(queue.first, false, queue.length),
+                  ),
               ],
             ),
           ),
@@ -117,7 +98,15 @@ class _HostApplicationQueueDialogState
   }
 
   /// 承認 / 拒否を実行し、キューを再取得する
-  Future<void> _handle(HostApplication application, bool approve) async {
+  Future<void> _handle(HostApplication application, bool approve, int currentQueueCount) async {
+    // 拒否かつ最後の1件の場合は待たずに即座にダイアログを閉じる
+    if (!approve && currentQueueCount <= 1) {
+      if (mounted) {
+        _autoClosed = true;
+        Navigator.of(context).pop();
+      }
+    }
+
     final result = await ref.read(resbaActionsProvider).approveApplication(
           application.inviteId,
           application.applicationId,
@@ -135,7 +124,7 @@ class _HostApplicationQueueDialogState
     }
     if (approve && result.roomId != null) {
       // 対戦開始: ダイアログを閉じてバトル画面へ
-      if (mounted) {
+      if (mounted && !_autoClosed) {
         _autoClosed = true; // 自動クローズとの二重ポップを防ぐ
         Navigator.of(context).pop();
       }
@@ -160,11 +149,14 @@ class _ApplicationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = application.applicantName ?? '名無し';
     final avatar = application.applicantAvatar;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // 応募者情報
           Row(
             children: [
               CircleAvatar(
@@ -174,7 +166,7 @@ class _ApplicationTile extends StatelessWidget {
                     ? NetworkImage(avatar)
                     : null,
                 child: avatar == null || avatar.isEmpty
-                    ? Icon(Icons.person, size: 16, color: Colors.grey[600])
+                    ? Icon(Icons.person, size: 18, color: Colors.grey[600])
                     : null,
               ),
               const SizedBox(width: 8),
@@ -182,27 +174,44 @@ class _ApplicationTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('$name さん',
-                        style: AppTextStyles.bold(
-                            fontSize: 13, color: Colors.black87)),
                     Text(
-                      '🏆 ${application.applicantTrophy ?? '-'} ・ ${application.theme}',
-                      style: AppTextStyles.notoSans(
-                          fontSize: 11, color: Colors.grey),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      '$name さんが応じました',
+                      style: AppTextStyles.bold(
+                          fontSize: 13, color: Colors.black87),
                     ),
+                    if (application.applicantTrophy != null)
+                      Text(
+                        '🏆 ${application.applicantTrophy}',
+                        style: AppTextStyles.notoSans(
+                            fontSize: 11, color: Colors.grey),
+                      ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+
+          // テーマ & 選択肢
+          Text(
+            '⚔️ ${application.theme}',
+            style: AppTextStyles.bold(fontSize: 14, color: Colors.black87),
+          ),
+          if (application.choice1 != null && application.choice2 != null) ...[
+            const SizedBox(height: 3),
+            Text(
+              '選択肢：${application.choice1} vs ${application.choice2}',
+              style: AppTextStyles.notoSans(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+          const SizedBox(height: 14),
+
+          // アクションボタン
           Row(
             children: [
               Expanded(
                 child: _QueueButton(
-                  label: '✅ 承認',
+                  label: '✅ 承認して対戦',
                   color: const Color(0xFF00BA7C),
                   onTap: onApprove,
                 ),

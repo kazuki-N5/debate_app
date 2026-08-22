@@ -16,6 +16,7 @@ import 'package:debate_project/router/router.dart';
 import 'package:debate_project/view_model/Homepage_view_model.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:debate_project/view_model/start_error_dialog.dart';
+import 'package:debate_project/widgets/app_confirm_dialog.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart'; // Hooksを継続して使用
@@ -69,12 +70,14 @@ class HomePage extends HookConsumerWidget {
     // watch してプロバイダを生存させ、購読が破棄されないようにする
     ref.watch(resbaMatchListenerProvider);
     useEffect(() {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(resbaMatchListenerProvider.notifier).start();
-        // ホーム画面表示時にマッチング状態を確実にリセット
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        // ホーム画面表示時にマッチング状態を確実にリセット（対戦中フラグを解除）
         isMatching.value = false;
         ref.read(friendmatchProvider.notifier).state = false;
-        ref.read(matchingRoomProvider.notifier).delete();
+        await ref.read(matchingRoomProvider.notifier).delete();
+        ref.read(resbaMatchListenerProvider.notifier).start();
+        // 試合中に保留されていた応募があればダイアログを表示
+        ref.read(resbaMatchListenerProvider.notifier).checkAndShowPendingDialog();
       });
       return null;
     }, []);
@@ -781,41 +784,22 @@ class HomePage extends HookConsumerWidget {
                                                              .getMyResbaStatus();
                                                          if (status.isApplying) {
                                                            final proceed =
-                                                               await showDialog<
-                                                                   bool>(
-                                                             context: context,
-                                                             builder:
-                                                                 (dialogContext) =>
-                                                                     AlertDialog(
-                                                               title: const Text(
-                                                                   '⚔️ 応募中のレスバがあります'),
-                                                               content: const Text(
-                                                                   '応募を取り消してランダムマッチに参加しますか？'),
-                                                               actions: [
-                                                                 TextButton(
-                                                                   onPressed:
-                                                                       () =>
-                                                                           Navigator.pop(dialogContext, false),
-                                                                   child:
-                                                                       const Text('いいえ'),
-                                                                 ),
-                                                                 ElevatedButton(
-                                                                   onPressed:
-                                                                       () =>
-                                                                           Navigator.pop(dialogContext, true),
-                                                                   child:
-                                                                       const Text('はい、取り消して参加'),
-                                                                 ),
-                                                               ],
-                                                             ),
-                                                           );
-                                                           if (proceed != true) {
-                                                             return;
-                                                           }
-                                                           await ref
-                                                               .read(
-                                                                   resbaActionsProvider)
-                                                               .cancelMyPendingApplications();
+                                                              await showAppConfirmDialog(
+                                                            context: context,
+                                                            title: '応募中のレスバがあります',
+                                                            message:
+                                                                '応募を取り消してランダムマッチに参加しますか？',
+                                                            cancelText: 'いいえ',
+                                                            confirmText: '取り消して参加',
+                                                            isDestructive: false,
+                                                          );
+                                                          if (proceed != true) {
+                                                            return;
+                                                          }
+                                                          await ref
+                                                              .read(
+                                                                  resbaActionsProvider)
+                                                              .cancelMyPendingApplications();
                                                          }
                                                          friendmatchnotifier
                                                              .state = true;

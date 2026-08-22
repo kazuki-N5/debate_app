@@ -1,4 +1,5 @@
 // ignore_for_file: file_names, avoid_print
+import 'dart:developer';
 import 'package:debate_project/modes/app_notification.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,7 @@ class NotificationNotifier
     extends StateNotifier<AsyncValue<List<AppNotification>>> {
   final Ref _ref;
   RealtimeChannel? _channel;
+  bool _isDisposed = false;
 
   /// 追加取得できる通知が残っているか
   bool hasMore = true;
@@ -31,13 +33,15 @@ class NotificationNotifier
     });
   }
 
-  Future<void> _init() async {
+  Future<void> _init({String reason = '初回接続'}) async {
     final supabase = _ref.read(supabaseProvider);
     final myId = _ref.read(currentUserIdProvider);
     if (myId == null) {
       state = const AsyncValue.data([]);
       return;
     }
+
+    log('🔌 [通知] 接続開始 (理由: $reason, userId: $myId)');
 
     // 新着通知のRealtime購読 (user_id が自分宛ての insert / update のみ)
     //   insert: 新しい通知行 / update: いいね集約の件数加算 を即時反映
@@ -71,17 +75,22 @@ class NotificationNotifier
         )
         .subscribe((status, [error]) async {
           if (status == RealtimeSubscribeStatus.subscribed) {
+            log('✅ [通知] 接続成功 (理由: $reason, userId: $myId)');
             await fetchNotifications();
-          } else if (status == RealtimeSubscribeStatus.closed ||
-              status == RealtimeSubscribeStatus.channelError) {
+          } else if (!_isDisposed && mounted &&
+              (status == RealtimeSubscribeStatus.closed ||
+                  status == RealtimeSubscribeStatus.channelError ||
+                  status == RealtimeSubscribeStatus.timedOut)) {
+            log('⚠️ [通知] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
             await Future.delayed(const Duration(seconds: 3));
+            if (!mounted || _isDisposed) return;
             if (_channel != null) {
               try {
                 await supabase.removeChannel(_channel!);
               } catch (_) {}
               _channel = null;
             }
-            _init();
+            _init(reason: '再接続 ($status)');
           }
         });
   }
@@ -209,7 +218,14 @@ class NotificationNotifier
 
   @override
   void dispose() {
-    _channel?.unsubscribe();
+    _isDisposed = true;
+    if (_channel != null) {
+      try {
+        final supabase = _ref.read(supabaseProvider);
+        supabase.removeChannel(_channel!);
+      } catch (_) {}
+      _channel = null;
+    }
     super.dispose();
   }
 }

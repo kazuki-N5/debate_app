@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:debate_project/modes/open_chat.dart';
 import 'package:debate_project/provider/block_provider.dart';
@@ -33,6 +34,7 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
   final String roomId;
   RealtimeChannel? _channel;
   bool hasMore = true;
+  bool _isDisposed = false;
   // 端末内で非表示にしたメッセージID(「非表示」機能)
   Set<String> _hiddenMessageIds = {};
 
@@ -123,8 +125,9 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
     }
   }
 
-  Future<void> _init() async {
+  Future<void> _init({String reason = '初回接続'}) async {
     final supabase = _ref.read(supabaseProvider);
+    log('🔌 [オプチャメッセージ] 接続開始 (理由: $reason, roomId: $roomId)');
 
     // 1. ストリームの購読を開始する
     _channel = supabase.channel('public:open_chat_messages:room_id=$roomId')
@@ -153,18 +156,22 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
       )
       .subscribe((status, [error]) async {
         if (status == RealtimeSubscribeStatus.subscribed) {
+          log('✅ [オプチャメッセージ] 接続成功 (理由: $reason, roomId: $roomId)');
           await _fetchLatestOrCatchUp();
-        } else if (status == RealtimeSubscribeStatus.closed ||
-            status == RealtimeSubscribeStatus.channelError) {
+        } else if (!_isDisposed && mounted &&
+            (status == RealtimeSubscribeStatus.closed ||
+                status == RealtimeSubscribeStatus.channelError ||
+                status == RealtimeSubscribeStatus.timedOut)) {
+          log('⚠️ [オプチャメッセージ] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
           await Future.delayed(const Duration(seconds: 3));
-          if (!mounted) return;
+          if (!mounted || _isDisposed) return;
           if (_channel != null) {
             try {
               await supabase.removeChannel(_channel!);
             } catch (_) {}
             _channel = null;
           }
-          _init();
+          _init(reason: '再接続 ($status)');
         }
       });
   }
@@ -250,7 +257,14 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
 
   @override
   void dispose() {
-    _channel?.unsubscribe();
+    _isDisposed = true;
+    if (_channel != null) {
+      try {
+        final supabase = _ref.read(supabaseProvider);
+        supabase.removeChannel(_channel!);
+      } catch (_) {}
+      _channel = null;
+    }
     super.dispose();
   }
 }

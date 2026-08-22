@@ -33,7 +33,7 @@ class ResbaRequestPage extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('対戦を開始できませんでした')),
+          const SnackBar(content: Text('エラーが発生しました（エラーコード: 8109）')),
         );
       }
     }

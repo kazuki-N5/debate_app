@@ -61,6 +61,7 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
   bool _isCommentMuted = false;
   bool _isSendingComment = false;
   bool _showFullChoice = false;
+  bool _isDisposed = false;
 
   @override
   void initState() {
@@ -75,13 +76,22 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
 
   @override
   void dispose() {
+    _isDisposed = true;
     _countdownTimer?.cancel();
     _robotAnimationController.dispose();
     _commentController.dispose();
     _scrollController.dispose();
-    if (_roomChannel != null) supabase.removeChannel(_roomChannel!);
+    if (_roomChannel != null) {
+      try {
+        supabase.removeChannel(_roomChannel!);
+      } catch (_) {}
+      _roomChannel = null;
+    }
     if (_spectatorBroadcastChannel != null) {
-      supabase.removeChannel(_spectatorBroadcastChannel!);
+      try {
+        supabase.removeChannel(_spectatorBroadcastChannel!);
+      } catch (_) {}
+      _spectatorBroadcastChannel = null;
     }
     _messagesSub?.cancel();
     super.dispose();
@@ -228,7 +238,8 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
     }
   }
 
-  void _subscribeRoom(String roomId) {
+  void _subscribeRoom(String roomId, {String reason = '初回接続'}) {
+    log('🔌 [観戦ルーム同期] 接続開始 (理由: $reason, roomId: $roomId)');
     _roomChannel = supabase
         .channel('watch-room-$roomId')
         .onPostgresChanges(
@@ -254,18 +265,22 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
         )
         .subscribe((status, [error]) async {
           if (status == RealtimeSubscribeStatus.subscribed) {
+            log('✅ [観戦ルーム同期] 接続成功 (理由: $reason, roomId: $roomId)');
             _load();
-          } else if (status == RealtimeSubscribeStatus.closed ||
-              status == RealtimeSubscribeStatus.channelError) {
+          } else if (!_isDisposed && mounted &&
+              (status == RealtimeSubscribeStatus.closed ||
+                  status == RealtimeSubscribeStatus.channelError ||
+                  status == RealtimeSubscribeStatus.timedOut)) {
+            log('⚠️ [観戦ルーム同期] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
             await Future.delayed(const Duration(seconds: 3));
-            if (!mounted) return;
+            if (!mounted || _isDisposed) return;
             if (_roomChannel != null) {
               try {
                 await supabase.removeChannel(_roomChannel!);
               } catch (_) {}
               _roomChannel = null;
             }
-            _subscribeRoom(roomId);
+            _subscribeRoom(roomId, reason: '再接続 ($status)');
           }
         });
   }
@@ -277,12 +292,13 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
         .eq('room_id', roomId)
         .order('created_at', ascending: false)
         .listen((data) {
-          if (!mounted) return;
+          if (!mounted || _isDisposed) return;
           setState(() => _messages = data.map((e) => Chat.fromMap(e)).toList());
         });
   }
 
-  void _subscribeSpectatorBroadcast(String roomId) {
+  void _subscribeSpectatorBroadcast(String roomId, {String reason = '初回接続'}) {
+    log('🔌 [観戦コメント] 接続開始 (理由: $reason, roomId: $roomId)');
     _spectatorBroadcastChannel = supabase.channel('spectator:room:$roomId');
     _spectatorBroadcastChannel!
         .onBroadcast(
@@ -294,7 +310,25 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
             }
           },
         )
-        .subscribe();
+        .subscribe((status, [error]) async {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            log('✅ [観戦コメント] 接続成功 (理由: $reason, roomId: $roomId)');
+          } else if (!_isDisposed && mounted &&
+              (status == RealtimeSubscribeStatus.closed ||
+                  status == RealtimeSubscribeStatus.channelError ||
+                  status == RealtimeSubscribeStatus.timedOut)) {
+            log('⚠️ [観戦コメント] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
+            await Future.delayed(const Duration(seconds: 3));
+            if (!mounted || _isDisposed) return;
+            if (_spectatorBroadcastChannel != null) {
+              try {
+                await supabase.removeChannel(_spectatorBroadcastChannel!);
+              } catch (_) {}
+              _spectatorBroadcastChannel = null;
+            }
+            _subscribeSpectatorBroadcast(roomId, reason: '再接続 ($status)');
+          }
+        });
   }
 
   Future<void> _sendComment() async {

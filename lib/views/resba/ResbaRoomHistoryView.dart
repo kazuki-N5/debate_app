@@ -97,10 +97,9 @@ class ResbaRoomHistoryView extends HookConsumerWidget {
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.offline_bolt_outlined,
-                        size: 36,
-                        color: Color(0xFF8E8E93),
+                      child: const Text(
+                        '⚔️',
+                        style: TextStyle(fontSize: 36),
                       ),
                     ),
                     const SizedBox(height: 16),

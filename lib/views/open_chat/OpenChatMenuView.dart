@@ -257,9 +257,9 @@ class OpenChatMenuView extends HookConsumerWidget {
               },
             ),
 
-            // ③ レスバ履歴 (🔥 専用項目)
+            // ③ レスバ履歴 (⚔️ 専用項目)
             _buildLineTile(
-              icon: Icons.offline_bolt_outlined,
+              leading: const Text('⚔️', style: TextStyle(fontSize: 20)),
               title: 'レスバ履歴',
               trailingText: resbaCount > 0 ? '$resbaCount' : '',
               onTap: () {
@@ -510,7 +510,8 @@ class OpenChatMenuView extends HookConsumerWidget {
 
   /// LINE標準のリストタイル（アイコン・タイトル・緑ポッチ・右矢印）
   Widget _buildLineTile({
-    required IconData icon,
+    IconData? icon,
+    Widget? leading,
     required String title,
     required VoidCallback onTap,
     bool showGreenDot = false,
@@ -524,7 +525,12 @@ class OpenChatMenuView extends HookConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         child: Row(
           children: [
-            Icon(icon, size: 23, color: iconColor ?? const Color(0xFF1C1C1E)),
+            leading ??
+                Icon(
+                  icon!,
+                  size: 23,
+                  color: iconColor ?? const Color(0xFF1C1C1E),
+                ),
             const SizedBox(width: 14),
             Text(
               title,

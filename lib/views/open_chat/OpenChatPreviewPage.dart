@@ -204,22 +204,54 @@ class OpenChatPreviewPage extends HookConsumerWidget {
                     
                   const SizedBox(height: 24),
 
-                  // パスワード入力欄 (パスワード設定がある場合)
+                  // 合言葉(パスワード)入力欄 (パスワード設定がある場合)
+                  // クラブ名を入力するテキストフォーム(OpenChatCreateRoomPage)と同じ枠スタイルにする
                   if (hasPassword) ...[
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28.0),
-                      child: TextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          labelText: '合言葉を入力してください',
-                          prefixIcon: const Icon(Icons.key_rounded, color: Color(0xFFD97706)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '合言葉を入力してください',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1C1C1E),
+                            ),
                           ),
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                        ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: passwordController,
+                            obscureText: true,
+                            style: const TextStyle(
+                                fontSize: 15, color: Color(0xFF1C1C1E)),
+                            decoration: InputDecoration(
+                              hintText: '合言葉を入力してください',
+                              hintStyle: const TextStyle(
+                                  color: Color(0xFFC7C7CC), fontSize: 14),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                    color: Color(0xFFE5E5EA)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                    color: Color(0xFFE5E5EA)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                    color: Color(0xFF007AFF), width: 1.5),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 20),

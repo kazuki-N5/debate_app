@@ -195,9 +195,9 @@ class DmMenuView extends HookConsumerWidget {
             // ① 写真・動画
             _buildMediaSection(context, ref),
 
-            // ② レスバ履歴 (🔥 専用項目)
+            // ② レスバ履歴 (⚔️ 専用項目)
             _buildLineTile(
-              icon: Icons.offline_bolt_outlined,
+              leading: const Text('⚔️', style: TextStyle(fontSize: 20)),
               title: 'レスバ履歴',
               trailingText: resbaCount > 0 ? '$resbaCount' : '',
               onTap: () {
@@ -430,7 +430,8 @@ class DmMenuView extends HookConsumerWidget {
 
   /// LINE標準のリストタイル
   Widget _buildLineTile({
-    required IconData icon,
+    IconData? icon,
+    Widget? leading,
     required String title,
     required VoidCallback onTap,
     String? trailingText,
@@ -443,7 +444,12 @@ class DmMenuView extends HookConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         child: Row(
           children: [
-            Icon(icon, size: 23, color: iconColor ?? const Color(0xFF1C1C1E)),
+            leading ??
+                Icon(
+                  icon!,
+                  size: 23,
+                  color: iconColor ?? const Color(0xFF1C1C1E),
+                ),
             const SizedBox(width: 14),
             Text(
               title,

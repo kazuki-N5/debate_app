@@ -93,13 +93,20 @@ class OpenChatRoomView extends HookConsumerWidget {
 
     final hasBgImage = currentRoom.backgroundUrl != null && currentRoom.backgroundUrl!.isNotEmpty;
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.opaque,
+      child: Scaffold(
       extendBodyBehindAppBar: hasBgImage,
       backgroundColor: Colors.blue,
       appBar: AppBar(
         backgroundColor: hasBgImage ? Colors.transparent : Colors.blue,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
           currentRoom.name,
           style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
@@ -169,6 +176,8 @@ class OpenChatRoomView extends HookConsumerWidget {
                   }
                   return ListView.builder(
                     controller: scrollController,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     reverse: true,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 4, vertical: 4),
@@ -573,6 +582,7 @@ class OpenChatRoomView extends HookConsumerWidget {
       ),
     ),
   ),
+),
 );
 }
 

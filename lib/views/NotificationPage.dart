@@ -10,6 +10,10 @@ class NotificationPage extends StatelessWidget {
       appBar: AppBar(
         title: Text('通知', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blue,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Center(
         child: Text('通知画面（仮）', style: AppTextStyles.bold(fontSize: 20)),

@@ -51,6 +51,10 @@ class ResbaRequestPage extends ConsumerWidget {
         backgroundColor: Colors.blue,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 1,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: inviteAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

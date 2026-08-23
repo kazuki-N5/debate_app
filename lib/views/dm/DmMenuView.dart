@@ -101,7 +101,7 @@ class DmMenuView extends HookConsumerWidget {
         surfaceTintColor: Colors.transparent,
         leadingWidth: 44,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         titleSpacing: 0,

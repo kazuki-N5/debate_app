@@ -85,7 +85,10 @@ class _BbsPostCreateViewState extends ConsumerState<BbsPostCreateView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.opaque,
+      child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -248,6 +251,7 @@ class _BbsPostCreateViewState extends ConsumerState<BbsPostCreateView> {
           ],
         ),
       ),
+    ),
     );
   }
 

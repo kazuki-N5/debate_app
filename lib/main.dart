@@ -73,6 +73,12 @@ class MyApp extends ConsumerWidget {
           scrolledUnderElevation: 0,
           elevation: 0,
         ),
+        actionIconTheme: ActionIconThemeData(
+          backButtonIconBuilder: (BuildContext context) => const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+          ),
+        ),
       ),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

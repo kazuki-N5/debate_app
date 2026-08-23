@@ -32,6 +32,7 @@ class BbsPostDetailView extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fetchedPost = useState<BbsPost?>(null);
+    final isDeleted = useState(false);
     final postsAsync = ref.watch(bbsTimelineProvider);
     final BbsPost currentPost = fetchedPost.value ??
         postsAsync.maybeWhen<BbsPost>(
@@ -72,6 +73,9 @@ class BbsPostDetailView extends HookConsumerWidget {
                     .copyWith(hasResba: currentPost.hasResba);
             fetchedPost.value = latest;
             debugPrint('[RESBA_LOG] BbsPostDetailView.loadLatest loaded post: ${latest.id}, hasResba: ${latest.hasResba}');
+          } else {
+            // 投稿が削除されている場合
+            isDeleted.value = true;
           }
         } catch (e) {
           debugPrint('[RESBA_LOG] BbsPostDetailView loadLatest error: $e');
@@ -119,13 +123,54 @@ class BbsPostDetailView extends HookConsumerWidget {
       ref.read(postResbaProvider(post.id).notifier).fetch();
     }
 
-    return Scaffold(
+    if (isDeleted.value) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          title: Text('投稿', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
+          backgroundColor: Colors.blue,
+          iconTheme: const IconThemeData(color: Colors.white),
+          elevation: 1,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.info_outline, size: 54, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                'この投稿は削除されました',
+                style: AppTextStyles.bold(color: Colors.black87, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '投稿者によって削除されたか、存在しません。',
+                style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.opaque,
+      child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text('投稿', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
         backgroundColor: Colors.blue,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 1,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Column(
         children: [
@@ -460,6 +505,7 @@ class BbsPostDetailView extends HookConsumerWidget {
           ),
         ],
       ),
+    ),
     );
   }
 

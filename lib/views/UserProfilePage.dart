@@ -1,5 +1,6 @@
 // ignore_for_file: file_names
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:debate_project/provider/bbs_bookmark_provider.dart';
 import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/follow_provider.dart';
 import 'package:debate_project/provider/user_profile_provider.dart';
@@ -42,6 +43,10 @@ class UserProfilePage extends HookConsumerWidget {
           title: Text('プロフィール', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
           backgroundColor: Colors.blue,
           iconTheme: const IconThemeData(color: Colors.white),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
         body: const Center(child: Text('ユーザーが見つかりません')),
       );
@@ -71,7 +76,7 @@ class UserProfilePage extends HookConsumerWidget {
               await ref.read(userProfileProvider(user.id).notifier).refreshProfile();
             },
             child: DefaultTabController(
-              length: 3,
+              length: isSelf ? 4 : 3,
               child: NestedScrollView(
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: ClampingScrollPhysics(),
@@ -414,14 +419,15 @@ class UserProfilePage extends HookConsumerWidget {
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _SliverAppBarDelegate(
-                    const TabBar(
+                    TabBar(
                       labelColor: Colors.black,
                       unselectedLabelColor: Colors.grey,
                       indicatorColor: Colors.blueAccent,
                       tabs: [
-                        Tab(text: 'ポスト'),
-                        Tab(text: '返信'),
-                        Tab(text: 'メディア'),
+                        const Tab(text: 'ポスト'),
+                        const Tab(text: '返信'),
+                        const Tab(text: 'メディア'),
+                        if (isSelf) const Tab(text: 'ブックマーク'),
                       ],
                     ),
                   ),
@@ -436,6 +442,8 @@ class UserProfilePage extends HookConsumerWidget {
                 _buildRepliesList(context, ref, state),
                 // メディアタブ (画像付きポスト＋画像付き返信のタイムライン表示)
                 _buildMediaList(context, ref, state),
+                // ブックマークタブ (自分のみ)
+                if (isSelf) _buildBookmarksList(context, ref),
               ],
             ),
           ),
@@ -575,6 +583,71 @@ class UserProfilePage extends HookConsumerWidget {
         }
         return const SizedBox.shrink();
       },
+    );
+  }
+
+  // 4. ブックマークタブ (自分の投稿保存一覧)
+  Widget _buildBookmarksList(BuildContext context, WidgetRef ref) {
+    final bookmarksAsync = ref.watch(bookmarkedPostsProvider);
+
+    return bookmarksAsync.when(
+      data: (posts) {
+        if (posts.isEmpty) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: ClampingScrollPhysics(),
+            ),
+            children: [
+              const SizedBox(height: 80),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.bookmark_border, size: 48, color: Colors.grey),
+                    const SizedBox(height: 12),
+                    Text(
+                      'ブックマークはまだありません',
+                      style: AppTextStyles.bold(color: Colors.black87, fontSize: 16),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '気に入った投稿をブックマークして後から見返そう',
+                      style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+        return ListView.separated(
+          padding: EdgeInsets.zero,
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: ClampingScrollPhysics(),
+          ),
+          itemCount: posts.length,
+          separatorBuilder: (context, index) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            final post = posts[index];
+            return BbsPostWidget(post: post);
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => ListView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: ClampingScrollPhysics(),
+        ),
+        children: [
+          const SizedBox(height: 80),
+          Center(
+            child: Text(
+              'ブックマークの読み込みに失敗しました',
+              style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -833,9 +906,6 @@ class UserReplyThreadWidget extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          const Icon(Icons.bookmark_border, size: 16, color: Colors.grey),
-                          const Icon(Icons.share_outlined, size: 16, color: Colors.grey),
-                          const SizedBox(width: 16),
                         ],
                       ),
                     ],

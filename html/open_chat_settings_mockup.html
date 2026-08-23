@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LINE完全一致UI - オプチャ＆DM メニュー</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts (Noto Sans JP) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Noto Sans JP', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .slide-in {
+      animation: slideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen">
+
+  <!-- ヘッダーバー -->
+  <header class="bg-slate-800/95 backdrop-blur border-b border-slate-700 sticky top-0 z-40 px-6 py-3.5 shadow-md">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+          <i class="fa-solid fa-mobile-screen-button text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-white flex items-center gap-2">
+            LINEオープンチャット完全一致UI
+            <span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-normal">提供画像UI完全再現</span>
+          </h1>
+          <p class="text-xs text-slate-400">上部アイコンの丸枠廃止・直アイコン配置・緑ポッチ・LINE純正タイルのマージンとタイポグラフィ</p>
+        </div>
+      </div>
+
+      <!-- モード切り替えタブ ＆ 権限切り替えスイッチ -->
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-700 shadow-inner">
+          <button id="tab-club-btn" onclick="switchMainTab('club')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition bg-blue-600 text-white shadow flex items-center gap-1.5">
+            <i class="fa-solid fa-users"></i> クラブ (オプチャ)
+          </button>
+          <button id="tab-dm-btn" onclick="switchMainTab('dm')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-envelope"></i> 1対1 DM
+          </button>
+        </div>
+
+        <div id="club-role-selector" class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-700 shadow-inner">
+          <span class="text-xs text-slate-400 font-medium px-2 flex items-center gap-1">
+            <i class="fa-solid fa-user-shield text-blue-400"></i> 視点:
+          </span>
+          <button id="role-owner-btn" onclick="setPreviewRole('owner')" class="px-2.5 py-1 text-xs font-semibold rounded-lg transition bg-blue-600 text-white shadow">
+            👑 管理者
+          </button>
+          <button id="role-member-btn" onclick="setPreviewRole('member')" class="px-2.5 py-1 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white">
+            👤 一般
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインレイアウト -->
+  <main class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+    
+    <!-- 左側：スマホ実機UIモックアップ (5カラム) -->
+    <div class="lg:col-span-5 flex flex-col items-center">
+      <div class="sticky top-20 w-full max-w-[380px]">
+        <div class="text-center mb-2.5 flex items-center justify-between px-2">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            LINE実機UIシミュレーター
+          </span>
+          <span id="current-mode-badge" class="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-md font-medium">
+            💬 クラブメニュー (管理者)
+          </span>
+        </div>
+
+        <!-- スマホ本体フレーム -->
+        <div class="relative w-full h-[760px] bg-black rounded-[46px] p-3 shadow-2xl ring-1 ring-slate-700/80 border-4 border-slate-800 flex flex-col overflow-hidden">
+          
+          <!-- ダイナミックアイランド -->
+          <div class="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-5 bg-black rounded-full z-50 flex items-center justify-between px-2.5">
+            <div class="w-1.5 h-1.5 rounded-full bg-slate-900"></div>
+            <div class="w-2 h-2 rounded-full bg-blue-950/40 border border-slate-800"></div>
+          </div>
+
+          <!-- スマホ内部画面（白背景） -->
+          <div class="relative w-full h-full bg-white rounded-[36px] overflow-hidden flex flex-col text-slate-900 select-none">
+            
+            <!-- iOSステータスバー -->
+            <div class="h-9 pt-1.5 px-6 flex justify-between items-center text-xs font-semibold text-slate-900 z-30 bg-white">
+              <span>9:41</span>
+              <div class="flex items-center space-x-1.5 text-xs text-slate-800">
+                <i class="fa-solid fa-signal text-[10px]"></i>
+                <i class="fa-solid fa-wifi text-[10px]"></i>
+                <i class="fa-solid fa-battery-full text-sm"></i>
+              </div>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- 画面1: クラブ (オプチャ) メニュー画面 (LINE完全再現) -->
+            <!-- ============================================== -->
+            <div id="view-club-container" class="flex-1 flex flex-col overflow-y-auto no-scrollbar bg-white">
+              
+              <!-- 1. トップナビゲーションバー (< ルーム名... (1,897) 🔈) -->
+              <div class="px-3 py-2.5 flex items-center justify-between bg-blue-600 text-white sticky top-0 z-20 shadow-sm">
+                <button onclick="showToast('チャット画面に戻ります')" class="p-1.5 -ml-1 text-white hover:text-blue-100 flex items-center">
+                  <i class="fa-solid fa-chevron-left text-lg"></i>
+                </button>
+                <div class="flex-1 px-1.5 flex items-center gap-1 min-w-0">
+                  <h2 id="club-header-title" class="text-[17px] font-bold text-white truncate tracking-tight">
+                    もんじょりこと藤沢ななを語る... (1,897)
+                  </h2>
+                  <i id="club-sound-icon" class="fa-solid fa-volume-high text-xs text-blue-200"></i>
+                </div>
+                <div class="w-4"></div>
+              </div>
+
+              <!-- 2. 上部アクション (LINE完全再現: 丸枠なし、直アイコン) -->
+              <div class="grid grid-cols-3 py-3 px-2 border-b border-slate-100 bg-white text-center">
+                <!-- ① 通知オン/オフ -->
+                <button onclick="toggleClubNotification()" class="flex flex-col items-center py-1 group">
+                  <i id="club-notif-icon" class="fa-solid fa-bell-slash text-[26px] text-slate-900"></i>
+                  <span id="club-notif-label" class="text-[11px] font-medium text-slate-800 mt-2">通知オン</span>
+                </button>
+
+                <!-- ② メンバー -->
+                <button onclick="openSubScreen('screen-club-members')" class="flex flex-col items-center py-1 group">
+                  <i class="fa-solid fa-user-group text-[24px] text-slate-900 mt-0.5"></i>
+                  <span class="text-[11px] font-medium text-slate-800 mt-2">メンバー</span>
+                </button>
+
+                <!-- ③ 退会 -->
+                <button onclick="handleLeaveClub()" class="flex flex-col items-center py-1 group">
+                  <i class="fa-solid fa-arrow-right-from-bracket text-[24px] text-slate-900 mt-0.5"></i>
+                  <span class="text-[11px] font-medium text-slate-800 mt-2">退会</span>
+                </button>
+              </div>
+
+              <!-- 3. リスト項目群 (LINE完全再現) -->
+              <div class="py-1 text-[15px]">
+                
+                <!-- ① 写真・動画 -->
+                <div class="px-5 py-3 cursor-pointer hover:bg-slate-50 transition" onclick="openSubScreen('screen-club-media')">
+                  <div class="flex items-center justify-between mb-2.5">
+                    <div class="flex items-center gap-3.5">
+                      <i class="fa-regular fa-image text-slate-800 text-[19px]"></i>
+                      <span class="font-normal text-slate-900 text-[15px]">写真・動画</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+                  </div>
+                  <div class="bg-slate-50 border border-slate-200/80 rounded-lg h-20 flex items-center justify-center text-slate-400 text-xs">
+                    写真や動画はありません
+                  </div>
+                </div>
+
+                <!-- ② ルール (必読 / 🟢緑ポッチ) -->
+                <div class="px-5 py-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition" onclick="openSubScreen('screen-club-rules')">
+                  <div class="flex items-center gap-3.5">
+                    <i class="fa-regular fa-file-lines text-slate-800 text-[19px]"></i>
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-normal text-slate-900 text-[15px]">ルール</span>
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-xs text-slate-400">設定あり</span>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+                  </div>
+                </div>
+
+                <!-- ③ レスバ履歴 (新項目) -->
+                <div class="px-5 py-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition" onclick="showToast('クラブ内のレスバ履歴一覧を開きます (3件)')">
+                  <div class="flex items-center gap-3.5">
+                    <i class="fa-solid fa-bolt text-slate-800 text-[18px]"></i>
+                    <span class="font-normal text-slate-900 text-[15px]">レスバ履歴</span>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-xs text-slate-400">3</span>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+                  </div>
+                </div>
+
+                <!-- ③ メッセージ検索 -->
+                <div class="px-5 py-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition" onclick="showToast('クラブ内のメッセージ検索を開きます')">
+                  <div class="flex items-center gap-3.5">
+                    <i class="fa-solid fa-magnifying-glass text-slate-800 text-[18px]"></i>
+                    <span class="font-normal text-slate-900 text-[15px]">メッセージ検索</span>
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+                </div>
+
+                <!-- ④ 設定 (ルーム情報) -->
+                <div class="px-5 py-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition" onclick="openSubScreen('screen-club-edit')">
+                  <div class="flex items-center gap-3.5">
+                    <i class="fa-solid fa-gear text-slate-800 text-[18px]"></i>
+                    <span class="font-normal text-slate-900 text-[15px]">設定</span>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span id="club-edit-perm-badge" class="text-xs text-slate-400">編集</span>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+                  </div>
+                </div>
+
+                <!-- ⑤ クラブの削除 (管理者のみ) -->
+                <div id="club-delete-btn-row" class="px-5 py-3.5 flex items-center justify-between cursor-pointer hover:bg-rose-50 transition text-rose-600" onclick="handleDeleteClub()">
+                  <div class="flex items-center gap-3.5">
+                    <i class="fa-solid fa-trash-can text-[18px]"></i>
+                    <span class="font-normal text-[15px]">クラブの削除</span>
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-xs text-rose-300"></i>
+                </div>
+
+              </div>
+
+              <!-- 下部セクション (情報ヘッダー ＋ 通報) -->
+              <div class="mt-4 pt-3 border-t border-slate-100">
+                <div class="px-5 py-1 text-[11px] font-semibold text-slate-400">
+                  クラブ情報
+                </div>
+                <div class="px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition text-slate-700" onclick="showToast('通報フォームを開きます')">
+                  <div class="flex items-center gap-3.5">
+                    <i class="fa-regular fa-flag text-[17px] text-slate-500"></i>
+                    <span class="font-normal text-slate-800 text-[15px]">このクラブを通報する</span>
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- ============================================== -->
+            <!-- 画面2: 1対1 DM メニュー画面 (LINE完全再現) -->
+            <!-- ============================================== -->
+            <div id="view-dm-container" class="flex-1 hidden flex-col overflow-y-auto no-scrollbar bg-white">
+              
+              <!-- 1. トップナビゲーションバー (< 相手のユーザー名 🔈) -->
+              <div class="px-3 py-2.5 flex items-center justify-between bg-blue-600 text-white sticky top-0 z-20 shadow-sm">
+                <button onclick="showToast('DMチャットに戻ります')" class="p-1.5 -ml-1 text-white hover:text-blue-100 flex items-center">
+                  <i class="fa-solid fa-chevron-left text-lg"></i>
+                </button>
+                <div class="flex-1 px-1.5 flex items-center gap-1.5 min-w-0">
+                  <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] text-white font-bold overflow-hidden">
+                    論
+                  </div>
+                  <h2 class="text-[17px] font-bold text-white truncate tracking-tight">
+                    論理マスター
+                  </h2>
+                  <i id="dm-sound-icon" class="fa-solid fa-volume-high text-xs text-blue-200"></i>
+                </div>
+                <div class="w-4"></div>
+              </div>
+
+              <!-- 2. 上部アクション (LINE完全再現) -->
+              <div class="grid grid-cols-3 py-3 px-2 border-b border-slate-100 bg-white text-center">
+                <!-- ① 通知オン/オフ -->
+                <button onclick="toggleDmNotification()" class="flex flex-col items-center py-1 group">
+                  <i id="dm-notif-icon" class="fa-solid fa-bell-slash text-[26px] text-slate-900"></i>
+                  <span id="dm-notif-label" class="text-[11px] font-medium text-slate-800 mt-2">通知オン</span>
+                </button>
+
+                <!-- ② プロフィール -->
+                <button onclick="showToast('論理マスターさんのプロフィールを開きます')" class="flex flex-col items-center py-1 group">
+                  <i class="fa-regular fa-user text-[24px] text-slate-900 mt-0.5"></i>
+                  <span class="text-[11px] font-medium text-slate-800 mt-2">プロフィール</span>
+                </button>
+
+                <!-- ③ ブロック -->
+                <button onclick="handleBlockUser()" class="flex flex-col items-center py-1 group">
+                  <i class="fa-solid fa-ban text-[24px] text-rose-500 mt-0.5"></i>
+                  <span class="text-[11px] font-medium text-rose-600 mt-2">ブロック</span>
+                </button>
+              </div>
+
+              <!-- 3. DM用リスト項目群 (LINE完全再現) -->
+              <div class="py-1 text-[15px]">
+                <!-- 写真・動画 -->
+                <div class="px-5 py-3 cursor-pointer hover:bg-slate-50 transition" onclick="openSubScreen('screen-club-media')">
+                  <div class="flex items-center justify-between mb-2.5">
+                    <div class="flex items-center gap-3.5">
+                      <i class="fa-regular fa-image text-slate-800 text-[19px]"></i>
+                      <span class="font-normal text-slate-900 text-[15px]">写真・動画</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+                  </div>
+                  <div class="bg-slate-50 border border-slate-200/80 rounded-lg h-20 flex items-center justify-center text-slate-400 text-xs">
+                    写真や動画はありません
+                  </div>
+                </div>
+
+                <!-- レスバ履歴 (新項目) -->
+                <div class="px-5 py-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition" onclick="showToast('このユーザーとのレスバ履歴一覧を開きます (1件)')">
+                  <div class="flex items-center gap-3.5">
+                    <i class="fa-solid fa-bolt text-slate-800 text-[18px]"></i>
+                    <span class="font-normal text-slate-900 text-[15px]">レスバ履歴</span>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-xs text-slate-400">1</span>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+                  </div>
+                </div>
+
+                <!-- メッセージ検索 -->
+                <div class="px-5 py-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition" onclick="showToast('DMメッセージ内検索を開きます')">
+                  <div class="flex items-center gap-3.5">
+                    <i class="fa-solid fa-magnifying-glass text-slate-800 text-[18px]"></i>
+                    <span class="font-normal text-slate-900 text-[15px]">メッセージ検索</span>
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+                </div>
+
+                <!-- 設定 -->
+                <div class="px-5 py-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition" onclick="showToast('DM背景・壁紙設定を開きます')">
+                  <div class="flex items-center gap-3.5">
+                    <i class="fa-solid fa-gear text-slate-800 text-[18px]"></i>
+                    <span class="font-normal text-slate-900 text-[15px]">設定</span>
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+                </div>
+              </div>
+
+              <!-- 下部通報 -->
+              <div class="mt-4 pt-3 border-t border-slate-100">
+                <div class="px-5 py-1 text-[11px] font-semibold text-slate-400">
+                  その他
+                </div>
+                <div class="px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition text-rose-600" onclick="showToast('ユーザーを通報するフォームを開きます')">
+                  <div class="flex items-center gap-3.5">
+                    <i class="fa-regular fa-flag text-[17px]"></i>
+                    <span class="font-normal text-[15px]">このユーザーを通報する</span>
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-xs text-rose-300"></i>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- サブ画面A: ルール画面 -->
+            <div id="screen-club-rules" class="absolute inset-0 bg-white z-40 hidden flex flex-col slide-in">
+              <div class="h-11 px-4 flex items-center justify-between bg-blue-600 text-white shadow-sm">
+                <button onclick="closeSubScreen('screen-club-rules')" class="p-1 -ml-1 text-white flex items-center">
+                  <i class="fa-solid fa-chevron-left text-base"></i>
+                </button>
+                <h3 class="text-sm font-bold text-white">クラブのルール</h3>
+                <div id="rule-header-action">
+                  <button id="rule-edit-btn" onclick="toggleRuleEditMode()" class="text-xs font-bold text-white bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded">編集</button>
+                </div>
+              </div>
+              <div class="flex-1 overflow-y-auto p-4 text-slate-800 text-xs no-scrollbar space-y-4">
+                <div id="rule-view-container" class="space-y-3">
+                  <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
+                    <h4 class="font-bold text-slate-900 text-sm border-b border-slate-200 pb-2">
+                      なまたままま クラブルール
+                    </h4>
+                    <div id="rule-display-text" class="text-slate-700 text-xs leading-relaxed space-y-2 whitespace-pre-wrap font-sans">
+1. 誹謗中傷・人格攻撃の禁止
+2. 根拠のある議論
+3. 発言の譲り合い
+                    </div>
+                  </div>
+                </div>
+                <div id="rule-edit-container" class="hidden space-y-3">
+                  <textarea id="rule-textarea" rows="8" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"></textarea>
+                  <button onclick="saveRules()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-xs shadow">ルールを保存</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- サブ画面B: ルーム情報編集画面 -->
+            <div id="screen-club-edit" class="absolute inset-0 bg-white z-40 hidden flex flex-col slide-in">
+              <div class="h-12 px-4 flex items-center justify-between bg-[#007AFF] text-white shadow-sm">
+                <button onclick="closeSubScreen('screen-club-edit')" class="p-1 -ml-1 flex items-center"><i class="fa-solid fa-arrow-left text-base"></i></button>
+                <h3 id="room-edit-title" class="text-base font-bold">クラブ情報</h3>
+                <button id="room-save-btn" onclick="saveRoomInfo()" class="text-sm font-bold bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg">保存</button>
+              </div>
+              <div id="room-view-only-banner" class="hidden bg-amber-500 text-white text-[10px] py-1 px-3 text-center font-medium">🔒 閲覧専用モード (編集権限は管理者のみ)</div>
+              <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs no-scrollbar">
+                <div>
+                  <label class="block font-bold text-slate-800 mb-1">クラブ名</label>
+                  <input id="input-room-name" type="text" value="なまたままま" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 text-xs">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-800 mb-1">説明・概要</label>
+                  <textarea id="input-room-desc" rows="3" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 text-xs">なまたまままに関する雑談・ディベートクラブです。</textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- サブ画面C: メンバー一覧 -->
+            <div id="screen-club-members" class="absolute inset-0 bg-white z-40 hidden flex flex-col slide-in">
+              <div class="h-11 px-4 flex items-center justify-between border-b border-slate-200 bg-white">
+                <button onclick="closeSubScreen('screen-club-members')" class="p-1 -ml-1 text-slate-800 flex items-center"><i class="fa-solid fa-chevron-left text-base"></i></button>
+                <h3 class="text-sm font-bold text-slate-900">メンバー (2人)</h3>
+                <div class="w-6"></div>
+              </div>
+              <div class="flex-1 overflow-y-auto divide-y divide-slate-100 p-2 text-xs">
+                <div class="p-2.5 flex items-center justify-between"><span class="font-bold">自分 (Kazuki) 👑</span><span class="text-slate-400">オンライン</span></div>
+                <div class="p-2.5 flex items-center justify-between"><span class="font-bold">Tanaka</span><span class="text-slate-400">昨日参加</span></div>
+              </div>
+            </div>
+
+            <!-- サブ画面D: 写真・動画 -->
+            <div id="screen-club-media" class="absolute inset-0 bg-white z-40 hidden flex flex-col slide-in">
+              <div class="h-11 px-4 flex items-center justify-between border-b border-slate-200 bg-white">
+                <button onclick="closeSubScreen('screen-club-media')" class="p-1 -ml-1 text-slate-800 flex items-center"><i class="fa-solid fa-chevron-left text-base"></i></button>
+                <h3 class="text-sm font-bold text-slate-900">写真・動画</h3>
+                <div class="w-6"></div>
+              </div>
+              <div class="flex-1 flex items-center justify-center text-slate-400 text-xs">写真や動画はありません</div>
+            </div>
+
+            <!-- トースト通知 -->
+            <div id="phone-toast" class="absolute bottom-6 left-4 right-4 bg-slate-900/95 text-white text-xs py-2.5 px-4 rounded-xl shadow-xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50">
+              <i class="fa-solid fa-circle-check text-emerald-400"></i>
+              <span id="phone-toast-text">通知メッセージ</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右側：UIデザイン完全一致レポート (7カラム) -->
+    <div class="lg:col-span-7 space-y-6">
+      
+      <!-- デザイン完全一致ポイント -->
+      <div class="bg-slate-800/60 rounded-3xl p-6 border border-slate-700/80 shadow-xl backdrop-blur space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl font-bold">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-white">LINEオープンチャットUI完全一致 適用レポート</h2>
+            <p class="text-xs text-slate-400">提供いただいた画像デザインの細部まで忠実に Flutter & HTML に反映しました</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs space-y-3 leading-relaxed text-slate-300">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
+              <strong class="text-emerald-300 block">① 上部アクションの丸枠を廃止</strong>
+              <p class="text-slate-400">提供画像に合わせて丸い背景枠を完全に取り払い、洗練されたシンプルな黒線直アイコンでフラットに配置しました。</p>
+            </div>
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
+              <strong class="text-emerald-300 block">② タイポグラフィと右矢印</strong>
+              <p class="text-slate-400">白背景にフラットに並ぶリスト形式、薄いグレーのシェブロン（<code>&gt;</code>）、フォントウェイトをLINE標準のクリーンな見た目に調整。</p>
+            </div>
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
+              <strong class="text-emerald-300 block">③ ルールの「🟢緑ポッチ」</strong>
+              <p class="text-slate-400">画像にある「ノート 🟢」と同様に、ルールの右横に小さなグリーンドットを配置しました。</p>
+            </div>
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
+              <strong class="text-emerald-300 block">④ 下部の情報ヘッダー</strong>
+              <p class="text-slate-400">画像の「LINEオープンチャット情報」と同様に、薄いグレーの小見出し「クラブ情報」を配置し、その下をスッキリ構成。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- JavaScript制御 -->
+  <script>
+    let currentMainTab = 'club';
+    let currentClubRole = 'owner';
+    let isClubNotifOn = true;
+    let isDmNotifOn = true;
+    let isRuleEditing = false;
+
+    function switchMainTab(tab) {
+      currentMainTab = tab;
+      const tabClubBtn = document.getElementById('tab-club-btn');
+      const tabDmBtn = document.getElementById('tab-dm-btn');
+      const viewClub = document.getElementById('view-club-container');
+      const viewDm = document.getElementById('view-dm-container');
+      const roleSelector = document.getElementById('club-role-selector');
+      const modeBadge = document.getElementById('current-mode-badge');
+
+      closeAllSubScreens();
+
+      if (tab === 'club') {
+        tabClubBtn.className = "px-3.5 py-1.5 text-xs font-bold rounded-lg transition bg-blue-600 text-white shadow flex items-center gap-1.5";
+        tabDmBtn.className = "px-3.5 py-1.5 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white flex items-center gap-1.5";
+        viewClub.classList.remove('hidden');
+        viewClub.classList.add('flex');
+        viewDm.classList.add('hidden');
+        viewDm.classList.remove('flex');
+        roleSelector.classList.remove('hidden');
+        modeBadge.textContent = currentClubRole === 'owner' ? "💬 クラブメニュー (管理者)" : "💬 クラブメニュー (一般)";
+        modeBadge.className = "text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-md font-medium";
+        showToast("💬 クラブメニューに切り替えました");
+      } else {
+        tabDmBtn.className = "px-3.5 py-1.5 text-xs font-bold rounded-lg transition bg-blue-600 text-white shadow flex items-center gap-1.5";
+        tabClubBtn.className = "px-3.5 py-1.5 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white flex items-center gap-1.5";
+        viewDm.classList.remove('hidden');
+        viewDm.classList.add('flex');
+        viewClub.classList.add('hidden');
+        viewClub.classList.remove('flex');
+        roleSelector.classList.add('hidden');
+        modeBadge.textContent = "✉️ 1対1 DMメニュー";
+        modeBadge.className = "text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-md font-medium";
+        showToast("✉️ 1対1 DMメニューに切り替えました");
+      }
+    }
+
+    function setPreviewRole(role) {
+      currentClubRole = role;
+      const ownerBtn = document.getElementById('role-owner-btn');
+      const memberBtn = document.getElementById('role-member-btn');
+      const modeBadge = document.getElementById('current-mode-badge');
+      const permBadge = document.getElementById('club-edit-perm-badge');
+      const deleteRow = document.getElementById('club-delete-btn-row');
+      const ruleEditBtn = document.getElementById('rule-edit-btn');
+      const ruleHint = document.getElementById('rule-permission-hint');
+      const roomSaveBtn = document.getElementById('room-save-btn');
+      const roomViewOnlyBanner = document.getElementById('room-view-only-banner');
+      const roomEditTitle = document.getElementById('room-edit-title');
+      const inputs = [document.getElementById('input-room-name'), document.getElementById('input-room-desc')];
+
+      if (role === 'owner') {
+        ownerBtn.className = "px-2.5 py-1 text-xs font-semibold rounded-lg transition bg-blue-600 text-white shadow";
+        memberBtn.className = "px-2.5 py-1 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white";
+        modeBadge.textContent = "💬 クラブメニュー (管理者)";
+        permBadge.textContent = "編集";
+        deleteRow.classList.remove('hidden');
+        ruleEditBtn.classList.remove('hidden');
+        ruleHint.textContent = "※管理者はここからルールを編集・保存できます。";
+        roomSaveBtn.classList.remove('hidden');
+        roomViewOnlyBanner.classList.add('hidden');
+        roomEditTitle.textContent = "クラブ情報 (編集)";
+        inputs.forEach(input => input && (input.disabled = false));
+        showToast("👑 管理者（オーナー）視点に切り替えました");
+      } else {
+        memberBtn.className = "px-2.5 py-1 text-xs font-semibold rounded-lg transition bg-blue-600 text-white shadow";
+        ownerBtn.className = "px-2.5 py-1 text-xs font-semibold rounded-lg transition text-slate-400 hover:text-white";
+        modeBadge.textContent = "💬 クラブメニュー (一般)";
+        permBadge.textContent = "";
+        deleteRow.classList.add('hidden');
+        ruleEditBtn.classList.add('hidden');
+        ruleHint.textContent = "※クラブのルールを確認できます（編集は管理者のみ）。";
+        roomSaveBtn.classList.add('hidden');
+        roomViewOnlyBanner.classList.remove('hidden');
+        roomEditTitle.textContent = "クラブ情報 (閲覧のみ)";
+        inputs.forEach(input => input && (input.disabled = true));
+        if (isRuleEditing) toggleRuleEditMode();
+        showToast("👤 一般メンバー視点に切り替えました");
+      }
+    }
+
+    function openSubScreen(screenId) {
+      const screen = document.getElementById(screenId);
+      if (screen) screen.classList.remove('hidden');
+    }
+
+    function closeSubScreen(screenId) {
+      const screen = document.getElementById(screenId);
+      if (screen) screen.classList.add('hidden');
+    }
+
+    function closeAllSubScreens() {
+      const screens = ['screen-club-rules', 'screen-club-edit', 'screen-club-members', 'screen-club-media'];
+      screens.forEach(s => closeSubScreen(s));
+    }
+
+    function toggleClubNotification() {
+      isClubNotifOn = !isClubNotifOn;
+      const icon = document.getElementById('club-notif-icon');
+      const label = document.getElementById('club-notif-label');
+      const soundIcon = document.getElementById('club-sound-icon');
+
+      if (isClubNotifOn) {
+        icon.className = "fa-solid fa-bell-slash text-[26px] text-slate-900";
+        label.textContent = "通知オン";
+        soundIcon.className = "fa-solid fa-volume-high text-xs text-slate-400";
+        showToast("このクラブの通知をオンにしました");
+      } else {
+        icon.className = "fa-solid fa-bell text-[26px] text-slate-400";
+        label.textContent = "通知オフ";
+        soundIcon.className = "fa-solid fa-volume-xmark text-xs text-rose-500";
+        showToast("このクラブをミュートしました");
+      }
+    }
+
+    function toggleDmNotification() {
+      isDmNotifOn = !isDmNotifOn;
+      const icon = document.getElementById('dm-notif-icon');
+      const label = document.getElementById('dm-notif-label');
+      const soundIcon = document.getElementById('dm-sound-icon');
+
+      if (isDmNotifOn) {
+        icon.className = "fa-solid fa-bell-slash text-[26px] text-slate-900";
+        label.textContent = "通知オン";
+        soundIcon.className = "fa-solid fa-volume-high text-xs text-slate-400";
+        showToast("このDMの通知をオンにしました");
+      } else {
+        icon.className = "fa-solid fa-bell text-[26px] text-slate-400";
+        label.textContent = "通知オフ";
+        soundIcon.className = "fa-solid fa-volume-xmark text-xs text-rose-500";
+        showToast("このDMをミュートしました");
+      }
+    }
+
+    function toggleRuleEditMode() {
+      if (currentClubRole !== 'owner') return;
+      isRuleEditing = !isRuleEditing;
+      const viewCont = document.getElementById('rule-view-container');
+      const editCont = document.getElementById('rule-edit-container');
+      const btn = document.getElementById('rule-edit-btn');
+      const textarea = document.getElementById('rule-textarea');
+      const display = document.getElementById('rule-display-text');
+
+      if (isRuleEditing) {
+        viewCont.classList.add('hidden');
+        editCont.classList.remove('hidden');
+        btn.textContent = "キャンセル";
+        textarea.value = display.textContent.trim();
+      } else {
+        viewCont.classList.remove('hidden');
+        editCont.classList.add('hidden');
+        btn.textContent = "編集";
+      }
+    }
+
+    function saveRules() {
+      const textarea = document.getElementById('rule-textarea');
+      const display = document.getElementById('rule-display-text');
+      display.textContent = textarea.value.trim();
+      toggleRuleEditMode();
+      showToast("ルールを更新しました！");
+    }
+
+    function saveRoomInfo() {
+      if (currentClubRole !== 'owner') return;
+      const name = document.getElementById('input-room-name').value;
+      document.getElementById('club-header-title').textContent = `${name}... (1,897)`;
+      closeSubScreen('screen-club-edit');
+      showToast("クラブ情報を保存・更新しました！");
+    }
+
+    function handleLeaveClub() {
+      if (currentClubRole === 'owner') {
+        alert("⚠️ あなたはこのクラブのオーナーです。\n退会する前に次のオーナーを指定するか、クラブを削除してください。");
+      } else {
+        if (confirm("このクラブから退会しますか？")) showToast("クラブから退会しました");
+      }
+    }
+
+    function handleDeleteClub() {
+      if (confirm("🚨【警告】本当にこのクラブを削除しますか？\n参加中の全メンバーが退室され、トーク履歴はすべて削除されます。")) {
+        showToast("クラブを削除しました");
+      }
+    }
+
+    function handleBlockUser() {
+      if (confirm("論理マスター さんをブロックしますか？")) showToast("論理マスター さんをブロックしました");
+    }
+
+    let toastTimeout;
+    function showToast(message) {
+      const toast = document.getElementById('phone-toast');
+      const text = document.getElementById('phone-toast-text');
+      text.textContent = message;
+      clearTimeout(toastTimeout);
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2300);
+    }
+  </script>
+</body>
+</html>

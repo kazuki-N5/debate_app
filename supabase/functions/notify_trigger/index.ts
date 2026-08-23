@@ -142,7 +142,8 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
     const { data: members } = await supabase
       .from("dm_room_members")
       .select("user_id")
-      .eq("room_id", room_id);
+      .eq("room_id", room_id)
+      .or("is_muted.is.null,is_muted.eq.false");
     receiverIds = (members ?? [])
       .map((m: { user_id: string }) => m.user_id)
       .filter((uid: string) => uid !== sender_id);
@@ -175,7 +176,8 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
     const { data: members } = await supabase
       .from("open_chat_members")
       .select("user_id")
-      .eq("room_id", room_id);
+      .eq("room_id", room_id)
+      .or("is_muted.is.null,is_muted.eq.false");
     const { data: lastMsg } = await supabase
       .from("open_chat_messages")
       .select("content")

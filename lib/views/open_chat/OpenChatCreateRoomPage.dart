@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:debate_project/modes/open_chat.dart';
 import 'package:debate_project/provider/open_chat_provider.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/cupertino.dart';
@@ -10,18 +12,27 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
 class OpenChatCreateRoomPage extends HookConsumerWidget {
-  const OpenChatCreateRoomPage({super.key});
+  final OpenChatRoom? initialRoom;
+  final bool isReadOnly;
+
+  const OpenChatCreateRoomPage({
+    super.key,
+    this.initialRoom,
+    this.isReadOnly = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final nameController = useTextEditingController();
-    final descController = useTextEditingController();
-    final passwordController = useTextEditingController();
+    final isEdit = initialRoom != null;
+
+    final nameController = useTextEditingController(text: initialRoom?.name ?? '');
+    final descController = useTextEditingController(text: initialRoom?.description ?? '');
+    final passwordController = useTextEditingController(text: initialRoom?.password ?? '');
     final customTagController = useTextEditingController();
 
     final iconImage = useState<File?>(null);
     final backgroundImage = useState<File?>(null);
-    final isPrivate = useState(false);
+    final isPrivate = useState(initialRoom?.password != null && initialRoom!.password!.isNotEmpty);
     final isLoading = useState(false);
 
     // デフォルトのハッシュタグ候補一覧
@@ -41,9 +52,15 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
     ]);
 
     // 全タグ候補（ユーザー追加分を含む）
-    final allTags = useState<List<String>>([...defaultTags]);
-    // 選択中のタグ（初期状態は未選択）
-    final selectedTags = useState<Set<String>>({});
+    final allTags = useState<List<String>>([
+      ...defaultTags,
+      if (initialRoom?.tags != null)
+        ...initialRoom!.tags!.where((t) => !defaultTags.contains(t)),
+    ]);
+    // 選択中のタグ
+    final selectedTags = useState<Set<String>>({
+      if (initialRoom?.tags != null) ...initialRoom!.tags!,
+    });
 
     final picker = useMemoized(() => ImagePicker());
     final cropper = useMemoized(() => ImageCropper());
@@ -131,8 +148,8 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
       customTagController.clear();
     }
 
-    // ルーム作成処理
-    Future<void> createRoom() async {
+    // ルーム作成 / 更新処理
+    Future<void> saveRoom() async {
       final name = nameController.text.trim();
       if (name.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -147,8 +164,8 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
       try {
         final notifier = ref.read(openChatActionProvider.notifier);
 
-        String? iconUrl;
-        String? backgroundUrl;
+        String? iconUrl = initialRoom?.iconUrl;
+        String? backgroundUrl = initialRoom?.backgroundUrl;
 
         if (iconImage.value != null) {
           iconUrl = await notifier.uploadImage(iconImage.value!.path, 'icons');
@@ -166,19 +183,32 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
         final descTags = extractTagsFromDescription(descController.text);
         final finalTags = {...selectedTags.value, ...descTags}.toList();
 
-        final error = await notifier.createRoom(
-          name,
-          descController.text.trim(),
-          iconUrl,
-          backgroundUrl: backgroundUrl,
-          password: password,
-          tags: finalTags,
-        );
+        final String? error;
+        if (isEdit) {
+          error = await notifier.updateRoom(
+            initialRoom!.id,
+            name,
+            descController.text.trim(),
+            iconUrl,
+            backgroundUrl: backgroundUrl,
+            password: password,
+            tags: finalTags,
+          );
+        } else {
+          error = await notifier.createRoom(
+            name,
+            descController.text.trim(),
+            iconUrl,
+            backgroundUrl: backgroundUrl,
+            password: password,
+            tags: finalTags,
+          );
+        }
 
         if (context.mounted) {
           if (error == null) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('クラブを作成しました')),
+              SnackBar(content: Text(isEdit ? 'クラブ情報を更新しました' : 'クラブを作成しました')),
             );
             context.pop();
           } else {
@@ -211,30 +241,33 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'クラブを作成',
-          style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
+          isReadOnly
+              ? 'クラブ情報'
+              : (isEdit ? 'クラブ情報を編集' : 'クラブを作成'),
+          style: AppTextStyles.bold(color: Colors.white, fontSize: 17),
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: TextButton(
-              onPressed: isLoading.value ? null : createRoom,
-              child: isLoading.value
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Text(
-                      '作成',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+          if (!isReadOnly)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: TextButton(
+                onPressed: isLoading.value ? null : saveRoom,
+                child: isLoading.value
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : Text(
+                        isEdit ? '保存' : '作成',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
+              ),
             ),
-          ),
         ],
       ),
       body: GestureDetector(
@@ -253,7 +286,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                   children: [
                     // 背景画像（上部にテキストをオーバーレイ表示）
                     GestureDetector(
-                      onTap: () => pickAndCropImage(imageState: backgroundImage, isIcon: false),
+                      onTap: isReadOnly ? null : () => pickAndCropImage(imageState: backgroundImage, isIcon: false),
                       child: Container(
                         height: 160,
                         width: double.infinity,
@@ -265,7 +298,12 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                                   image: FileImage(backgroundImage.value!),
                                   fit: BoxFit.cover,
                                 )
-                              : null,
+                              : (initialRoom?.backgroundUrl != null && initialRoom!.backgroundUrl!.isNotEmpty
+                                  ? DecorationImage(
+                                      image: CachedNetworkImageProvider(initialRoom!.backgroundUrl!),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null),
                         ),
                         child: Container(
                           decoration: BoxDecoration(
@@ -299,29 +337,30 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                               ),
 
                               // 右下のカメラ変更ボタン
-                              Align(
-                                alignment: Alignment.bottomRight,
-                                child: Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.camera_alt_outlined,
-                                    color: Color(0xFF1C1C1E),
-                                    size: 18,
+                              if (!isReadOnly)
+                                Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black26,
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt_outlined,
+                                      color: Color(0xFF1C1C1E),
+                                      size: 18,
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
@@ -332,7 +371,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                     Positioned(
                       bottom: -28,
                       child: GestureDetector(
-                        onTap: () => pickAndCropImage(imageState: iconImage, isIcon: true),
+                        onTap: isReadOnly ? null : () => pickAndCropImage(imageState: iconImage, isIcon: true),
                         child: Stack(
                           alignment: Alignment.bottomRight,
                           children: [
@@ -357,29 +396,37 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                                         iconImage.value!,
                                         fit: BoxFit.cover,
                                       )
-                                    : Container(
-                                        color: const Color(0xFFE5E5EA),
-                                        child: const Icon(
-                                          Icons.person_rounded,
-                                          color: Color(0xFF8E8E93),
-                                          size: 36,
-                                        ),
-                                      ),
+                                    : (initialRoom?.iconUrl != null && initialRoom!.iconUrl!.isNotEmpty
+                                        ? CachedNetworkImage(
+                                            imageUrl: initialRoom!.iconUrl!,
+                                            fit: BoxFit.cover,
+                                            placeholder: (context, url) => Container(color: const Color(0xFFE5E5EA)),
+                                            errorWidget: (context, url, error) => const Icon(Icons.person, color: Color(0xFF8E8E93)),
+                                          )
+                                        : Container(
+                                            color: const Color(0xFFE5E5EA),
+                                            child: const Icon(
+                                              Icons.person_rounded,
+                                              color: Color(0xFF8E8E93),
+                                              size: 36,
+                                            ),
+                                          )),
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF007AFF),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 1.5),
+                            if (!isReadOnly)
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF007AFF),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 1.5),
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 10,
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.camera_alt,
-                                color: Colors.white,
-                                size: 10,
-                              ),
-                            ),
                           ],
                         ),
                       ),
@@ -420,6 +467,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                     const SizedBox(height: 6),
                     TextField(
                       controller: nameController,
+                      readOnly: isReadOnly,
                       maxLength: 50,
                       buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
                       style: const TextStyle(fontSize: 15, color: Color(0xFF1C1C1E)),
@@ -427,7 +475,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                         hintText: 'クラブ名を入力',
                         hintStyle: const TextStyle(color: Color(0xFFC7C7CC), fontSize: 14),
                         filled: true,
-                        fillColor: const Color(0xFFF8FAFC),
+                        fillColor: isReadOnly ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -479,6 +527,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                     const SizedBox(height: 6),
                     TextField(
                       controller: descController,
+                      readOnly: isReadOnly,
                       maxLines: 3,
                       maxLength: 1000,
                       buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
@@ -487,7 +536,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                         hintText: '説明を入力\n\n「#」から始まるハッシュタグを入力',
                         hintStyle: const TextStyle(color: Color(0xFFC7C7CC), fontSize: 13, height: 1.4),
                         filled: true,
-                        fillColor: const Color(0xFFF8FAFC),
+                        fillColor: isReadOnly ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
                         contentPadding: const EdgeInsets.all(14),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -550,7 +599,7 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                       children: allTags.value.map((tag) {
                         final isSelected = selectedTags.value.contains(tag);
                         return GestureDetector(
-                          onTap: () => toggleTag(tag),
+                          onTap: isReadOnly ? null : () => toggleTag(tag),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 150),
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -587,52 +636,53 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                     const SizedBox(height: 12),
 
                     // オリジナルタグ追加入力欄（枠付き ＋ 背景なしテキストボタン「追加」）
-                    Container(
-                      height: 44,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE5E5EA)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Text(
-                            '#',
-                            style: TextStyle(color: Color(0xFF8E8E93), fontSize: 15, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: customTagController,
-                              style: const TextStyle(fontSize: 13, color: Color(0xFF1C1C1E)),
-                              onSubmitted: (_) => addCustomTag(),
-                              decoration: const InputDecoration(
-                                hintText: 'オリジナルのハッシュタグを追加',
-                                hintStyle: TextStyle(color: Color(0xFFC7C7CC), fontSize: 12),
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                                border: InputBorder.none,
-                              ),
+                    if (!isReadOnly)
+                      Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE5E5EA)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Text(
+                              '#',
+                              style: TextStyle(color: Color(0xFF8E8E93), fontSize: 15, fontWeight: FontWeight.bold),
                             ),
-                          ),
-                          GestureDetector(
-                            onTap: addCustomTag,
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                              child: Text(
-                                '追加',
-                                style: TextStyle(
-                                  color: Color(0xFF007AFF),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                controller: customTagController,
+                                style: const TextStyle(fontSize: 13, color: Color(0xFF1C1C1E)),
+                                onSubmitted: (_) => addCustomTag(),
+                                decoration: const InputDecoration(
+                                  hintText: 'オリジナルのハッシュタグを追加',
+                                  hintStyle: TextStyle(color: Color(0xFFC7C7CC), fontSize: 12),
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  border: InputBorder.none,
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                            GestureDetector(
+                              onTap: addCustomTag,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                                child: Text(
+                                  '追加',
+                                  style: TextStyle(
+                                    color: Color(0xFF007AFF),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -668,12 +718,14 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                         CupertinoSwitch(
                           value: isPrivate.value,
                           activeTrackColor: const Color(0xFF007AFF),
-                          onChanged: (value) {
-                            isPrivate.value = value;
-                            if (!value) {
-                              passwordController.clear();
-                            }
-                          },
+                          onChanged: isReadOnly
+                              ? null
+                              : (value) {
+                                  isPrivate.value = value;
+                                  if (!value) {
+                                    passwordController.clear();
+                                  }
+                                },
                         ),
                       ],
                     ),
@@ -681,13 +733,16 @@ class OpenChatCreateRoomPage extends HookConsumerWidget {
                       const SizedBox(height: 10),
                       TextField(
                         controller: passwordController,
+                        readOnly: isReadOnly,
                         obscureText: true,
+                        maxLength: 20,
+                        buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
                         style: const TextStyle(fontSize: 14, color: Color(0xFF1C1C1E)),
                         decoration: InputDecoration(
-                          hintText: '参加用の合言葉を入力',
+                          hintText: '合言葉を入力（半角英数字）',
                           hintStyle: const TextStyle(color: Color(0xFFC7C7CC), fontSize: 13),
                           filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
+                          fillColor: isReadOnly ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),

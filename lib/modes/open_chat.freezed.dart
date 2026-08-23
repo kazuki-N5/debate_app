@@ -40,6 +40,8 @@ mixin _$OpenChatRoom {
   bool? get isJoined => throw _privateConstructorUsedError;
   @JsonKey(name: 'tags')
   List<String>? get tags => throw _privateConstructorUsedError;
+  @JsonKey(name: 'rules')
+  String? get rules => throw _privateConstructorUsedError;
 
   /// Serializes this OpenChatRoom to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -70,6 +72,7 @@ abstract class $OpenChatRoomCopyWith<$Res> {
     @JsonKey(name: 'member_count') int? memberCount,
     @JsonKey(name: 'is_joined') bool? isJoined,
     @JsonKey(name: 'tags') List<String>? tags,
+    @JsonKey(name: 'rules') String? rules,
   });
 }
 
@@ -99,6 +102,7 @@ class _$OpenChatRoomCopyWithImpl<$Res, $Val extends OpenChatRoom>
     Object? memberCount = freezed,
     Object? isJoined = freezed,
     Object? tags = freezed,
+    Object? rules = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -146,6 +150,10 @@ class _$OpenChatRoomCopyWithImpl<$Res, $Val extends OpenChatRoom>
                 ? _value.tags
                 : tags // ignore: cast_nullable_to_non_nullable
                       as List<String>?,
+            rules: freezed == rules
+                ? _value.rules
+                : rules // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -173,6 +181,7 @@ abstract class _$$OpenChatRoomImplCopyWith<$Res>
     @JsonKey(name: 'member_count') int? memberCount,
     @JsonKey(name: 'is_joined') bool? isJoined,
     @JsonKey(name: 'tags') List<String>? tags,
+    @JsonKey(name: 'rules') String? rules,
   });
 }
 
@@ -201,6 +210,7 @@ class __$$OpenChatRoomImplCopyWithImpl<$Res>
     Object? memberCount = freezed,
     Object? isJoined = freezed,
     Object? tags = freezed,
+    Object? rules = freezed,
   }) {
     return _then(
       _$OpenChatRoomImpl(
@@ -248,6 +258,10 @@ class __$$OpenChatRoomImplCopyWithImpl<$Res>
             ? _value._tags
             : tags // ignore: cast_nullable_to_non_nullable
                   as List<String>?,
+        rules: freezed == rules
+            ? _value.rules
+            : rules // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -268,6 +282,7 @@ class _$OpenChatRoomImpl implements _OpenChatRoom {
     @JsonKey(name: 'member_count') this.memberCount,
     @JsonKey(name: 'is_joined') this.isJoined,
     @JsonKey(name: 'tags') final List<String>? tags,
+    @JsonKey(name: 'rules') this.rules,
   }) : _tags = tags;
 
   factory _$OpenChatRoomImpl.fromJson(Map<String, dynamic> json) =>
@@ -313,8 +328,12 @@ class _$OpenChatRoomImpl implements _OpenChatRoom {
   }
 
   @override
+  @JsonKey(name: 'rules')
+  final String? rules;
+
+  @override
   String toString() {
-    return 'OpenChatRoom(id: $id, name: $name, description: $description, iconUrl: $iconUrl, backgroundUrl: $backgroundUrl, password: $password, ownerId: $ownerId, createdAt: $createdAt, memberCount: $memberCount, isJoined: $isJoined, tags: $tags)';
+    return 'OpenChatRoom(id: $id, name: $name, description: $description, iconUrl: $iconUrl, backgroundUrl: $backgroundUrl, password: $password, ownerId: $ownerId, createdAt: $createdAt, memberCount: $memberCount, isJoined: $isJoined, tags: $tags, rules: $rules)';
   }
 
   @override
@@ -338,7 +357,8 @@ class _$OpenChatRoomImpl implements _OpenChatRoom {
                 other.memberCount == memberCount) &&
             (identical(other.isJoined, isJoined) ||
                 other.isJoined == isJoined) &&
-            const DeepCollectionEquality().equals(other._tags, _tags));
+            const DeepCollectionEquality().equals(other._tags, _tags) &&
+            (identical(other.rules, rules) || other.rules == rules));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -356,6 +376,7 @@ class _$OpenChatRoomImpl implements _OpenChatRoom {
     memberCount,
     isJoined,
     const DeepCollectionEquality().hash(_tags),
+    rules,
   );
 
   /// Create a copy of OpenChatRoom
@@ -385,6 +406,7 @@ abstract class _OpenChatRoom implements OpenChatRoom {
     @JsonKey(name: 'member_count') final int? memberCount,
     @JsonKey(name: 'is_joined') final bool? isJoined,
     @JsonKey(name: 'tags') final List<String>? tags,
+    @JsonKey(name: 'rules') final String? rules,
   }) = _$OpenChatRoomImpl;
 
   factory _OpenChatRoom.fromJson(Map<String, dynamic> json) =
@@ -420,6 +442,9 @@ abstract class _OpenChatRoom implements OpenChatRoom {
   @override
   @JsonKey(name: 'tags')
   List<String>? get tags;
+  @override
+  @JsonKey(name: 'rules')
+  String? get rules;
 
   /// Create a copy of OpenChatRoom
   /// with the given fields replaced by the non-null parameter values.
@@ -443,6 +468,8 @@ mixin _$OpenChatMember {
   String get role => throw _privateConstructorUsedError;
   @JsonKey(name: 'joined_at')
   DateTime get joinedAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'is_muted')
+  bool get isMuted => throw _privateConstructorUsedError;
 
   /// Serializes this OpenChatMember to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -467,6 +494,7 @@ abstract class $OpenChatMemberCopyWith<$Res> {
     @JsonKey(name: 'user_id') String userId,
     String role,
     @JsonKey(name: 'joined_at') DateTime joinedAt,
+    @JsonKey(name: 'is_muted') bool isMuted,
   });
 }
 
@@ -490,6 +518,7 @@ class _$OpenChatMemberCopyWithImpl<$Res, $Val extends OpenChatMember>
     Object? userId = null,
     Object? role = null,
     Object? joinedAt = null,
+    Object? isMuted = null,
   }) {
     return _then(
       _value.copyWith(
@@ -513,6 +542,10 @@ class _$OpenChatMemberCopyWithImpl<$Res, $Val extends OpenChatMember>
                 ? _value.joinedAt
                 : joinedAt // ignore: cast_nullable_to_non_nullable
                       as DateTime,
+            isMuted: null == isMuted
+                ? _value.isMuted
+                : isMuted // ignore: cast_nullable_to_non_nullable
+                      as bool,
           )
           as $Val,
     );
@@ -534,6 +567,7 @@ abstract class _$$OpenChatMemberImplCopyWith<$Res>
     @JsonKey(name: 'user_id') String userId,
     String role,
     @JsonKey(name: 'joined_at') DateTime joinedAt,
+    @JsonKey(name: 'is_muted') bool isMuted,
   });
 }
 
@@ -556,6 +590,7 @@ class __$$OpenChatMemberImplCopyWithImpl<$Res>
     Object? userId = null,
     Object? role = null,
     Object? joinedAt = null,
+    Object? isMuted = null,
   }) {
     return _then(
       _$OpenChatMemberImpl(
@@ -579,6 +614,10 @@ class __$$OpenChatMemberImplCopyWithImpl<$Res>
             ? _value.joinedAt
             : joinedAt // ignore: cast_nullable_to_non_nullable
                   as DateTime,
+        isMuted: null == isMuted
+            ? _value.isMuted
+            : isMuted // ignore: cast_nullable_to_non_nullable
+                  as bool,
       ),
     );
   }
@@ -593,6 +632,7 @@ class _$OpenChatMemberImpl implements _OpenChatMember {
     @JsonKey(name: 'user_id') required this.userId,
     required this.role,
     @JsonKey(name: 'joined_at') required this.joinedAt,
+    @JsonKey(name: 'is_muted') this.isMuted = false,
   });
 
   factory _$OpenChatMemberImpl.fromJson(Map<String, dynamic> json) =>
@@ -611,10 +651,13 @@ class _$OpenChatMemberImpl implements _OpenChatMember {
   @override
   @JsonKey(name: 'joined_at')
   final DateTime joinedAt;
+  @override
+  @JsonKey(name: 'is_muted')
+  final bool isMuted;
 
   @override
   String toString() {
-    return 'OpenChatMember(id: $id, roomId: $roomId, userId: $userId, role: $role, joinedAt: $joinedAt)';
+    return 'OpenChatMember(id: $id, roomId: $roomId, userId: $userId, role: $role, joinedAt: $joinedAt, isMuted: $isMuted)';
   }
 
   @override
@@ -627,13 +670,14 @@ class _$OpenChatMemberImpl implements _OpenChatMember {
             (identical(other.userId, userId) || other.userId == userId) &&
             (identical(other.role, role) || other.role == role) &&
             (identical(other.joinedAt, joinedAt) ||
-                other.joinedAt == joinedAt));
+                other.joinedAt == joinedAt) &&
+            (identical(other.isMuted, isMuted) || other.isMuted == isMuted));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, id, roomId, userId, role, joinedAt);
+      Object.hash(runtimeType, id, roomId, userId, role, joinedAt, isMuted);
 
   /// Create a copy of OpenChatMember
   /// with the given fields replaced by the non-null parameter values.
@@ -659,6 +703,7 @@ abstract class _OpenChatMember implements OpenChatMember {
     @JsonKey(name: 'user_id') required final String userId,
     required final String role,
     @JsonKey(name: 'joined_at') required final DateTime joinedAt,
+    @JsonKey(name: 'is_muted') final bool isMuted,
   }) = _$OpenChatMemberImpl;
 
   factory _OpenChatMember.fromJson(Map<String, dynamic> json) =
@@ -677,6 +722,9 @@ abstract class _OpenChatMember implements OpenChatMember {
   @override
   @JsonKey(name: 'joined_at')
   DateTime get joinedAt;
+  @override
+  @JsonKey(name: 'is_muted')
+  bool get isMuted;
 
   /// Create a copy of OpenChatMember
   /// with the given fields replaced by the non-null parameter values.

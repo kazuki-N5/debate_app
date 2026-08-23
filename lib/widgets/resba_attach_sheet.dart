@@ -96,7 +96,7 @@ class _ResbaAttachSheetState extends State<_ResbaAttachSheet> {
               decoration: _decoration(hint: '例：AIは人間の仕事を奪うか？'),
             ),
             const SizedBox(height: 8),
-            _label('選択肢1（任意）'),
+            _label('選択肢1（必須）'),
             TextField(
               controller: _choice1Controller,
               maxLength: 30,
@@ -104,7 +104,7 @@ class _ResbaAttachSheetState extends State<_ResbaAttachSheet> {
               decoration: _decoration(hint: '例：賛成'),
             ),
             const SizedBox(height: 8),
-            _label('選択肢2（任意）'),
+            _label('選択肢2（必須）'),
             TextField(
               controller: _choice2Controller,
               maxLength: 30,
@@ -132,17 +132,23 @@ class _ResbaAttachSheetState extends State<_ResbaAttachSheet> {
                   child: ElevatedButton(
                     onPressed: () {
                       final theme = _themeController.text.trim();
-                      if (theme.isEmpty) return;
+                      final choice1 = _choice1Controller.text.trim();
+                      final choice2 = _choice2Controller.text.trim();
+                      if (theme.isEmpty || choice1.isEmpty || choice2.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('テーマと両方の選択肢を入力してください'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                        return;
+                      }
                       Navigator.pop(
                         context,
                         ResbaAttachment(
                           theme: theme,
-                          choice1: _choice1Controller.text.trim().isEmpty
-                              ? null
-                              : _choice1Controller.text.trim(),
-                          choice2: _choice2Controller.text.trim().isEmpty
-                              ? null
-                              : _choice2Controller.text.trim(),
+                          choice1: choice1,
+                          choice2: choice2,
                         ),
                       );
                     },

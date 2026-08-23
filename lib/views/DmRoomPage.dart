@@ -18,6 +18,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:debate_project/widgets/full_screen_image_viewer.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:debate_project/modes/users.dart';
+import 'package:debate_project/views/dm/DmMenuView.dart';
+import 'package:debate_project/widgets/ios_swipe_back.dart';
 
 class DmRoomPage extends HookConsumerWidget {
   final String otherUserId;
@@ -137,6 +140,33 @@ class DmRoomPage extends HookConsumerWidget {
             ),
           ],
         ),
+        actions: [
+          if (roomId != null)
+            IconButton(
+              icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 26),
+              onPressed: () {
+                final otherUser = Users(
+                  id: otherUserId,
+                  name: otherUserName,
+                  trophy: 0,
+                  avatar_url: otherUserAvatar,
+                );
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, _, __) => IosSwipeBack(
+                      child: DmMenuView(
+                        roomId: roomId,
+                        otherUser: otherUser,
+                      ),
+                    ),
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
+                  ),
+                );
+              },
+            ),
+        ],
       ),
       body: roomIdAsync.when(
         loading: () => const Center(
@@ -232,239 +262,288 @@ class DmRoomPage extends HookConsumerWidget {
                                   ? CrossAxisAlignment.end
                                   : CrossAxisAlignment.start,
                               children: [
-                                if (hasBubbleContent)
-                                  Row(
-                                    crossAxisAlignment: isMe
-                                        ? CrossAxisAlignment.end
-                                        : CrossAxisAlignment.start,
-                                    mainAxisAlignment: isMe
-                                        ? MainAxisAlignment.end
-                                        : MainAxisAlignment.start,
-                                    children: [
-                                      if (!isMe) ...[
-                                        if (showAvatar)
-                                          GestureDetector(
-                                            onTap: () {
-                                              context.push('/userProfile',
-                                                  extra: otherUserId);
-                                            },
-                                            child: CircleAvatar(
-                                              radius: 16,
-                                              backgroundColor: Colors.grey[300],
-                                              backgroundImage: otherUserAvatar !=
-                                                          null &&
-                                                      otherUserAvatar!.isNotEmpty
-                                                  ? NetworkImage(otherUserAvatar!)
-                                                  : null,
-                                              child: otherUserAvatar == null ||
-                                                      otherUserAvatar!.isEmpty
-                                                  ? Icon(Icons.person,
-                                                      color: Colors.grey[600], size: 16)
-                                                  : null,
-                                            ),
-                                          )
-                                        else
-                                          const SizedBox(width: 32),
-                                        const SizedBox(width: 8),
-                                      ],
-                                      if (isMe) ...[
-                                        _buildStatus(msg.id),
-                                        const SizedBox(width: 4),
-                                      ],
-                                      Flexible(
-                                        child: Opacity(
-                                          opacity: isSending ? 0.6 : 1.0,
-                                          child: Stack(
-                                            clipBehavior: Clip.none,
-                                            children: [
-                                              Builder(
+                                if (hasBubbleContent) ...[
+                                  // ① 写真がある場合
+                                  if (msg.imageUrl != null)
+                                    Padding(
+                                      padding: EdgeInsets.only(
+                                          bottom: msg.content.isNotEmpty ? 4.0 : 0.0),
+                                      child: Row(
+                                        crossAxisAlignment: isMe
+                                            ? CrossAxisAlignment.end
+                                            : CrossAxisAlignment.start,
+                                        mainAxisAlignment: isMe
+                                            ? MainAxisAlignment.end
+                                            : MainAxisAlignment.start,
+                                        children: [
+                                          if (!isMe) ...[
+                                            if (showAvatar)
+                                              GestureDetector(
+                                                onTap: () {
+                                                  context.push('/userProfile',
+                                                      extra: otherUserId);
+                                                },
+                                                child: CircleAvatar(
+                                                  radius: 16,
+                                                  backgroundColor: Colors.grey[300],
+                                                  backgroundImage: otherUserAvatar != null &&
+                                                          otherUserAvatar!.isNotEmpty
+                                                      ? NetworkImage(otherUserAvatar!)
+                                                      : null,
+                                                  child: otherUserAvatar == null ||
+                                                          otherUserAvatar!.isEmpty
+                                                      ? Icon(Icons.person,
+                                                          color: Colors.grey[600], size: 16)
+                                                      : null,
+                                                ),
+                                              )
+                                            else
+                                              const SizedBox(width: 32),
+                                            const SizedBox(width: 8),
+                                          ],
+                                          // テキストがない場合のみ写真の左横に送信ステータスを表示
+                                          if (isMe && msg.content.isEmpty) ...[
+                                            _buildStatus(msg.id),
+                                            const SizedBox(width: 4),
+                                          ],
+                                          Flexible(
+                                            child: Opacity(
+                                              opacity: isSending ? 0.6 : 1.0,
+                                              child: Builder(
                                                 builder: (bubbleContext) {
                                                   return GestureDetector(
                                                     onLongPress: isMe
                                                         ? null
                                                         : () {
                                                             showCustomPopover(
-                                                              context:
-                                                                  bubbleContext,
+                                                              context: bubbleContext,
                                                               height: 130,
                                                               children: [
                                                                 PopoverButton(
                                                                   text: '通報',
-                                                                  onTap:
-                                                                      () async {
-                                                                    Navigator.of(
-                                                                            context)
-                                                                        .pop();
+                                                                  onTap: () async {
+                                                                    Navigator.of(context).pop();
                                                                     await showReportDialog(
-                                                                      context:
-                                                                          context,
+                                                                      context: context,
                                                                       ref: ref,
-                                                                      opponentId:
-                                                                          msg.senderId,
-                                                                      contentId:
-                                                                          msg.id,
-                                                                      contentType:
-                                                                          'dm_message',
-                                                                      contentSnapshot:
-                                                                          msg.content,
+                                                                      opponentId: msg.senderId,
+                                                                      contentId: msg.id,
+                                                                      contentType: 'dm_message',
+                                                                      contentSnapshot: msg.content,
                                                                     );
                                                                   },
                                                                 ),
-                                                                const SizedBox(
-                                                                    height: 4),
+                                                                const SizedBox(height: 4),
                                                                 PopoverButton(
                                                                   text: '非表示',
                                                                   onTap: () {
-                                                                    Navigator.of(
-                                                                            context)
-                                                                        .pop();
-                                                                    hideDmMessage(
-                                                                        msg.id);
+                                                                    Navigator.of(context).pop();
+                                                                    hideDmMessage(msg.id);
                                                                   },
                                                                 ),
-                                                                const SizedBox(
-                                                                    height: 4),
+                                                                const SizedBox(height: 4),
                                                                 PopoverButton(
                                                                   text: 'ブロック',
                                                                   onTap: () {
-                                                                    Navigator.of(
-                                                                            context)
-                                                                        .pop();
+                                                                    Navigator.of(context).pop();
                                                                     showBlockUserDialog(
-                                                                      context:
-                                                                          context,
+                                                                      context: context,
                                                                       ref: ref,
-                                                                      targetUserId:
-                                                                          msg.senderId,
-                                                                      targetName:
-                                                                          otherUserName,
+                                                                      targetUserId: msg.senderId,
+                                                                      targetName: otherUserName,
                                                                     );
                                                                   },
                                                                 ),
                                                               ],
                                                             );
                                                           },
-                                                    child: Container(
-                                                      constraints: BoxConstraints(
-                                                        maxWidth:
-                                                            MediaQuery.of(context)
-                                                                    .size
-                                                                    .width *
-                                                                0.75,
-                                                      ),
-                                                      padding:
-                                                          const EdgeInsets.fromLTRB(
-                                                              12, 6, 12, 8),
-                                                      decoration: BoxDecoration(
-                                                        color: isMe
-                                                            ? const Color(
-                                                                0xff95eb7c)
-                                                            : Colors.white,
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                                16),
-                                                      ),
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          if (msg.imageUrl !=
-                                                              null)
-                                                            Padding(
-                                                              padding:
-                                                                  EdgeInsets.only(
-                                                                      bottom: msg
-                                                                              .content
-                                                                              .isNotEmpty
-                                                                          ? 4.0
-                                                                          : 0.0),
-                                                              child:
-                                                                  GestureDetector(
-                                                                onTap: () {
-                                                                  FullScreenImageViewer
-                                                                      .show(
-                                                                    context,
-                                                                    imageUrls: [
-                                                                      msg.imageUrl!
-                                                                    ],
-                                                                    initialIndex:
-                                                                        0,
-                                                                  );
-                                                                },
-                                                                child: ClipRRect(
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
-                                                                              8),
-                                                                  child:
-                                                                      CachedNetworkImage(
-                                                                    imageUrl: msg
-                                                                        .imageUrl!,
-                                                                    fit: BoxFit
-                                                                        .cover,
-                                                                    memCacheWidth:
-                                                                        900,
-                                                                    fadeInDuration:
-                                                                        Duration
-                                                                            .zero,
-                                                                    fadeOutDuration:
-                                                                        Duration
-                                                                            .zero,
-                                                                    placeholder: (context,
-                                                                            url) =>
-                                                                        Container(
-                                                                            height:
-                                                                                150,
-                                                                            color: Colors.grey[300]),
-                                                                    errorWidget: (context,
-                                                                            url,
-                                                                            error) =>
-                                                                        const Icon(
-                                                                            Icons.error),
-                                                                  ),
-                                                                ),
-                                                              ),
+                                                    onTap: () {
+                                                      FullScreenImageViewer.show(
+                                                        context,
+                                                        imageUrls: [msg.imageUrl!],
+                                                        initialIndex: 0,
+                                                      );
+                                                    },
+                                                    child: ClipRRect(
+                                                      borderRadius: BorderRadius.circular(12),
+                                                      child: Container(
+                                                        constraints: BoxConstraints(
+                                                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                                                          maxHeight: MediaQuery.of(context).size.height * 0.5,
+                                                        ),
+                                                        child: CachedNetworkImage(
+                                                          imageUrl: msg.imageUrl!,
+                                                          fit: BoxFit.cover,
+                                                          memCacheWidth: 900,
+                                                          fadeInDuration: Duration.zero,
+                                                          fadeOutDuration: Duration.zero,
+                                                          placeholder: (context, url) => Container(
+                                                            height: 150,
+                                                            width: 200,
+                                                            color: Colors.grey[300],
+                                                            child: const Center(
+                                                              child: CircularProgressIndicator(strokeWidth: 2),
                                                             ),
-                                                          if (msg.content
-                                                              .isNotEmpty)
-                                                            Text(
-                                                              msg.content,
-                                                              style:
-                                                                  AppTextStyles
-                                                                      .notoSans(
-                                                                color:
-                                                                    Colors.black,
-                                                                fontSize: 15,
-                                                              ),
-                                                            ),
-                                                        ],
+                                                          ),
+                                                          errorWidget: (context, url, error) => Container(
+                                                            height: 120,
+                                                            width: 160,
+                                                            color: Colors.grey[200],
+                                                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                                                          ),
+                                                        ),
                                                       ),
                                                     ),
                                                   );
                                                 },
                                               ),
-                                              // しっぽ（ゲーム画面と同一）
-                                              Positioned(
-                                                top: 6,
-                                                left: isMe ? null : -6,
-                                                right: isMe ? -6 : null,
-                                                child: CustomPaint(
-                                                  painter: _BubbleTailPainter(
-                                                    isMe
-                                                        ? const Color(0xff95eb7c)
-                                                        : Colors.white,
-                                                    isMe,
-                                                  ),
-                                                  size: const Size(10, 10),
-                                                ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                  // ② テキストがある場合
+                                  if (msg.content.isNotEmpty)
+                                    Row(
+                                      crossAxisAlignment: isMe
+                                          ? CrossAxisAlignment.end
+                                          : CrossAxisAlignment.start,
+                                      mainAxisAlignment: isMe
+                                          ? MainAxisAlignment.end
+                                          : MainAxisAlignment.start,
+                                      children: [
+                                        if (!isMe) ...[
+                                          // 写真が上に表示されていてアバターが表示済みの場合はアバター幅(32)をインデント
+                                          if (msg.imageUrl != null)
+                                            const SizedBox(width: 32)
+                                          else if (showAvatar)
+                                            GestureDetector(
+                                              onTap: () {
+                                                context.push('/userProfile',
+                                                    extra: otherUserId);
+                                              },
+                                              child: CircleAvatar(
+                                                radius: 16,
+                                                backgroundColor: Colors.grey[300],
+                                                backgroundImage: otherUserAvatar != null &&
+                                                        otherUserAvatar!.isNotEmpty
+                                                    ? NetworkImage(otherUserAvatar!)
+                                                    : null,
+                                                child: otherUserAvatar == null ||
+                                                        otherUserAvatar!.isEmpty
+                                                    ? Icon(Icons.person,
+                                                        color: Colors.grey[600], size: 16)
+                                                    : null,
                                               ),
-                                            ],
+                                            )
+                                          else
+                                            const SizedBox(width: 32),
+                                          const SizedBox(width: 8),
+                                        ],
+                                        // ユーザーメッセージの場合、テキスト吹き出しのすぐ左下に送信ステータスを配置
+                                        if (isMe) ...[
+                                          _buildStatus(msg.id),
+                                          const SizedBox(width: 4),
+                                        ],
+                                        Flexible(
+                                          child: Opacity(
+                                            opacity: isSending ? 0.6 : 1.0,
+                                            child: Stack(
+                                              clipBehavior: Clip.none,
+                                              children: [
+                                                Builder(
+                                                  builder: (bubbleContext) {
+                                                    return GestureDetector(
+                                                      onLongPress: isMe
+                                                          ? null
+                                                          : () {
+                                                              showCustomPopover(
+                                                                context: bubbleContext,
+                                                                height: 130,
+                                                                children: [
+                                                                  PopoverButton(
+                                                                    text: '通報',
+                                                                    onTap: () async {
+                                                                      Navigator.of(context).pop();
+                                                                      await showReportDialog(
+                                                                        context: context,
+                                                                        ref: ref,
+                                                                        opponentId: msg.senderId,
+                                                                        contentId: msg.id,
+                                                                        contentType: 'dm_message',
+                                                                        contentSnapshot: msg.content,
+                                                                      );
+                                                                    },
+                                                                  ),
+                                                                  const SizedBox(height: 4),
+                                                                  PopoverButton(
+                                                                    text: '非表示',
+                                                                    onTap: () {
+                                                                      Navigator.of(context).pop();
+                                                                      hideDmMessage(msg.id);
+                                                                    },
+                                                                  ),
+                                                                  const SizedBox(height: 4),
+                                                                  PopoverButton(
+                                                                    text: 'ブロック',
+                                                                    onTap: () {
+                                                                      Navigator.of(context).pop();
+                                                                      showBlockUserDialog(
+                                                                        context: context,
+                                                                        ref: ref,
+                                                                        targetUserId: msg.senderId,
+                                                                        targetName: otherUserName,
+                                                                      );
+                                                                    },
+                                                                  ),
+                                                                ],
+                                                              );
+                                                            },
+                                                      child: Container(
+                                                        constraints: BoxConstraints(
+                                                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                                                        ),
+                                                        padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+                                                        decoration: BoxDecoration(
+                                                          color: isMe
+                                                              ? const Color(0xff95eb7c)
+                                                              : Colors.white,
+                                                          borderRadius: BorderRadius.circular(16),
+                                                        ),
+                                                        child: Text(
+                                                          msg.content,
+                                                          style: AppTextStyles.notoSans(
+                                                            color: Colors.black,
+                                                            fontSize: 15,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                                // しっぽ（テキスト用）
+                                                Positioned(
+                                                  top: 6,
+                                                  left: isMe ? null : -6,
+                                                  right: isMe ? -6 : null,
+                                                  child: CustomPaint(
+                                                    painter: _BubbleTailPainter(
+                                                      isMe
+                                                          ? const Color(0xff95eb7c)
+                                                          : Colors.white,
+                                                      isMe,
+                                                    ),
+                                                    size: const Size(10, 10),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
+                                      ],
+                                    ),
+                                ],
                                 // レスバカード（承諾/拒否・相手待ち表示）
                                 for (final invite in msgResbas)
                                   Padding(

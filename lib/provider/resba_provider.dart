@@ -1086,11 +1086,9 @@ class OpenChatResbasNotifier extends StateNotifier<AsyncValue<List<ResbaInvite>>
         'p_room_id': roomId,
         'p_user_id': ref.read(currentUserIdProvider),
       });
-      // ブロック済みユーザーのレスバは表示しない
-      final blocked = ref.read(blockedUserIdsProvider).toSet();
+      // オプチャ内ではブロックに関わらず全レスバを表示
       final list = (r as List<dynamic>)
           .map((e) => ResbaInvite.fromJson(e as Map<String, dynamic>))
-          .where((invite) => !blocked.contains(invite.senderId))
           .toList();
       state = AsyncValue.data(list);
     } catch (e, st) {

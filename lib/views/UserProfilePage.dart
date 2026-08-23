@@ -240,31 +240,26 @@ class UserProfilePage extends HookConsumerWidget {
                                             contentType: 'user',
                                           ),
                                         ),
-                                      ],
-                                      IconButton(
-                                        icon: const Icon(Icons.mail_outline),
-                                        onPressed: () {
-                                          if (Supabase.instance.client.auth.currentUser?.id == user.id) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('自分自身にはDMを送れません')),
-                                            );
-                                            return;
-                                          }
-                                          Navigator.push(
-                                            context,
-                                            PageRouteBuilder(
-                                              pageBuilder: (context, _, __) => DmRoomPage(
-                                                otherUserId: user.id,
-                                                otherUserName: name,
-                                                otherUserAvatar: avatarUrl,
+                                        // DM
+                                        IconButton(
+                                          icon: const Icon(Icons.mail_outline),
+                                          tooltip: 'DMを送る',
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              PageRouteBuilder(
+                                                pageBuilder: (context, _, __) => DmRoomPage(
+                                                  otherUserId: user.id,
+                                                  otherUserName: name,
+                                                  otherUserAvatar: avatarUrl,
+                                                ),
+                                                transitionDuration: Duration.zero,
+                                                reverseTransitionDuration: Duration.zero,
                                               ),
-                                              transitionDuration: Duration.zero,
-                                              reverseTransitionDuration: Duration.zero,
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                      if (!isSelf)
+                                            );
+                                          },
+                                        ),
+                                        // フォロー
                                         IconButton(
                                           icon: Icon(
                                             isFollowing.valueOrNull == true
@@ -279,6 +274,7 @@ class UserProfilePage extends HookConsumerWidget {
                                             ref.invalidate(userProfileProvider(user.id));
                                           },
                                         ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -466,50 +462,12 @@ class UserProfilePage extends HookConsumerWidget {
 
   void _showEditBioDialog(
       BuildContext context, WidgetRef ref, String userId, String currentBio) {
-    final textController = TextEditingController(text: currentBio);
     showDialog(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: Text('自己紹介を編集', style: AppTextStyles.bold(fontSize: 18)),
-          content: TextField(
-            controller: textController,
-            maxLines: 4,
-            maxLength: 160,
-            decoration: const InputDecoration(
-              hintText: '自己紹介を入力してください (160文字以内)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('キャンセル'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                final newBio = textController.text;
-                Navigator.pop(ctx);
-                try {
-                  await ref.read(userProvider.notifier).updateBio(newBio);
-                  ref.invalidate(userProfileProvider(userId));
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('自己紹介の更新に失敗しました: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('保存'),
-            ),
-          ],
-        );
-      },
+      builder: (ctx) => _EditBioDialog(
+        userId: userId,
+        initialBio: currentBio,
+      ),
     );
   }
 
@@ -915,3 +873,230 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
     return false;
   }
 }
+
+/// 自己紹介編集用の共通モダンダイアログ
+class _EditBioDialog extends ConsumerStatefulWidget {
+  final String userId;
+  final String initialBio;
+
+  const _EditBioDialog({
+    required this.userId,
+    required this.initialBio,
+  });
+
+  @override
+  ConsumerState<_EditBioDialog> createState() => _EditBioDialogState();
+}
+
+class _EditBioDialogState extends ConsumerState<_EditBioDialog> {
+  late final TextEditingController _controller;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialBio);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    final newBio = _controller.text.trim();
+    setState(() => _isLoading = true);
+
+    try {
+      await ref.read(userProvider.notifier).updateBio(newBio);
+      ref.invalidate(userProfileProvider(widget.userId));
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('自己紹介を更新しました'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('自己紹介の更新に失敗しました: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      elevation: 12,
+      shadowColor: Colors.black.withValues(alpha: 0.25),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24.0),
+      ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+      child: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22.0, 24.0, 22.0, 20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // タイトル
+              Text(
+                '自己紹介を編集',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bold(
+                  color: const Color(0xFF0F172A),
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 8.0),
+              // 説明文
+              Text(
+                'プロフィールに表示される自己紹介文を入力してください。',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.notoSans(
+                  color: const Color(0xFF64748B),
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 16.0),
+              // テキスト入力エリア
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _controller,
+                builder: (context, value, _) {
+                  return Stack(
+                    children: [
+                      TextField(
+                        controller: _controller,
+                        maxLines: 4,
+                        maxLength: 160,
+                        enabled: !_isLoading,
+                        style: AppTextStyles.notoSans(
+                          color: const Color(0xFF0F172A),
+                          fontSize: 14,
+                        ),
+                        buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+                        decoration: InputDecoration(
+                          hintText: '自己紹介を入力してください...',
+                          hintStyle: AppTextStyles.notoSans(
+                            color: const Color(0xFF94A3B8),
+                            fontSize: 13.5,
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14.0),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14.0),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14.0),
+                            borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                          ),
+                          contentPadding: const EdgeInsets.fromLTRB(14.0, 12.0, 14.0, 26.0),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 8,
+                        right: 12,
+                        child: Text(
+                          '${value.text.length} / 160',
+                          style: AppTextStyles.notoSans(
+                            fontSize: 11,
+                            color: value.text.length > 160 ? Colors.red : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 20.0),
+              // ボタン列
+              Row(
+                children: [
+                  // キャンセルボタン
+                  Expanded(
+                    child: SizedBox(
+                      height: 44,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF1F5F9),
+                          foregroundColor: const Color(0xFF334155),
+                          elevation: 0,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                        child: Text(
+                          'キャンセル',
+                          style: AppTextStyles.bold(
+                            fontSize: 14,
+                            color: const Color(0xFF334155),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // 保存ボタン
+                  Expanded(
+                    child: SizedBox(
+                      height: 44,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          shadowColor: Colors.blue.withValues(alpha: 0.35),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        onPressed: _isLoading ? null : _handleSave,
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                '保存する',
+                                style: AppTextStyles.bold(
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

@@ -6,7 +6,6 @@ import 'package:debate_project/modes/open_chat.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/widgets/app_confirm_dialog.dart';
-import 'package:debate_project/widgets/moderation.dart';
 
 class OpenChatMembersView extends HookConsumerWidget {
   final OpenChatRoom room;
@@ -20,7 +19,7 @@ class OpenChatMembersView extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('メンバー管理', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
+        title: Text('メンバー管理', style: AppTextStyles.bold(color: Colors.white, fontSize: 17)),
         backgroundColor: Colors.blue,
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
@@ -71,17 +70,11 @@ class OpenChatMembersView extends HookConsumerWidget {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (!isMe) ...[
+                      if (!isMe && isAdmin)
                         TextButton(
-                          onPressed: () => _confirmBlock(context, ref, member),
-                          child: const Text('ブロック', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                          onPressed: () => _confirmKick(context, ref, member),
+                          child: const Text('削除', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                         ),
-                        if (isAdmin)
-                          TextButton(
-                            onPressed: () => _confirmKick(context, ref, member),
-                            child: const Text('削除', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                          ),
-                      ],
                     ],
                   ),
                 );
@@ -95,37 +88,28 @@ class OpenChatMembersView extends HookConsumerWidget {
     );
   }
 
-  void _confirmBlock(BuildContext context, WidgetRef ref, OpenChatMember targetMember) {
-    showBlockUserDialog(
-      context: context,
-      ref: ref,
-      targetUserId: targetMember.userId,
-      targetName: 'このユーザー',
-    );
-  }
-
   Future<void> _confirmKick(
       BuildContext context, WidgetRef ref, OpenChatMember targetMember) async {
-    final confirmed = await showAppConfirmDialog(
+    final result = await showKickMemberConfirmDialog(
       context: context,
-      title: 'メンバーの削除',
-      message: 'このメンバーをクラブから削除（退出）しますか？',
-      cancelText: 'キャンセル',
-      confirmText: '削除する',
-      isDestructive: true,
     );
 
-    if (confirmed != true || !context.mounted) return;
+    if (result == null || !context.mounted) return;
 
+    final isBan = result == true;
     final error = await ref
         .read(openChatActionProvider.notifier)
-        .kickMember(room.id, targetMember.userId);
+        .kickMember(room.id, targetMember.userId, ban: isBan);
 
     if (!context.mounted) return;
 
     if (error == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('メンバーを削除しました')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isBan ? 'メンバーを強制退会（再参加禁止）にしました' : 'メンバーを退出させました'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
       ref.invalidate(openChatMembersProvider(room.id));
     } else {
       ScaffoldMessenger.of(context)

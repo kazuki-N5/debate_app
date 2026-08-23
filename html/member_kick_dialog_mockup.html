@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>メンバー退出・強制退会 UI モックアップ比較</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .modal-backdrop {
+      background-color: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(2px);
+    }
+    .slide-up {
+      animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .fade-in {
+      animation: fadeIn 0.2s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 p-4 md:p-8">
+
+  <div class="max-w-4xl mx-auto space-y-6">
+    <!-- ヘッダー -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">UI比較モックアップ</span>
+        <h1 class="text-xl font-bold text-slate-900">メンバー退出・強制退会（再参加禁止）ダイアログ</h1>
+      </div>
+      <p class="text-xs text-slate-500 leading-relaxed">
+        管理者がメンバー一覧から「削除」をタップした際に表示される操作UIの候補デザインです。<br>
+        下の「プレビュー画面」でパターンを切り替えて、実際の操作感を体感してください。
+      </p>
+
+      <!-- パターン切り替えタブ -->
+      <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
+        <button onclick="switchPattern('pattern-a')" id="tab-pattern-a" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-sm transition">
+          パターンA: iOS / LINE純正アクションシート（おすすめ）
+        </button>
+        <button onclick="switchPattern('pattern-b')" id="tab-pattern-b" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+          パターンB: モダンカード型シート（視覚的・リッチ）
+        </button>
+        <button onclick="switchPattern('pattern-c')" id="tab-pattern-c" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+          パターンC: 中央ダイアログ（チェックボックス式）
+        </button>
+      </div>
+    </div>
+
+    <!-- スマホ実機プレビューエリア -->
+    <div class="flex justify-center">
+      <div class="w-[375px] h-[667px] bg-white rounded-[40px] shadow-2xl border-[8px] border-slate-800 overflow-hidden relative flex flex-col select-none">
+        
+        <!-- ステータスバー -->
+        <div class="h-6 bg-blue-600 flex items-center justify-between px-6 text-white text-[10px] font-medium z-10">
+          <span>9:41</span>
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-signal text-[9px]"></i>
+            <i class="fa-solid fa-wifi text-[9px]"></i>
+            <i class="fa-solid fa-battery-full text-[10px]"></i>
+          </div>
+        </div>
+
+        <!-- AppBar (青色統一) -->
+        <div class="h-11 bg-blue-600 flex items-center justify-between px-4 text-white z-10">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-chevron-left text-sm cursor-pointer"></i>
+            <span class="font-bold text-sm">メンバー管理</span>
+          </div>
+          <span class="text-xs text-white/80">3名</span>
+        </div>
+
+        <!-- メンバー一覧コンテンツ -->
+        <div class="flex-1 bg-white overflow-y-auto divide-y divide-slate-100">
+          
+          <!-- 自分 -->
+          <div class="p-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-sm">
+                私
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-bold text-xs text-slate-900">あなた</span>
+                  <span class="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">管理者</span>
+                </div>
+                <span class="text-[10px] text-slate-400">参加: 8/1</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 対象ユーザー1 -->
+          <div class="p-3.5 flex items-center justify-between bg-blue-50/30">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center text-slate-600 font-bold text-sm">
+                タ
+              </div>
+              <div>
+                <span class="font-bold text-xs text-slate-900">タロウ</span>
+                <div class="text-[10px] text-slate-400">参加: 8/15</div>
+              </div>
+            </div>
+            <button onclick="openModal()" class="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-lg border border-rose-200 transition active:scale-95">
+              削除
+            </button>
+          </div>
+
+          <!-- 対象ユーザー2 -->
+          <div class="p-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm">
+                ハ
+              </div>
+              <div>
+                <span class="font-bold text-xs text-slate-900">ハナコ</span>
+                <div class="text-[10px] text-slate-400">参加: 8/20</div>
+              </div>
+            </div>
+            <button onclick="openModal()" class="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-lg border border-rose-200 transition active:scale-95">
+              削除
+            </button>
+          </div>
+
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- モーダル・シート群 (3パターン) -->
+        <!-- ========================================================= -->
+
+        <!-- パターンA: iOS / LINE純正アクションシート風 (おすすめ) -->
+        <div id="modal-pattern-a" class="modal-container absolute inset-0 z-50 hidden flex flex-col justify-end">
+          <div class="absolute inset-0 modal-backdrop" onclick="closeModal()"></div>
+          
+          <div class="relative z-10 p-3 slide-up space-y-2">
+            <!-- 上部ボックスタブ -->
+            <div class="bg-white/95 backdrop-blur-md rounded-2xl overflow-hidden shadow-xl border border-slate-200/50">
+              <!-- ヘッダータイトル -->
+              <div class="py-3 px-4 text-center border-b border-slate-200/70">
+                <p class="text-xs font-bold text-slate-800">「タロウ」の退出操作</p>
+                <p class="text-[10px] text-slate-500 mt-0.5">退出させる方法を選択してください</p>
+              </div>
+
+              <!-- 選択肢1: 通常の退出 -->
+              <button onclick="handleAction('通常の退出')" class="w-full py-3.5 px-4 text-center text-slate-800 hover:bg-slate-100/80 active:bg-slate-200/80 border-b border-slate-200/70 transition flex flex-col items-center">
+                <span class="text-sm font-semibold text-slate-900">通常の退出</span>
+                <span class="text-[10px] text-slate-400 mt-0.5">クラブから退出（後から再参加可能）</span>
+              </button>
+
+              <!-- 選択肢2: 強制退会（再参加禁止） -->
+              <button onclick="handleAction('強制退会（再参加禁止）')" class="w-full py-3.5 px-4 text-center text-rose-600 hover:bg-rose-50/80 active:bg-rose-100/80 transition flex flex-col items-center">
+                <span class="text-sm font-bold text-rose-600">強制退会 (再参加を禁止)</span>
+                <span class="text-[10px] text-rose-400 mt-0.5">退出させ、今後の再参加をブロック</span>
+              </button>
+            </div>
+
+            <!-- 下部キャンセルボタン -->
+            <div class="bg-white rounded-2xl overflow-hidden shadow-lg border border-slate-200/50">
+              <button onclick="closeModal()" class="w-full py-3.5 text-center text-sm font-bold text-blue-600 hover:bg-slate-50 active:bg-slate-100 transition">
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- パターンB: モダンカード型シート風 -->
+        <div id="modal-pattern-b" class="modal-container absolute inset-0 z-50 hidden flex flex-col justify-end">
+          <div class="absolute inset-0 modal-backdrop" onclick="closeModal()"></div>
+          
+          <div class="relative z-10 bg-white rounded-t-3xl p-5 slide-up shadow-2xl border-t border-slate-200">
+            <!-- バー -->
+            <div class="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-4"></div>
+
+            <h3 class="text-base font-bold text-slate-900 text-center mb-1">メンバーの退出</h3>
+            <p class="text-xs text-slate-500 text-center mb-4">タロウ さんの扱いを選択してください</p>
+
+            <div class="space-y-2.5 mb-4">
+              <!-- カード1: 通常退出 -->
+              <div onclick="handleAction('通常の退出')" class="p-3.5 rounded-2xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/30 active:bg-blue-50 transition cursor-pointer flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg flex-shrink-0">
+                  <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                </div>
+                <div class="flex-1">
+                  <div class="text-xs font-bold text-slate-900">通常の退出</div>
+                  <div class="text-[10px] text-slate-400">退室させますが、再参加は可能です</div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+              </div>
+
+              <!-- カード2: 強制退会（再参加禁止） -->
+              <div onclick="handleAction('強制退会（再参加禁止）')" class="p-3.5 rounded-2xl border border-rose-200 bg-rose-50/20 hover:border-rose-400 hover:bg-rose-50/50 active:bg-rose-100/50 transition cursor-pointer flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg flex-shrink-0">
+                  <i class="fa-solid fa-user-slash"></i>
+                </div>
+                <div class="flex-1">
+                  <div class="text-xs font-bold text-rose-600">強制退会 (再参加禁止)</div>
+                  <div class="text-[10px] text-rose-400">退室させ、今後の参加をブロックします</div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-xs text-rose-300"></i>
+              </div>
+            </div>
+
+            <button onclick="closeModal()" class="w-full py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+              キャンセル
+            </button>
+          </div>
+        </div>
+
+        <!-- パターンC: 中央ダイアログ（チェックボックス式） -->
+        <div id="modal-pattern-c" class="modal-container absolute inset-0 z-50 hidden flex items-center justify-center p-4">
+          <div class="absolute inset-0 modal-backdrop" onclick="closeModal()"></div>
+          
+          <div class="relative z-10 bg-white rounded-2xl p-5 shadow-2xl border border-slate-200 w-full max-w-[310px] fade-in space-y-3.5">
+            <div class="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-xl mx-auto">
+              <i class="fa-solid fa-user-minus"></i>
+            </div>
+
+            <div class="text-center">
+              <h3 class="text-sm font-bold text-slate-900">「タロウ」を退出させますか？</h3>
+              <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                このクラブから退出させる操作です。
+              </p>
+            </div>
+
+            <!-- チェックボックス: 再参加禁止 -->
+            <label class="flex items-center gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer select-none">
+              <input type="checkbox" id="ban-checkbox" class="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500">
+              <span class="text-[11px] font-semibold text-slate-700">再参加を禁止する (BAN)</span>
+            </label>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button onclick="closeModal()" class="py-2.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+                キャンセル
+              </button>
+              <button onclick="handleConfirmPatternC()" class="py-2.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-sm transition">
+                退出させる
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- トースト通知 -->
+        <div id="toast" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs px-4 py-2 rounded-full shadow-lg opacity-0 transition-opacity pointer-events-none z-50 whitespace-nowrap">
+          操作メッセージ
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 各デザインの解説セクション -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+      <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-wand-magic-sparkles text-blue-600"></i> デザインパターンの比較と特徴
+      </h2>
+
+      <div class="grid md:grid-cols-3 gap-4 text-xs">
+        
+        <!-- パターンA 解説 -->
+        <div class="p-4 rounded-xl border-2 border-blue-500 bg-blue-50/20 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sm text-slate-900">パターンA: iOS/LINE風</span>
+            <span class="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">イチオシ</span>
+          </div>
+          <p class="text-slate-600 leading-relaxed">
+            LINEやiOS標準のアクションシート。背景が透過ブラーで浮かび上がり、直感的かつ最も高級感・清潔感があります。
+          </p>
+          <ul class="text-[11px] text-slate-500 space-y-1 list-disc list-inside">
+            <li>押し間違い防止の独立キャンセルボタン</li>
+            <li>通常退出と強制退会が縦並びで明確</li>
+            <li>LINEオプチャのトーン＆マナーに完全一致</li>
+          </ul>
+        </div>
+
+        <!-- パターンB 解説 -->
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sm text-slate-900">パターンB: モダンカード</span>
+          </div>
+          <p class="text-slate-600 leading-relaxed">
+            各項目が角丸カードになっており、アイコン付きでタップエリアが広く押しやすいデザインです。
+          </p>
+          <ul class="text-[11px] text-slate-500 space-y-1 list-disc list-inside">
+            <li>アイコンが目立って視覚的に分かりやすい</li>
+            <li>上部スライドバー付きのボトムシート</li>
+          </ul>
+        </div>
+
+        <!-- パターンC 解説 -->
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sm text-slate-900">パターンC: チェック式</span>
+          </div>
+          <p class="text-slate-600 leading-relaxed">
+            画面中央にポップアップし、「再参加を禁止する」のチェックボックスにチェックを入れて確定する方式です。
+          </p>
+          <ul class="text-[11px] text-slate-500 space-y-1 list-disc list-inside">
+            <li>従来のダイアログに近い馴染みのある形</li>
+            <li>誤操作を防ぎやすい</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentPattern = 'pattern-a';
+
+    function switchPattern(patternId) {
+      currentPattern = patternId;
+
+      // タブボタンのアクティブ更新
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
+        btn.classList.add('bg-slate-100', 'text-slate-700');
+      });
+
+      const activeTab = document.getElementById('tab-' + patternId);
+      if (activeTab) {
+        activeTab.classList.remove('bg-slate-100', 'text-slate-700');
+        activeTab.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
+      }
+
+      // 開いているモーダルがあれば切り替える
+      openModal();
+    }
+
+    function openModal() {
+      // すべて閉じる
+      closeModal();
+
+      const modal = document.getElementById('modal-' + currentPattern);
+      if (modal) {
+        modal.classList.remove('hidden');
+      }
+    }
+
+    function closeModal() {
+      document.querySelectorAll('.modal-container').forEach(m => m.classList.add('hidden'));
+    }
+
+    function handleAction(actionName) {
+      closeModal();
+      showToast(`「${actionName}」を実行しました`);
+    }
+
+    function handleConfirmPatternC() {
+      const isBanned = document.getElementById('ban-checkbox').checked;
+      closeModal();
+      if (isBanned) {
+        showToast('「強制退会 (再参加禁止)」を実行しました');
+      } else {
+        showToast('「通常の退出」を実行しました');
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2000);
+    }
+
+    // 初回読み込み時にパターンAのモーダルを開いておく
+    window.addEventListener('DOMContentLoaded', () => {
+      openModal();
+    });
+  </script>
+</body>
+</html>

@@ -279,3 +279,52 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
     super.dispose();
   }
 }
+
+// 3. DMルームにおける自分のミュート状態を取得するプロバイダー
+final dmMyMemberMuteProvider = FutureProvider.family.autoDispose<bool, String>((ref, roomId) async {
+  final supabase = ref.read(supabaseProvider);
+  final myId = supabase.auth.currentUser?.id;
+  if (myId == null) return false;
+
+  final response = await supabase
+      .from('dm_room_members')
+      .select('is_muted')
+      .match({
+        'room_id': roomId,
+        'user_id': myId,
+      })
+      .maybeSingle();
+
+  if (response == null) return false;
+  return response['is_muted'] as bool? ?? false;
+});
+
+// 4. DMアクションプロバイダー
+class DmActionNotifier extends AutoDisposeNotifier<void> {
+  @override
+  void build() {}
+
+  /// DM通知の個別ミュート切り替え
+  Future<String?> toggleDmMute(String roomId, bool isMuted) async {
+    final supabase = ref.read(supabaseProvider);
+    final myId = supabase.auth.currentUser?.id;
+    if (myId == null) return 'ログインが必要です';
+    try {
+      await supabase.from('dm_room_members').update({
+        'is_muted': isMuted,
+      }).match({
+        'room_id': roomId,
+        'user_id': myId,
+      });
+      ref.invalidate(dmMyMemberMuteProvider(roomId));
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+}
+
+final dmActionProvider = NotifierProvider.autoDispose<DmActionNotifier, void>(() {
+  return DmActionNotifier();
+});
+

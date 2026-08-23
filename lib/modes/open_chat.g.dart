@@ -19,6 +19,7 @@ _$OpenChatRoomImpl _$$OpenChatRoomImplFromJson(Map<String, dynamic> json) =>
       memberCount: (json['member_count'] as num?)?.toInt(),
       isJoined: json['is_joined'] as bool?,
       tags: (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList(),
+      rules: json['rules'] as String?,
     );
 
 Map<String, dynamic> _$$OpenChatRoomImplToJson(_$OpenChatRoomImpl instance) =>
@@ -34,6 +35,7 @@ Map<String, dynamic> _$$OpenChatRoomImplToJson(_$OpenChatRoomImpl instance) =>
       'member_count': instance.memberCount,
       'is_joined': instance.isJoined,
       'tags': instance.tags,
+      'rules': instance.rules,
     };
 
 _$OpenChatMemberImpl _$$OpenChatMemberImplFromJson(Map<String, dynamic> json) =>
@@ -43,6 +45,7 @@ _$OpenChatMemberImpl _$$OpenChatMemberImplFromJson(Map<String, dynamic> json) =>
       userId: json['user_id'] as String,
       role: json['role'] as String,
       joinedAt: DateTime.parse(json['joined_at'] as String),
+      isMuted: json['is_muted'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$$OpenChatMemberImplToJson(
@@ -53,6 +56,7 @@ Map<String, dynamic> _$$OpenChatMemberImplToJson(
   'user_id': instance.userId,
   'role': instance.role,
   'joined_at': instance.joinedAt.toIso8601String(),
+  'is_muted': instance.isMuted,
 };
 
 _$OpenChatMessageImpl _$$OpenChatMessageImplFromJson(

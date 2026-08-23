@@ -235,7 +235,14 @@ class DmRoomPage extends HookConsumerWidget {
                     error: (err, stack) => Center(
                         child: Text('エラー: $err',
                             style: const TextStyle(color: Colors.white))),
-                    data: (messages) {
+                    data: (rawMessages) {
+                      // 非表示にしたメッセージは一覧から除外する
+                      // (アイコン・名前の表示判定も「表示中のメッセージ」基準にするため、
+                      //  非表示1件を挟んだ隣接メッセージにも正しくアイコンが出る)
+                      final messages = rawMessages
+                          .where((m) =>
+                              !hiddenMessageIds.value.contains(m.id))
+                          .toList();
                       if (messages.isEmpty) {
                         return Center(
                           child: Container(
@@ -264,11 +271,6 @@ class DmRoomPage extends HookConsumerWidget {
                         itemBuilder: (context, index) {
                           final msg = messages[index];
                           final isMe = msg.senderId == myId;
-
-                          // 非表示にしたメッセージは表示しない
-                          if (hiddenMessageIds.value.contains(msg.id)) {
-                            return const SizedBox.shrink();
-                          }
 
                           final isSending = msg.id.startsWith('temp_');
 

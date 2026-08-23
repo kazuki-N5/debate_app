@@ -3,7 +3,9 @@ import 'package:debate_project/modes/userranking_model.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/sfx_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/provider/vibration_provider.dart';
+import 'package:debate_project/widgets/app_confirm_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -188,7 +190,34 @@ class FriendMatchDialog extends HookConsumerWidget {
                                 friendmatch)
                             ? null // ページ1が無効ならnull
                             : () async {
-                                toggleBoolean();
+                                isMatching.value = true;
+                                // 前の試合（進行中ルーム）があれば解除
+                                await ref
+                                    .read(resbaActionsProvider)
+                                    .resolveMyBattle();
+                                // 応募中チェック: 応募中のレスバがあれば確認ダイアログ
+                                final status = await ref
+                                    .read(resbaActionsProvider)
+                                    .getMyResbaStatus();
+                                if (status.isApplying) {
+                                  final proceed =
+                                      await showAppConfirmDialog(
+                                    context: context,
+                                    title: '応募中のレスバがあります',
+                                    message:
+                                        '応募を取り消してフレンド対戦に参加しますか？',
+                                    cancelText: 'いいえ',
+                                    confirmText: '取り消して参加',
+                                    isDestructive: false,
+                                  );
+                                  if (proceed != true) {
+                                    isMatching.value = false;
+                                    return;
+                                  }
+                                  await ref
+                                      .read(resbaActionsProvider)
+                                      .cancelMyPendingApplications();
+                                }
                                 friendmatchnotifier.state = true;
                                 ref
                                     .read(soundServiceProvider)
@@ -216,7 +245,34 @@ class FriendMatchDialog extends HookConsumerWidget {
                             !isPage2Valid || isMatching.value || friendmatch
                                 ? null // ページ2が無効ならnull
                                 : () async {
-                                    toggleBoolean();
+                                    isMatching.value = true;
+                                    // 前の試合（進行中ルーム）があれば解除
+                                    await ref
+                                        .read(resbaActionsProvider)
+                                        .resolveMyBattle();
+                                    // 応募中チェック: 応募中のレスバがあれば確認ダイアログ
+                                    final status = await ref
+                                        .read(resbaActionsProvider)
+                                        .getMyResbaStatus();
+                                    if (status.isApplying) {
+                                      final proceed =
+                                          await showAppConfirmDialog(
+                                        context: context,
+                                        title: '応募中のレスバがあります',
+                                        message:
+                                            '応募を取り消してフレンド対戦の部屋を作成しますか？',
+                                        cancelText: 'いいえ',
+                                        confirmText: '取り消して作成',
+                                        isDestructive: false,
+                                      );
+                                      if (proceed != true) {
+                                        isMatching.value = false;
+                                        return;
+                                      }
+                                      await ref
+                                          .read(resbaActionsProvider)
+                                          .cancelMyPendingApplications();
+                                    }
                                     friendmatchnotifier.state = true;
                                     ref
                                         .read(soundServiceProvider)

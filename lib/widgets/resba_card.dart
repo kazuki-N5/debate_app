@@ -158,7 +158,7 @@ class ResbaCard extends ConsumerWidget {
       // 対戦終了: 観戦ログは消さずに残す（クリックで閲覧）
       actionButtons = [
         _ActionButton(
-          label: '👁 観戦ログを見る',
+          label: '観戦ログを見る',
           color: const Color(0xFF7856FF),
           onTap: () => router.push('/resbaWatch', extra: invite),
         ),

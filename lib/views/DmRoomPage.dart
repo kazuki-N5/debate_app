@@ -126,14 +126,21 @@ class DmRoomPage extends HookConsumerWidget {
 
     final myId = ref.read(supabaseProvider).auth.currentUser?.id;
 
-    return Scaffold(
-      backgroundColor: Colors.blue,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.opaque,
+      child: Scaffold(
+        backgroundColor: Colors.blue,
       appBar: AppBar(
         backgroundColor: Colors.blue,
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Row(
           children: [
             GestureDetector(
@@ -248,6 +255,8 @@ class DmRoomPage extends HookConsumerWidget {
                       }
                       return ListView.builder(
                         controller: scrollController,
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
                         reverse: true,
                         itemCount: messages.length,
                         padding: const EdgeInsets.symmetric(
@@ -376,7 +385,8 @@ class DmRoomPage extends HookConsumerWidget {
           );
         },
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildStatus(String messageId) {

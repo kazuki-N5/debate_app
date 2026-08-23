@@ -1,6 +1,7 @@
 // ignore_for_file: file_names
 
 import 'package:debate_project/modes/bbs_post.dart';
+import 'package:debate_project/provider/bbs_bookmark_provider.dart';
 import 'package:debate_project/provider/bbs_timeline_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 
@@ -78,6 +79,7 @@ class BbsPostWidget extends ConsumerWidget {
     final userAvatar = user?.avatar_url;
 
     final dateStr = DateFormatter.formatBbsDate(post.createdAt);
+    final isBookmarked = ref.watch(bbsBookmarkIdsProvider).contains(post.id);
 
     return InkWell(
       onTap: () {
@@ -283,14 +285,42 @@ class BbsPostWidget extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      // 右側のボタン群（ブックマーク & シェア）
-                      const Row(
-                        children: [
-                          Icon(CupertinoIcons.bookmark,
-                              color: Color(0xFF536471), size: 16),
-                          SizedBox(width: 16),
-                          Icon(CupertinoIcons.share, color: Color(0xFF536471), size: 16),
-                        ],
+                      // 右側のボタン（ブックマーク）
+                      GestureDetector(
+                        onTap: () async {
+                          final added = await ref
+                              .read(bbsBookmarkIdsProvider.notifier)
+                              .toggleBookmark(post.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  added
+                                      ? 'ブックマークに追加しました'
+                                      : 'ブックマークから削除しました',
+                                  style: AppTextStyles.notoSans(
+                                      color: Colors.white, fontSize: 13),
+                                ),
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 2),
+                          child: Icon(
+                            isBookmarked
+                                ? CupertinoIcons.bookmark_fill
+                                : CupertinoIcons.bookmark,
+                            color: isBookmarked
+                                ? const Color(0xFF1D9BF0)
+                                : const Color(0xFF536471),
+                            size: 16,
+                          ),
+                        ),
                       ),
                     ],
                   ),

@@ -525,6 +525,10 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
           backgroundColor: Colors.blue,
           title: Text('観戦', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
           iconTheme: const IconThemeData(color: Colors.white),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
         body: Center(
           child: Padding(

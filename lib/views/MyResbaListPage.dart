@@ -111,24 +111,6 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
     await _fetch();
   }
 
-  Future<void> _delete(ResbaInvite invite) async {
-    final ok = await showAppConfirmDialog(
-      context: context,
-      title: '募集を完全に削除しますか？',
-      message: '「${invite.theme}」を一覧から完全に削除します（元に戻せません）。',
-      cancelText: 'いいえ',
-      confirmText: '削除する',
-      isDestructive: true,
-    );
-    if (ok != true) return;
-    final result = await ref.read(resbaActionsProvider).deleteResba(invite.id);
-    if (result.error != null && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(result.error!)));
-    }
-    await _fetch();
-  }
-
   Future<void> _resumeBattle(ResbaInvite invite) async {
     final roomId = invite.battleRoomId;
     if (roomId == null) return;
@@ -158,6 +140,10 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
         backgroundColor: Colors.blue,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 1,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Column(
         children: [
@@ -431,72 +417,61 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
                 ],
               ),
             ],
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                if (isPending && firstApp != null) ...[
-                  // 応募されてる中: 承認 / 拒否
-                  Expanded(
-                    child: _actionButton(
-                      label: '✅ 承認して対戦',
-                      color: const Color(0xFF00BA7C),
-                      onTap: () => _approveApplication(invite, true),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _actionButton(
-                      label: '拒否',
-                      color: Colors.grey,
-                      onTap: () => _approveApplication(invite, false),
-                    ),
-                  ),
-                ] else if (isPending)
-                  Expanded(
-                    child: _actionButton(
-                      label: '取り下げる',
-                      color: Colors.grey,
-                      onTap: () => _withdraw(invite),
-                    ),
-                  )
-                else if (isAccepted)
-                  Expanded(
-                    child: _actionButton(
-                      label: '対戦へ戻る',
-                      color: const Color(0xFF7856FF),
-                      onTap: () => _resumeBattle(invite),
-                    ),
-                  )
-                else if (invite.status == 'finished' &&
+            if (isPending ||
+                isAccepted ||
+                (invite.status == 'finished' &&
                     invite.battleRoomId != null &&
-                    invite.attachType != 'dm') ...[
-                  // 対戦終了: 観戦ログは消さずに残す（クリックで閲覧）+ 削除
-                  Expanded(
-                    child: _actionButton(
-                      label: '👁 観戦ログを見る',
-                      color: const Color(0xFF7856FF),
-                      onTap: () => _watchBattleLog(invite),
+                    invite.attachType != 'dm')) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  if (isPending && firstApp != null) ...[
+                    // 応募されてる中: 承認 / 拒否
+                    Expanded(
+                      child: _actionButton(
+                        label: '✅ 承認して対戦',
+                        color: const Color(0xFF00BA7C),
+                        onTap: () => _approveApplication(invite, true),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _actionButton(
-                      label: '削除',
-                      color: Colors.red,
-                      onTap: () => _delete(invite),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _actionButton(
+                        label: '拒否',
+                        color: Colors.grey,
+                        onTap: () => _approveApplication(invite, false),
+                      ),
                     ),
-                  ),
-                ]
-                else
-                  Expanded(
-                    child: _actionButton(
-                      label: '削除',
-                      color: Colors.red,
-                      onTap: () => _delete(invite),
+                  ] else if (isPending)
+                    Expanded(
+                      child: _actionButton(
+                        label: '取り下げる',
+                        color: Colors.grey,
+                        onTap: () => _withdraw(invite),
+                      ),
+                    )
+                  else if (isAccepted)
+                    Expanded(
+                      child: _actionButton(
+                        label: '対戦へ戻る',
+                        color: const Color(0xFF7856FF),
+                        onTap: () => _resumeBattle(invite),
+                      ),
+                    )
+                  else if (invite.status == 'finished' &&
+                      invite.battleRoomId != null &&
+                      invite.attachType != 'dm')
+                    // 対戦終了: 観戦ログは消さずに残す（クリックで閲覧）
+                    Expanded(
+                      child: _actionButton(
+                        label: '観戦ログを見る',
+                        color: const Color(0xFF7856FF),
+                        onTap: () => _watchBattleLog(invite),
+                      ),
                     ),
-                  ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

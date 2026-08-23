@@ -219,6 +219,14 @@ class FinishPage extends HookConsumerWidget {
     final myScore = scores?.getMyScore(isPlayer1) ?? const PlayerScore();
     final opponentScore = scores?.getOpponentScore(isPlayer1);
 
+    String getChoiceText(bool? choice) {
+      if (choice == null) return '';
+      return choice ? (room.choice1 ?? '') : (room.choice2 ?? '');
+    }
+
+    final myChoice = getChoiceText(isPlayer1 ? room.player1Choice : room.player2Choice);
+    final opponentChoice = getChoiceText(isPlayer1 ? room.player2Choice : room.player1Choice);
+
     // ポイント計算ロジックを useMemoized で管理（データ変更時に自動再計算）
     final ratingDetail = useMemoized(() {
       final winner = room.winner;
@@ -272,17 +280,19 @@ class FinishPage extends HookConsumerWidget {
           final file = await File('${tempDir.path}/debate_result.png').create();
           await file.writeAsBytes(pngBytes);
           const appStoreUrl =
-              'https://itunes.apple.com/jp/app/id6747020633?mt=8';
+              'https://link-my.app/resubato';
           // ダイアログを閉じる
 
           final shareText =
               'ディベートで「$resultText」しました！\nみんなも遊んでみよう！\n#ディベートアプリ\n$appStoreUrl';
 
-          await Share.shareXFiles(
-            [XFile(file.path)],
-            text: shareText,
-            subject: 'ディベート結果',
-            sharePositionOrigin: rect,
+          await SharePlus.instance.share(
+            ShareParams(
+              files: [XFile(file.path)],
+              text: shareText,
+              subject: 'ディベート結果',
+              sharePositionOrigin: rect,
+            ),
           );
 
           Navigator.of(context).pop();
@@ -303,21 +313,29 @@ class FinishPage extends HookConsumerWidget {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // --- ここからが画像化されるウィジェット ---
-                RepaintBoundary(
-                  key: globalKey,
-                  child: _ShareableResultCard(
-                    result: resultText,
-                    points: hasTrophyChange ? basePointTextVal : null,
-                    bonus: hasTrophyChange && isUnderdogVal
-                        ? bonusPointTextVal
-                        : null,
-                    reason: reasonText,
-                    isUnderdog: isUnderdogVal,
-                    myScore: myScore,
-                    opponentScore: opponentScore,
-                    myName: myuser.name ?? 'あなた',
-                    opponentName: otheruser.name ?? '対戦相手',
+                // --- ここからが画像化されるウィジェット（スクロール領域） ---
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: RepaintBoundary(
+                      key: globalKey,
+                      child: _ShareableResultCard(
+                        result: resultText,
+                        points: hasTrophyChange ? basePointTextVal : null,
+                        bonus: hasTrophyChange && isUnderdogVal
+                            ? bonusPointTextVal
+                            : null,
+                        reason: reasonText,
+                        isUnderdog: isUnderdogVal,
+                        myScore: myScore,
+                        opponentScore: opponentScore,
+                        myName: myuser.name ?? 'あなた',
+                        opponentName: otheruser.name ?? '対戦相手',
+                        myAvatarUrl: myuser.avatar_url,
+                        opponentAvatarUrl: otheruser.avatar_url,
+                        myChoice: myChoice,
+                        opponentChoice: opponentChoice,
+                      ),
+                    ),
                   ),
                 ),
                 // --- ここまで ---
@@ -538,6 +556,152 @@ class FinishPage extends HookConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Column(
                       children: [
+                        // --- 両者の選択肢 VS対峙カード ---
+                        if (myChoice.isNotEmpty || opponentChoice.isNotEmpty) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFAF8FF),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // 自分（左側・青）
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 18,
+                                            backgroundColor: Colors.blue[100],
+                                            backgroundImage: myuser.avatar_url != null &&
+                                                    myuser.avatar_url!.isNotEmpty
+                                                ? ResizeImage(
+                                                    NetworkImage(myuser.avatar_url!),
+                                                    width: 72)
+                                                : null,
+                                            child: myuser.avatar_url == null ||
+                                                    myuser.avatar_url!.isEmpty
+                                                ? Icon(Icons.person,
+                                                    size: 20, color: Colors.blue[700])
+                                                : null,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            myuser.name ?? 'あなた',
+                                            style: AppTextStyles.bold(
+                                                fontSize: 11, color: Colors.grey[800]),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              myChoice.isNotEmpty ? myChoice : '未選択',
+                                              textAlign: TextAlign.center,
+                                              style: AppTextStyles.bold(
+                                                  fontSize: 11, color: Colors.white),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 36), // VSバッジ用の隙間
+                                    // 相手（右側・赤）
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 18,
+                                            backgroundColor: Colors.red[100],
+                                            backgroundImage: otheruser.avatar_url != null &&
+                                                    otheruser.avatar_url!.isNotEmpty
+                                                ? ResizeImage(
+                                                    NetworkImage(otheruser.avatar_url!),
+                                                    width: 72)
+                                                : null,
+                                            child: otheruser.avatar_url == null ||
+                                                    otheruser.avatar_url!.isEmpty
+                                                ? Icon(Icons.person,
+                                                    size: 20, color: Colors.red[700])
+                                                : null,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            otheruser.name ?? '対戦相手',
+                                            style: AppTextStyles.bold(
+                                                fontSize: 11, color: Colors.grey[800]),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              opponentChoice.isNotEmpty
+                                                  ? opponentChoice
+                                                  : '未選択',
+                                              textAlign: TextAlign.center,
+                                              style: AppTextStyles.bold(
+                                                  fontSize: 11, color: Colors.white),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                // 中央VSバッジ
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[850],
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.15),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'VS',
+                                      style: AppTextStyles.bold(
+                                          fontSize: 9, color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                         // レーダーチャート＆論理能力%表示
                         RadarChartView(
                           myScore: myScore,
@@ -760,6 +924,10 @@ class _ShareableResultCard extends StatelessWidget {
     this.opponentScore,
     this.myName = 'あなた',
     this.opponentName,
+    this.myAvatarUrl,
+    this.opponentAvatarUrl,
+    this.myChoice,
+    this.opponentChoice,
   });
 
   final String result;
@@ -771,6 +939,10 @@ class _ShareableResultCard extends StatelessWidget {
   final PlayerScore? opponentScore;
   final String myName;
   final String? opponentName;
+  final String? myAvatarUrl;
+  final String? opponentAvatarUrl;
+  final String? myChoice;
+  final String? opponentChoice;
 
   @override
   Widget build(BuildContext context) {
@@ -923,6 +1095,136 @@ class _ShareableResultCard extends StatelessWidget {
               ],
             ),
           ),
+          // --- 両者の選択肢 VS対峙カード ---
+          if ((myChoice != null && myChoice!.isNotEmpty) ||
+              (opponentChoice != null && opponentChoice!.isNotEmpty)) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF8FF),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // 自分（左側・青）
+                      Expanded(
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: Colors.blue[100],
+                              backgroundImage: myAvatarUrl != null && myAvatarUrl!.isNotEmpty
+                                  ? ResizeImage(NetworkImage(myAvatarUrl!), width: 64)
+                                  : null,
+                              child: myAvatarUrl == null || myAvatarUrl!.isEmpty
+                                  ? Icon(Icons.person, size: 18, color: Colors.blue[700])
+                                  : null,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              myName,
+                              style: AppTextStyles.bold(fontSize: 10, color: Colors.grey[800]),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 3),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                myChoice != null && myChoice!.isNotEmpty ? myChoice! : '未選択',
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.bold(fontSize: 10, color: Colors.white),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 32), // VSバッジ用の隙間
+                      // 相手（右側・赤）
+                      Expanded(
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: Colors.red[100],
+                              backgroundImage: opponentAvatarUrl != null && opponentAvatarUrl!.isNotEmpty
+                                  ? ResizeImage(NetworkImage(opponentAvatarUrl!), width: 64)
+                                  : null,
+                              child: opponentAvatarUrl == null || opponentAvatarUrl!.isEmpty
+                                  ? Icon(Icons.person, size: 18, color: Colors.red[700])
+                                  : null,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              opponentName ?? '対戦相手',
+                              style: AppTextStyles.bold(fontSize: 10, color: Colors.grey[800]),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 3),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                opponentChoice != null && opponentChoice!.isNotEmpty
+                                    ? opponentChoice!
+                                    : '未選択',
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.bold(fontSize: 10, color: Colors.white),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  // 中央VSバッジ
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[850],
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        'VS',
+                        style: AppTextStyles.bold(fontSize: 8, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           // レーダーチャート (静止画キャプチャ用)
           RadarChartView(

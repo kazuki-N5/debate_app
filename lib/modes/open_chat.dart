@@ -13,7 +13,6 @@ class OpenChatRoom with _$OpenChatRoom {
     @JsonKey(name: 'icon_url') String? iconUrl,
     @JsonKey(name: 'background_url') String? backgroundUrl,
     @JsonKey(name: 'password') String? password,
-    @JsonKey(name: 'owner_id') required String ownerId,
     @JsonKey(name: 'created_at') required DateTime createdAt,
     // 追加情報（一覧表示用など）
     @JsonKey(name: 'member_count') int? memberCount,
@@ -37,6 +36,21 @@ class OpenChatMember with _$OpenChatMember {
   }) = _OpenChatMember;
 
   factory OpenChatMember.fromJson(Map<String, dynamic> json) => _$OpenChatMemberFromJson(json);
+}
+
+/// ロール判定ヘルパー (role: 'owner' | 'admin' | 'member')
+extension OpenChatMemberRoleX on OpenChatMember {
+  /// 管理人
+  bool get isOwner => role == 'owner';
+
+  /// 副管理人
+  bool get isAdmin => role == 'admin';
+
+  /// 一般メンバー
+  bool get isMember => role == 'member';
+
+  /// 管理人 or 副管理人（モデレーション権限あり）
+  bool get isModerator => isOwner || isAdmin;
 }
 
 @freezed

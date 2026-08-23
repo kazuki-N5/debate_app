@@ -30,8 +30,6 @@ mixin _$OpenChatRoom {
   String? get backgroundUrl => throw _privateConstructorUsedError;
   @JsonKey(name: 'password')
   String? get password => throw _privateConstructorUsedError;
-  @JsonKey(name: 'owner_id')
-  String get ownerId => throw _privateConstructorUsedError;
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError; // 追加情報（一覧表示用など）
   @JsonKey(name: 'member_count')
@@ -67,7 +65,6 @@ abstract class $OpenChatRoomCopyWith<$Res> {
     @JsonKey(name: 'icon_url') String? iconUrl,
     @JsonKey(name: 'background_url') String? backgroundUrl,
     @JsonKey(name: 'password') String? password,
-    @JsonKey(name: 'owner_id') String ownerId,
     @JsonKey(name: 'created_at') DateTime createdAt,
     @JsonKey(name: 'member_count') int? memberCount,
     @JsonKey(name: 'is_joined') bool? isJoined,
@@ -97,7 +94,6 @@ class _$OpenChatRoomCopyWithImpl<$Res, $Val extends OpenChatRoom>
     Object? iconUrl = freezed,
     Object? backgroundUrl = freezed,
     Object? password = freezed,
-    Object? ownerId = null,
     Object? createdAt = null,
     Object? memberCount = freezed,
     Object? isJoined = freezed,
@@ -130,10 +126,6 @@ class _$OpenChatRoomCopyWithImpl<$Res, $Val extends OpenChatRoom>
                 ? _value.password
                 : password // ignore: cast_nullable_to_non_nullable
                       as String?,
-            ownerId: null == ownerId
-                ? _value.ownerId
-                : ownerId // ignore: cast_nullable_to_non_nullable
-                      as String,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -176,7 +168,6 @@ abstract class _$$OpenChatRoomImplCopyWith<$Res>
     @JsonKey(name: 'icon_url') String? iconUrl,
     @JsonKey(name: 'background_url') String? backgroundUrl,
     @JsonKey(name: 'password') String? password,
-    @JsonKey(name: 'owner_id') String ownerId,
     @JsonKey(name: 'created_at') DateTime createdAt,
     @JsonKey(name: 'member_count') int? memberCount,
     @JsonKey(name: 'is_joined') bool? isJoined,
@@ -205,7 +196,6 @@ class __$$OpenChatRoomImplCopyWithImpl<$Res>
     Object? iconUrl = freezed,
     Object? backgroundUrl = freezed,
     Object? password = freezed,
-    Object? ownerId = null,
     Object? createdAt = null,
     Object? memberCount = freezed,
     Object? isJoined = freezed,
@@ -238,10 +228,6 @@ class __$$OpenChatRoomImplCopyWithImpl<$Res>
             ? _value.password
             : password // ignore: cast_nullable_to_non_nullable
                   as String?,
-        ownerId: null == ownerId
-            ? _value.ownerId
-            : ownerId // ignore: cast_nullable_to_non_nullable
-                  as String,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -277,7 +263,6 @@ class _$OpenChatRoomImpl implements _OpenChatRoom {
     @JsonKey(name: 'icon_url') this.iconUrl,
     @JsonKey(name: 'background_url') this.backgroundUrl,
     @JsonKey(name: 'password') this.password,
-    @JsonKey(name: 'owner_id') required this.ownerId,
     @JsonKey(name: 'created_at') required this.createdAt,
     @JsonKey(name: 'member_count') this.memberCount,
     @JsonKey(name: 'is_joined') this.isJoined,
@@ -303,9 +288,6 @@ class _$OpenChatRoomImpl implements _OpenChatRoom {
   @override
   @JsonKey(name: 'password')
   final String? password;
-  @override
-  @JsonKey(name: 'owner_id')
-  final String ownerId;
   @override
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
@@ -333,7 +315,7 @@ class _$OpenChatRoomImpl implements _OpenChatRoom {
 
   @override
   String toString() {
-    return 'OpenChatRoom(id: $id, name: $name, description: $description, iconUrl: $iconUrl, backgroundUrl: $backgroundUrl, password: $password, ownerId: $ownerId, createdAt: $createdAt, memberCount: $memberCount, isJoined: $isJoined, tags: $tags, rules: $rules)';
+    return 'OpenChatRoom(id: $id, name: $name, description: $description, iconUrl: $iconUrl, backgroundUrl: $backgroundUrl, password: $password, createdAt: $createdAt, memberCount: $memberCount, isJoined: $isJoined, tags: $tags, rules: $rules)';
   }
 
   @override
@@ -350,7 +332,6 @@ class _$OpenChatRoomImpl implements _OpenChatRoom {
                 other.backgroundUrl == backgroundUrl) &&
             (identical(other.password, password) ||
                 other.password == password) &&
-            (identical(other.ownerId, ownerId) || other.ownerId == ownerId) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.memberCount, memberCount) ||
@@ -371,7 +352,6 @@ class _$OpenChatRoomImpl implements _OpenChatRoom {
     iconUrl,
     backgroundUrl,
     password,
-    ownerId,
     createdAt,
     memberCount,
     isJoined,
@@ -401,7 +381,6 @@ abstract class _OpenChatRoom implements OpenChatRoom {
     @JsonKey(name: 'icon_url') final String? iconUrl,
     @JsonKey(name: 'background_url') final String? backgroundUrl,
     @JsonKey(name: 'password') final String? password,
-    @JsonKey(name: 'owner_id') required final String ownerId,
     @JsonKey(name: 'created_at') required final DateTime createdAt,
     @JsonKey(name: 'member_count') final int? memberCount,
     @JsonKey(name: 'is_joined') final bool? isJoined,
@@ -427,9 +406,6 @@ abstract class _OpenChatRoom implements OpenChatRoom {
   @override
   @JsonKey(name: 'password')
   String? get password;
-  @override
-  @JsonKey(name: 'owner_id')
-  String get ownerId;
   @override
   @JsonKey(name: 'created_at')
   DateTime get createdAt; // 追加情報（一覧表示用など）

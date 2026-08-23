@@ -13,6 +13,7 @@ class BbsPost {
   final Users? user;
   final bool isLikedByMe;
   final bool hasResba;
+  final bool isDeleted;
 
   BbsPost({
     required this.id,
@@ -25,6 +26,7 @@ class BbsPost {
     this.user,
     this.isLikedByMe = false,
     this.hasResba = false,
+    this.isDeleted = false,
   });
 
   factory BbsPost.fromMap(Map<String, dynamic> map, {Users? user, bool isLikedByMe = false}) {
@@ -37,7 +39,7 @@ class BbsPost {
     return BbsPost(
       id: map['id'] as String,
       userId: map['user_id'] as String,
-      content: map['content'] as String,
+      content: map['content'] as String? ?? '',
       createdAt: DateTime.parse(map['created_at'] as String).toLocal(),
       likesCount: map['likes_count'] as int? ?? 0,
       repliesCount: map['replies_count'] as int? ?? 0,
@@ -45,6 +47,7 @@ class BbsPost {
       user: user,
       isLikedByMe: isLikedByMe,
       hasResba: map['has_resba'] as bool? ?? false,
+      isDeleted: map['is_deleted'] as bool? ?? false,
     );
   }
 
@@ -59,6 +62,7 @@ class BbsPost {
     Users? user,
     bool? isLikedByMe,
     bool? hasResba,
+    bool? isDeleted,
   }) {
     return BbsPost(
       id: id ?? this.id,
@@ -71,6 +75,7 @@ class BbsPost {
       user: user ?? this.user,
       isLikedByMe: isLikedByMe ?? this.isLikedByMe,
       hasResba: hasResba ?? this.hasResba,
+      isDeleted: isDeleted ?? this.isDeleted,
     );
   }
 }

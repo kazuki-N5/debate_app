@@ -263,7 +263,8 @@ class BbsPostDetailView extends HookConsumerWidget {
               ),
             ),
           ),
-          // 入力フォーム
+          // 入力フォーム（削除済みポストでは非表示）
+          if (!currentPost.isDeleted)
           Container(
             padding: const EdgeInsets.fromLTRB(8, 4, 2, 4),
             decoration: BoxDecoration(
@@ -546,6 +547,10 @@ class _PostResbaSection extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final myId = ref.read(currentUserIdProvider);
+    // 削除済みポストにはレスバを付けられない
+    if (post.isDeleted) {
+      return const SizedBox.shrink();
+    }
     // pending（募集中） / accepted（対戦中） / finished（対戦終了・観戦ログ閲覧用）を表示
     final activeResbas = resbas
         .where((r) => r.isPending || r.isAccepted || r.status == 'finished')
@@ -651,6 +656,7 @@ class _CommentThreadWidget extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isExpanded = useState(false);
+    final deleted = comment.isDeleted;
     final user = comment.user;
     final userName = user?.name ?? '名無し';
     final userAvatar = user?.avatar_url;
@@ -715,97 +721,105 @@ class _CommentThreadWidget extends HookConsumerWidget {
                           ),
                         ],
                         const Spacer(),
-                        // コメントメニュー(通報 / 非表示 / ブロック / 削除)
-                        GestureDetector(
-                          onTap: () {
-                            final myId = ref.read(currentUserIdProvider);
-                            final isOwnComment = comment.userId == myId;
-                            showContentMenuSheet(
-                              context: context,
-                              ref: ref,
-                              authorUserId: isOwnComment ? null : comment.userId,
-                              authorName: userName,
-                              contentType: 'bbs_comment',
-                              contentId: comment.id,
-                              contentSnapshot: comment.content,
-                              isOwnContent: isOwnComment,
-                              onHide: () => ref
-                                  .read(bbsCommentProvider(post.id).notifier)
-                                  .hideComment(comment.id),
-                              onDelete: isOwnComment
-                                  ? () async {
-                                      final ok = await ref
-                                          .read(bbsCommentProvider(post.id).notifier)
-                                          .deleteComment(comment.id);
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(ok ? 'コメントを削除しました' : '削除に失敗しました'),
-                                          ),
-                                        );
+                        // コメントメニュー(通報 / 非表示 / ブロック / 削除) ※削除済みは非表示
+                        if (!deleted)
+                          GestureDetector(
+                            onTap: () {
+                              final myId = ref.read(currentUserIdProvider);
+                              final isOwnComment = comment.userId == myId;
+                              showContentMenuSheet(
+                                context: context,
+                                ref: ref,
+                                authorUserId: isOwnComment ? null : comment.userId,
+                                authorName: userName,
+                                contentType: 'bbs_comment',
+                                contentId: comment.id,
+                                contentSnapshot: comment.content,
+                                isOwnContent: isOwnComment,
+                                onHide: () => ref
+                                    .read(bbsCommentProvider(post.id).notifier)
+                                    .hideComment(comment.id),
+                                onDelete: isOwnComment
+                                    ? () async {
+                                        final ok = await ref
+                                            .read(bbsCommentProvider(post.id).notifier)
+                                            .deleteComment(comment.id);
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(ok ? 'コメントを削除しました' : '削除に失敗しました'),
+                                            ),
+                                          );
+                                        }
                                       }
-                                    }
-                                  : null,
-                              onBlocked: () => ref
-                                  .read(bbsCommentProvider(post.id).notifier)
-                                  .fetchComments(),
-                            );
-                          },
-                          child: const Icon(CupertinoIcons.ellipsis, color: Color(0xFF536471), size: 16),
-                        ),
+                                    : null,
+                                onBlocked: () => ref
+                                    .read(bbsCommentProvider(post.id).notifier)
+                                    .fetchComments(),
+                              );
+                            },
+                            child: const Icon(CupertinoIcons.ellipsis, color: Color(0xFF536471), size: 16),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    if (comment.content.isNotEmpty)
-                      MentionText(text: comment.content, style: AppTextStyles.notoSans(fontSize: 14, color: Colors.black87)),
-                    if (comment.imageUrl != null) ...[
-                      const SizedBox(height: 8),
-                      _ReplyImageToggle(imageUrl: comment.imageUrl!),
-                    ],
-                    if (comment.hasResba) ...[
-                      const SizedBox(height: 6),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: ResbaBadge(text: 'レスバ付き'),
-                      ),
-                    ],
-                    ..._resbaCardsFor(comment.id),
-                    const SizedBox(height: 6),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        InkWell(
-                          onTap: () {
-                            ref.read(bbsCommentProvider(post.id).notifier).toggleLike(comment);
-                          },
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Transform.translate(
-                                offset: const Offset(0, 1),
-                                child: comment.isLikedByMe
-                                    ? const Icon(CupertinoIcons.heart_fill, color: Colors.pink, size: 14)
-                                    : SvgPicture.asset(
-                                        'assets/images/icons/tweeticon/heart.svg',
-                                        width: 14,
-                                        height: 14,
-                                        colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
-                                      ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text('${comment.likesCount}', style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 13, height: 1.1)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        InkWell(
-                          onTap: () {
-                            onReplyTap(comment.id, userName, false);
-                          },
-                          child: Text('返信', style: AppTextStyles.bold(fontSize: 12, color: Colors.grey, height: 1.1)),
+                    if (deleted)
+                      Text(
+                        'このコメントは削除されました',
+                        style: const TextStyle(fontSize: 14, color: Colors.grey, fontStyle: FontStyle.italic),
+                      )
+                    else ...[
+                      if (comment.content.isNotEmpty)
+                        MentionText(text: comment.content, style: AppTextStyles.notoSans(fontSize: 14, color: Colors.black87)),
+                      if (comment.imageUrl != null) ...[
+                        const SizedBox(height: 8),
+                        _ReplyImageToggle(imageUrl: comment.imageUrl!),
+                      ],
+                      if (comment.hasResba) ...[
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: ResbaBadge(text: 'レスバ付き'),
                         ),
                       ],
-                    ),
+                      ..._resbaCardsFor(comment.id),
+                      const SizedBox(height: 6),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              ref.read(bbsCommentProvider(post.id).notifier).toggleLike(comment);
+                            },
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Transform.translate(
+                                  offset: const Offset(0, 1),
+                                  child: comment.isLikedByMe
+                                      ? const Icon(CupertinoIcons.heart_fill, color: Colors.pink, size: 14)
+                                      : SvgPicture.asset(
+                                          'assets/images/icons/tweeticon/heart.svg',
+                                          width: 14,
+                                          height: 14,
+                                          colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+                                        ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text('${comment.likesCount}', style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 13, height: 1.1)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          InkWell(
+                            onTap: () {
+                              onReplyTap(comment.id, userName, false);
+                            },
+                            child: Text('返信', style: AppTextStyles.bold(fontSize: 12, color: Colors.grey, height: 1.1)),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -847,6 +861,7 @@ class _CommentThreadWidget extends HookConsumerWidget {
                   final rUserAvatar = rUser?.avatar_url;
                   final rDateStr = DateFormatter.formatBbsDate(reply.createdAt);
                   final rIsOwner = reply.userId == post.userId;
+                  final rDeleted = reply.isDeleted;
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
@@ -886,7 +901,7 @@ class _CommentThreadWidget extends HookConsumerWidget {
                                   ),
                                   const SizedBox(width: 4),
                                   Text('・ $rDateStr', style: AppTextStyles.notoSans(fontSize: 11, color: Colors.grey)),
-                                  if (rIsOwner) ...[
+                                  if (rIsOwner && !rDeleted) ...[
                                     const SizedBox(width: 6),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -898,97 +913,105 @@ class _CommentThreadWidget extends HookConsumerWidget {
                                     ),
                                   ],
                                   const Spacer(),
-                                  // 返信メニュー(通報 / 非表示 / ブロック / 削除)
-                                  GestureDetector(
-                                    onTap: () {
-                                      final myId = ref.read(currentUserIdProvider);
-                                      final isOwnReply = reply.userId == myId;
-                                      showContentMenuSheet(
-                                        context: context,
-                                        ref: ref,
-                                        authorUserId: isOwnReply ? null : reply.userId,
-                                        authorName: rUserName,
-                                        contentType: 'bbs_comment',
-                                        contentId: reply.id,
-                                        contentSnapshot: reply.content,
-                                        isOwnContent: isOwnReply,
-                                        onHide: () => ref
-                                            .read(bbsCommentProvider(post.id).notifier)
-                                            .hideComment(reply.id),
-                                        onDelete: isOwnReply
-                                            ? () async {
-                                                final ok = await ref
-                                                    .read(bbsCommentProvider(post.id).notifier)
-                                                    .deleteComment(reply.id);
-                                                if (context.mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(ok ? 'コメントを削除しました' : '削除に失敗しました'),
-                                                    ),
-                                                  );
+                                  // 返信メニュー(通報 / 非表示 / ブロック / 削除) ※削除済みは非表示
+                                  if (!rDeleted)
+                                    GestureDetector(
+                                      onTap: () {
+                                        final myId = ref.read(currentUserIdProvider);
+                                        final isOwnReply = reply.userId == myId;
+                                        showContentMenuSheet(
+                                          context: context,
+                                          ref: ref,
+                                          authorUserId: isOwnReply ? null : reply.userId,
+                                          authorName: rUserName,
+                                          contentType: 'bbs_comment',
+                                          contentId: reply.id,
+                                          contentSnapshot: reply.content,
+                                          isOwnContent: isOwnReply,
+                                          onHide: () => ref
+                                              .read(bbsCommentProvider(post.id).notifier)
+                                              .hideComment(reply.id),
+                                          onDelete: isOwnReply
+                                              ? () async {
+                                                  final ok = await ref
+                                                      .read(bbsCommentProvider(post.id).notifier)
+                                                      .deleteComment(reply.id);
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(ok ? 'コメントを削除しました' : '削除に失敗しました'),
+                                                      ),
+                                                    );
+                                                  }
                                                 }
-                                              }
-                                            : null,
-                                        onBlocked: () => ref
-                                            .read(bbsCommentProvider(post.id).notifier)
-                                            .fetchComments(),
-                                      );
-                                    },
-                                    child: const Icon(CupertinoIcons.ellipsis, color: Color(0xFF536471), size: 14),
-                                  ),
+                                              : null,
+                                          onBlocked: () => ref
+                                              .read(bbsCommentProvider(post.id).notifier)
+                                              .fetchComments(),
+                                        );
+                                      },
+                                      child: const Icon(CupertinoIcons.ellipsis, color: Color(0xFF536471), size: 14),
+                                    ),
                                 ],
                               ),
                               const SizedBox(height: 2),
-                              if (reply.content.isNotEmpty)
-                                MentionText(text: reply.content, style: AppTextStyles.notoSans(fontSize: 13, color: Colors.black87)),
-                              if (reply.imageUrl != null) ...[
-                                const SizedBox(height: 8),
-                                _ReplyImageToggle(imageUrl: reply.imageUrl!),
-                              ],
-                              if (reply.hasResba) ...[
-                                const SizedBox(height: 6),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: ResbaBadge(text: 'レスバ付き'),
-                                ),
-                              ],
-                              ..._resbaCardsFor(reply.id),
-                              const SizedBox(height: 4),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  InkWell(
-                                    onTap: () {
-                                      ref.read(bbsCommentProvider(post.id).notifier).toggleLike(reply);
-                                    },
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        Transform.translate(
-                                          offset: const Offset(0, 1),
-                                          child: reply.isLikedByMe
-                                              ? const Icon(CupertinoIcons.heart_fill, color: Colors.pink, size: 14)
-                                              : SvgPicture.asset(
-                                                  'assets/images/icons/tweeticon/heart.svg',
-                                                  width: 14,
-                                                  height: 14,
-                                                  colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
-                                                ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text('${reply.likesCount}', style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 13, height: 1.1)),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  InkWell(
-                                    onTap: () {
-                                      onReplyTap(reply.id, rUserName, true);
-                                    },
-                                    child: Text('返信', style: AppTextStyles.bold(fontSize: 12, color: Colors.grey, height: 1.0)),
+                              if (rDeleted)
+                                Text(
+                                  'この返信は削除されました',
+                                  style: const TextStyle(fontSize: 13, color: Colors.grey, fontStyle: FontStyle.italic),
+                                )
+                              else ...[
+                                if (reply.content.isNotEmpty)
+                                  MentionText(text: reply.content, style: AppTextStyles.notoSans(fontSize: 13, color: Colors.black87)),
+                                if (reply.imageUrl != null) ...[
+                                  const SizedBox(height: 8),
+                                  _ReplyImageToggle(imageUrl: reply.imageUrl!),
+                                ],
+                                if (reply.hasResba) ...[
+                                  const SizedBox(height: 6),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: ResbaBadge(text: 'レスバ付き'),
                                   ),
                                 ],
-                              ),
+                                ..._resbaCardsFor(reply.id),
+                                const SizedBox(height: 4),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    InkWell(
+                                      onTap: () {
+                                        ref.read(bbsCommentProvider(post.id).notifier).toggleLike(reply);
+                                      },
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          Transform.translate(
+                                            offset: const Offset(0, 1),
+                                            child: reply.isLikedByMe
+                                                ? const Icon(CupertinoIcons.heart_fill, color: Colors.pink, size: 14)
+                                                : SvgPicture.asset(
+                                                    'assets/images/icons/tweeticon/heart.svg',
+                                                    width: 14,
+                                                    height: 14,
+                                                    colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+                                                  ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text('${reply.likesCount}', style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 13, height: 1.1)),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    InkWell(
+                                      onTap: () {
+                                        onReplyTap(reply.id, rUserName, true);
+                                      },
+                                      child: Text('返信', style: AppTextStyles.bold(fontSize: 12, color: Colors.grey, height: 1.0)),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),

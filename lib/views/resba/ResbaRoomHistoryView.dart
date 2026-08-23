@@ -86,6 +86,7 @@ class ResbaRoomHistoryView extends HookConsumerWidget {
                     Container(
                       width: 72,
                       height: 72,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,

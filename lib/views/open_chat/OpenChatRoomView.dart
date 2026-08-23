@@ -27,10 +27,9 @@ class OpenChatRoomView extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final messagesAsync = ref.watch(openChatMessagesProvider(room.id));
     final currentUserId = ref.watch(currentUserIdProvider);
-    final isOwner = currentUserId == room.ownerId;
     final membersAsync = ref.watch(openChatMembersProvider(room.id));
     final myMember = membersAsync.valueOrNull?.where((m) => m.userId == currentUserId).firstOrNull;
-    final isChatAdmin = isOwner || myMember?.role == 'admin';
+    final isChatAdmin = myMember?.isModerator ?? false;
     final textController = useTextEditingController();
     final textFieldFocusNode = useFocusNode();
     final scrollController = useScrollController();

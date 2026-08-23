@@ -25,6 +25,10 @@ final matchingRoomProvider =
 
 final opponentOfflineStatusProvider = StateProvider<int?>((ref) => null);
 
+/// 観戦コメント（ヤジ）の受信イベントをUIに配信するProvider (テキスト, タイムスタンプ)
+final spectatorCommentEventProvider =
+    StateProvider<({String text, int timestamp})?>((ref) => null);
+
 // final goProvider = StateProvider<bool>((ref) => false);
 
 class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
@@ -52,6 +56,34 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     if (state.player1Id == myId) return state.player2Id;
     if (state.player2Id == myId) return state.player1Id;
     return null;
+  }
+
+  // Presence の payload（joins / leaves / presence_state）から相手ユーザーを探索するヘルパー
+  bool _isUserInPresenceMap(Map<dynamic, dynamic> map, String targetUserId) {
+    for (final entry in map.entries) {
+      if (entry.key.toString() == targetUserId) return true;
+      final val = entry.value;
+      if (val is Map) {
+        if (val['user_id']?.toString() == targetUserId) return true;
+        final metas = val['metas'];
+        if (metas is List) {
+          for (final m in metas) {
+            if (m is Map &&
+                (m['user_id']?.toString() == targetUserId ||
+                    m['presence_ref']?.toString() == targetUserId)) {
+              return true;
+            }
+          }
+        }
+      } else if (val is List) {
+        for (final m in val) {
+          if (m is Map && m['user_id']?.toString() == targetUserId) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
 
@@ -92,13 +124,8 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     }
     if (isdisposed) return;
 
-    // チャンネルの作成 (両ユーザーで共通のroomIdをKeyとして指定)
-    final channel = supabase.channel(
-      roomId,
-      opts: RealtimeChannelConfig(
-        key: roomId,
-      ),
-    );
+    // チャンネルの作成 (key: roomId の指定を外すことでPresenceキーの衝突を防止)
+    final channel = supabase.channel(roomId);
     _presenceChannel = channel;
 
     // 【GitHub Issue #43561 回避策：Dart版実装】
@@ -118,10 +145,14 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
             // 初期状態チェック: 相手がいなければタイマー開始
             final opponentId = _opponentId;
             if (opponentId != null) {
-              final isOpponentOnline = currentPresences.any((p) {
+              bool isOpponentOnline = currentPresences.any((p) {
                 return p.presences
                     .any((meta) => meta.payload['user_id'] == opponentId);
               });
+              // RAW payload からもフォールバックチェック
+              if (!isOpponentOnline && payload is Map) {
+                isOpponentOnline = _isUserInPresenceMap(payload, opponentId);
+              }
               if (!isOpponentOnline) {
                 _startOfflineTimer();
               } else {
@@ -138,26 +169,19 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
           (payload, [_]) {
             if (isdisposed || _presenceChannel != channel) return;
             log('★★★ MANUAL Presence Diff (RAW): $payload');
-            final Map<String, dynamic> joins = payload['joins'] ?? {};
-            final Map<String, dynamic> leaves = payload['leaves'] ?? {};
+            final Map joins = payload is Map && payload['joins'] is Map
+                ? payload['joins']
+                : {};
+            final Map leaves = payload is Map && payload['leaves'] is Map
+                ? payload['leaves']
+                : {};
             final opponentId = _opponentId;
 
             if (opponentId != null) {
-              bool opponentJoined = joins.values.any((userPresences) {
-                if (userPresences is List) {
-                  return userPresences
-                      .any((p) => p['user_id'] == opponentId);
-                }
-                return false;
-              });
-
-              bool opponentLeft = leaves.values.any((userPresences) {
-                if (userPresences is List) {
-                  return userPresences
-                      .any((p) => p['user_id'] == opponentId);
-                }
-                return false;
-              });
+              final bool opponentJoined =
+                  _isUserInPresenceMap(joins, opponentId);
+              final bool opponentLeft =
+                  _isUserInPresenceMap(leaves, opponentId);
 
               if (opponentJoined) {
                 log('★★★ Opponent $opponentId JOINED/ACTIVE!');
@@ -167,6 +191,16 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
                 log('★★★ Opponent $opponentId LEFT/OFFLINE! Starting timer...');
                 _startOfflineTimer();
               }
+            }
+          },
+        )
+        .onBroadcast(
+          event: 'spectator_comment',
+          callback: (payload) {
+            final text = payload['text'] as String?;
+            if (text != null && text.isNotEmpty) {
+              ref.read(spectatorCommentEventProvider.notifier).state =
+                  (text: text, timestamp: DateTime.now().millisecondsSinceEpoch);
             }
           },
         )

@@ -24,6 +24,9 @@ mixin _$Chat {
   String get content => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   String? get imageUrl => throw _privateConstructorUsedError;
+  String? get replyToId => throw _privateConstructorUsedError;
+  String? get replyToContent => throw _privateConstructorUsedError;
+  String? get replyToUserName => throw _privateConstructorUsedError;
 
   /// Create a copy of Chat
   /// with the given fields replaced by the non-null parameter values.
@@ -43,6 +46,9 @@ abstract class $ChatCopyWith<$Res> {
     String content,
     DateTime createdAt,
     String? imageUrl,
+    String? replyToId,
+    String? replyToContent,
+    String? replyToUserName,
   });
 }
 
@@ -67,6 +73,9 @@ class _$ChatCopyWithImpl<$Res, $Val extends Chat>
     Object? content = null,
     Object? createdAt = null,
     Object? imageUrl = freezed,
+    Object? replyToId = freezed,
+    Object? replyToContent = freezed,
+    Object? replyToUserName = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -94,6 +103,18 @@ class _$ChatCopyWithImpl<$Res, $Val extends Chat>
                 ? _value.imageUrl
                 : imageUrl // ignore: cast_nullable_to_non_nullable
                       as String?,
+            replyToId: freezed == replyToId
+                ? _value.replyToId
+                : replyToId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            replyToContent: freezed == replyToContent
+                ? _value.replyToContent
+                : replyToContent // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            replyToUserName: freezed == replyToUserName
+                ? _value.replyToUserName
+                : replyToUserName // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -115,6 +136,9 @@ abstract class _$$ChatImplCopyWith<$Res> implements $ChatCopyWith<$Res> {
     String content,
     DateTime createdAt,
     String? imageUrl,
+    String? replyToId,
+    String? replyToContent,
+    String? replyToUserName,
   });
 }
 
@@ -136,6 +160,9 @@ class __$$ChatImplCopyWithImpl<$Res>
     Object? content = null,
     Object? createdAt = null,
     Object? imageUrl = freezed,
+    Object? replyToId = freezed,
+    Object? replyToContent = freezed,
+    Object? replyToUserName = freezed,
   }) {
     return _then(
       _$ChatImpl(
@@ -163,6 +190,18 @@ class __$$ChatImplCopyWithImpl<$Res>
             ? _value.imageUrl
             : imageUrl // ignore: cast_nullable_to_non_nullable
                   as String?,
+        replyToId: freezed == replyToId
+            ? _value.replyToId
+            : replyToId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        replyToContent: freezed == replyToContent
+            ? _value.replyToContent
+            : replyToContent // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        replyToUserName: freezed == replyToUserName
+            ? _value.replyToUserName
+            : replyToUserName // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -178,6 +217,9 @@ class _$ChatImpl implements _Chat {
     required this.content,
     required this.createdAt,
     this.imageUrl,
+    this.replyToId,
+    this.replyToContent,
+    this.replyToUserName,
   });
 
   // コンストラクタも大文字
@@ -194,10 +236,16 @@ class _$ChatImpl implements _Chat {
   final DateTime createdAt;
   @override
   final String? imageUrl;
+  @override
+  final String? replyToId;
+  @override
+  final String? replyToContent;
+  @override
+  final String? replyToUserName;
 
   @override
   String toString() {
-    return 'Chat(id: $id, roomId: $roomId, senderId: $senderId, content: $content, createdAt: $createdAt, imageUrl: $imageUrl)';
+    return 'Chat(id: $id, roomId: $roomId, senderId: $senderId, content: $content, createdAt: $createdAt, imageUrl: $imageUrl, replyToId: $replyToId, replyToContent: $replyToContent, replyToUserName: $replyToUserName)';
   }
 
   @override
@@ -213,7 +261,13 @@ class _$ChatImpl implements _Chat {
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.imageUrl, imageUrl) ||
-                other.imageUrl == imageUrl));
+                other.imageUrl == imageUrl) &&
+            (identical(other.replyToId, replyToId) ||
+                other.replyToId == replyToId) &&
+            (identical(other.replyToContent, replyToContent) ||
+                other.replyToContent == replyToContent) &&
+            (identical(other.replyToUserName, replyToUserName) ||
+                other.replyToUserName == replyToUserName));
   }
 
   @override
@@ -225,6 +279,9 @@ class _$ChatImpl implements _Chat {
     content,
     createdAt,
     imageUrl,
+    replyToId,
+    replyToContent,
+    replyToUserName,
   );
 
   /// Create a copy of Chat
@@ -244,6 +301,9 @@ abstract class _Chat implements Chat {
     required final String content,
     required final DateTime createdAt,
     final String? imageUrl,
+    final String? replyToId,
+    final String? replyToContent,
+    final String? replyToUserName,
   }) = _$ChatImpl;
 
   // コンストラクタも大文字
@@ -259,6 +319,12 @@ abstract class _Chat implements Chat {
   DateTime get createdAt;
   @override
   String? get imageUrl;
+  @override
+  String? get replyToId;
+  @override
+  String? get replyToContent;
+  @override
+  String? get replyToUserName;
 
   /// Create a copy of Chat
   /// with the given fields replaced by the non-null parameter values.

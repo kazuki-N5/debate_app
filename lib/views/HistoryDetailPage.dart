@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:debate_project/modes/history.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/widgets/radar_chart_view.dart';
-import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:debate_project/adsence/ad_mbanner_provider.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';

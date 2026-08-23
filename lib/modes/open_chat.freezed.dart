@@ -750,6 +750,16 @@ mixin _$OpenChatMessage {
   DateTime get createdAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'image_url')
   String? get imageUrl => throw _privateConstructorUsedError;
+  @JsonKey(name: 'is_deleted')
+  bool get isDeleted => throw _privateConstructorUsedError;
+  @JsonKey(name: 'is_admin_deleted')
+  bool get isAdminDeleted => throw _privateConstructorUsedError;
+  @JsonKey(name: 'reply_to_id')
+  String? get replyToId => throw _privateConstructorUsedError;
+  @JsonKey(name: 'reply_to_content')
+  String? get replyToContent => throw _privateConstructorUsedError;
+  @JsonKey(name: 'reply_to_user_name')
+  String? get replyToUserName => throw _privateConstructorUsedError;
 
   /// Serializes this OpenChatMessage to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -775,6 +785,11 @@ abstract class $OpenChatMessageCopyWith<$Res> {
     String content,
     @JsonKey(name: 'created_at') DateTime createdAt,
     @JsonKey(name: 'image_url') String? imageUrl,
+    @JsonKey(name: 'is_deleted') bool isDeleted,
+    @JsonKey(name: 'is_admin_deleted') bool isAdminDeleted,
+    @JsonKey(name: 'reply_to_id') String? replyToId,
+    @JsonKey(name: 'reply_to_content') String? replyToContent,
+    @JsonKey(name: 'reply_to_user_name') String? replyToUserName,
   });
 }
 
@@ -799,6 +814,11 @@ class _$OpenChatMessageCopyWithImpl<$Res, $Val extends OpenChatMessage>
     Object? content = null,
     Object? createdAt = null,
     Object? imageUrl = freezed,
+    Object? isDeleted = null,
+    Object? isAdminDeleted = null,
+    Object? replyToId = freezed,
+    Object? replyToContent = freezed,
+    Object? replyToUserName = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -826,6 +846,26 @@ class _$OpenChatMessageCopyWithImpl<$Res, $Val extends OpenChatMessage>
                 ? _value.imageUrl
                 : imageUrl // ignore: cast_nullable_to_non_nullable
                       as String?,
+            isDeleted: null == isDeleted
+                ? _value.isDeleted
+                : isDeleted // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            isAdminDeleted: null == isAdminDeleted
+                ? _value.isAdminDeleted
+                : isAdminDeleted // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            replyToId: freezed == replyToId
+                ? _value.replyToId
+                : replyToId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            replyToContent: freezed == replyToContent
+                ? _value.replyToContent
+                : replyToContent // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            replyToUserName: freezed == replyToUserName
+                ? _value.replyToUserName
+                : replyToUserName // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -848,6 +888,11 @@ abstract class _$$OpenChatMessageImplCopyWith<$Res>
     String content,
     @JsonKey(name: 'created_at') DateTime createdAt,
     @JsonKey(name: 'image_url') String? imageUrl,
+    @JsonKey(name: 'is_deleted') bool isDeleted,
+    @JsonKey(name: 'is_admin_deleted') bool isAdminDeleted,
+    @JsonKey(name: 'reply_to_id') String? replyToId,
+    @JsonKey(name: 'reply_to_content') String? replyToContent,
+    @JsonKey(name: 'reply_to_user_name') String? replyToUserName,
   });
 }
 
@@ -871,6 +916,11 @@ class __$$OpenChatMessageImplCopyWithImpl<$Res>
     Object? content = null,
     Object? createdAt = null,
     Object? imageUrl = freezed,
+    Object? isDeleted = null,
+    Object? isAdminDeleted = null,
+    Object? replyToId = freezed,
+    Object? replyToContent = freezed,
+    Object? replyToUserName = freezed,
   }) {
     return _then(
       _$OpenChatMessageImpl(
@@ -898,6 +948,26 @@ class __$$OpenChatMessageImplCopyWithImpl<$Res>
             ? _value.imageUrl
             : imageUrl // ignore: cast_nullable_to_non_nullable
                   as String?,
+        isDeleted: null == isDeleted
+            ? _value.isDeleted
+            : isDeleted // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        isAdminDeleted: null == isAdminDeleted
+            ? _value.isAdminDeleted
+            : isAdminDeleted // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        replyToId: freezed == replyToId
+            ? _value.replyToId
+            : replyToId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        replyToContent: freezed == replyToContent
+            ? _value.replyToContent
+            : replyToContent // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        replyToUserName: freezed == replyToUserName
+            ? _value.replyToUserName
+            : replyToUserName // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -913,6 +983,11 @@ class _$OpenChatMessageImpl implements _OpenChatMessage {
     required this.content,
     @JsonKey(name: 'created_at') required this.createdAt,
     @JsonKey(name: 'image_url') this.imageUrl,
+    @JsonKey(name: 'is_deleted') this.isDeleted = false,
+    @JsonKey(name: 'is_admin_deleted') this.isAdminDeleted = false,
+    @JsonKey(name: 'reply_to_id') this.replyToId,
+    @JsonKey(name: 'reply_to_content') this.replyToContent,
+    @JsonKey(name: 'reply_to_user_name') this.replyToUserName,
   });
 
   factory _$OpenChatMessageImpl.fromJson(Map<String, dynamic> json) =>
@@ -934,10 +1009,25 @@ class _$OpenChatMessageImpl implements _OpenChatMessage {
   @override
   @JsonKey(name: 'image_url')
   final String? imageUrl;
+  @override
+  @JsonKey(name: 'is_deleted')
+  final bool isDeleted;
+  @override
+  @JsonKey(name: 'is_admin_deleted')
+  final bool isAdminDeleted;
+  @override
+  @JsonKey(name: 'reply_to_id')
+  final String? replyToId;
+  @override
+  @JsonKey(name: 'reply_to_content')
+  final String? replyToContent;
+  @override
+  @JsonKey(name: 'reply_to_user_name')
+  final String? replyToUserName;
 
   @override
   String toString() {
-    return 'OpenChatMessage(id: $id, roomId: $roomId, userId: $userId, content: $content, createdAt: $createdAt, imageUrl: $imageUrl)';
+    return 'OpenChatMessage(id: $id, roomId: $roomId, userId: $userId, content: $content, createdAt: $createdAt, imageUrl: $imageUrl, isDeleted: $isDeleted, isAdminDeleted: $isAdminDeleted, replyToId: $replyToId, replyToContent: $replyToContent, replyToUserName: $replyToUserName)';
   }
 
   @override
@@ -952,7 +1042,17 @@ class _$OpenChatMessageImpl implements _OpenChatMessage {
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.imageUrl, imageUrl) ||
-                other.imageUrl == imageUrl));
+                other.imageUrl == imageUrl) &&
+            (identical(other.isDeleted, isDeleted) ||
+                other.isDeleted == isDeleted) &&
+            (identical(other.isAdminDeleted, isAdminDeleted) ||
+                other.isAdminDeleted == isAdminDeleted) &&
+            (identical(other.replyToId, replyToId) ||
+                other.replyToId == replyToId) &&
+            (identical(other.replyToContent, replyToContent) ||
+                other.replyToContent == replyToContent) &&
+            (identical(other.replyToUserName, replyToUserName) ||
+                other.replyToUserName == replyToUserName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -965,6 +1065,11 @@ class _$OpenChatMessageImpl implements _OpenChatMessage {
     content,
     createdAt,
     imageUrl,
+    isDeleted,
+    isAdminDeleted,
+    replyToId,
+    replyToContent,
+    replyToUserName,
   );
 
   /// Create a copy of OpenChatMessage
@@ -992,6 +1097,11 @@ abstract class _OpenChatMessage implements OpenChatMessage {
     required final String content,
     @JsonKey(name: 'created_at') required final DateTime createdAt,
     @JsonKey(name: 'image_url') final String? imageUrl,
+    @JsonKey(name: 'is_deleted') final bool isDeleted,
+    @JsonKey(name: 'is_admin_deleted') final bool isAdminDeleted,
+    @JsonKey(name: 'reply_to_id') final String? replyToId,
+    @JsonKey(name: 'reply_to_content') final String? replyToContent,
+    @JsonKey(name: 'reply_to_user_name') final String? replyToUserName,
   }) = _$OpenChatMessageImpl;
 
   factory _OpenChatMessage.fromJson(Map<String, dynamic> json) =
@@ -1013,6 +1123,21 @@ abstract class _OpenChatMessage implements OpenChatMessage {
   @override
   @JsonKey(name: 'image_url')
   String? get imageUrl;
+  @override
+  @JsonKey(name: 'is_deleted')
+  bool get isDeleted;
+  @override
+  @JsonKey(name: 'is_admin_deleted')
+  bool get isAdminDeleted;
+  @override
+  @JsonKey(name: 'reply_to_id')
+  String? get replyToId;
+  @override
+  @JsonKey(name: 'reply_to_content')
+  String? get replyToContent;
+  @override
+  @JsonKey(name: 'reply_to_user_name')
+  String? get replyToUserName;
 
   /// Create a copy of OpenChatMessage
   /// with the given fields replaced by the non-null parameter values.

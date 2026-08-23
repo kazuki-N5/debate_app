@@ -14,6 +14,9 @@ class Chat with _$Chat {
     required String content,
     required DateTime createdAt,
     String? imageUrl,
+    String? replyToId,
+    String? replyToContent,
+    String? replyToUserName,
   }) = _Chat;
 
   factory Chat.fromMap(Map<String, dynamic> map) {
@@ -24,6 +27,9 @@ class Chat with _$Chat {
       content: map['content'],
       senderId: map['sender_id'].toString(),
       imageUrl: map['image_url']?.toString(),
+      replyToId: map['reply_to_id']?.toString(),
+      replyToContent: map['reply_to_content']?.toString(),
+      replyToUserName: map['reply_to_user_name']?.toString(),
     );
   }
 

@@ -98,6 +98,14 @@ class UserProfileState {
   }
 }
 
+// ユーザーIDをパラメータとして受け取る軽量な基本情報Provider（キャッシュ付き）
+final userBasicInfoProvider = FutureProvider.family.autoDispose<Users?, String>((ref, userId) async {
+  final supabase = ref.read(supabaseProvider);
+  final res = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+  if (res == null) return null;
+  return Users.fromMap(res);
+});
+
 // ユーザーIDをパラメータとして受け取るProvider
 final userProfileProvider = StateNotifierProvider.family<UserProfileNotifier, UserProfileState, String>((ref, userId) {
   return UserProfileNotifier(ref, userId);

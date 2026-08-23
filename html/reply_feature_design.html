@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>リプライ機能 ＆ AIプロンプト構造化 設計書</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+    .chat-bubble-tail-right::after {
+      content: '';
+      position: absolute;
+      top: 6px;
+      right: -6px;
+      width: 0;
+      height: 0;
+      border-top: 5px solid #95eb7c;
+      border-right: 6px solid transparent;
+      border-bottom: 5px solid transparent;
+    }
+    .chat-bubble-tail-left::after {
+      content: '';
+      position: absolute;
+      top: 6px;
+      left: -6px;
+      width: 0;
+      height: 0;
+      border-top: 5px solid #ffffff;
+      border-left: 6px solid transparent;
+      border-bottom: 5px solid transparent;
+    }
+    .highlight-flash {
+      animation: flash-animation 1.5s ease-out;
+    }
+    @keyframes flash-animation {
+      0% { background-color: rgba(234, 179, 8, 0.4); transform: scale(1.02); }
+      100% { background-color: transparent; transform: scale(1); }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
+
+  <div class="max-w-7xl mx-auto space-y-8">
+
+    <!-- ヘッダー -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 rounded-full text-xs font-semibold mb-3">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+          機能設計 ＆ AI論理ツリープロンプト仕様書
+        </div>
+        <h1 class="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-3">
+          <i data-lucide="reply" class="w-7 h-7 text-indigo-400"></i>
+          リプライ機能 ＆ AI審査プロンプト構造化 設計書
+        </h1>
+        <p class="text-slate-400 mt-2 text-sm leading-relaxed max-w-3xl">
+          ユーザーが特定の発言を長押しして「リプライ」を行い、会話の論理関係（どの主張に対する反論か）を明示できるようにします。<br>
+          さらに、現在のAI（DeepSeek/Gemini）へのベタ書き会話送信を刷新し、<strong>リプライ関係を構造化したプロンプト</strong>を渡すことで、AIが正確に反論力（rebuttal）や論理性（logic）を判定できる設計を定義します。
+        </p>
+      </div>
+      <div class="flex items-center gap-2 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-700 text-xs text-slate-400">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        最終更新: 2026年8月
+      </div>
+    </div>
+
+    <!-- 3大柱のサマリーカード -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 hover:border-indigo-500/50 transition">
+        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-4">
+          <i data-lucide="smartphone" class="w-5 h-5"></i>
+        </div>
+        <h3 class="font-bold text-base text-white">1. 直感的なリプライUI</h3>
+        <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+          長押しメニューから「リプライ」を選択。入力欄上部に返信先プレビューが表示され、送信後は吹き出し内に引用ヘッダーが美しく表示されます。
+        </p>
+      </div>
+
+      <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 hover:border-indigo-500/50 transition">
+        <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center mb-4">
+          <i data-lucide="bot" class="w-5 h-5"></i>
+        </div>
+        <h3 class="font-bold text-base text-white">2. AI論理ツリープロンプト</h3>
+        <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+          従来のフラットな時系列テキストから、<code class="text-purple-300 font-mono text-[11px]">[#3 (↩ #1への反論)]</code> 形式の参照ツリー構造に変換。AIがピンポイント反論を正確に採点可能に。
+        </p>
+      </div>
+
+      <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 hover:border-indigo-500/50 transition">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4">
+          <i data-lucide="database" class="w-5 h-5"></i>
+        </div>
+        <h3 class="font-bold text-base text-white">3. 軽量・安全なDB設計</h3>
+        <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+          <code class="text-emerald-300 font-mono text-[11px]">reply_to_id</code> やスナップショットカラムを追加。元メッセージが削除されても壊れない耐障害性設計。
+        </p>
+      </div>
+    </div>
+
+    <!-- メインコンテンツグリッド（左: インタラクティブUI / 右: AIプロンプト比較） -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+      <!-- 左カラム: インタラクティブUIプレビュー (5 cols) -->
+      <div class="lg:col-span-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="layout" class="w-5 h-5 text-indigo-400"></i>
+            インタラクティブUIプレビュー
+          </h2>
+          <span class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-md border border-slate-700">実機挙動シミュレータ</span>
+        </div>
+
+        <p class="text-xs text-slate-400">
+          👇 <strong>メッセージをタップ</strong>して「リプライ」を押すと、入力バーに返信先が表示されます。送信ボタンを押してリプライ吹き出しの動作を体験できます。
+        </p>
+
+        <!-- スマホ風コンテナ -->
+        <div class="w-full max-w-[390px] mx-auto bg-slate-950 border-4 border-slate-800 rounded-[36px] overflow-hidden shadow-2xl flex flex-col h-[650px] relative">
+          
+          <!-- 上部ステータスバー -->
+          <div class="bg-slate-900 text-white px-5 py-3 flex items-center justify-between border-b border-slate-800 z-10">
+            <div class="flex items-center gap-2">
+              <i data-lucide="arrow-left" class="w-4 h-4 text-slate-300 cursor-pointer"></i>
+              <span class="font-bold text-sm">⚔️ レスバ対戦中 (テーマ: AI規制)</span>
+            </div>
+            <span class="text-xs font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">残り 02:45</span>
+          </div>
+
+          <!-- チャットメッセージエリア -->
+          <div id="chatMessageList" class="flex-1 p-3 overflow-y-auto space-y-3 bg-[#8b9bb4]">
+            
+            <!-- メッセージ1: A（相手） -->
+            <div id="msg-1" class="flex items-start gap-1.5 cursor-pointer transition-all p-1 rounded-xl" onclick="openActionMenu('msg-1', 'A (相手)', 'AIは著作権侵害やプライバシー侵害のリスクが大きすぎるため、政府が厳格に規制すべきです。')">
+              <div class="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700 shrink-0 shadow">A</div>
+              <div class="max-w-[75%] flex flex-col items-start">
+                <span class="text-[11px] font-bold text-white drop-shadow mb-0.5 px-0.5">論理王A</span>
+                <div class="relative bg-white text-slate-900 text-xs px-3 py-2 rounded-2xl shadow-sm chat-bubble-tail-left">
+                  AIは著作権侵害やプライバシー侵害のリスクが大きすぎるため、政府が厳格に規制すべきです。
+                </div>
+              </div>
+            </div>
+
+            <!-- メッセージ2: B（自分） -->
+            <div id="msg-2" class="flex justify-end cursor-pointer transition-all p-1 rounded-xl" onclick="openActionMenu('msg-2', 'あなた', 'しかし過剰な規制は技術革新を阻害し、国際競争力を失う結果になります。')">
+              <div class="max-w-[75%] flex flex-col items-end">
+                <div class="relative bg-[#95eb7c] text-slate-900 text-xs px-3 py-2 rounded-2xl shadow-sm chat-bubble-tail-right">
+                  しかし過剰な規制は技術革新を阻害し、国際競争力を失う結果になります。
+                </div>
+              </div>
+            </div>
+
+            <!-- メッセージ3: A（相手）のリプライ発言（既存例） -->
+            <div id="msg-3" class="flex items-start gap-1.5 cursor-pointer transition-all p-1 rounded-xl" onclick="openActionMenu('msg-3', 'A (相手)', '国際競争力よりも市民の権利保護が優先されるべきです。EUのAI規制法もその考え方に基づいています。')">
+              <div class="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700 shrink-0 shadow">A</div>
+              <div class="max-w-[75%] flex flex-col items-start">
+                <span class="text-[11px] font-bold text-white drop-shadow mb-0.5 px-0.5">論理王A</span>
+                <div class="relative bg-white text-slate-900 text-xs px-3 py-2 rounded-2xl shadow-sm chat-bubble-tail-left">
+                  <!-- 引用プレビューブロック -->
+                  <div class="bg-slate-100 hover:bg-slate-200 transition border-l-4 border-indigo-500 rounded px-2 py-1 mb-1.5 text-[10px] text-slate-600 cursor-pointer flex items-center gap-1.5" onclick="event.stopPropagation(); highlightMessage('msg-2');">
+                    <i data-lucide="reply" class="w-3 h-3 text-indigo-500 shrink-0"></i>
+                    <div class="truncate">
+                      <span class="font-bold text-indigo-600">あなた</span>: しかし過剰な規制は技術革新を阻害し...
+                    </div>
+                  </div>
+                  国際競争力よりも市民の権利保護が優先されるべきです。EUのAI規制法もその考え方に基づいています。
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- アクションポップオーバー（長押し・タップ時） -->
+          <div id="actionPopover" class="hidden absolute top-1/3 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur border border-slate-700 text-white rounded-xl shadow-2xl p-1.5 z-30 flex items-center gap-1 text-xs">
+            <button onclick="startReply()" class="px-3 py-1.5 hover:bg-indigo-600 rounded-lg flex items-center gap-1.5 transition font-medium">
+              <i data-lucide="reply" class="w-3.5 h-3.5"></i>
+              リプライ
+            </button>
+            <div class="w-px h-4 bg-slate-700"></div>
+            <button onclick="copyContent()" class="px-3 py-1.5 hover:bg-slate-800 rounded-lg flex items-center gap-1.5 transition">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              コピー
+            </button>
+            <div class="w-px h-4 bg-slate-700"></div>
+            <button onclick="closeActionMenu()" class="p-1 hover:bg-slate-800 rounded-lg text-slate-400">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+
+          <!-- 入力エリア ＆ リプライバー -->
+          <div class="bg-white border-t border-slate-200 z-10">
+            
+            <!-- リプライバー（アクティブ時） -->
+            <div id="replyBar" class="hidden bg-indigo-50 border-b border-indigo-100 px-3 py-1.5 flex items-center justify-between text-xs animate-fadeIn">
+              <div class="flex items-center gap-2 overflow-hidden">
+                <i data-lucide="reply" class="w-3.5 h-3.5 text-indigo-600 shrink-0"></i>
+                <div class="truncate">
+                  <span id="replyTargetAuthor" class="font-bold text-indigo-700">論理王A</span>
+                  <span class="text-slate-400 mx-1">に返信:</span>
+                  <span id="replyTargetSnippet" class="text-slate-600 truncate text-[11px]">AIは著作権侵害やプライバシー侵害の...</span>
+                </div>
+              </div>
+              <button onclick="cancelReply()" class="p-1 hover:bg-indigo-100 rounded text-slate-500 shrink-0">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <!-- 入力フォーム -->
+            <div class="p-2.5 flex items-center gap-2">
+              <input id="chatInput" type="text" placeholder="メッセージを入力..." class="flex-1 bg-slate-100 text-slate-900 text-xs px-3 py-2 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500" onkeydown="if(event.key==='Enter') sendMessage()">
+              <button onclick="sendMessage()" class="w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shadow transition shrink-0">
+                <i data-lucide="send" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 右カラム: AIプロンプト設計 ＆ 構造化比較 (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- 比較セクション -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+          <h3 class="text-base font-bold text-white flex items-center gap-2 mb-4">
+            <i data-lucide="git-compare" class="w-5 h-5 text-purple-400"></i>
+            AIへのプロンプト渡し方の比較（Before vs After）
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- Before -->
+            <div class="bg-slate-900/90 border border-rose-500/30 rounded-xl p-4 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-rose-400 flex items-center gap-1">
+                  <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                  現状（フラットベタ書き）
+                </span>
+                <span class="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded">判定精度: 低〜中</span>
+              </div>
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                時系列で単に並べただけ。直前の発言に対する返答としか解釈できず、<strong>過去の重要論点へのピンポイント反論をAIが見落とす</strong>。
+              </p>
+              <pre class="bg-black/50 p-2.5 rounded-lg text-[10px] text-slate-300 font-mono overflow-x-auto leading-relaxed border border-slate-800">
+[チャットログ]
+A: AIは著作権侵害リスクが...
+B: しかし過剰な規制は技術革新を...
+A: 市民の権利保護が優先されるべき...</pre>
+            </div>
+
+            <!-- After -->
+            <div class="bg-slate-900/90 border border-emerald-500/40 rounded-xl p-4 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                  <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                  新設計（リプライ論理ツリー）
+                </span>
+                <span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold">判定精度: 最高</span>
+              </div>
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                各発言にインデックス <code class="text-emerald-300 font-mono">[#1]</code> を付与し、リプライ先を <code class="text-emerald-300 font-mono">(↩ #1への反論)</code> で明示。反論力(rebuttal)を正当に加点！
+              </p>
+              <pre id="livePromptPreview" class="bg-black/50 p-2.5 rounded-lg text-[10px] text-emerald-300 font-mono overflow-x-auto leading-relaxed border border-slate-800">
+[論理ツリー構造化チャットログ]
+[#1] A: AIは著作権侵害リスクが...
+[#2] B: しかし過剰な規制は技術革新を...
+[#3 (↩ #2への反論)] A: 市民の権利保護が...</pre>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Edge Function / System Prompt 刷新仕様 -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i data-lucide="terminal" class="w-5 h-5 text-indigo-400"></i>
+              Edge Function (gemini_v2/index.ts) のプロンプト刷新仕様
+            </h3>
+            <button onclick="copyEdgeFunctionCode()" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              コードをコピー
+            </button>
+          </div>
+
+          <p class="text-xs text-slate-400 leading-relaxed">
+            `gemini_v2/index.ts` において、`messages` テーブルから <code class="text-slate-200">id, sender_id, content, reply_to_id</code> を取得し、発言番号（#1, #2...）のマッピングを作成してプロンプトを構築します。
+          </p>
+
+          <!-- コードブロック -->
+          <div class="relative bg-slate-950 border border-slate-800 rounded-xl overflow-hidden text-xs">
+            <div class="bg-slate-900/80 px-4 py-2 text-[11px] text-slate-400 border-b border-slate-800 font-mono flex items-center justify-between">
+              <span>supabase/functions/gemini_v2/index.ts (抜粋)</span>
+              <span class="text-emerald-400">TypeScript / Deno</span>
+            </div>
+            <pre class="p-4 text-[11px] text-slate-300 font-mono overflow-x-auto leading-relaxed"><code class="text-slate-300">// 1. メッセージ取得（reply_to_id を含む）
+const { data: messages, error: mError } = await supabase
+  .from("messages")
+  .select("id, sender_id, content, reply_to_id")
+  .eq("room_id", room_id)
+  .order("created_at", { ascending: true });
+
+// 2. メッセージID -> 発言番号 (#1, #2...) のインデックス辞書を作成
+const msgIndexMap = new Map&lt;string, number&gt;();
+messages?.forEach((m, i) => msgIndexMap.set(m.id, i + 1));
+
+// 3. リプライ関係を明示した論理ツリーログの構築
+const formattedChat = messages?.map((m, index) => {
+  const num = index + 1;
+  const label = m.sender_id === room.player1_id ? "A" : "B";
+  
+  let replyInfo = "";
+  if (m.reply_to_id && msgIndexMap.has(m.reply_to_id)) {
+    const targetNum = msgIndexMap.get(m.reply_to_id);
+    replyInfo = ` (↩ #${targetNum}への反論/応答)`;
+  }
+  
+  return `[#${num}${replyInfo}] ${label}: ${m.content}`;
+}).join("\n");
+
+// 4. System Prompt に反論ツリー評価の明確な基準を追加
+const systemPrompt = `あなたはディベートの厳正な審判です。
+発言に \`(↩ #番号への反論/応答)\` が記載されている場合、その発言は指定された過去の主張に対する直接的な反論です。
+相手の論点を論破できているか、論点のすり替えがないかを重視し、反論力(rebuttal)と論理性(logic)を判定してください。
+...`;</code></pre>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- データベース設計 & 移行SQLセクション -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8 space-y-6">
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="database" class="w-6 h-6 text-emerald-400"></i>
+            データベース設計 ＆ マイグレーションSQL
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">
+            対戦メッセージ・オープンチャット・DMの各テーブルに共通のリプライ用カラムを追加します。
+          </p>
+        </div>
+        <span class="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full font-semibold">
+          非破壊的変更 (Nullable)
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-4">
+          <div class="text-xs font-bold text-slate-200 font-mono mb-1">reply_to_id (UUID, Nullable)</div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            返信先メッセージのUUID。タップ時に返信先へジャンプ・ハイライトするために使用。
+          </p>
+        </div>
+
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-4">
+          <div class="text-xs font-bold text-slate-200 font-mono mb-1">reply_to_content (TEXT, Nullable)</div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            返信時の元テキスト（スナップショット）。元発言が後から削除された場合でも引用プレビューが壊れません。
+          </p>
+        </div>
+
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-4">
+          <div class="text-xs font-bold text-slate-200 font-mono mb-1">reply_to_user_name (TEXT, Nullable)</div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            返信先ユーザー名（スナップショット）。JOIN不要で高速に吹き出し内に「@論理王A」を描画可能。
+          </p>
+        </div>
+
+      </div>
+
+      <!-- SQL コードブロック -->
+      <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden text-xs">
+        <div class="bg-slate-900 px-4 py-2.5 text-slate-400 font-mono text-[11px] flex justify-between items-center border-b border-slate-800">
+          <span>supabase/migrations/20260839000000_add_reply_columns.sql</span>
+          <span class="text-indigo-400 font-semibold">PostgreSQL DDL</span>
+        </div>
+        <pre class="p-4 text-[11px] text-slate-300 font-mono overflow-x-auto leading-relaxed"><code>-- 1. 対戦チャット (messages) へのリプライカラム追加
+ALTER TABLE messages 
+  ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES messages(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS reply_to_content TEXT,
+  ADD COLUMN IF NOT EXISTS reply_to_user_name TEXT;
+
+-- 2. オープンチャット (open_chat_messages) へのリプライカラム追加
+ALTER TABLE open_chat_messages 
+  ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES open_chat_messages(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS reply_to_content TEXT,
+  ADD COLUMN IF NOT EXISTS reply_to_user_name TEXT;
+
+-- 3. DM (dm_messages) へのリプライカラム追加
+ALTER TABLE dm_messages 
+  ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES dm_messages(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS reply_to_content TEXT,
+  ADD COLUMN IF NOT EXISTS reply_to_user_name TEXT;
+
+-- 高速検索用インデックス
+CREATE INDEX IF NOT EXISTS idx_messages_reply_to_id ON messages(reply_to_id);
+CREATE INDEX IF NOT EXISTS idx_open_chat_messages_reply_to_id ON open_chat_messages(reply_to_id);
+CREATE INDEX IF NOT EXISTS idx_dm_messages_reply_to_id ON dm_messages(reply_to_id);</code></pre>
+      </div>
+
+    </div>
+
+    <!-- 実装ロードマップ -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8 space-y-6">
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">
+        <i data-lucide="list-checks" class="w-6 h-6 text-indigo-400"></i>
+        実装ステップ計画（ロードマップ）
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+        
+        <div class="bg-slate-900/60 border border-slate-700 p-4 rounded-xl space-y-2">
+          <div class="w-6 h-6 rounded-full bg-indigo-500 text-white font-bold flex items-center justify-center text-[11px]">1</div>
+          <h4 class="font-bold text-white text-sm">DBマイグレーション</h4>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            SQLを実行して `reply_to_id` 等のカラムを追加。モデル層（Freezed / Chat）にフィールド定義を反映。
+          </p>
+        </div>
+
+        <div class="bg-slate-900/60 border border-slate-700 p-4 rounded-xl space-y-2">
+          <div class="w-6 h-6 rounded-full bg-indigo-500 text-white font-bold flex items-center justify-center text-[11px]">2</div>
+          <h4 class="font-bold text-white text-sm">入力バー ＆ 状態管理</h4>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            長押しメニューの「リプライ」押下で `replyTargetProvider` をセット。入力バーの上に返信中バーを表示。
+          </p>
+        </div>
+
+        <div class="bg-slate-900/60 border border-slate-700 p-4 rounded-xl space-y-2">
+          <div class="w-6 h-6 rounded-full bg-indigo-500 text-white font-bold flex items-center justify-center text-[11px]">3</div>
+          <h4 class="font-bold text-white text-sm">ChatMessageBubble 引用</h4>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            共通コンポーネント `ChatMessageBubble` 内に引用ブロックを追加。タップで返信先へ自動スクロール＆ハイライト。
+          </p>
+        </div>
+
+        <div class="bg-slate-900/60 border border-slate-700 p-4 rounded-xl space-y-2">
+          <div class="w-6 h-6 rounded-full bg-indigo-500 text-white font-bold flex items-center justify-center text-[11px]">4</div>
+          <h4 class="font-bold text-white text-sm">AIプロンプト刷新</h4>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            `gemini_v2` を更新し、`[#番号 (↩ #返信先)]` の論理ツリーログを生成してAIに渡し、反論精度を最大化。
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 🎯 タップジャンプ＆ハイライトの実装アーキテクチャ詳細 -->
+    <div class="bg-slate-800 border border-indigo-500/40 rounded-2xl p-6 md:p-8 space-y-4 shadow-xl">
+      <div class="flex items-center gap-2 text-indigo-400">
+        <i data-lucide="locate-fixed" class="w-6 h-6"></i>
+        <h3 class="text-lg font-bold text-white">返信引用タップ時のスムーズジャンプ ＆ ハイライト実装仕様</h3>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        ユーザーが吹き出し内の引用部分（返信先プレビュー）をタップした際、Flutterの標準API <code class="text-indigo-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded">Scrollable.ensureVisible</code> を用いて該当メッセージを画面中央（<code class="text-indigo-300 font-mono">alignment: 0.5</code>）へスムーズスクロールさせ、一時的にハイライトアニメーションを発火させます。
+      </p>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-300 overflow-x-auto leading-relaxed">
+        <div class="text-[11px] text-slate-500 mb-2">// Flutter側のジャンプ＆フラッシュアニメーション実装イメージ</div>
+<code class="text-indigo-300">// 1. 各メッセージにGlobalKeyを紐付け（Map&lt;String, GlobalKey&gt; keys）
+void jumpToMessage(String messageId) {
+  final targetKey = messageKeys[messageId];
+  if (targetKey?.currentContext != null) {
+    // 画面中央へスムーズスクロール
+    Scrollable.ensureVisible(
+      targetKey!.currentContext!,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOutCubic,
+      alignment: 0.5, // 画面中央に配置
+    );
+
+    // 該当メッセージを1.5秒間ハイライト状態にする
+    ref.read(highlightedMessageIdProvider.notifier).state = messageId;
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (ref.read(highlightedMessageIdProvider) == messageId) {
+        ref.read(highlightedMessageIdProvider.notifier).state = null;
+      }
+    });
+  }
+}</code>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- JavaScript（インタラクティブ動作） -->
+  <script>
+    lucide.createIcons();
+
+    let selectedMessage = null;
+    let replyTarget = null;
+    let messageCounter = 4;
+
+    const messagesData = [
+      { id: 'msg-1', author: 'A', name: '論理王A', content: 'AIは著作権侵害やプライバシー侵害のリスクが大きすぎるため、政府が厳格に規制すべきです。', replyTo: null },
+      { id: 'msg-2', author: 'B', name: 'あなた', content: 'しかし過剰な規制は技術革新を阻害し、国際競争力を失う結果になります。', replyTo: null },
+      { id: 'msg-3', author: 'A', name: '論理王A', content: '国際競争力よりも市民の権利保護が優先されるべきです。EUのAI規制法もその考え方に基づいています。', replyTo: 'msg-2' }
+    ];
+
+    function openActionMenu(msgId, name, text) {
+      selectedMessage = { id: msgId, name: name, text: text };
+      const popover = document.getElementById('actionPopover');
+      popover.classList.remove('hidden');
+    }
+
+    function closeActionMenu() {
+      const popover = document.getElementById('actionPopover');
+      popover.classList.add('hidden');
+    }
+
+    function startReply() {
+      if (!selectedMessage) return;
+      replyTarget = { ...selectedMessage };
+      closeActionMenu();
+
+      const replyBar = document.getElementById('replyBar');
+      document.getElementById('replyTargetAuthor').innerText = replyTarget.name;
+      document.getElementById('replyTargetSnippet').innerText = replyTarget.text;
+      replyBar.classList.remove('hidden');
+
+      document.getElementById('chatInput').focus();
+    }
+
+    function cancelReply() {
+      replyTarget = null;
+      document.getElementById('replyBar').classList.add('hidden');
+    }
+
+    function copyContent() {
+      if (selectedMessage) {
+        navigator.clipboard.writeText(selectedMessage.text);
+        alert('クリップボードにコピーしました');
+      }
+      closeActionMenu();
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const newId = `msg-${messageCounter++}`;
+      const msgObj = {
+        id: newId,
+        author: 'B',
+        name: 'あなた',
+        content: text,
+        replyTo: replyTarget ? replyTarget.id : null,
+        replyTargetText: replyTarget ? replyTarget.text : null,
+        replyTargetAuthor: replyTarget ? replyTarget.name : null,
+      };
+
+      messagesData.push(msgObj);
+
+      // DOMに追加
+      const list = document.getElementById('chatMessageList');
+      const msgDiv = document.createElement('div');
+      msgDiv.id = newId;
+      msgDiv.className = "flex justify-end cursor-pointer transition-all p-1 rounded-xl";
+      msgDiv.onclick = () => openActionMenu(newId, 'あなた', text);
+
+      let replyQuoteHtml = '';
+      if (msgObj.replyTo) {
+        replyQuoteHtml = `
+          <div class="bg-emerald-600/30 hover:bg-emerald-600/40 transition border-l-4 border-emerald-800 rounded px-2 py-1 mb-1.5 text-[10px] text-slate-800 cursor-pointer flex items-center gap-1.5" onclick="event.stopPropagation(); highlightMessage('${msgObj.replyTo}');">
+            <i data-lucide="reply" class="w-3 h-3 text-emerald-800 shrink-0"></i>
+            <div class="truncate">
+              <span class="font-bold text-emerald-950">${msgObj.replyTargetAuthor}</span>: ${msgObj.replyTargetText}
+            </div>
+          </div>
+        `;
+      }
+
+      msgDiv.innerHTML = `
+        <div class="max-w-[75%] flex flex-col items-end">
+          <div class="relative bg-[#95eb7c] text-slate-900 text-xs px-3 py-2 rounded-2xl shadow-sm chat-bubble-tail-right">
+            ${replyQuoteHtml}
+            ${text}
+          </div>
+        </div>
+      `;
+
+      list.appendChild(msgDiv);
+      list.scrollTop = list.scrollHeight;
+      lucide.createIcons();
+
+      // 入力欄リセット & リプライ解除
+      input.value = '';
+      cancelReply();
+
+      // AIプロンプトのプレビューを更新
+      updatePromptPreview();
+    }
+
+    function highlightMessage(targetId) {
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('highlight-flash');
+        setTimeout(() => el.classList.remove('highlight-flash'), 1500);
+      }
+    }
+
+    function updatePromptPreview() {
+      const indexMap = {};
+      messagesData.forEach((m, idx) => indexMap[m.id] = idx + 1);
+
+      let promptStr = "[論理ツリー構造化チャットログ]\n";
+      messagesData.forEach((m, idx) => {
+        const num = idx + 1;
+        let replyStr = "";
+        if (m.replyTo && indexMap[m.replyTo]) {
+          replyStr = ` (↩ #${indexMap[m.replyTo]}への反論/応答)`;
+        }
+        promptStr += `[#${num}${replyStr}] ${m.author}: ${m.content}\n`;
+      });
+
+      document.getElementById('livePromptPreview').innerText = promptStr;
+    }
+
+    function copyEdgeFunctionCode() {
+      const code = `const msgIndexMap = new Map<string, number>();
+messages?.forEach((m, i) => msgIndexMap.set(m.id, i + 1));
+
+const formattedChat = messages?.map((m, index) => {
+  const num = index + 1;
+  const label = m.sender_id === room.player1_id ? "A" : "B";
+  let replyInfo = "";
+  if (m.reply_to_id && msgIndexMap.has(m.reply_to_id)) {
+    const targetNum = msgIndexMap.get(m.reply_to_id);
+    replyInfo = \` (↩ #\${targetNum}への反論/応答)\`;
+  }
+  return \`[#\${num}\${replyInfo}] \${label}: \${m.content}\`;
+}).join("\\n");`;
+      navigator.clipboard.writeText(code);
+      alert('Edge Functionのコードをクリップボードにコピーしました！');
+    }
+  </script>
+</body>
+</html>

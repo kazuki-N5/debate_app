@@ -11,13 +11,12 @@ import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/image_upload_provider.dart';
 import 'package:debate_project/widgets/ios_swipe_back.dart';
 import 'package:debate_project/widgets/moderation.dart';
-import 'package:debate_project/widgets/popover_widgets.dart';
 import 'package:debate_project/widgets/resba_attach_sheet.dart';
 import 'package:debate_project/widgets/resba_card.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:debate_project/views/open_chat/OpenChatMenuView.dart';
-import 'package:debate_project/widgets/full_screen_image_viewer.dart';
-import 'package:go_router/go_router.dart';
+import 'package:debate_project/widgets/chat/chat_message_bubble.dart';
+import 'package:debate_project/provider/user_profile_provider.dart';
 
 class OpenChatRoomView extends HookConsumerWidget {
   final OpenChatRoom room;
@@ -28,6 +27,10 @@ class OpenChatRoomView extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final messagesAsync = ref.watch(openChatMessagesProvider(room.id));
     final currentUserId = ref.watch(currentUserIdProvider);
+    final isOwner = currentUserId == room.ownerId;
+    final membersAsync = ref.watch(openChatMembersProvider(room.id));
+    final myMember = membersAsync.valueOrNull?.where((m) => m.userId == currentUserId).firstOrNull;
+    final isChatAdmin = isOwner || myMember?.role == 'admin';
     final textController = useTextEditingController();
     final textFieldFocusNode = useFocusNode();
     final scrollController = useScrollController();
@@ -47,6 +50,33 @@ class OpenChatRoomView extends HookConsumerWidget {
     // 最新のルーム情報（名前更新等の即時反映）
     final roomDetailAsync = ref.watch(openChatRoomDetailProvider(room.id));
     final currentRoom = roomDetailAsync.valueOrNull ?? room;
+
+    // リプライ対象メッセージの状態
+    final replyTarget = useState<OpenChatMessage?>(null);
+    // ハイライト表示するメッセージIDの状態
+    final highlightedMsgId = useState<String?>(null);
+
+    // 返信先メッセージへジャンプしてハイライトする関数
+    void jumpToMessage(String messageId, List<OpenChatMessage> messages) {
+      final index = messages.indexWhere((m) => m.id == messageId);
+      if (index != -1 && scrollController.hasClients) {
+        final targetOffset = (index * 72.0).clamp(
+          0.0,
+          scrollController.position.maxScrollExtent,
+        );
+        scrollController.animateTo(
+          targetOffset,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+      highlightedMsgId.value = messageId;
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (highlightedMsgId.value == messageId) {
+          highlightedMsgId.value = null;
+        }
+      });
+    }
 
     useEffect(() {
       void scrollListener() {
@@ -161,307 +191,25 @@ class OpenChatRoomView extends HookConsumerWidget {
                               (r.isPending || r.isAccepted || r.isFinished))
                           .toList();
 
-                      final hasBubbleContent =
-                          message.content.isNotEmpty || message.imageUrl != null;
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 4.0, horizontal: 4.0),
-                        child: Column(
-                            crossAxisAlignment: isUserMessage
-                              ? CrossAxisAlignment.end
-                              : CrossAxisAlignment.start,
-                          children: [
-                            if (hasBubbleContent) ...[
-                              // ① 写真がある場合
-                              if (message.imageUrl != null)
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                      bottom: message.content.isNotEmpty ? 4.0 : 0.0),
-                                  child: Row(
-                                    crossAxisAlignment: isUserMessage
-                                        ? CrossAxisAlignment.end
-                                        : CrossAxisAlignment.start,
-                                    mainAxisAlignment: isUserMessage
-                                        ? MainAxisAlignment.end
-                                        : MainAxisAlignment.start,
-                                    children: [
-                                      if (!isUserMessage) ...[
-                                        if (showAvatar)
-                                          GestureDetector(
-                                            onTap: () {
-                                              context.push('/userProfile',
-                                                  extra: message.userId);
-                                            },
-                                            child: CircleAvatar(
-                                              radius: 16,
-                                              backgroundColor: Colors.grey[300],
-                                              child: Icon(Icons.person,
-                                                  size: 16, color: Colors.grey[600]),
-                                            ),
-                                          )
-                                        else
-                                          const SizedBox(width: 32),
-                                        const SizedBox(width: 8),
-                                      ],
-                                      // テキストがない場合のみ写真の左横に送信ステータスを表示
-                                      if (isUserMessage && message.content.isEmpty) ...[
-                                        _buildStatus(message.id),
-                                        const SizedBox(width: 4),
-                                      ],
-                                      Flexible(
-                                        child: Opacity(
-                                          opacity: isSending ? 0.6 : 1.0,
-                                          child: Builder(
-                                            builder: (bubbleContext) {
-                                              return GestureDetector(
-                                                onLongPress: isUserMessage
-                                                    ? null
-                                                    : () {
-                                                        showCustomPopover(
-                                                          context: bubbleContext,
-                                                          height: 130,
-                                                          children: [
-                                                            PopoverButton(
-                                                              text: '通報',
-                                                              onTap: () async {
-                                                                Navigator.of(context).pop();
-                                                                await showReportDialog(
-                                                                  context: context,
-                                                                  ref: ref,
-                                                                  opponentId: message.userId,
-                                                                  contentId: message.id,
-                                                                  contentType: 'open_chat_message',
-                                                                  contentSnapshot: message.content,
-                                                                );
-                                                              },
-                                                            ),
-                                                            const SizedBox(height: 4),
-                                                            PopoverButton(
-                                                              text: '非表示',
-                                                              onTap: () {
-                                                                Navigator.of(context).pop();
-                                                                ref
-                                                                    .read(openChatMessagesProvider(
-                                                                            room.id)
-                                                                        .notifier)
-                                                                    .hideMessage(message.id);
-                                                              },
-                                                            ),
-                                                            const SizedBox(height: 4),
-                                                            PopoverButton(
-                                                              text: 'ブロック',
-                                                              onTap: () {
-                                                                Navigator.of(context).pop();
-                                                                showBlockUserDialog(
-                                                                  context: context,
-                                                                  ref: ref,
-                                                                  targetUserId: message.userId,
-                                                                  targetName: 'このユーザー',
-                                                                );
-                                                              },
-                                                            ),
-                                                          ],
-                                                        );
-                                                      },
-                                                onTap: () {
-                                                  FullScreenImageViewer.show(
-                                                    context,
-                                                    imageUrls: [message.imageUrl!],
-                                                    initialIndex: 0,
-                                                  );
-                                                },
-                                                child: ClipRRect(
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  child: Container(
-                                                    constraints: BoxConstraints(
-                                                      maxWidth: MediaQuery.of(context).size.width * 0.75,
-                                                      maxHeight: MediaQuery.of(context).size.height * 0.5,
-                                                    ),
-                                                    child: CachedNetworkImage(
-                                                      imageUrl: message.imageUrl!,
-                                                      fit: BoxFit.cover,
-                                                      memCacheWidth: 900,
-                                                      fadeInDuration: Duration.zero,
-                                                      fadeOutDuration: Duration.zero,
-                                                      placeholder: (context, url) => Container(
-                                                        height: 150,
-                                                        width: 200,
-                                                        color: Colors.grey[300],
-                                                        child: const Center(
-                                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                                        ),
-                                                      ),
-                                                      errorWidget: (context, url, error) => Container(
-                                                        height: 120,
-                                                        width: 160,
-                                                        color: Colors.grey[200],
-                                                        child: const Icon(Icons.broken_image, color: Colors.grey),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                              // ② テキストがある場合
-                              if (message.content.isNotEmpty)
-                                Row(
-                                  crossAxisAlignment: isUserMessage
-                                      ? CrossAxisAlignment.end
-                                      : CrossAxisAlignment.start,
-                                  mainAxisAlignment: isUserMessage
-                                      ? MainAxisAlignment.end
-                                      : MainAxisAlignment.start,
-                                  children: [
-                                    if (!isUserMessage) ...[
-                                      // 写真が上に表示されていてアバターが表示済みの場合はアバター幅(32)をインデント
-                                      if (message.imageUrl != null)
-                                        const SizedBox(width: 32)
-                                      else if (showAvatar)
-                                        GestureDetector(
-                                          onTap: () {
-                                            context.push('/userProfile',
-                                                extra: message.userId);
-                                          },
-                                          child: CircleAvatar(
-                                            radius: 16,
-                                            backgroundColor: Colors.grey[300],
-                                            child: Icon(Icons.person,
-                                                size: 16, color: Colors.grey[600]),
-                                          ),
-                                        )
-                                      else
-                                        const SizedBox(width: 32),
-                                      const SizedBox(width: 8),
-                                    ],
-                                    // ユーザーメッセージの場合、テキスト吹き出しのすぐ左下に送信ステータスを配置
-                                    if (isUserMessage) ...[
-                                      _buildStatus(message.id),
-                                      const SizedBox(width: 4),
-                                    ],
-                                    Flexible(
-                                      child: Opacity(
-                                        opacity: isSending ? 0.6 : 1.0,
-                                        child: Stack(
-                                          clipBehavior: Clip.none,
-                                          children: [
-                                            Builder(
-                                              builder: (bubbleContext) {
-                                                return GestureDetector(
-                                                  onLongPress: isUserMessage
-                                                      ? null
-                                                      : () {
-                                                          showCustomPopover(
-                                                            context: bubbleContext,
-                                                            height: 130,
-                                                            children: [
-                                                              PopoverButton(
-                                                                text: '通報',
-                                                                onTap: () async {
-                                                                  Navigator.of(context).pop();
-                                                                  await showReportDialog(
-                                                                    context: context,
-                                                                    ref: ref,
-                                                                    opponentId: message.userId,
-                                                                    contentId: message.id,
-                                                                    contentType: 'open_chat_message',
-                                                                    contentSnapshot: message.content,
-                                                                  );
-                                                                },
-                                                              ),
-                                                              const SizedBox(height: 4),
-                                                              PopoverButton(
-                                                                text: '非表示',
-                                                                onTap: () {
-                                                                  Navigator.of(context).pop();
-                                                                  ref
-                                                                      .read(openChatMessagesProvider(
-                                                                              room.id)
-                                                                          .notifier)
-                                                                      .hideMessage(message.id);
-                                                                },
-                                                              ),
-                                                              const SizedBox(height: 4),
-                                                              PopoverButton(
-                                                                text: 'ブロック',
-                                                                onTap: () {
-                                                                  Navigator.of(context).pop();
-                                                                  showBlockUserDialog(
-                                                                    context: context,
-                                                                    ref: ref,
-                                                                    targetUserId: message.userId,
-                                                                    targetName: 'このユーザー',
-                                                                  );
-                                                                },
-                                                              ),
-                                                            ],
-                                                          );
-                                                        },
-                                                  child: Container(
-                                                    constraints: BoxConstraints(
-                                                      maxWidth: MediaQuery.of(context).size.width * 0.75,
-                                                    ),
-                                                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-                                                    decoration: BoxDecoration(
-                                                      color: isUserMessage
-                                                          ? const Color(0xff95eb7c)
-                                                          : Colors.white,
-                                                      borderRadius: BorderRadius.circular(16),
-                                                    ),
-                                                    child: Text(
-                                                      message.content,
-                                                      style: AppTextStyles.notoSans(
-                                                        color: Colors.black,
-                                                        fontSize: 15,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                            // しっぽ（テキスト用）
-                                            Positioned(
-                                              top: 6,
-                                              left: isUserMessage ? null : -6,
-                                              right: isUserMessage ? -6 : null,
-                                              child: CustomPaint(
-                                                painter: _OpenChatBubbleTailPainter(
-                                                  isUserMessage
-                                                      ? const Color(0xff95eb7c)
-                                                      : Colors.white,
-                                                  isUserMessage,
-                                                ),
-                                                size: const Size(10, 10),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                            for (final invite in msgResbas)
-                              Padding(
-                                padding: EdgeInsets.only(
-                                  top: hasBubbleContent ? 6 : 0,
-                                  left: isUserMessage ? 0 : (hasBubbleContent ? 40 : 0),
-                                  right: isUserMessage ? 8 : 0,
-                                ),
-                                child: ResbaCard(
-                                  invite: invite,
-                                  onChanged: refreshResbas,
-                                ),
-                              ),
-                          ],
-                        ),
+                      return _OpenChatBubbleItem(
+                        key: ValueKey(message.id),
+                        message: message,
+                        roomId: room.id,
+                        isUserMessage: isUserMessage,
+                        isSending: isSending,
+                        showAvatar: showAvatar,
+                        isChatAdmin: isChatAdmin,
+                        msgResbas: msgResbas,
+                        onRefreshResbas: refreshResbas,
+                        statusWidget: isUserMessage ? _buildStatus(message.id) : null,
+                        onReply: () {
+                          replyTarget.value = message;
+                          textFieldFocusNode.requestFocus();
+                        },
+                        onTapReplyQuote: message.replyToId != null
+                            ? () => jumpToMessage(message.replyToId!, messages)
+                            : null,
+                        isHighlighted: highlightedMsgId.value == message.id,
                       );
                     },
                   );
@@ -474,17 +222,78 @@ class OpenChatRoomView extends HookConsumerWidget {
               color: Colors.white,
             ),
             padding: EdgeInsets.only(
-              left: 8,
-              right: 2,
-              top: 4,
               bottom: MediaQuery.of(context).padding.bottom + 4,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
+                // リプライ中の返信先プレビューバー
+                if (replyTarget.value != null)
+                  Container(
+                    color: const Color(0xFFEEF2FF),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.reply,
+                          size: 16,
+                          color: Color(0xFF4F46E5),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: RichText(
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            text: TextSpan(
+                              style: AppTextStyles.notoSans(
+                                fontSize: 12,
+                                color: Colors.black87,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: replyTarget.value!.userId == currentUserId
+                                      ? '自分'
+                                      : (ref.watch(userBasicInfoProvider(replyTarget.value!.userId)).valueOrNull?.name ?? 'ユーザー'),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF4338CA),
+                                  ),
+                                ),
+                                const TextSpan(
+                                  text: ' に返信: ',
+                                  style: TextStyle(color: Colors.black54),
+                                ),
+                                TextSpan(
+                                  text: replyTarget.value!.content.isNotEmpty
+                                      ? replyTarget.value!.content
+                                      : '[画像]',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => replyTarget.value = null,
+                          child: const Padding(
+                            padding: EdgeInsets.all(4.0),
+                            child: Icon(
+                              Icons.close,
+                              size: 16,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8, right: 2, top: 4),
+                  child: Row(
+                    children: [
                     IconButton(
                       icon: const Icon(Icons.image, color: Colors.grey),
                       onPressed: isUploading.value
@@ -562,6 +371,13 @@ class OpenChatRoomView extends HookConsumerWidget {
                                       ? rawText.substring(0, 200)
                                       : rawText;
 
+                                  final target = replyTarget.value;
+                                  final targetUserName = target == null
+                                      ? null
+                                      : (target.userId == currentUserId
+                                          ? '自分'
+                                          : (ref.watch(userBasicInfoProvider(target.userId)).valueOrNull?.name ?? 'ユーザー'));
+
                                   String? uploadedUrl;
                                   if (selectedImage.value != null) {
                                     final uploader =
@@ -573,12 +389,42 @@ class OpenChatRoomView extends HookConsumerWidget {
                                     );
                                   }
 
-                                  final messageId = await ref
-                                      .read(openChatMessagesProvider(room.id).notifier)
-                                      .sendMessage(
-                                        sendText,
-                                        imageUrl: uploadedUrl,
-                                      );
+                                  String? messageId;
+                                  if (uploadedUrl != null && sendText.isNotEmpty) {
+                                    // 画像とテキストの両方がある場合は2通に分けて送信
+                                    await ref
+                                        .read(openChatMessagesProvider(room.id).notifier)
+                                        .sendMessage('', imageUrl: uploadedUrl);
+                                    messageId = await ref
+                                        .read(openChatMessagesProvider(room.id).notifier)
+                                        .sendMessage(
+                                          sendText,
+                                          replyToId: target?.id,
+                                          replyToContent: target?.content,
+                                          replyToUserName: targetUserName,
+                                        );
+                                  } else if (uploadedUrl != null) {
+                                    // 画像単体
+                                    messageId = await ref
+                                        .read(openChatMessagesProvider(room.id).notifier)
+                                        .sendMessage(
+                                          '',
+                                          imageUrl: uploadedUrl,
+                                          replyToId: target?.id,
+                                          replyToContent: target?.content,
+                                          replyToUserName: targetUserName,
+                                        );
+                                  } else if (sendText.isNotEmpty) {
+                                    // テキスト単体
+                                    messageId = await ref
+                                        .read(openChatMessagesProvider(room.id).notifier)
+                                        .sendMessage(
+                                          sendText,
+                                          replyToId: target?.id,
+                                          replyToContent: target?.content,
+                                          replyToUserName: targetUserName,
+                                        );
+                                  }
 
                                   // ⚔️ レスバを添付(募集型)
                                   final attachment = resbaAttachment.value;
@@ -603,6 +449,7 @@ class OpenChatRoomView extends HookConsumerWidget {
                                     refreshResbas();
                                   }
 
+                                  replyTarget.value = null;
                                   textController.clear();
                                   selectedImage.value = null;
                                   resbaAttachment.value = null;
@@ -634,6 +481,7 @@ class OpenChatRoomView extends HookConsumerWidget {
                     ),
                   ],
                 ),
+              ),
                 if (selectedImage.value != null)
                   Padding(
                     padding: const EdgeInsets.only(
@@ -746,29 +594,120 @@ class OpenChatRoomView extends HookConsumerWidget {
   }
 }
 
-class _OpenChatBubbleTailPainter extends CustomPainter {
-  final Color color;
+class _OpenChatBubbleItem extends ConsumerWidget {
+  final OpenChatMessage message;
+  final String roomId;
   final bool isUserMessage;
+  final bool isSending;
+  final bool showAvatar;
+  final bool isChatAdmin;
+  final List<ResbaInvite> msgResbas;
+  final VoidCallback onRefreshResbas;
+  final Widget? statusWidget;
+  final VoidCallback? onReply;
+  final VoidCallback? onTapReplyQuote;
+  final bool isHighlighted;
 
-  _OpenChatBubbleTailPainter(this.color, this.isUserMessage);
+  const _OpenChatBubbleItem({
+    super.key,
+    required this.message,
+    required this.roomId,
+    required this.isUserMessage,
+    required this.isSending,
+    required this.showAvatar,
+    required this.isChatAdmin,
+    required this.msgResbas,
+    required this.onRefreshResbas,
+    this.statusWidget,
+    this.onReply,
+    this.onTapReplyQuote,
+    this.isHighlighted = false,
+  });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final path = Path();
-    if (isUserMessage) {
-      path.moveTo(0, 0);
-      path.lineTo(size.width, 0);
-      path.lineTo(0, size.height * 0.8);
-    } else {
-      path.moveTo(size.width, 0);
-      path.lineTo(0, 0);
-      path.lineTo(size.width, size.height * 0.8);
+  Widget build(BuildContext context, WidgetRef ref) {
+    // ユーザー情報（名前・アバター）を取得
+    final userAsync = ref.watch(userBasicInfoProvider(message.userId));
+    final user = userAsync.valueOrNull;
+    final senderName = user?.name ?? 'ユーザー';
+    final senderAvatarUrl = user?.avatar_url;
+
+    Widget? attachedWidget;
+    if (msgResbas.isNotEmpty) {
+      attachedWidget = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final invite in msgResbas)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: ResbaCard(
+                invite: invite,
+                onChanged: onRefreshResbas,
+              ),
+            ),
+        ],
+      );
     }
-    path.close();
-    canvas.drawPath(path, paint);
-  }
 
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+    return Opacity(
+      opacity: isSending ? 0.6 : 1.0,
+      child: ChatMessageBubble(
+        id: message.id,
+        content: message.content,
+        imageUrl: message.imageUrl,
+        isUserMessage: isUserMessage,
+        isDeleted: message.isDeleted,
+        isAdminDeleted: message.isAdminDeleted,
+        senderId: message.userId,
+        senderName: senderName,
+        senderAvatarUrl: senderAvatarUrl,
+        showAvatar: showAvatar,
+        showSenderName: !isUserMessage,
+        replyToId: message.replyToId,
+        replyToContent: message.replyToContent,
+        replyToUserName: message.replyToUserName,
+        onReply: onReply,
+        onTapReplyQuote: onTapReplyQuote,
+        isHighlighted: isHighlighted,
+        statusWidget: statusWidget,
+        attachedWidget: attachedWidget,
+        canDelete: isChatAdmin,
+        deleteLabel: isUserMessage ? '削除' : '強制削除',
+        onHide: () {
+          ref
+              .read(openChatMessagesProvider(roomId).notifier)
+              .hideMessage(message.id);
+        },
+        onReport: () async {
+          await showReportDialog(
+            context: context,
+            ref: ref,
+            opponentId: message.userId,
+            contentId: message.id,
+            contentType: 'open_chat_message',
+            contentSnapshot: message.imageUrl != null ? '[画像]' : message.content,
+          );
+        },
+        onDelete: () async {
+          final error = await ref
+              .read(openChatMessagesProvider(roomId).notifier)
+              .deleteMessage(message.id);
+          if (context.mounted) {
+            if (error == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(isUserMessage ? 'メッセージを削除しました' : 'メッセージを強制削除しました'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('削除失敗: $error')),
+              );
+            }
+          }
+        },
+      ),
+    );
+  }
 }

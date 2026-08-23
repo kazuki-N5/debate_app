@@ -58,18 +58,29 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. メッセージ取得
+    // 3. メッセージ取得（reply_to_id を含む）
     const { data: messages, error: mError } = await supabase
       .from("messages")
-      .select("sender_id, content")
+      .select("id, sender_id, content, reply_to_id")
       .eq("room_id", room_id)
       .order("created_at", { ascending: true });
 
     if (mError) throw mError;
 
-    const formattedChat = messages?.map((m) => {
+    // メッセージID -> 発言番号 (#1, #2...) のインデックス辞書を作成
+    const msgIndexMap = new Map<string, number>();
+    messages?.forEach((m, i) => msgIndexMap.set(m.id, i + 1));
+
+    // リプライ関係を明示した論理ツリー構造化チャットログの構築
+    const formattedChat = messages?.map((m, index) => {
+      const num = index + 1;
       const label = m.sender_id === room.player1_id ? "A" : "B";
-      return `${label}: ${m.content}`;
+      let replyInfo = "";
+      if (m.reply_to_id && msgIndexMap.has(m.reply_to_id)) {
+        const targetNum = msgIndexMap.get(m.reply_to_id);
+        replyInfo = ` (↩ #${targetNum}への反論/応答)`;
+      }
+      return `[#${num}${replyInfo}] ${label}: ${m.content}`;
     }).join("\n");
 
     // 4. DeepSeek API 呼び出し
@@ -78,7 +89,7 @@ Deno.serve(async (req) => {
 
     console.log("Calling DeepSeek API for room:", room_id);
     const userPrompt =
-      `テーマ: ${theme}\nAの立場: ${player1_choice}\nBの立場: ${player2_choice}\n\n[チャットログ]\n${formattedChat}`;
+      `テーマ: ${theme}\nAの立場: ${player1_choice}\nBの立場: ${player2_choice}\n\n[論理ツリー構造化チャットログ]\n${formattedChat}`;
 
     console.log("==== DeepSeek Prompt ====");
     console.log(userPrompt);
@@ -86,10 +97,15 @@ Deno.serve(async (req) => {
 
     const systemPrompt = `あなたはディベートの厳正な審判です。議論の内容を論理的に評価し、勝利した立場(AまたはB)、勝敗の理由、および両プレイヤーの5項目能力スコア（0〜100点）を厳正に判定してください。
 
+【反論・リプライの解釈ルール】
+- 発言ログには [#番号] が付与されています。
+- 発言に \`(↩ #番号への反論/応答)\` が記載されている場合、その発言は指定された過去の特定の主張に対する直接的な反論・応答です。
+- 相手の論点を正面から的確に崩せているか、論点のすり替えがないかを重視し、反論力(rebuttal)および論理性(logic)を高く評価してください。
+
 【評価項目】
 1. logic: 論理性（主張の筋道、根拠の妥当性）
 2. persuasion: 説得力（表現力、具体例、説得度）
-3. rebuttal: 反論力（相手の弱点を突く鋭さ）
+3. rebuttal: 反論力（相手の弱点を突く鋭さ、的確な反証）
 4. structure: 構成力（展開のわかりやすさ、テンポ）
 5. manner: マナー（冷静さ、品格、ルール遵守）
 

@@ -25,7 +25,13 @@ class ChatNotifier extends StateNotifier<List<Chat>> {
         chat.id.startsWith('error_');
   }
 
-  Future<void> sendMesage(String roomId, String content) async {
+  Future<void> sendMesage(
+    String roomId,
+    String content, {
+    String? replyToId,
+    String? replyToContent,
+    String? replyToUserName,
+  }) async {
     final userId = _ref.read(currentUserIdProvider);
     if (userId == null) return;
 
@@ -37,6 +43,9 @@ class ChatNotifier extends StateNotifier<List<Chat>> {
       senderId: userId,
       content: content,
       createdAt: DateTime.now(),
+      replyToId: replyToId,
+      replyToContent: replyToContent,
+      replyToUserName: replyToUserName,
     );
 
     // インデックス0が最新になるように先頭に追加
@@ -47,6 +56,9 @@ class ChatNotifier extends StateNotifier<List<Chat>> {
         'room_id': roomId,
         'sender_id': userId,
         'content': content,
+        if (replyToId != null) 'reply_to_id': replyToId,
+        if (replyToContent != null) 'reply_to_content': replyToContent,
+        if (replyToUserName != null) 'reply_to_user_name': replyToUserName,
       });
       // insert成功 → 仮IDを「sent_」に書き換えて即座に「送信」を表示
       state = state.map((chat) {
@@ -57,6 +69,9 @@ class ChatNotifier extends StateNotifier<List<Chat>> {
             senderId: chat.senderId,
             content: chat.content,
             createdAt: chat.createdAt,
+            replyToId: chat.replyToId,
+            replyToContent: chat.replyToContent,
+            replyToUserName: chat.replyToUserName,
           );
         }
         return chat;
@@ -72,6 +87,9 @@ class ChatNotifier extends StateNotifier<List<Chat>> {
             senderId: chat.senderId,
             content: chat.content,
             createdAt: chat.createdAt,
+            replyToId: chat.replyToId,
+            replyToContent: chat.replyToContent,
+            replyToUserName: chat.replyToUserName,
           );
         }
         return chat;

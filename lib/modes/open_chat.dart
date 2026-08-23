@@ -48,6 +48,11 @@ class OpenChatMessage with _$OpenChatMessage {
     required String content,
     @JsonKey(name: 'created_at') required DateTime createdAt,
     @JsonKey(name: 'image_url') String? imageUrl,
+    @JsonKey(name: 'is_deleted') @Default(false) bool isDeleted,
+    @JsonKey(name: 'is_admin_deleted') @Default(false) bool isAdminDeleted,
+    @JsonKey(name: 'reply_to_id') String? replyToId,
+    @JsonKey(name: 'reply_to_content') String? replyToContent,
+    @JsonKey(name: 'reply_to_user_name') String? replyToUserName,
   }) = _OpenChatMessage;
 
   factory OpenChatMessage.fromJson(Map<String, dynamic> json) => _$OpenChatMessageFromJson(json);

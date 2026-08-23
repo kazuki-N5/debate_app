@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:debate_project/adsence/ad_mbanner_provider.dart';
 import 'package:debate_project/adsence/ad_provider.dart';
+import 'package:debate_project/modes/chat.dart';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/message_provider.dart';
@@ -19,7 +20,6 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GamePage extends HookConsumerWidget {
   const GamePage({super.key});
@@ -83,6 +83,34 @@ class GamePage extends HookConsumerWidget {
     final hiddenMessageIds = useState<Set<String>>({});
     // SharedPreferencesからデータを読み込み中かどうかのフラグ
     final isLoadingPrefs = useState<bool>(true);
+
+    // リプライ対象メッセージの状態
+    final replyTarget = useState<Chat?>(null);
+    // ハイライト表示するメッセージIDの状態
+    final highlightedChatId = useState<String?>(null);
+
+    // 返信先メッセージへジャンプしてハイライトする関数
+    void jumpToMessage(String messageId, List<Chat> visibleMessages) {
+      final index = visibleMessages.indexWhere((c) => c.id == messageId);
+      if (index != -1 && scrollController.hasClients) {
+        // reverse: true なので index に応じて概算スクロール
+        final targetOffset = (index * 68.0).clamp(
+          0.0,
+          scrollController.position.maxScrollExtent,
+        );
+        scrollController.animateTo(
+          targetOffset,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+      highlightedChatId.value = messageId;
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (highlightedChatId.value == messageId) {
+          highlightedChatId.value = null;
+        }
+      });
+    }
 
     // SharedPreferencesから非表示IDを読み込む非同期関数
     Future<void> loadHiddenMessageIds() async {
@@ -268,77 +296,19 @@ class GamePage extends HookConsumerWidget {
       return null;
     }, const []);
 
+    // 観戦コメントイベントを監視
+    ref.listen(spectatorCommentEventProvider, (prev, next) {
+      if (next != null) {
+        spectatorOverlayKey.value.currentState?.addComment(next.text);
+      }
+    });
+
     useEffect(() {
       chatsnotifier.subscribeToMessages(room.roomId!);
       countTime(); // タイマーを再稼働
 
-      // 観戦コメント（ヤジ）のRealtime Broadcastを購読
-      RealtimeChannel? spectatorChannel;
-      bool isDisposed = false;
-      bool isReconnecting = false;
-
-      void subscribeSpectator(String roomId, {String reason = '初回接続'}) async {
-        if (!context.mounted || isDisposed) return;
-
-        if (spectatorChannel != null) {
-          final old = spectatorChannel!;
-          spectatorChannel = null;
-          try {
-            await supabase.removeChannel(old);
-          } catch (_) {}
-        }
-        if (!context.mounted || isDisposed) return;
-
-        log('🔌 [対戦中観戦コメント] 接続開始 (理由: $reason, roomId: $roomId)');
-        final channel = supabase.channel('spectator:room:$roomId');
-        spectatorChannel = channel;
-
-        channel
-            .onBroadcast(
-              event: 'spectator_comment',
-              callback: (payload) {
-                final text = payload['text'] as String?;
-                if (text != null && text.isNotEmpty) {
-                  spectatorOverlayKey.value.currentState?.addComment(text);
-                }
-              },
-            )
-            .subscribe((status, [error]) async {
-              if (isDisposed || !context.mounted || spectatorChannel != channel) return;
-
-              if (status == RealtimeSubscribeStatus.subscribed) {
-                log('✅ [対戦中観戦コメント] 接続成功 (理由: $reason, roomId: $roomId)');
-                isReconnecting = false;
-              } else if (status == RealtimeSubscribeStatus.closed ||
-                  status == RealtimeSubscribeStatus.channelError ||
-                  status == RealtimeSubscribeStatus.timedOut) {
-                if (isReconnecting) return;
-                isReconnecting = true;
-                log('⚠️ [対戦中観戦コメント] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
-                await Future.delayed(const Duration(seconds: 3));
-                if (!context.mounted || isDisposed || spectatorChannel != channel) {
-                  isReconnecting = false;
-                  return;
-                }
-                isReconnecting = false;
-                subscribeSpectator(roomId, reason: '再接続 ($status)');
-              }
-            });
-      }
-
-      if (room.roomId != null) {
-        subscribeSpectator(room.roomId!);
-      }
-
       return () {
-        isDisposed = true;
         gametimer.value?.cancel();
-        if (spectatorChannel != null) {
-          try {
-            supabase.removeChannel(spectatorChannel!);
-          } catch (_) {}
-          spectatorChannel = null;
-        }
       };
     }, [room.roomId]);
 
@@ -600,9 +570,20 @@ class GamePage extends HookConsumerWidget {
                                   chat: chat,
                                   isUserMessage: isUserMessage,
                                   opponentAvatarUrl: otherUserState.avatar_url,
+                                  opponentName: otherUserState.name,
                                   myAvatarUrl: myAvatarUrl,
                                   showAvatar: showAvatar,
                                   roomId: room.roomId,
+                                  onReply: () {
+                                    replyTarget.value = chat;
+                                    textFieldFocusNode.requestFocus();
+                                  },
+                                  onTapReplyQuote: chat.replyToId != null
+                                      ? () => jumpToMessage(
+                                          chat.replyToId!, visibleMessages)
+                                      : null,
+                                  isHighlighted:
+                                      highlightedChatId.value == chat.id,
                                   // 非表示処理をコールバックとして渡す
                                   onHide: () => hideMessage(chat.id),
                                 );
@@ -610,6 +591,66 @@ class GamePage extends HookConsumerWidget {
                             );
                           }(),
                         ),
+                        // リプライ中の返信先プレビューバー
+                        if (replyTarget.value != null)
+                          Container(
+                            color: const Color(0xFFEEF2FF),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.reply,
+                                  size: 16,
+                                  color: Color(0xFF4F46E5),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: RichText(
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    text: TextSpan(
+                                      style: AppTextStyles.notoSans(
+                                        fontSize: 12,
+                                        color: Colors.black87,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: replyTarget.value!.senderId == user
+                                              ? '自分'
+                                              : (otherUserState.name ?? '相手'),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF4338CA),
+                                          ),
+                                        ),
+                                        const TextSpan(
+                                          text: ' に返信: ',
+                                          style: TextStyle(color: Colors.black54),
+                                        ),
+                                        TextSpan(
+                                          text: replyTarget.value!.content,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => replyTarget.value = null,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(4.0),
+                                    child: Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         Container(
                           decoration: const BoxDecoration(
                             color: Colors.white,
@@ -690,9 +731,19 @@ class GamePage extends HookConsumerWidget {
                                 constraints: const BoxConstraints(),
                                 onPressed: () {
                                   if (textControler.text.trim().isNotEmpty) {
+                                    final target = replyTarget.value;
                                     ref.read(chatProvider.notifier).sendMesage(
-                                        room.roomId!,
-                                        textControler.text.trim());
+                                      room.roomId!,
+                                      textControler.text.trim(),
+                                      replyToId: target?.id,
+                                      replyToContent: target?.content,
+                                      replyToUserName: target == null
+                                          ? null
+                                          : (target.senderId == user
+                                              ? '自分'
+                                              : (otherUserState.name ?? '相手')),
+                                    );
+                                    replyTarget.value = null;
                                     textControler.clear();
                                     scrollController.animateTo(
                                       0,

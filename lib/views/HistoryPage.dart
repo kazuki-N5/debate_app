@@ -4,6 +4,7 @@ import 'package:debate_project/provider/history_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/view_model/prohibited_view_model.dart';
 import 'package:debate_project/widgets/moderation.dart';
+import 'package:debate_project/widgets/chat_message_action_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -203,14 +204,14 @@ class _MatchHistoryItem extends HookConsumerWidget {
               }
             },
             onLongPress: () {
-              final navigator = Navigator.of(avatarContext);
-
-              showCustomPopover(
+              showChatMessageActionMenu(
                 context: avatarContext,
-                height: 100,
-                children: [
-                  PopoverButton(
-                    text: '通報',
+                customItems: [
+                  ChatMessageActionItem(
+                    icon: Icons.warning_amber_rounded,
+                    label: '通報',
+                    iconColor: const Color(0xFFFBBF24),
+                    textColor: const Color(0xFFFDE68A),
                     onTap: () async {
                       final prohibitedService =
                           ref.read(prohibitedServiceProvider);
@@ -220,14 +221,15 @@ class _MatchHistoryItem extends HookConsumerWidget {
                         opponentId: opponentid,
                         roomId: roomid,
                       );
-                      navigator.pop();
                     },
                   ),
-                  const SizedBox(height: 4),
-                  PopoverButton(
-                    text: 'ブロック',
+                  ChatMessageActionItem(
+                    icon: Icons.block_rounded,
+                    label: 'ブロック',
+                    iconColor: const Color(0xFFFB7185),
+                    textColor: const Color(0xFFFDA4AF),
+                    isDestructive: true,
                     onTap: () {
-                      navigator.pop();
                       if (opponentid == null) return;
                       showBlockUserDialog(
                         context: context,

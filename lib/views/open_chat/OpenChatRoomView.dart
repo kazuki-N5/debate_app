@@ -424,6 +424,16 @@ class OpenChatRoomView extends HookConsumerWidget {
                                           replyToContent: target?.content,
                                           replyToUserName: targetUserName,
                                         );
+                                  } else if (resbaAttachment.value != null) {
+                                    // ⚔️ レスバ単体（テキストも画像もない場合）
+                                    messageId = await ref
+                                        .read(openChatMessagesProvider(room.id).notifier)
+                                        .sendMessage(
+                                          '',
+                                          replyToId: target?.id,
+                                          replyToContent: target?.content,
+                                          replyToUserName: targetUserName,
+                                        );
                                   }
 
                                   // ⚔️ レスバを添付(募集型)

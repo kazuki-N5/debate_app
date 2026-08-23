@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:debate_project/modes/history.dart';
+import 'package:debate_project/provider/user.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/widgets/radar_chart_view.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -17,6 +18,8 @@ class HistoryDetailPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final BannerAd? mediumRectangleAd = ref.watch(mediumRectangleAdProvider);
     final isSubscribe = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
+    final myAvatarUrl = ref.watch(userProvider).avatar_url;
+    final myDisplayName = record.myName ?? ref.watch(userProvider).name ?? 'あなた';
 
     final resultText = record.resultString;
     final resultColor = resultText == '勝利' ? Colors.red : Colors.grey[700];
@@ -139,6 +142,135 @@ class HistoryDetailPage extends HookConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Column(
                       children: [
+                        // --- 両者の選択肢 VS対峙カード ---
+                        if (record.userChoice.isNotEmpty || (record.opponentChoice != null && record.opponentChoice!.isNotEmpty)) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFAF8FF),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // あなた（左側・青）
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 18,
+                                            backgroundColor: Colors.blue[100],
+                                            backgroundImage: myAvatarUrl != null && myAvatarUrl.isNotEmpty
+                                                ? ResizeImage(NetworkImage(myAvatarUrl), width: 72)
+                                                : null,
+                                            child: myAvatarUrl == null || myAvatarUrl.isEmpty
+                                                ? Icon(Icons.person, size: 20, color: Colors.blue[700])
+                                                : null,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            myDisplayName,
+                                            style: AppTextStyles.bold(fontSize: 11, color: Colors.grey[800]),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              record.userChoice.isNotEmpty ? record.userChoice : '未選択',
+                                              textAlign: TextAlign.center,
+                                              style: AppTextStyles.bold(fontSize: 11, color: Colors.white),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 36), // VSバッジ用の隙間
+                                    // 相手（右側・赤）
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 18,
+                                            backgroundColor: Colors.red[100],
+                                            backgroundImage: record.opponentAvatarUrl != null && record.opponentAvatarUrl!.isNotEmpty
+                                                ? ResizeImage(NetworkImage(record.opponentAvatarUrl!), width: 72)
+                                                : null,
+                                            child: record.opponentAvatarUrl == null || record.opponentAvatarUrl!.isEmpty
+                                                ? Icon(Icons.person, size: 20, color: Colors.red[700])
+                                                : null,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            record.opponentName,
+                                            style: AppTextStyles.bold(fontSize: 11, color: Colors.grey[800]),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              record.opponentChoice != null && record.opponentChoice!.isNotEmpty
+                                                  ? record.opponentChoice!
+                                                  : '未選択',
+                                              textAlign: TextAlign.center,
+                                              style: AppTextStyles.bold(fontSize: 11, color: Colors.white),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                // 中央VSバッジ
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[850],
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.15),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'VS',
+                                      style: AppTextStyles.bold(fontSize: 9, color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                         if (record.myScore != null) ...[
                           RadarChartView(
                             myScore: record.myScore!,

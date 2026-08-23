@@ -8,6 +8,7 @@ import 'package:debate_project/modes/mathing.dart';
 import 'package:debate_project/modes/resba_invite.dart';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/view_model/prohibited_view_model.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/widgets/floating_spectator_comments.dart';
 import 'package:debate_project/widgets/radar_chart_view.dart';
@@ -65,6 +66,8 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
   bool _isDisposed = false;
   bool _isRoomReconnecting = false;
   bool _isSpectatorReconnecting = false;
+  bool _showChatInResult = false;
+  Set<String> _hiddenMessageIds = {};
 
   @override
   void initState() {
@@ -74,6 +77,7 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
       duration: const Duration(milliseconds: 800),
     );
     _loadMutePreference();
+    _loadHiddenMessageIds();
     _load();
   }
 
@@ -98,6 +102,25 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
     }
     _messagesSub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadHiddenMessageIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList('hidden_message_ids') ?? [];
+    if (mounted) {
+      setState(() {
+        _hiddenMessageIds = ids.toSet();
+      });
+    }
+  }
+
+  Future<void> _hideMessage(String messageId) async {
+    final newSet = {..._hiddenMessageIds, messageId};
+    setState(() {
+      _hiddenMessageIds = newSet;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('hidden_message_ids', newSet.toList());
   }
 
   Future<void> _loadMutePreference() async {
@@ -207,6 +230,22 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
       _checkRobotAnimation();
       await _fetchPlayers(room);
       if (!mounted) return;
+      try {
+        final List<dynamic> msgRows = await supabase
+            .from('messages')
+            .select()
+            .eq('room_id', roomId)
+            .order('created_at', ascending: false);
+        if (mounted) {
+          setState(() {
+            _messages = msgRows
+                .map((e) => Chat.fromMap(e as Map<String, dynamic>))
+                .toList();
+          });
+        }
+      } catch (e) {
+        log('初期メッセージ取得エラー: $e');
+      }
       _subscribeRoom(roomId);
       _subscribeMessages(roomId);
       _subscribeSpectatorBroadcast(roomId);
@@ -518,8 +557,11 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
       );
     }
 
-    // 試合終了（勝敗確定）時は、画面遷移なしで FinishPage と同様の全画面リザルトを表示
+    // 試合終了（勝敗確定）時は、リザルト画面またはチャット履歴画面を表示
     if (room.winner != null) {
+      if (_showChatInResult) {
+        return _buildChatLogView(room);
+      }
       return _buildResultView(room);
     }
 
@@ -688,7 +730,7 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    'ホスト: ${_getChoiceText(room, isPlayer1: true)}  /  挑戦者: ${_getChoiceText(room, isPlayer1: false)}',
+                                    '${_displayName(room.player1Id)}: ${_getChoiceText(room, isPlayer1: true)}  /  ${_displayName(room.player2Id)}: ${_getChoiceText(room, isPlayer1: false)}',
                                     style: AppTextStyles.notoSans(
                                       color: Colors.white,
                                       fontSize: 15,
@@ -772,11 +814,11 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                       final isUserMessage =
                                           chat.senderId == room.player2Id;
 
-                                      // アバター表示：相手（player1）の発言かつ、一つ前（古い方）の送信者と異なる場合に表示
-                                      final showAvatar = !isUserMessage &&
-                                          (index == _messages.length - 1 ||
+                                      // 連続発言の最初（一番上）のメッセージかどうか
+                                      final bool isFirstOfSequence =
+                                          index == _messages.length - 1 ||
                                               _messages[index + 1].senderId !=
-                                                  chat.senderId);
+                                                  chat.senderId;
 
                                       return ChatMessageBubble(
                                         id: chat.id,
@@ -790,9 +832,10 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                         senderAvatarUrl: isUserMessage
                                             ? _avatarOf(room.player2Id)
                                             : _avatarOf(room.player1Id),
-                                        showAvatar: showAvatar,
-                                        showMyAvatar: true, // 観戦者側もアバターを表示
-                                        showSenderName: true, // 名前を表示
+                                        showAvatar: isFirstOfSequence,
+                                        showMyAvatar: isFirstOfSequence,
+                                        hasMyAvatarColumn: true, // 右側アバター列スペースを確保
+                                        showSenderName: true, // アイコン表示時のみ名前が出る
                                       );
                                     },
                                   ),
@@ -928,7 +971,7 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
   }
 
   // ==========================================
-  // 試合終了後のリザルト画面（FinishPage準拠・画面遷移なし）
+  // 試合終了後のリザルト画面（HistoryDetailPageと全く同じUI）
   // ==========================================
   Widget _buildResultView(MatchingRoom room) {
     final winner = room.winner?.trim();
@@ -960,7 +1003,20 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
     final challengerScore = scores?.playerB ?? const PlayerScore();
     final hostScore = scores?.playerA ?? const PlayerScore();
 
+    final hostChoice = _getChoiceText(room, isPlayer1: true);
+    final challengerChoice = _getChoiceText(room, isPlayer1: false);
+
     return Scaffold(
+      appBar: AppBar(
+        title: Text('詳細・分析',
+            style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
+        backgroundColor: Colors.blue,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Container(
         color: Colors.blue,
         child: SafeArea(
@@ -983,36 +1039,176 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                 const SizedBox(height: 24),
                 Text(
                   '結果発表',
-                  style: AppTextStyles.bold(
-                    color: Colors.black,
-                    fontSize: 18,
-                  ),
+                  style: AppTextStyles.bold(color: Colors.black, fontSize: 18),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      resultTitle,
-                      style: AppTextStyles.notoSans(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: resultColor,
-                      ),
-                      textAlign: TextAlign.center,
+                  child: Text(
+                    resultTitle,
+                    style: AppTextStyles.notoSans(
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      color: resultColor,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // --- スクロール可能中央エリア（レーダーチャート ＆ 勝敗理由） ---
+                // --- スクロール可能中央エリア ---
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Column(
                       children: [
-                        // レーダーチャート（挑戦者 vs ホスト）
+                        // --- 両者の選択肢 VS対峙カード ---
+                        if (hostChoice.isNotEmpty || challengerChoice.isNotEmpty) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFAF8FF),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // ホスト側（左側・青）
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 18,
+                                            backgroundColor: Colors.blue[100],
+                                            backgroundImage: _avatarOf(room.player1Id) != null &&
+                                                    _avatarOf(room.player1Id)!.isNotEmpty
+                                                ? ResizeImage(
+                                                    NetworkImage(_avatarOf(room.player1Id)!),
+                                                    width: 72)
+                                                : null,
+                                            child: _avatarOf(room.player1Id) == null ||
+                                                    _avatarOf(room.player1Id)!.isEmpty
+                                                ? Icon(Icons.person,
+                                                    size: 20, color: Colors.blue[700])
+                                                : null,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            hostName,
+                                            style: AppTextStyles.bold(
+                                                fontSize: 11, color: Colors.grey[800]),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              hostChoice.isNotEmpty ? hostChoice : '未選択',
+                                              textAlign: TextAlign.center,
+                                              style: AppTextStyles.bold(
+                                                  fontSize: 11, color: Colors.white),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 36), // VSバッジ用の隙間
+                                    // 挑戦者側（右側・赤）
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 18,
+                                            backgroundColor: Colors.red[100],
+                                            backgroundImage: _avatarOf(room.player2Id) != null &&
+                                                    _avatarOf(room.player2Id)!.isNotEmpty
+                                                ? ResizeImage(
+                                                    NetworkImage(_avatarOf(room.player2Id)!),
+                                                    width: 72)
+                                                : null,
+                                            child: _avatarOf(room.player2Id) == null ||
+                                                    _avatarOf(room.player2Id)!.isEmpty
+                                                ? Icon(Icons.person,
+                                                    size: 20, color: Colors.red[700])
+                                                : null,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            challengerName,
+                                            style: AppTextStyles.bold(
+                                                fontSize: 11, color: Colors.grey[800]),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              challengerChoice.isNotEmpty
+                                                  ? challengerChoice
+                                                  : '未選択',
+                                              textAlign: TextAlign.center,
+                                              style: AppTextStyles.bold(
+                                                  fontSize: 11, color: Colors.white),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                // 中央VSバッジ
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[850],
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.15),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'VS',
+                                      style: AppTextStyles.bold(
+                                          fontSize: 9, color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        // レーダーチャート
                         RadarChartView(
                           myScore: challengerScore,
                           opponentScore: hostScore,
@@ -1062,22 +1258,29 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                   child: SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _showChatInResult = true;
+                        });
+                      },
+                      icon: const Icon(Icons.forum_outlined, size: 20),
+                      label: Text(
+                        'レスバを見る',
+                        style: AppTextStyles.notoSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                      child: Text(
-                        '観戦を終了する',
-                        style: AppTextStyles.notoSans(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        elevation: 2,
                       ),
                     ),
                   ),
@@ -1085,6 +1288,120 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // 試合終了後のチャット履歴閲覧画面（ChatHistoryPageと全く同じUI）
+  // ==========================================
+  Widget _buildChatLogView(MatchingRoom room) {
+    // 時系列順（古い順：上から下へスクロール）
+    final visibleMessages = _messages
+        .reversed
+        .where((chat) => !_hiddenMessageIds.contains(chat.id))
+        .toList();
+
+    return Scaffold(
+      backgroundColor: Colors.blue,
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () {
+            setState(() {
+              _showChatInResult = false;
+            });
+          },
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Center(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  room.theme ?? '',
+                  style: AppTextStyles.notoSans(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.visible,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: ListView.builder(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                  itemCount: visibleMessages.length,
+                  itemBuilder: (context, index) {
+                    final chat = visibleMessages[index];
+                    // 挑戦者側（応募者側＝player2）を自分側（右側）、ホスト（player1）を相手側（左側）に配置
+                    final isUserMessage = chat.senderId == room.player2Id;
+
+                    final bool showAvatar = index == 0 ||
+                        visibleMessages[index - 1].senderId != chat.senderId;
+
+                    return ChatMessageBubble(
+                      id: chat.id,
+                      content: chat.content,
+                      imageUrl: chat.imageUrl,
+                      isUserMessage: isUserMessage,
+                      senderId: chat.senderId,
+                      senderName: isUserMessage
+                          ? _displayName(room.player2Id)
+                          : _displayName(room.player1Id),
+                      senderAvatarUrl: isUserMessage
+                          ? _avatarOf(room.player2Id)
+                          : _avatarOf(room.player1Id),
+                      showAvatar: showAvatar,
+                      showMyAvatar: showAvatar,
+                      hasMyAvatarColumn: true,
+                      showSenderName: true,
+                      replyToId: chat.replyToId,
+                      replyToContent: chat.replyToContent,
+                      replyToUserName: chat.replyToUserName,
+                      onHide: () => _hideMessage(chat.id),
+                      onReport: () async {
+                        final prohibitedService =
+                            ref.read(prohibitedServiceProvider);
+                        await prohibitedService.sendProhibited(
+                          context: context,
+                          opponentId: chat.senderId,
+                          roomId: room.roomId ?? widget.invite.battleRoomId,
+                          chatId: chat.id,
+                          contentId: chat.id,
+                          contentType: 'message',
+                          contentSnapshot: chat.content,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

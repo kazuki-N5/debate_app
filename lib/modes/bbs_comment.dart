@@ -15,6 +15,7 @@ class BbsComment {
   final bool isLikedByMe;
   final List<BbsComment> replies;
   final bool hasResba;
+  final bool isDeleted;
 
   BbsComment({
     required this.id,
@@ -29,6 +30,7 @@ class BbsComment {
     this.isLikedByMe = false,
     this.replies = const [],
     this.hasResba = false,
+    this.isDeleted = false,
   });
 
   factory BbsComment.fromMap(Map<String, dynamic> map, {Users? user, bool isLikedByMe = false, List<BbsComment> replies = const []}) {
@@ -37,7 +39,7 @@ class BbsComment {
       postId: map['post_id'] as String,
       userId: map['user_id'] as String,
       parentCommentId: map['parent_comment_id'] as String?,
-      content: map['content'] as String,
+      content: map['content'] as String? ?? '',
       createdAt: DateTime.parse(map['created_at'] as String).toLocal(),
       likesCount: map['likes_count'] as int? ?? 0,
       imageUrl: map['image_url'] as String?,
@@ -45,6 +47,7 @@ class BbsComment {
       isLikedByMe: isLikedByMe,
       replies: replies,
       hasResba: map['has_resba'] as bool? ?? false,
+      isDeleted: map['is_deleted'] as bool? ?? false,
     );
   }
 
@@ -61,6 +64,7 @@ class BbsComment {
     bool? isLikedByMe,
     List<BbsComment>? replies,
     bool? hasResba,
+    bool? isDeleted,
   }) {
     return BbsComment(
       id: id ?? this.id,
@@ -75,6 +79,7 @@ class BbsComment {
       isLikedByMe: isLikedByMe ?? this.isLikedByMe,
       replies: replies ?? this.replies,
       hasResba: hasResba ?? this.hasResba,
+      isDeleted: isDeleted ?? this.isDeleted,
     );
   }
 }

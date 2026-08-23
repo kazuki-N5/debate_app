@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>クラブ管理人・副管理人 権限委譲システム設計</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif; }
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+    .phone-frame {
+      width: 375px; height: 720px;
+      border-radius: 40px; border: 8px solid #1e293b;
+      overflow: hidden; position: relative; flex-shrink: 0;
+    }
+    .flow-arrow { color: #94a3b8; font-size: 24px; line-height: 1; }
+    .db-table { border-collapse: separate; border-spacing: 0; }
+    .db-table th { background: #f1f5f9; font-weight: 600; text-align: left; padding: 8px 12px; font-size: 12px; color: #475569; border-bottom: 2px solid #e2e8f0; }
+    .db-table td { padding: 6px 12px; font-size: 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    .db-table tr:last-child td { border-bottom: none; }
+    .badge-owner { background: #dbeafe; color: #1d4ed8; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+    .badge-admin { background: #ffedd5; color: #c2410c; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+    .badge-member { background: #f1f5f9; color: #64748b; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+    .perm-yes { color: #16a34a; font-weight: 700; }
+    .perm-no { color: #dc2626; font-weight: 500; }
+    .section-anchor { scroll-margin-top: 80px; }
+    nav.sticky-nav { backdrop-filter: blur(12px); background: rgba(255,255,255,0.85); }
+    .sql-keyword { color: #7c3aed; font-weight: 600; }
+    .sql-string { color: #059669; }
+    .sql-comment { color: #94a3b8; font-style: italic; }
+    .sql-func { color: #2563eb; font-weight: 600; }
+    .diff-add { background: #dcfce7; color: #166534; }
+    .diff-del { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+  <!-- Sticky Nav -->
+  <nav class="sticky-nav sticky top-0 z-50 border-b border-slate-200 px-4 py-3">
+    <div class="max-w-6xl mx-auto flex items-center gap-4 overflow-x-auto text-xs font-semibold whitespace-nowrap">
+      <span class="text-blue-700 font-black text-sm tracking-tight"><i class="fa-solid fa-shield-halved mr-1"></i>権限委譲設計</span>
+      <a href="#overview" class="text-slate-600 hover:text-blue-600 transition">概要</a>
+      <a href="#matrix" class="text-slate-600 hover:text-blue-600 transition">権限マトリクス</a>
+      <a href="#database" class="text-slate-600 hover:text-blue-600 transition">DB構造</a>
+      <a href="#rpc" class="text-slate-600 hover:text-blue-600 transition">RPC関数</a>
+      <a href="#migration" class="text-slate-600 hover:text-blue-600 transition">マイグレーション</a>
+      <a href="#flow-owner" class="text-slate-600 hover:text-blue-600 transition">管理人退室フロー</a>
+      <a href="#flow-admin" class="text-slate-600 hover:text-blue-600 transition">メンバー管理UI</a>
+      <a href="#implementation" class="text-slate-600 hover:text-blue-600 transition">実装手順</a>
+    </div>
+  </nav>
+
+  <div class="max-w-6xl mx-auto p-4 md:p-8 space-y-8">
+
+    <!-- ============================================================ -->
+    <!-- HEADER -->
+    <!-- ============================================================ -->
+    <header id="overview" class="section-anchor bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">設計書 v2</span>
+        <span class="text-xs text-slate-400 mono">open_chat_admin_delegation.html</span>
+      </div>
+      <h1 class="text-2xl md:text-3xl font-black text-slate-900 leading-tight mb-3">
+        クラブ管理人・副管理人<br>権限委譲システム
+      </h1>
+      <p class="text-sm text-slate-500 leading-relaxed max-w-2xl">
+        オープンチャット（クラブ）における管理人の譲渡、副管理人の任命・解任、および管理人退室時のフロントエンド主導型移行フローの設計ドキュメントです。<br>
+        <strong class="text-slate-700">自動フォールバックは行わず</strong>、退室前に必ずUIで移行先を選択させる安全設計を採用しています。
+      </p>
+
+      <!-- 設計の核心: role 3値化 -->
+      <div class="mt-6 p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
+        <h3 class="text-xs font-black text-indigo-900 mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-lightbulb text-indigo-500"></i>
+          設計の核心: role カラムの3値化
+        </h3>
+        <p class="text-[11px] text-indigo-800 leading-relaxed mb-3">
+          従来の <code class="mono bg-indigo-100 px-1 rounded text-[10px]">owner_id</code> カラムと <code class="mono bg-indigo-100 px-1 rounded text-[10px]">role='admin'</code> の併用は判定ロジックが二重になりバグの元。<br>
+          <strong>members.role を3値に統一</strong>し、ロール判定を1箇所に一本化します。
+        </p>
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="bg-white rounded-lg p-3 border border-indigo-200">
+            <div class="badge-owner mb-1 inline-block">owner</div>
+            <div class="text-[10px] text-indigo-700 font-semibold">管理人</div>
+            <div class="text-[9px] text-indigo-500 mt-0.5">1名のみ</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 border border-indigo-200">
+            <div class="badge-admin mb-1 inline-block">admin</div>
+            <div class="text-[10px] text-orange-700 font-semibold">副管理人</div>
+            <div class="text-[9px] text-orange-500 mt-0.5">複数OK</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 border border-indigo-200">
+            <div class="badge-member mb-1 inline-block">member</div>
+            <div class="text-[10px] text-slate-700 font-semibold">一般</div>
+            <div class="text-[9px] text-slate-500 mt-0.5">デフォルト</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-crown text-blue-600 text-lg"></i>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-slate-900">管理人 (owner)</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">全権限 + 権限系統の操作</div>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-user-shield text-orange-600 text-lg"></i>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-slate-900">副管理人 (admin)</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">モデレーション + キック/BAN</div>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-user text-slate-500 text-lg"></i>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-slate-900">一般メンバー (member)</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">閲覧 + 投稿 + 退室</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ============================================================ -->
+    <!-- PERMISSION MATRIX -->
+    <!-- ============================================================ -->
+    <section id="matrix" class="section-anchor bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
+      <h2 class="text-lg font-black text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-table-list text-blue-600"></i>
+        権限マトリクス
+      </h2>
+      <p class="text-xs text-slate-500 mb-5">各ロールが実行できる操作の一覧。✅ = 可能、❌ = 不可</p>
+
+      <div class="overflow-x-auto">
+        <table class="w-full db-table">
+          <thead>
+            <tr>
+              <th class="rounded-tl-lg w-[40%]">操作</th>
+              <th class="text-center"><span class="badge-owner">owner</span></th>
+              <th class="text-center"><span class="badge-admin">admin</span></th>
+              <th class="text-center rounded-tr-lg"><span class="badge-member">member</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- クラブ設定 -->
+            <tr>
+              <td colspan="4" class="bg-slate-50 font-bold text-[11px] text-slate-500 uppercase tracking-wider">クラブ設定</td>
+            </tr>
+            <tr>
+              <td>クラブ情報の編集（名前・説明・アイコン・背景・パスワード・タグ）</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-no">❌</td>
+              <td class="text-center perm-no">❌</td>
+            </tr>
+            <tr>
+              <td>ルールの編集</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-no">❌</td>
+              <td class="text-center perm-no">❌</td>
+            </tr>
+            <tr>
+              <td>クラブの削除</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-no">❌</td>
+              <td class="text-center perm-no">❌</td>
+            </tr>
+
+            <!-- 権限管理 -->
+            <tr>
+              <td colspan="4" class="bg-slate-50 font-bold text-[11px] text-slate-500 uppercase tracking-wider">権限管理</td>
+            </tr>
+            <tr>
+              <td>副管理人の任命</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-no">❌</td>
+              <td class="text-center perm-no">❌</td>
+            </tr>
+            <tr>
+              <td>副管理人の解任</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-no">❌</td>
+              <td class="text-center perm-no">❌</td>
+            </tr>
+            <tr>
+              <td>管理人の譲渡</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-no">❌</td>
+              <td class="text-center perm-no">❌</td>
+            </tr>
+
+            <!-- モデレーション -->
+            <tr>
+              <td colspan="4" class="bg-slate-50 font-bold text-[11px] text-slate-500 uppercase tracking-wider">モデレーション</td>
+            </tr>
+            <tr>
+              <td>メンバーの強制退会（キック）</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-no">❌</td>
+            </tr>
+            <tr>
+              <td>BAN（再参加禁止）</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-no">❌</td>
+            </tr>
+            <tr>
+              <td>BAN解除</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-no">❌</td>
+              <td class="text-center perm-no">❌</td>
+            </tr>
+            <tr>
+              <td>他人のメッセージ削除</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-no">❌</td>
+            </tr>
+
+            <!-- 基本操作 -->
+            <tr>
+              <td colspan="4" class="bg-slate-50 font-bold text-[11px] text-slate-500 uppercase tracking-wider">基本操作</td>
+            </tr>
+            <tr>
+              <td>自分のメッセージ削除</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+            </tr>
+            <tr>
+              <td>メッセージ送信</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+            </tr>
+            <tr>
+              <td>写真・動画の閲覧</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+            </tr>
+            <tr>
+              <td>レスバ履歴の閲覧</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+            </tr>
+            <tr>
+              <td>通知ミュート切替</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+            </tr>
+            <tr>
+              <td>通報</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+            </tr>
+            <tr>
+              <td>退室</td>
+              <td class="text-center perm-yes">✅ <span class="text-[9px] text-blue-600 font-normal">※移行必須</span></td>
+              <td class="text-center perm-yes">✅</td>
+              <td class="text-center perm-yes">✅</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-triangle-exclamation text-amber-600 text-xs mt-0.5"></i>
+          <p class="text-[11px] text-amber-800 leading-relaxed">
+            <strong>副管理人の制限:</strong> 副管理人(admin)はオーナー(owner)および他の副管理人に対してキック/BANを実行できません。RPC側でガードします。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- DATABASE STRUCTURE -->
+    <!-- ============================================================ -->
+    <section id="database" class="section-anchor bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
+      <h2 class="text-lg font-black text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-database text-blue-600"></i>
+        データベース構造
+      </h2>
+      <p class="text-xs text-slate-500 mb-5">
+        <code class="mono bg-slate-100 px-1 rounded text-[10px]">open_chat_members.role</code> を3値に拡張。<br>
+        <code class="mono bg-red-50 px-1 rounded text-[10px] text-red-600 line-through">open_chat_rooms.owner_id</code> は<strong>廃止</strong>し、membersテーブルに一本化します。
+      </p>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- open_chat_rooms -->
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <div class="bg-slate-700 px-4 py-2.5 flex items-center justify-between">
+            <span class="text-white text-sm font-bold mono">open_chat_rooms</span>
+            <span class="text-slate-400 text-[10px] font-semibold">ルーム情報</span>
+          </div>
+          <table class="w-full db-table">
+            <thead><tr><th>カラム</th><th>型</th><th>変更</th></tr></thead>
+            <tbody>
+              <tr><td class="mono font-semibold">id</td><td class="mono text-slate-500">uuid PK</td><td></td></tr>
+              <tr><td class="mono font-semibold">name</td><td class="mono text-slate-500">text</td><td></td></tr>
+              <tr><td class="mono font-semibold">description</td><td class="mono text-slate-500">text</td><td></td></tr>
+              <tr><td class="mono font-semibold">icon_url</td><td class="mono text-slate-500">text</td><td></td></tr>
+              <tr><td class="mono font-semibold">background_url</td><td class="mono text-slate-500">text</td><td></td></tr>
+              <tr><td class="mono font-semibold">password</td><td class="mono text-slate-500">text?</td><td></td></tr>
+              <tr class="bg-red-50">
+                <td class="mono font-bold text-red-600 line-through">owner_id</td>
+                <td class="mono text-red-400 line-through">uuid FK</td>
+                <td class="text-red-600 font-bold text-[10px]"><i class="fa-solid fa-trash mr-1"></i>廃止</td>
+              </tr>
+              <tr><td class="mono font-semibold">created_at</td><td class="mono text-slate-500">timestamptz</td><td></td></tr>
+              <tr><td class="mono font-semibold">tags</td><td class="mono text-slate-500">text[]</td><td></td></tr>
+              <tr><td class="mono font-semibold">rules</td><td class="mono text-slate-500">text?</td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- open_chat_members -->
+        <div class="border border-blue-300 rounded-xl overflow-hidden ring-2 ring-blue-100">
+          <div class="bg-blue-600 px-4 py-2.5 flex items-center justify-between">
+            <span class="text-white text-sm font-bold mono">open_chat_members</span>
+            <span class="bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">変更あり</span>
+          </div>
+          <table class="w-full db-table">
+            <thead><tr><th>カラム</th><th>型</th><th>変更</th></tr></thead>
+            <tbody>
+              <tr><td class="mono font-semibold">room_id</td><td class="mono text-slate-500">uuid FK</td><td></td></tr>
+              <tr><td class="mono font-semibold">user_id</td><td class="mono text-slate-500">uuid FK</td><td></td></tr>
+              <tr class="bg-blue-50">
+                <td class="mono font-bold text-blue-700">role</td>
+                <td class="mono text-blue-600">text</td>
+                <td class="text-blue-800 font-bold text-[10px]">
+                  <i class="fa-solid fa-pen-to-square mr-1"></i>CHECK制約変更
+                </td>
+              </tr>
+              <tr>
+                <td colspan="3" class="pl-8 py-2">
+                  <div class="space-y-1 text-[11px]">
+                    <div class="flex items-center gap-2">
+                      <span class="badge-owner">owner</span>
+                      <span class="text-slate-500">管理人（各ルーム1名のみ）</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="badge-admin">admin</span>
+                      <span class="text-slate-500">副管理人（複数可）</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="badge-member">member</span>
+                      <span class="text-slate-500">一般メンバー（デフォルト）</span>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr><td class="mono font-semibold">joined_at</td><td class="mono text-slate-500">timestamptz</td><td></td></tr>
+              <tr><td class="mono font-semibold">is_muted</td><td class="mono text-slate-500">bool</td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- UNIQUE制約 -->
+      <div class="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+        <h3 class="text-xs font-bold text-blue-900 mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-lock text-blue-500"></i>
+          データ整合性: UNIQUE部分インデックス
+        </h3>
+        <p class="text-[11px] text-blue-800 mb-2">
+          各ルームにオーナーは<strong>必ず1名だけ</strong>存在することをDBレベルで保証します。
+        </p>
+        <pre class="bg-slate-900 text-slate-300 text-[11px] p-3 rounded-lg overflow-x-auto"><span class="sql-keyword">CREATE UNIQUE INDEX</span> idx_open_chat_one_owner_per_room
+<span class="sql-keyword">ON</span> open_chat_members (room_id)
+<span class="sql-keyword">WHERE</span> role = <span class="sql-string">'owner'</span>;</pre>
+        <p class="text-[10px] text-blue-600 mt-2">
+          ※ この部分インデックスにより、同じ room_id で role='owner' のレコードは1つしか挿入できなくなります。
+        </p>
+      </div>
+
+      <!-- ロール判定 -->
+      <div class="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <h3 class="text-xs font-bold text-slate-700 mb-3"><i class="fa-solid fa-code text-slate-400 mr-1"></i>ロール判定ロジック（Flutter側）— 1箇所に一本化</h3>
+        <div class="space-y-2 text-xs mono">
+          <div class="flex items-center gap-2">
+            <span class="badge-owner">管理人</span>
+            <span class="text-slate-400">=</span>
+            <code class="text-slate-700">myMember.role == 'owner'</code>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="badge-admin">副管理人</span>
+            <span class="text-slate-400">=</span>
+            <code class="text-slate-700">myMember.role == 'admin'</code>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="badge-member">一般</span>
+            <span class="text-slate-400">=</span>
+            <code class="text-slate-700">myMember.role == 'member'</code>
+          </div>
+          <div class="mt-2 text-[10px] text-green-700 font-semibold bg-green-50 px-2 py-1 rounded inline-block">
+            ✅ room.ownerId の参照は不要。myMember.role だけで完結
+          </div>
+        </div>
+      </div>
+
+      <!-- OpenChatRoomモデルの変更 -->
+      <div class="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <h3 class="text-xs font-bold text-slate-700 mb-3"><i class="fa-brands fa-flutter text-blue-500 mr-1"></i>OpenChatRoom モデルの変更</h3>
+        <div class="space-y-1 text-[11px] mono">
+          <div class="diff-del px-2 py-1 rounded">@JsonKey(name: 'owner_id') required String ownerId</div>
+          <div class="text-[10px] text-slate-500 ml-2">↑ 削除。オーナー情報は myMember.role で判定するため不要</div>
+        </div>
+        <p class="text-[10px] text-slate-500 mt-2">
+          ※ 一覧表示等で「このルームのオーナー名」が必要な場合は、JOINまたは別途クエリで取得。
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- RPC FUNCTIONS -->
+    <!-- ============================================================ -->
+    <section id="rpc" class="section-anchor bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
+      <h2 class="text-lg font-black text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-gear text-blue-600"></i>
+        RPC関数設計
+      </h2>
+      <p class="text-xs text-slate-500 mb-5">新規作成3つ + 既存改修2つ。すべて SECURITY DEFINER + auth.uid() チェック付き。</p>
+
+      <div class="space-y-6">
+        <!-- RPC 1: transfer_room_ownership -->
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <div class="bg-indigo-600 px-4 py-2.5 flex items-center justify-between">
+            <span class="text-white text-sm font-bold mono">transfer_room_ownership</span>
+            <span class="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">新規</span>
+          </div>
+          <div class="p-4">
+            <div class="flex flex-wrap gap-2 mb-3 text-[11px]">
+              <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded mono">p_room_id UUID</span>
+              <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded mono">p_new_owner_id UUID</span>
+              <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded mono">→ JSONB</span>
+            </div>
+            <p class="text-xs text-slate-600 mb-3">管理人権限を別のメンバーに譲渡する。旧オーナーは admin に降格、新オーナーは owner に昇格。</p>
+            <pre class="bg-slate-900 text-slate-300 text-[11px] p-3 rounded-lg overflow-x-auto leading-relaxed"><span class="sql-keyword">CREATE OR REPLACE FUNCTION</span> <span class="sql-func">public.transfer_room_ownership</span>(
+  p_room_id UUID, p_new_owner_id UUID
+) <span class="sql-keyword">RETURNS</span> JSONB <span class="sql-keyword">LANGUAGE</span> plpgsql <span class="sql-keyword">SECURITY DEFINER AS</span> $$
+<span class="sql-keyword">DECLARE</span>
+  v_caller_id UUID := <span class="sql-func">auth.uid</span>();
+  v_is_owner BOOLEAN;
+<span class="sql-keyword">BEGIN</span>
+  <span class="sql-comment">-- 呼び出し元がオーナーか確認</span>
+  <span class="sql-keyword">SELECT EXISTS</span>(
+    <span class="sql-keyword">SELECT</span> 1 <span class="sql-keyword">FROM</span> open_chat_members
+    <span class="sql-keyword">WHERE</span> room_id = p_room_id <span class="sql-keyword">AND</span> user_id = v_caller_id <span class="sql-keyword">AND</span> role = <span class="sql-string">'owner'</span>
+  ) <span class="sql-keyword">INTO</span> v_is_owner;
+
+  <span class="sql-keyword">IF NOT</span> v_is_owner <span class="sql-keyword">THEN</span>
+    <span class="sql-keyword">RETURN</span> jsonb_build_object(<span class="sql-string">'success'</span>, false, <span class="sql-string">'error'</span>, <span class="sql-string">'管理人のみが権限を譲渡できます'</span>);
+  <span class="sql-keyword">END IF</span>;
+
+  <span class="sql-comment">-- 新しいオーナーがメンバーか確認</span>
+  <span class="sql-keyword">IF NOT EXISTS</span>(
+    <span class="sql-keyword">SELECT</span> 1 <span class="sql-keyword">FROM</span> open_chat_members
+    <span class="sql-keyword">WHERE</span> room_id = p_room_id <span class="sql-keyword">AND</span> user_id = p_new_owner_id
+  ) <span class="sql-keyword">THEN</span>
+    <span class="sql-keyword">RETURN</span> jsonb_build_object(<span class="sql-string">'success'</span>, false, <span class="sql-string">'error'</span>, <span class="sql-string">'メンバーではないユーザーには譲渡できません'</span>);
+  <span class="sql-keyword">END IF</span>;
+
+  <span class="sql-comment">-- 旧オーナーを admin に降格</span>
+  <span class="sql-keyword">UPDATE</span> open_chat_members <span class="sql-keyword">SET</span> role = <span class="sql-string">'admin'</span>
+  <span class="sql-keyword">WHERE</span> room_id = p_room_id <span class="sql-keyword">AND</span> user_id = v_caller_id;
+
+  <span class="sql-comment">-- 新オーナーを owner に昇格</span>
+  <span class="sql-keyword">UPDATE</span> open_chat_members <span class="sql-keyword">SET</span> role = <span class="sql-string">'owner'</span>
+  <span class="sql-keyword">WHERE</span> room_id = p_room_id <span class="sql-keyword">AND</span> user_id = p_new_owner_id;
+
+  <span class="sql-keyword">RETURN</span> jsonb_build_object(<span class="sql-string">'success'</span>, true);
+<span class="sql-keyword">END</span>; $$;</pre>
+          </div>
+        </div>
+
+        <!-- RPC 2: assign_admin_role -->
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <div class="bg-indigo-600 px-4 py-2.5 flex items-center justify-between">
+            <span class="text-white text-sm font-bold mono">assign_admin_role</span>
+            <span class="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">新規</span>
+          </div>
+          <div class="p-4">
+            <div class="flex flex-wrap gap-2 mb-3 text-[11px]">
+              <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded mono">p_room_id UUID</span>
+              <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded mono">p_target_user_id UUID</span>
+              <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded mono">→ JSONB</span>
+            </div>
+            <p class="text-xs text-slate-600 mb-3">一般メンバーを副管理人に任命する。オーナー(role='owner')のみ呼び出し可能。</p>
+            <pre class="bg-slate-900 text-slate-300 text-[11px] p-3 rounded-lg overflow-x-auto leading-relaxed"><span class="sql-keyword">CREATE OR REPLACE FUNCTION</span> <span class="sql-func">public.assign_admin_role</span>(
+  p_room_id UUID, p_target_user_id UUID
+) <span class="sql-keyword">RETURNS</span> JSONB <span class="sql-keyword">LANGUAGE</span> plpgsql <span class="sql-keyword">SECURITY DEFINER AS</span> $$
+<span class="sql-keyword">DECLARE</span> v_caller_id UUID := <span class="sql-func">auth.uid</span>();
+<span class="sql-keyword">BEGIN</span>
+  <span class="sql-keyword">IF NOT EXISTS</span>(
+    <span class="sql-keyword">SELECT</span> 1 <span class="sql-keyword">FROM</span> open_chat_members
+    <span class="sql-keyword">WHERE</span> room_id = p_room_id <span class="sql-keyword">AND</span> user_id = v_caller_id <span class="sql-keyword">AND</span> role = <span class="sql-string">'owner'</span>
+  ) <span class="sql-keyword">THEN</span>
+    <span class="sql-keyword">RETURN</span> jsonb_build_object(<span class="sql-string">'success'</span>, false, <span class="sql-string">'error'</span>, <span class="sql-string">'管理人のみが副管理人を任命できます'</span>);
+  <span class="sql-keyword">END IF</span>;
+
+  <span class="sql-keyword">UPDATE</span> open_chat_members <span class="sql-keyword">SET</span> role = <span class="sql-string">'admin'</span>
+  <span class="sql-keyword">WHERE</span> room_id = p_room_id <span class="sql-keyword">AND</span> user_id = p_target_user_id <span class="sql-keyword">AND</span> role = <span class="sql-string">'member'</span>;
+
+  <span class="sql-keyword">IF NOT FOUND THEN</span>
+    <span class="sql-keyword">RETURN</span> jsonb_build_object(<span class="sql-string">'success'</span>, false, <span class="sql-string">'error'</span>, <span class="sql-string">'対象はこのルームの一般メンバーではありません'</span>);
+  <span class="sql-keyword">END IF</span>;
+
+  <span class="sql-keyword">RETURN</span> jsonb_build_object(<span class="sql-string">'success'</span>, true);
+<span class="sql-keyword">END</span>; $$;</pre>
+          </div>
+        </div>
+
+        <!-- RPC 3: revoke_admin_role -->
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <div class="bg-indigo-600 px-4 py-2.5 flex items-center justify-between">
+            <span class="text-white text-sm font-bold mono">revoke_admin_role</span>
+            <span class="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">新規</span>
+          </div>
+          <div class="p-4">
+            <div class="flex flex-wrap gap-2 mb-3 text-[11px]">
+              <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded mono">p_room_id UUID</span>
+              <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded mono">p_target_user_id UUID</span>
+              <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded mono">→ JSONB</span>
+            </div>
+            <p class="text-xs text-slate-600 mb-3">副管理人を一般メンバーに降格する。オーナー(owner)自身は解任不可。</p>
+            <pre class="bg-slate-900 text-slate-300 text-[11px] p-3 rounded-lg overflow-x-auto leading-relaxed"><span class="sql-keyword">CREATE OR REPLACE FUNCTION</span> <span class="sql-func">public.revoke_admin_role</span>(
+  p_room_id UUID, p_target_user_id UUID
+) <span class="sql-keyword">RETURNS</span> JSONB <span class="sql-keyword">LANGUAGE</span> plpgsql <span class="sql-keyword">SECURITY DEFINER AS</span> $$
+<span class="sql-keyword">DECLARE</span> v_caller_id UUID := <span class="sql-func">auth.uid</span>();
+<span class="sql-keyword">BEGIN</span>
+  <span class="sql-keyword">IF NOT EXISTS</span>(
+    <span class="sql-keyword">SELECT</span> 1 <span class="sql-keyword">FROM</span> open_chat_members
+    <span class="sql-keyword">WHERE</span> room_id = p_room_id <span class="sql-keyword">AND</span> user_id = v_caller_id <span class="sql-keyword">AND</span> role = <span class="sql-string">'owner'</span>
+  ) <span class="sql-keyword">THEN</span>
+    <span class="sql-keyword">RETURN</span> jsonb_build_object(<span class="sql-string">'success'</span>, false, <span class="sql-string">'error'</span>, <span class="sql-string">'管理人のみが副管理人を解任できます'</span>);
+  <span class="sql-keyword">END IF</span>;
+
+  <span class="sql-comment">-- オーナー(owner)は解任できない</span>
+  <span class="sql-keyword">IF EXISTS</span>(
+    <span class="sql-keyword">SELECT</span> 1 <span class="sql-keyword">FROM</span> open_chat_members
+    <span class="sql-keyword">WHERE</span> room_id = p_room_id <span class="sql-keyword">AND</span> user_id = p_target_user_id <span class="sql-keyword">AND</span> role = <span class="sql-string">'owner'</span>
+  ) <span class="sql-keyword">THEN</span>
+    <span class="sql-keyword">RETURN</span> jsonb_build_object(<span class="sql-string">'success'</span>, false, <span class="sql-string">'error'</span>, <span class="sql-string">'管理人を副管理人から外すことはできません'</span>);
+  <span class="sql-keyword">END IF</span>;
+
+  <span class="sql-keyword">UPDATE</span> open_chat_members <span class="sql-keyword">SET</span> role = <span class="sql-string">'member'</span>
+  <span class="sql-keyword">WHERE</span> room_id = p_room_id <span class="sql-keyword">AND</span> user_id = p_target_user_id <span class="sql-keyword">AND</span> role = <span class="sql-string">'admin'</span>;
+
+  <span class="sql-keyword">RETURN</span> jsonb_build_object(<span class="sql-string">'success'</span>, true);
+<span class="sql-keyword">END</span>; $$;</pre>
+          </div>
+        </div>
+
+        <!-- RPC 4: create_open_chat_room (改修) -->
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <div class="bg-amber-600 px-4 py-2.5 flex items-center justify-between">
+            <span class="text-white text-sm font-bold mono">create_open_chat_room</span>
+            <span class="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">改修</span>
+          </div>
+          <div class="p-4">
+            <p class="text-xs text-slate-600 mb-3">
+              ルーム作成時にオーナーを <code class="mono bg-slate-100 px-1 rounded text-[10px]">role='owner'</code> で登録するように変更。<br>
+              <span class="diff-del px-1 rounded text-[10px]">role='admin'</span> → <span class="diff-add px-1 rounded text-[10px]">role='owner'</span>
+            </p>
+            <pre class="bg-slate-900 text-slate-300 text-[11px] p-3 rounded-lg overflow-x-auto leading-relaxed"><span class="sql-comment">-- 変更前</span>
+<span class="diff-del">VALUES (v_room_id, v_user_id, 'admin');</span>
+
+<span class="sql-comment">-- 変更後</span>
+<span class="diff-add">VALUES (v_room_id, v_user_id, 'owner');</span></pre>
+          </div>
+        </div>
+
+        <!-- RPC 5: leave_open_chat_room (変更なし) -->
+        <div class="border border-slate-200 rounded-xl overflow-hidden opacity-75">
+          <div class="bg-slate-600 px-4 py-2.5 flex items-center justify-between">
+            <span class="text-white text-sm font-bold mono">leave_open_chat_room</span>
+            <span class="bg-slate-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">既存・変更なし</span>
+          </div>
+          <div class="p-4">
+            <p class="text-xs text-slate-600">
+              <strong>自動フォールバックロジックは入れない。</strong><br>
+              単にメンバーレコードを削除するだけの既存動作を維持。<br>
+              オーナーがこれを呼ぶ前に、フロントエンドで必ず <code class="mono text-[11px] bg-slate-100 px-1 rounded">transfer_room_ownership</code> を完了させる前提。<br>
+              RLSでオーナーも呼び出せるよう調整のみ。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- MIGRATION SQL -->
+    <!-- ============================================================ -->
+    <section id="migration" class="section-anchor bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
+      <h2 class="text-lg font-black text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-database text-amber-600"></i>
+        マイグレーションSQL
+      </h2>
+      <p class="text-xs text-slate-500 mb-5">既存データを変換しながらスキーマを変更する手順。<strong>必ずバックアップ後に実行してください。</strong></p>
+
+      <pre class="bg-slate-900 text-slate-300 text-[11px] p-4 rounded-xl overflow-x-auto leading-relaxed"><span class="sql-comment">-- ========================================</span>
+<span class="sql-comment">-- Step 1: CHECK制約の変更</span>
+<span class="sql-comment">-- ========================================</span>
+<span class="sql-keyword">ALTER TABLE</span> open_chat_members
+  <span class="sql-keyword">DROP CONSTRAINT IF EXISTS</span> open_chat_members_role_check;
+
+<span class="sql-keyword">ALTER TABLE</span> open_chat_members
+  <span class="sql-keyword">ADD CONSTRAINT</span> open_chat_members_role_check
+  <span class="sql-keyword">CHECK</span> (role <span class="sql-keyword">IN</span> (<span class="sql-string">'owner'</span>, <span class="sql-string">'admin'</span>, <span class="sql-string">'member'</span>));
+
+<span class="sql-comment">-- ========================================</span>
+<span class="sql-comment">-- Step 2: 既存オーナーの role を 'admin' → 'owner' に変換</span>
+<span class="sql-comment">-- open_chat_rooms.owner_id を参照して特定</span>
+<span class="sql-comment">-- ========================================</span>
+<span class="sql-keyword">UPDATE</span> open_chat_members m
+<span class="sql-keyword">SET</span> role = <span class="sql-string">'owner'</span>
+<span class="sql-keyword">FROM</span> open_chat_rooms r
+<span class="sql-keyword">WHERE</span> m.room_id = r.id
+  <span class="sql-keyword">AND</span> m.user_id = r.owner_id
+  <span class="sql-keyword">AND</span> m.role = <span class="sql-string">'admin'</span>;
+
+<span class="sql-comment">-- ========================================</span>
+<span class="sql-comment">-- Step 3: owner_id カラムの削除</span>
+<span class="sql-comment">-- ========================================</span>
+<span class="sql-keyword">ALTER TABLE</span> open_chat_rooms
+  <span class="sql-keyword">DROP COLUMN IF EXISTS</span> owner_id;
+
+<span class="sql-comment">-- ========================================</span>
+<span class="sql-comment">-- Step 4: ユニーク部分インデックス作成</span>
+<span class="sql-comment">-- ========================================</span>
+<span class="sql-keyword">CREATE UNIQUE INDEX</span> idx_open_chat_one_owner_per_room
+<span class="sql-keyword">ON</span> open_chat_members (room_id)
+<span class="sql-keyword">WHERE</span> role = <span class="sql-string">'owner'</span>;
+
+<span class="sql-comment">-- ========================================</span>
+<span class="sql-comment">-- Step 5: RLSポリシーの更新</span>
+<span class="sql-comment">-- 旧: auth.uid() = owner_id</span>
+<span class="sql-comment">-- 新: members.role = 'owner'</span>
+<span class="sql-comment">-- ========================================</span>
+<span class="sql-keyword">DROP POLICY IF EXISTS</span> <span class="sql-string">"ルーム管理者は更新可能"</span> <span class="sql-keyword">ON</span> open_chat_rooms;
+<span class="sql-keyword">DROP POLICY IF EXISTS</span> <span class="sql-string">"ルーム管理者は削除可能"</span> <span class="sql-keyword">ON</span> open_chat_rooms;
+
+<span class="sql-keyword">CREATE POLICY</span> <span class="sql-string">"ルーム管理者は更新可能"</span> <span class="sql-keyword">ON</span> open_chat_rooms
+  <span class="sql-keyword">FOR UPDATE USING</span> (
+    <span class="sql-keyword">EXISTS</span> (
+      <span class="sql-keyword">SELECT</span> 1 <span class="sql-keyword">FROM</span> open_chat_members
+      <span class="sql-keyword">WHERE</span> room_id = open_chat_rooms.id
+        <span class="sql-keyword">AND</span> user_id = <span class="sql-func">auth.uid</span>()
+        <span class="sql-keyword">AND</span> role = <span class="sql-string">'owner'</span>
+    )
+  );
+
+<span class="sql-keyword">CREATE POLICY</span> <span class="sql-string">"ルーム管理者は削除可能"</span> <span class="sql-keyword">ON</span> open_chat_rooms
+  <span class="sql-keyword">FOR DELETE USING</span> (
+    <span class="sql-keyword">EXISTS</span> (
+      <span class="sql-keyword">SELECT</span> 1 <span class="sql-keyword">FROM</span> open_chat_members
+      <span class="sql-keyword">WHERE</span> room_id = open_chat_rooms.id
+        <span class="sql-keyword">AND</span> user_id = <span class="sql-func">auth.uid</span>()
+        <span class="sql-keyword">AND</span> role = <span class="sql-string">'owner'</span>
+    )
+  );</pre>
+
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="p-3 bg-red-50 border border-red-200 rounded-xl">
+          <div class="text-[11px] font-bold text-red-800 mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>注意点</div>
+          <ul class="text-[10px] text-red-700 list-disc list-inside space-y-0.5">
+            <li>Step 2 を先に実行しないと owner_id 削除後にオーナー特定不能</li>
+            <li>既存の副管理人(role='admin')はそのまま維持される</li>
+            <li>owner_id を参照している他RPC/ビューも同時に修正が必要</li>
+          </ul>
+        </div>
+        <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+          <div class="text-[11px] font-bold text-blue-800 mb-1"><i class="fa-solid fa-magnifying-glass mr-1"></i>影響範囲の確認コマンド</div>
+          <pre class="bg-slate-900 text-slate-300 text-[10px] p-2 rounded-lg overflow-x-auto mt-1"><span class="sql-comment">-- owner_id を参照しているオブジェクト一覧</span>
+<span class="sql-keyword">SELECT</span> proname <span class="sql-keyword">FROM</span> pg_proc
+<span class="sql-keyword">WHERE</span> prosrc <span class="sql-keyword">LIKE</span> <span class="sql-string">'%owner_id%'</span>;</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- FLOW: OWNER LEAVE -->
+    <!-- ============================================================ -->
+    <section id="flow-owner" class="section-anchor bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
+      <h2 class="text-lg font-black text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-person-walking-arrow-right text-blue-600"></i>
+        管理人退室フロー（フロントエンド主導）
+      </h2>
+      <p class="text-xs text-slate-500 mb-6">自動フォールバックは行わず、UIで明示的に移行先を選択させてから退室する。</p>
+
+      <div class="flex flex-col lg:flex-row gap-6 items-start">
+        <!-- フロー図 -->
+        <div class="flex-1 space-y-3 min-w-0">
+          <!-- Step 1 -->
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600 text-xs font-black">1</div>
+            <div class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <div class="text-xs font-bold text-slate-900 mb-1">[退会] タップ</div>
+              <div class="text-[11px] text-slate-500">OpenChatMenuView のクイックアクション</div>
+            </div>
+          </div>
+          <div class="pl-4 flow-arrow">↓</div>
+
+          <!-- Step 2 -->
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 text-amber-600 text-xs font-black">2</div>
+            <div class="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <div class="text-xs font-bold text-amber-900 mb-1">⚠️ ブロックダイアログ表示</div>
+              <div class="text-[11px] text-amber-800 leading-relaxed">
+                「管理人を退会するには、先に管理人権限を他のメンバーに移譲する必要があります。」<br>
+                → <strong>[管理人を譲る]</strong> / [キャンセル]
+              </div>
+            </div>
+          </div>
+          <div class="pl-4 flow-arrow">↓</div>
+
+          <!-- Step 3 -->
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 text-xs font-black">3</div>
+            <div class="flex-1 bg-blue-50 border border-blue-200 rounded-xl p-3">
+              <div class="text-xs font-bold text-blue-900 mb-1">メンバー選択シート表示</div>
+              <div class="text-[11px] text-blue-800 leading-relaxed">
+                自分以外のメンバー一覧を表示。<br>
+                副管理人(admin)を上位に表示。<br>
+                各メンバーにロールバッジを表示。
+              </div>
+            </div>
+          </div>
+          <div class="pl-4 flow-arrow">↓</div>
+
+          <!-- Step 4 -->
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-indigo-600 text-xs font-black">4</div>
+            <div class="flex-1 bg-indigo-50 border border-indigo-200 rounded-xl p-3">
+              <div class="text-xs font-bold text-indigo-900 mb-1">最終確認ダイアログ</div>
+              <div class="text-[11px] text-indigo-800 leading-relaxed">
+                「@ユーザー名 に管理人権限を譲りますか？<br>あなたは副管理人になります。<br>この操作は取り消せません。」<br>
+                → [キャンセル] / <strong>[譲渡する]</strong>
+              </div>
+            </div>
+          </div>
+          <div class="pl-4 flow-arrow">↓</div>
+
+          <!-- Step 5 -->
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 text-purple-600 text-xs font-black">5</div>
+            <div class="flex-1 bg-purple-50 border border-purple-200 rounded-xl p-3">
+              <div class="text-xs font-bold text-purple-900 mb-1">transfer_room_ownership RPC 実行</div>
+              <div class="text-[11px] text-purple-800 leading-relaxed">
+                旧オーナー → <span class="badge-admin">admin</span> に降格<br>
+                新オーナー → <span class="badge-owner">owner</span> に昇格<br>
+                Provider invalidate → UI更新
+              </div>
+            </div>
+          </div>
+          <div class="pl-4 flow-arrow">↓</div>
+
+          <!-- Step 6 -->
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 text-green-600 text-xs font-black">6</div>
+            <div class="flex-1 bg-green-50 border border-green-200 rounded-xl p-3">
+              <div class="text-xs font-bold text-green-900 mb-1">自動的に leaveRoom 処理へ遷移</div>
+              <div class="text-[11px] text-green-800 leading-relaxed">
+                通常の退室確認ダイアログ → leave_open_chat_room RPC<br>
+                成功 → 画面を閉じる + SnackBar「退会しました」
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- スマホモックアップ -->
+        <div class="flex-shrink-0 flex flex-col items-center gap-2">
+          <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Step 2: ブロックダイアログ</div>
+          <div class="phone-frame bg-white flex flex-col shadow-2xl">
+            <!-- Status Bar -->
+            <div class="h-6 bg-blue-600 flex items-center justify-between px-6 text-white text-[10px] font-medium">
+              <span>9:41</span>
+              <div class="flex items-center gap-1.5">
+                <i class="fa-solid fa-signal text-[9px]"></i>
+                <i class="fa-solid fa-wifi text-[9px]"></i>
+                <i class="fa-solid fa-battery-full text-[10px]"></i>
+              </div>
+            </div>
+            <!-- AppBar -->
+            <div class="h-11 bg-blue-600 flex items-center px-4 text-white">
+              <i class="fa-solid fa-chevron-left text-sm mr-3"></i>
+              <span class="font-bold text-sm">サッカースパイク好き集まれ！</span>
+            </div>
+            <!-- Content (dimmed) -->
+            <div class="flex-1 bg-slate-50 relative">
+              <div class="absolute inset-0 bg-black/40 z-10 flex items-center justify-center">
+                <!-- Dialog -->
+                <div class="bg-white rounded-2xl w-[300px] p-6 shadow-2xl">
+                  <div class="flex items-center gap-2 mb-3">
+                    <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                      <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm"></i>
+                    </div>
+                    <span class="text-sm font-black text-slate-900">管理人の退会</span>
+                  </div>
+                  <p class="text-xs text-slate-600 leading-relaxed mb-5">
+                    あなたはこのクラブの管理人です。<br>
+                    退会するには、先に管理人権限を他のメンバーに<strong>移譲</strong>する必要があります。
+                  </p>
+                  <div class="space-y-2">
+                    <button class="w-full py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-sm">
+                      管理人を譲る
+                    </button>
+                    <button class="w-full py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl">
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <!-- Background content (dummy) -->
+              <div class="p-4 space-y-3 opacity-30">
+                <div class="h-10 bg-slate-200 rounded-lg"></div>
+                <div class="h-10 bg-slate-200 rounded-lg"></div>
+                <div class="h-10 bg-slate-200 rounded-lg"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 Mockup -->
+      <div class="mt-8 flex flex-col items-center gap-2">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Step 3: メンバー選択シート</div>
+        <div class="phone-frame bg-white flex flex-col shadow-2xl">
+          <!-- Status Bar -->
+          <div class="h-6 bg-slate-900 flex items-center justify-between px-6 text-white text-[10px] font-medium">
+            <span>9:41</span>
+            <div class="flex items-center gap-1.5">
+              <i class="fa-solid fa-signal text-[9px]"></i>
+              <i class="fa-solid fa-wifi text-[9px]"></i>
+              <i class="fa-solid fa-battery-full text-[10px]"></i>
+            </div>
+          </div>
+          <!-- Sheet Header -->
+          <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <span class="text-sm font-black text-slate-900">新しい管理人を選択</span>
+            <button class="text-xs text-slate-400 font-semibold">キャンセル</button>
+          </div>
+          <!-- Search -->
+          <div class="px-4 py-2">
+            <div class="bg-slate-100 rounded-lg px-3 py-2 flex items-center gap-2">
+              <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs"></i>
+              <span class="text-xs text-slate-400">メンバーを検索...</span>
+            </div>
+          </div>
+          <!-- Member List -->
+          <div class="flex-1 overflow-y-auto">
+            <!-- Section: Admins -->
+            <div class="px-4 py-1.5">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">副管理人</span>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-3 hover:bg-blue-50 cursor-pointer border-l-4 border-blue-500 bg-blue-50/50">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs font-bold">T</div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-slate-900">たろう</span>
+                  <span class="badge-admin">副管理人</span>
+                </div>
+                <div class="text-[10px] text-slate-500">参加: 3/15</div>
+              </div>
+              <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+            </div>
+            <!-- Section: Members -->
+            <div class="px-4 py-1.5 mt-1">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">メンバー</span>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-3 hover:bg-slate-50 cursor-pointer">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-xs font-bold">H</div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-slate-900">はなこ</span>
+                  <span class="badge-member">メンバー</span>
+                </div>
+                <div class="text-[10px] text-slate-500">参加: 4/2</div>
+              </div>
+              <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-3 hover:bg-slate-50 cursor-pointer">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-xs font-bold">S</div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-slate-900">さとし</span>
+                  <span class="badge-member">メンバー</span>
+                </div>
+                <div class="text-[10px] text-slate-500">参加: 5/20</div>
+              </div>
+              <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+            </div>
+            <div class="px-4 py-3 flex items-center gap-3 hover:bg-slate-50 cursor-pointer">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-xs font-bold">M</div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-slate-900">みき</span>
+                  <span class="badge-member">メンバー</span>
+                </div>
+                <div class="text-[10px] text-slate-500">参加: 6/10</div>
+              </div>
+              <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- FLOW: MEMBER MANAGEMENT UI -->
+    <!-- ============================================================ -->
+    <section id="flow-admin" class="section-anchor bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
+      <h2 class="text-lg font-black text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-users-gear text-blue-600"></i>
+        メンバー管理UI（オーナー視点）
+      </h2>
+      <p class="text-xs text-slate-500 mb-6">メンバー一覧の各タイルにロール管理メニューを追加。長押しまたは「⋮」ボタンで表示。</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 副管理人に対するメニュー -->
+        <div>
+          <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">副管理人へのアクション</div>
+          <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            <!-- Member Tile -->
+            <div class="px-4 py-3 flex items-center gap-3 border-b border-slate-100">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs font-bold">T</div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-slate-900">たろう</span>
+                  <span class="badge-admin">副管理人</span>
+                </div>
+                <div class="text-[10px] text-slate-500">参加: 3/15</div>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs cursor-pointer">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+              </div>
+            </div>
+            <!-- Action Menu -->
+            <div class="bg-slate-50">
+              <button class="w-full px-4 py-3 flex items-center gap-3 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition border-b border-slate-100">
+                <i class="fa-solid fa-crown text-blue-500 w-5 text-center"></i>
+                管理人を譲る
+              </button>
+              <button class="w-full px-4 py-3 flex items-center gap-3 text-xs font-semibold text-orange-600 hover:bg-orange-50 transition border-b border-slate-100">
+                <i class="fa-solid fa-user-minus text-orange-500 w-5 text-center"></i>
+                副管理人を外す
+              </button>
+              <button class="w-full px-4 py-3 flex items-center gap-3 text-xs font-semibold text-red-600 hover:bg-red-50 transition">
+                <i class="fa-solid fa-user-xmark text-red-500 w-5 text-center"></i>
+                強制退会
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 一般メンバーに対するメニュー -->
+        <div>
+          <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">一般メンバーへのアクション</div>
+          <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            <!-- Member Tile -->
+            <div class="px-4 py-3 flex items-center gap-3 border-b border-slate-100">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-xs font-bold">H</div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-slate-900">はなこ</span>
+                  <span class="badge-member">メンバー</span>
+                </div>
+                <div class="text-[10px] text-slate-500">参加: 4/2</div>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs cursor-pointer">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+              </div>
+            </div>
+            <!-- Action Menu -->
+            <div class="bg-slate-50">
+              <button class="w-full px-4 py-3 flex items-center gap-3 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition border-b border-slate-100">
+                <i class="fa-solid fa-user-shield text-blue-500 w-5 text-center"></i>
+                副管理人に任命
+              </button>
+              <button class="w-full px-4 py-3 flex items-center gap-3 text-xs font-semibold text-red-600 hover:bg-red-50 transition">
+                <i class="fa-solid fa-user-xmark text-red-500 w-5 text-center"></i>
+                強制退会
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 副管理人視点の注意 -->
+      <div class="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <h3 class="text-xs font-bold text-slate-700 mb-2"><i class="fa-solid fa-user-shield text-orange-500 mr-1"></i>副管理人からの見え方</h3>
+        <p class="text-[11px] text-slate-600 leading-relaxed">
+          副管理人(admin)のメンバー一覧では、<strong>「強制退会」ボタンのみ</strong>を表示。<br>
+          「副管理人に任命」「副管理人を外す」「管理人を譲る」は表示しない。<br>
+          また、オーナー(owner)および他の副管理人(admin)に対する「強制退会」ボタンも非表示にする。
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- IMPLEMENTATION STEPS -->
+    <!-- ============================================================ -->
+    <section id="implementation" class="section-anchor bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
+      <h2 class="text-lg font-black text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-list-check text-blue-600"></i>
+        実装手順
+      </h2>
+      <p class="text-xs text-slate-500 mb-5">推奨実装順序。Phaseごとに独立してテスト可能。</p>
+
+      <div class="space-y-4">
+        <!-- Phase 0 -->
+        <div class="border border-red-200 rounded-xl p-4 bg-red-50/50">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">Phase 0</span>
+            <span class="text-sm font-bold text-slate-900">DBマイグレーション（最優先）</span>
+          </div>
+          <div class="text-[11px] text-slate-600 space-y-0.5">
+            <div>• CHECK制約を <code class="mono bg-white px-1 rounded text-[10px]">'owner','admin','member'</code> に変更</div>
+            <div>• 既存オーナーの role を <code class="mono bg-white px-1 rounded text-[10px]">admin → owner</code> に変換</div>
+            <div>• <code class="mono bg-white px-1 rounded text-[10px]">owner_id</code> カラム削除</div>
+            <div>• ユニーク部分インデックス作成</div>
+            <div>• RLSポリシー更新</div>
+            <div>• <code class="mono bg-white px-1 rounded text-[10px]">create_open_chat_room</code> RPC改修</div>
+          </div>
+        </div>
+
+        <!-- Phase 1 -->
+        <div class="border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">Phase 1</span>
+            <span class="text-sm font-bold text-slate-900">Flutter側ロール判定の統一</span>
+          </div>
+          <div class="text-[11px] text-slate-500 space-y-0.5">
+            <div>• <code class="mono bg-slate-100 px-1 rounded text-[10px]">OpenChatRoom</code> から <code class="mono bg-slate-100 px-1 rounded text-[10px]">ownerId</code> フィールド削除</div>
+            <div>• 全画面の <code class="mono bg-slate-100 px-1 rounded text-[10px]">isOwner</code> 判定を <code class="mono bg-slate-100 px-1 rounded text-[10px]">myMember.role == 'owner'</code> に置換</div>
+            <div>• <code class="mono bg-slate-100 px-1 rounded text-[10px]">get_open_chat_rooms_with_status</code> RPCの戻り値から owner_id を削除</div>
+          </div>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">Phase 2</span>
+            <span class="text-sm font-bold text-slate-900">副管理人の任命・解任</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+            <div>
+              <div class="font-semibold text-slate-700 mb-1">Supabase</div>
+              <ul class="list-disc list-inside text-slate-500 space-y-0.5">
+                <li><code class="mono bg-slate-100 px-1 rounded text-[10px]">assign_admin_role</code> RPC作成</li>
+                <li><code class="mono bg-slate-100 px-1 rounded text-[10px]">revoke_admin_role</code> RPC作成</li>
+              </ul>
+            </div>
+            <div>
+              <div class="font-semibold text-slate-700 mb-1">Flutter</div>
+              <ul class="list-disc list-inside text-slate-500 space-y-0.5">
+                <li><code class="mono bg-slate-100 px-1 rounded text-[10px]">OpenChatActionNotifier</code> にメソッド追加</li>
+                <li><code class="mono bg-slate-100 px-1 rounded text-[10px]">OpenChatMembersView</code> にアクションメニュー追加</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="bg-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">Phase 3</span>
+            <span class="text-sm font-bold text-slate-900">管理人の譲渡 + 退室フロー改修</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+            <div>
+              <div class="font-semibold text-slate-700 mb-1">Supabase</div>
+              <ul class="list-disc list-inside text-slate-500 space-y-0.5">
+                <li><code class="mono bg-slate-100 px-1 rounded text-[10px]">transfer_room_ownership</code> RPC作成</li>
+                <li><code class="mono bg-slate-100 px-1 rounded text-[10px]">leave_open_chat_room</code> のRLS確認</li>
+              </ul>
+            </div>
+            <div>
+              <div class="font-semibold text-slate-700 mb-1">Flutter</div>
+              <ul class="list-disc list-inside text-slate-500 space-y-0.5">
+                <li><code class="mono bg-slate-100 px-1 rounded text-[10px]">handleLeaveRoom()</code> を移行フローに改修</li>
+                <li>メンバー選択ダイアログWidget作成</li>
+                <li>最終確認ダイアログ + RPC呼び出し</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase 4 -->
+        <div class="border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="bg-slate-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">Phase 4</span>
+            <span class="text-sm font-bold text-slate-900">セキュリティ強化 + テスト</span>
+          </div>
+          <div class="text-[11px] text-slate-500 space-y-0.5">
+            <div>• <code class="mono bg-slate-100 px-1 rounded text-[10px]">kick_open_chat_member</code> に「副管理人は上位ロールをキック不可」ガード追加</div>
+            <div>• エッジケース: メンバー0人でのオーナー退室、連鎖退室、同時操作</div>
+            <div>• owner_id を参照していた全箇所の漏れチェック</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- FLUTTER CODE REFERENCE -->
+    <!-- ============================================================ -->
+    <section class="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
+      <h2 class="text-lg font-black text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-brands fa-flutter text-blue-600"></i>
+        Flutter 実装リファレンス
+      </h2>
+      <p class="text-xs text-slate-500 mb-5">OpenChatActionNotifier に追加する3メソッド + ロール判定ヘルパー</p>
+
+      <!-- Role Helper -->
+      <div class="mb-6">
+        <div class="text-xs font-bold text-slate-700 mb-2">ロール判定ヘルパー（OpenChatMember に拡張メソッドとして追加）</div>
+        <pre class="bg-slate-900 text-slate-300 text-[11px] p-4 rounded-xl overflow-x-auto leading-relaxed"><span class="sql-keyword">extension</span> OpenChatMemberRoleX <span class="sql-keyword">on</span> OpenChatMember {
+  <span class="sql-keyword">bool get</span> isOwner  => role == <span class="sql-string">'owner'</span>;
+  <span class="sql-keyword">bool get</span> isAdmin  => role == <span class="sql-string">'admin'</span>;
+  <span class="sql-keyword">bool get</span> isMember => role == <span class="sql-string">'member'</span>;
+  <span class="sql-comment">// 管理人 or 副管理人（モデレーション権限あり）</span>
+  <span class="sql-keyword">bool get</span> isModerator => isOwner || isAdmin;
+}</pre>
+      </div>
+
+      <!-- Action Methods -->
+      <pre class="bg-slate-900 text-slate-300 text-[11px] p-4 rounded-xl overflow-x-auto leading-relaxed"><span class="sql-comment">/// 管理人権限を譲渡する</span>
+<span class="sql-keyword">Future</span>&lt;<span class="sql-keyword">String</span>?&gt; <span class="sql-func">transferOwnership</span>(<span class="sql-keyword">String</span> roomId, <span class="sql-keyword">String</span> newOwnerId) <span class="sql-keyword">async</span> {
+  <span class="sql-keyword">final</span> supabase = ref.read(supabaseProvider);
+  <span class="sql-keyword">final</span> response = <span class="sql-keyword">await</span> supabase.rpc(<span class="sql-string">'transfer_room_ownership'</span>, params: {
+    <span class="sql-string">'p_room_id'</span>: roomId,
+    <span class="sql-string">'p_new_owner_id'</span>: newOwnerId,
+  });
+  <span class="sql-keyword">if</span> (response[<span class="sql-string">'success'</span>] == <span class="sql-keyword">true</span>) {
+    ref.invalidate(openChatMyMemberProvider(roomId));
+    ref.invalidate(openChatMembersProvider(roomId));
+    <span class="sql-keyword">return null</span>;
+  }
+  <span class="sql-keyword">return</span> response[<span class="sql-string">'error'</span>] ?? <span class="sql-string">'譲渡に失敗しました'</span>;
+}
+
+<span class="sql-comment">/// 副管理人を任命する</span>
+<span class="sql-keyword">Future</span>&lt;<span class="sql-keyword">String</span>?&gt; <span class="sql-func">assignAdmin</span>(<span class="sql-keyword">String</span> roomId, <span class="sql-keyword">String</span> targetUserId) <span class="sql-keyword">async</span> {
+  <span class="sql-keyword">final</span> supabase = ref.read(supabaseProvider);
+  <span class="sql-keyword">final</span> response = <span class="sql-keyword">await</span> supabase.rpc(<span class="sql-string">'assign_admin_role'</span>, params: {
+    <span class="sql-string">'p_room_id'</span>: roomId,
+    <span class="sql-string">'p_target_user_id'</span>: targetUserId,
+  });
+  <span class="sql-keyword">if</span> (response[<span class="sql-string">'success'</span>] == <span class="sql-keyword">true</span>) {
+    ref.invalidate(openChatMembersProvider(roomId));
+    <span class="sql-keyword">return null</span>;
+  }
+  <span class="sql-keyword">return</span> response[<span class="sql-string">'error'</span>] ?? <span class="sql-string">'任命に失敗しました'</span>;
+}
+
+<span class="sql-comment">/// 副管理人を解任する</span>
+<span class="sql-keyword">Future</span>&lt;<span class="sql-keyword">String</span>?&gt; <span class="sql-func">revokeAdmin</span>(<span class="sql-keyword">String</span> roomId, <span class="sql-keyword">String</span> targetUserId) <span class="sql-keyword">async</span> {
+  <span class="sql-keyword">final</span> supabase = ref.read(supabaseProvider);
+  <span class="sql-keyword">final</span> response = <span class="sql-keyword">await</span> supabase.rpc(<span class="sql-string">'revoke_admin_role'</span>, params: {
+    <span class="sql-string">'p_room_id'</span>: roomId,
+    <span class="sql-string">'p_target_user_id'</span>: targetUserId,
+  });
+  <span class="sql-keyword">if</span> (response[<span class="sql-string">'success'</span>] == <span class="sql-keyword">true</span>) {
+    ref.invalidate(openChatMembersProvider(roomId));
+    <span class="sql-keyword">return null</span>;
+  }
+  <span class="sql-keyword">return</span> response[<span class="sql-string">'error'</span>] ?? <span class="sql-string">'解任に失敗しました'</span>;
+}</pre>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center py-6 text-[11px] text-slate-400">
+      <p>debata — OpenChat Admin Delegation System Design Document v2 (role 3-value)</p>
+    </footer>
+
+  </div>
+</body>
+</html>

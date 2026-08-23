@@ -40,13 +40,18 @@ class BbsCommentNotifier extends StateNotifier<AsyncValue<List<BbsComment>>> {
     await fetchComments();
   }
 
-  /// 自分のコメントを削除する
+  /// 自分のコメントを削除する（論理削除: 「削除されました」表示になり、返信は残る）
   Future<bool> deleteComment(String commentId) async {
     try {
       final supabase = _ref.read(supabaseProvider);
-      await supabase.from('bbs_comments').delete().eq('id', commentId);
-      await fetchComments();
-      return true;
+      final result = await supabase.rpc('delete_bbs_comment', params: {
+        'p_comment_id': commentId,
+      });
+      final ok = (result is Map && result['success'] == true) || result == true;
+      if (ok) {
+        await fetchComments();
+      }
+      return ok;
     } catch (e) {
       debugPrint('deleteComment error: $e');
       return false;

@@ -82,11 +82,6 @@ class _ResbaAttachSheetState extends State<_ResbaAttachSheet> {
                 Text('レスバを送る', style: AppTextStyles.bold(fontSize: 16)),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              '相手が承諾すると対戦が始まります',
-              style: AppTextStyles.notoSans(fontSize: 12, color: Colors.grey),
-            ),
             const SizedBox(height: 16),
             _label('テーマ（必須）'),
             TextField(

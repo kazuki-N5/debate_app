@@ -1,6 +1,5 @@
 import 'package:debate_project/modes/open_chat.dart';
 import 'package:debate_project/provider/open_chat_provider.dart';
-import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -17,8 +16,8 @@ class OpenChatRulesView extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentUserId = ref.watch(supabaseProvider).auth.currentUser?.id;
-    final isOwner = currentUserId == room.ownerId;
+    final myMemberAsync = ref.watch(openChatMyMemberProvider(room.id));
+    final isOwner = myMemberAsync.valueOrNull?.role == 'owner';
 
     // 最新のルーム情報を取得（ルール更新の反映用）
     final roomDetailAsync = ref.watch(openChatRoomDetailProvider(room.id));

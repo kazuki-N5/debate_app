@@ -525,6 +525,63 @@ class OpenChatActionNotifier extends AutoDisposeNotifier<void> {
     }
   }
 
+  /// 管理人権限を別のメンバーに譲渡する（RPC: transfer_room_ownership）
+  /// 旧オーナーは副管理人(admin)に降格、新オーナーは管理人(owner)に昇格
+  Future<String?> transferOwnership(String roomId, String newOwnerId) async {
+    final supabase = ref.read(supabaseProvider);
+    try {
+      final response = await supabase.rpc('transfer_room_ownership', params: {
+        'p_room_id': roomId,
+        'p_new_owner_id': newOwnerId,
+      });
+      if (response['success'] == true) {
+        ref.invalidate(openChatRoomDetailProvider(roomId));
+        ref.invalidate(openChatMyMemberProvider(roomId));
+        ref.invalidate(openChatMembersProvider(roomId));
+        return null;
+      }
+      return response['error'] ?? '譲渡に失敗しました';
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// 一般メンバーを副管理人(admin)に任命する（RPC: assign_admin_role / オーナーのみ）
+  Future<String?> assignAdmin(String roomId, String targetUserId) async {
+    final supabase = ref.read(supabaseProvider);
+    try {
+      final response = await supabase.rpc('assign_admin_role', params: {
+        'p_room_id': roomId,
+        'p_target_user_id': targetUserId,
+      });
+      if (response['success'] == true) {
+        ref.invalidate(openChatMembersProvider(roomId));
+        return null;
+      }
+      return response['error'] ?? '任命に失敗しました';
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// 副管理人(admin)を一般メンバーに解任する（RPC: revoke_admin_role / オーナーのみ）
+  Future<String?> revokeAdmin(String roomId, String targetUserId) async {
+    final supabase = ref.read(supabaseProvider);
+    try {
+      final response = await supabase.rpc('revoke_admin_role', params: {
+        'p_room_id': roomId,
+        'p_target_user_id': targetUserId,
+      });
+      if (response['success'] == true) {
+        ref.invalidate(openChatMembersProvider(roomId));
+        return null;
+      }
+      return response['error'] ?? '解任に失敗しました';
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   /// ルーム情報の更新（管理者用）
   Future<String?> updateRoom(
     String roomId,

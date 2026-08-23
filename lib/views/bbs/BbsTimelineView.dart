@@ -81,6 +81,35 @@ class BbsPostWidget extends ConsumerWidget {
     final dateStr = DateFormatter.formatBbsDate(post.createdAt);
     final isBookmarked = ref.watch(bbsBookmarkIdsProvider).contains(post.id);
 
+    // 論理削除された投稿はプレースホルダーを表示（本文・画像・アクションは隠す）
+    if (post.isDeleted) {
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: Colors.grey[200],
+              child: Icon(Icons.block, color: Colors.grey[400], size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'この投稿は削除されました',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return InkWell(
       onTap: () {
         if (_isNavigating) {

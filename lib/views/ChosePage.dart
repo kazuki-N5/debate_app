@@ -14,9 +14,11 @@ import 'package:debate_project/view_model/Homepage_view_model.dart';
 import 'package:debate_project/view_model/Profile_model.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/floating_spectator_comments.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 //import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ChosePage extends HookConsumerWidget {
   const ChosePage({super.key});
@@ -34,6 +36,25 @@ class ChosePage extends HookConsumerWidget {
     final secondsLeft = useState<int?>(null);
     final timerRef = useRef<Timer?>(null);
     final matchErrorService = ref.read(matchErrorServiceProvider);
+    final isSpectatorCommentMuted = useState<bool>(false);
+    final spectatorOverlayKey =
+        useRef(GlobalKey<FloatingSpectatorCommentsOverlayState>());
+
+    // ミュート設定の読み込み
+    useEffect(() {
+      SharedPreferences.getInstance().then((prefs) {
+        isSpectatorCommentMuted.value =
+            prefs.getBool('spectator_comments_muted') ?? false;
+      });
+      return null;
+    }, const []);
+
+    // 観戦コメントイベントを監視
+    ref.listen(spectatorCommentEventProvider, (prev, next) {
+      if (next != null) {
+        spectatorOverlayKey.value.currentState?.addComment(next.text);
+      }
+    });
 
     useEffect(() {
       if (room.winner != null) {
@@ -201,104 +222,108 @@ class ChosePage extends HookConsumerWidget {
 
 // 自分がどちらのプレイヤーでもない場合（エラー）
 
-    return Scaffold(
-      backgroundColor: Colors.blue,
-      appBar: AppBar(
-        elevation: 0,
+    return FloatingSpectatorCommentsOverlay(
+      key: spectatorOverlayKey.value,
+      isMuted: isSpectatorCommentMuted.value,
+      child: Scaffold(
         backgroundColor: Colors.blue,
-        automaticallyImplyLeading: false,
-        title: Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.timer,
-                    size: 20,
-                    color: secondsLeft.value != null && secondsLeft.value! <= 3
-                        ? Colors.red
-                        : Colors.grey[800]),
-                const SizedBox(width: 5),
-                Text(
-                  secondsLeft.value != null
-                      ? formatTime(secondsLeft.value!)
-                      : '-',
-                  style: AppTextStyles.bold(
-                      fontSize: 16,
-                      color:
-                          secondsLeft.value != null && secondsLeft.value! <= 3
-                              ? Colors.red
-                              : Colors.grey[800]),
-                )
-              ],
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.blue,
+          automaticallyImplyLeading: false,
+          title: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.timer,
+                      size: 20,
+                      color: secondsLeft.value != null && secondsLeft.value! <= 3
+                          ? Colors.red
+                          : Colors.grey[800]),
+                  const SizedBox(width: 5),
+                  Text(
+                    secondsLeft.value != null
+                        ? formatTime(secondsLeft.value!)
+                        : '-',
+                    style: AppTextStyles.bold(
+                        fontSize: 16,
+                        color:
+                            secondsLeft.value != null && secondsLeft.value! <= 3
+                                ? Colors.red
+                                : Colors.grey[800]),
+                  )
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      body: Stack(
-        children: [
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(room.theme!,
-                      textAlign: TextAlign.center,
+        body: Stack(
+          children: [
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(room.theme!,
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bold(
+                          fontSize: 32,
+                          color: Colors.white,
+                        )),
+                  ),
+                  const SizedBox(height: 50),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildChoiceButton(
+                        text: room.choice1!,
+                        isSelected: selectedChoice.value == true,
+                        onPressed: isTimerActive.value
+                            ? () => selectedChoice.value = true
+                            : null,
+                        activeColor: Colors.green,
+                      ),
+                      const SizedBox(width: 40),
+                      _buildChoiceButton(
+                        text: room.choice2!,
+                        isSelected: selectedChoice.value == false,
+                        onPressed: isTimerActive.value
+                            ? () => selectedChoice.value = false
+                            : null,
+                        activeColor: Colors.red,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                  Text('現在の選択: ${getChoiceText()}',
                       style: AppTextStyles.bold(
-                        fontSize: 32,
+                        fontSize: 20,
                         color: Colors.white,
                       )),
-                ),
-                const SizedBox(height: 50),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildChoiceButton(
-                      text: room.choice1!,
-                      isSelected: selectedChoice.value == true,
-                      onPressed: isTimerActive.value
-                          ? () => selectedChoice.value = true
-                          : null,
-                      activeColor: Colors.green,
-                    ),
-                    const SizedBox(width: 40),
-                    _buildChoiceButton(
-                      text: room.choice2!,
-                      isSelected: selectedChoice.value == false,
-                      onPressed: isTimerActive.value
-                          ? () => selectedChoice.value = false
-                          : null,
-                      activeColor: Colors.red,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 40),
-                Text('現在の選択: ${getChoiceText()}',
-                    style: AppTextStyles.bold(
-                      fontSize: 20,
-                      color: Colors.white,
-                    )),
-                const SizedBox(height: 30),
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 300),
-                  opacity: showerror.value ? 1.0 : 0.0,
-                  child: Text(
-                    '選択が被りました',
-                    style: AppTextStyles.bold(
-                      fontSize: 20,
-                      color: Colors.red,
+                  const SizedBox(height: 30),
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: showerror.value ? 1.0 : 0.0,
+                    child: Text(
+                      '選択が被りました',
+                      style: AppTextStyles.bold(
+                        fontSize: 20,
+                        color: Colors.red,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -65,6 +65,57 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
     }
   }
 
+  /// メッセージを「論理削除」する（自分または管理者）
+  Future<String?> deleteMessage(String messageId) async {
+    final supabase = _ref.read(supabaseProvider);
+    final myId = supabase.auth.currentUser?.id;
+    log('🗑️ [削除開始] messageId: $messageId, roomId: $roomId');
+
+    // 楽観的UI: 手元のメッセージを即時削除状態に更新
+    if (state is AsyncData) {
+      final currentList = state.value!;
+      state = AsyncValue.data(
+        currentList.map((m) => m.id == messageId
+            ? m.copyWith(isDeleted: true, isAdminDeleted: m.userId != myId)
+            : m).toList(),
+      );
+    }
+
+    try {
+      final response = await supabase.rpc('delete_open_chat_message', params: {
+        'p_message_id': messageId,
+      });
+
+      log('📡 [削除RPC結果] response: $response');
+
+      if (response != null && response['success'] == true) {
+        log('✅ [削除成功] messageId: $messageId');
+        return null; // 成功
+      } else {
+        final errorMsg = response?['error'] as String? ?? '削除に失敗しました';
+        log('❌ [削除拒否/失敗] error: $errorMsg');
+        // 失敗時は手元の楽観的UIをロールバック
+        if (state is AsyncData) {
+          final currentList = state.value!;
+          state = AsyncValue.data(
+            currentList.map((m) => m.id == messageId ? m.copyWith(isDeleted: false) : m).toList(),
+          );
+        }
+        return errorMsg;
+      }
+    } catch (e, st) {
+      log('❌ [オプチャメッセージ削除例外] $e\n$st');
+      // 失敗時はロールバック
+      if (state is AsyncData) {
+        final currentList = state.value!;
+        state = AsyncValue.data(
+          currentList.map((m) => m.id == messageId ? m.copyWith(isDeleted: false) : m).toList(),
+        );
+      }
+      return e.toString();
+    }
+  }
+
   /// 非表示メッセージを除外（オプチャではブロックに関わらず全メッセージを表示）
   List<OpenChatMessage> _filter(List<OpenChatMessage> messages) {
     return messages
@@ -111,6 +162,7 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
             .map((e) => OpenChatMessage.fromJson(e as Map<String, dynamic>))
             .toList();
 
+        log('📥 [メッセージ初回取得] 件数: ${messages.length}, 削除済み件数: ${messages.where((m) => m.isDeleted).length}');
         state = AsyncValue.data(_filter(messages));
 
         if (messages.length < 50) {
@@ -163,6 +215,27 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
             if (!currentList.any((msg) => msg.id == newMsg.id)) {
               state = AsyncValue.data([newMsg, ...currentList]);
             }
+          }
+        }
+      )
+      .onPostgresChanges(
+        event: PostgresChangeEvent.update,
+        schema: 'public',
+        table: 'open_chat_messages',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'room_id',
+          value: roomId,
+        ),
+        callback: (payload) {
+          log('⚡ [Realtime UPDATE受信] payload: ${payload.newRecord}');
+          final updatedMsg = OpenChatMessage.fromJson(payload.newRecord);
+          log('⚡ [Realtime UPDATE適用] id: ${updatedMsg.id}, isDeleted: ${updatedMsg.isDeleted}');
+          if (state is AsyncData) {
+            final currentList = state.value!;
+            state = AsyncValue.data(
+              currentList.map((m) => m.id == updatedMsg.id ? updatedMsg : m).toList(),
+            );
           }
         }
       )
@@ -222,7 +295,13 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
   }
 
   /// メッセージを送信し、実際のメッセージIDを返す（レスバ添付時に使用）
-  Future<String?> sendMessage(String content, {String? imageUrl}) async {
+  Future<String?> sendMessage(
+    String content, {
+    String? imageUrl,
+    String? replyToId,
+    String? replyToContent,
+    String? replyToUserName,
+  }) async {
     final supabase = _ref.read(supabaseProvider);
     final myId = supabase.auth.currentUser?.id;
     if (myId == null) return null;
@@ -235,6 +314,9 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
       content: content,
       createdAt: DateTime.now(),
       imageUrl: imageUrl,
+      replyToId: replyToId,
+      replyToContent: replyToContent,
+      replyToUserName: replyToUserName,
     );
 
     if (state is AsyncData) {
@@ -248,6 +330,9 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
         'user_id': myId,
         'content': content,
         if (imageUrl != null) 'image_url': imageUrl,
+        if (replyToId != null) 'reply_to_id': replyToId,
+        if (replyToContent != null) 'reply_to_content': replyToContent,
+        if (replyToUserName != null) 'reply_to_user_name': replyToUserName,
       }).select().single();
 
       if (state is AsyncData) {

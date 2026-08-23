@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>チャット長押しメニュー モックアップ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+    body {
+      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+    /* スクロールバー非表示 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* ポップオーバーのアニメーション */
+    .popover-enter {
+      animation: popoverFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transform-origin: bottom center;
+    }
+    @keyframes popoverFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(6px) scale(0.92);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* 三角矢印（下向き） */
+    .arrow-down {
+      width: 0;
+      height: 0;
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-top: 7px solid rgba(34, 34, 38, 0.96);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start p-4 md:p-8">
+
+  <!-- ヘッダー -->
+  <div class="max-w-4xl w-full mb-6 text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-xs font-semibold mb-2">
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
+      LINE風 チャット長押しメニュー 刷新モックアップ (リプライ対応版)
+    </div>
+    <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+      長押しメニュー（リプライ・通報・非表示・管理者削除）UI設計
+    </h1>
+    <p class="text-sm text-slate-400 mt-1">
+      すべてのチャット（オプチャ・対戦チャット・DM・履歴）で統一して利用する共通フローティングUI
+    </p>
+  </div>
+
+  <!-- コントロールバー（役割切り替え＆シーン切り替え） -->
+  <div class="max-w-4xl w-full bg-slate-800/80 backdrop-blur border border-slate-700 rounded-2xl p-4 mb-6 shadow-xl">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <!-- 自分の権限設定 -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-user-shield text-blue-400"></i> あなたの立場:
+        </span>
+        <div class="inline-flex bg-slate-900/90 p-1 rounded-xl border border-slate-700 text-xs" id="role-selector">
+          <button onclick="setRole('general')" id="role-btn-general" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white">
+            一般メンバー
+          </button>
+          <button onclick="setRole('sub_admin')" id="role-btn-sub_admin" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white">
+            🛡️ 副官 (共同管理者)
+          </button>
+          <button onclick="setRole('owner')" id="role-btn-owner" class="px-3 py-1.5 rounded-lg font-medium transition bg-blue-600 text-white shadow font-bold">
+            👑 オーナー (最高管理者)
+          </button>
+        </div>
+      </div>
+
+      <!-- チャットの種類 -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-comments text-emerald-400"></i> チャット種別:
+        </span>
+        <div class="inline-flex bg-slate-900/90 p-1 rounded-xl border border-slate-700 text-xs" id="chat-type-selector">
+          <button onclick="setChatType('open_chat')" id="type-btn-open_chat" class="px-3 py-1.5 rounded-lg font-medium transition bg-emerald-600 text-white shadow font-bold">
+            オプチャ (クラブ)
+          </button>
+          <button onclick="setChatType('battle')" id="type-btn-battle" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white">
+            対戦・ゲームチャット
+          </button>
+          <button onclick="setChatType('dm')" id="type-btn-dm" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white">
+            DM
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- メインコンテンツ（スマホプレビュー ＋ 仕様解説） -->
+  <div class="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- スマホ画面プレビュー (6カラム) -->
+    <div class="lg:col-span-6 flex justify-center">
+      <div class="w-[360px] h-[680px] bg-slate-950 rounded-[40px] border-4 border-slate-700 shadow-2xl overflow-hidden flex flex-col relative">
+        
+        <!-- スマホ上部ノッチ -->
+        <div class="h-6 bg-slate-950 w-full flex items-center justify-between px-6 pt-1 text-[11px] text-slate-400 select-none z-20">
+          <span>12:00</span>
+          <div class="w-20 h-4 bg-slate-900 rounded-full mx-auto"></div>
+          <div class="flex gap-1.5 items-center">
+            <i class="fa-solid fa-wifi text-[9px]"></i>
+            <i class="fa-solid fa-battery-full text-[10px]"></i>
+          </div>
+        </div>
+
+        <!-- チャット画面ヘッダー -->
+        <div class="h-14 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between px-4 z-10">
+          <div class="flex items-center gap-3">
+            <button class="text-slate-400 hover:text-white text-sm"><i class="fa-solid fa-chevron-left"></i></button>
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-xs" id="chat-header-avatar">
+                💬
+              </div>
+              <div>
+                <div class="font-bold text-sm text-white flex items-center gap-1.5" id="chat-header-title">
+                  雑談＆レスバ研究会
+                  <span class="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded-full font-normal">公式</span>
+                </div>
+                <div class="text-[10px] text-slate-400 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span id="chat-header-subtitle">24人のメンバー</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 text-slate-400">
+            <button class="hover:text-white"><i class="fa-solid fa-magnifying-glass text-xs"></i></button>
+            <button class="hover:text-white"><i class="fa-solid fa-bars text-sm"></i></button>
+          </div>
+        </div>
+
+        <!-- チャットメッセージエリア -->
+        <div class="flex-1 bg-slate-900/50 p-4 overflow-y-auto no-scrollbar space-y-4 relative" id="chat-scroll-area" onclick="handleBackgroundClick(event)">
+          
+          <!-- 日付区切り -->
+          <div class="flex justify-center">
+            <span class="text-[10px] bg-slate-800/80 text-slate-400 px-3 py-1 rounded-full border border-slate-700/50">
+              今日 12:45
+            </span>
+          </div>
+
+          <!-- メッセージ1: 相手（一般ユーザー）のメッセージ -->
+          <div class="flex items-start gap-2.5 relative group" id="msg-container-1">
+            <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-300 shrink-0 select-none">
+              🐱
+            </div>
+            <div class="flex flex-col items-start max-w-[75%]">
+              <div class="text-[11px] text-slate-400 mb-1 ml-1 flex items-center gap-1">
+                <span>ねこたろう</span>
+              </div>
+              <div 
+                id="msg-bubble-1"
+                oncontextmenu="event.preventDefault(); showMenu(1, 'other', 'ねこたろう', 'こんにちは！今日のディベートテーマは何ですか？', event);"
+                onclick="showMenu(1, 'other', 'ねこたろう', 'こんにちは！今日のディベートテーマは何ですか？', event)"
+                class="bg-slate-800 text-slate-100 px-3.5 py-2 rounded-2xl rounded-tl-sm text-xs leading-relaxed border border-slate-700/70 shadow cursor-pointer active:scale-98 transition relative select-none hover:border-slate-500">
+                こんにちは！今日のディベートテーマは何ですか？
+              </div>
+              <span class="text-[9px] text-slate-500 mt-1 ml-1">12:46</span>
+            </div>
+          </div>
+
+          <!-- メッセージ2: 相手（不適切・荒らし発言の例） -->
+          <div class="flex items-start gap-2.5 relative group" id="msg-container-2">
+            <div class="w-8 h-8 rounded-full bg-rose-900/50 text-rose-300 border border-rose-700/50 flex items-center justify-center text-xs shrink-0 select-none">
+              👺
+            </div>
+            <div class="flex flex-col items-start max-w-[75%]">
+              <div class="text-[11px] text-slate-400 mb-1 ml-1 flex items-center gap-1">
+                <span>荒らしユーザー</span>
+                <span class="text-[9px] px-1 bg-rose-500/20 text-rose-400 rounded">通報対象</span>
+              </div>
+              <div 
+                id="msg-bubble-2"
+                oncontextmenu="event.preventDefault(); showMenu(2, 'other', '荒らしユーザー', 'ここのオプチャ全然面白くないわｗｗｗスパムURL投下 http://spam...', event);"
+                onclick="showMenu(2, 'other', '荒らしユーザー', 'ここのオプチャ全然面白くないわｗｗｗスパムURL投下 http://spam...', event)"
+                class="bg-slate-800 text-slate-100 px-3.5 py-2 rounded-2xl rounded-tl-sm text-xs leading-relaxed border border-slate-700/70 shadow cursor-pointer active:scale-98 transition relative select-none hover:border-slate-500">
+                ここのオプチャ全然面白くないわｗｗｗスパムURL投下 http://spam...
+              </div>
+              <span class="text-[9px] text-slate-500 mt-1 ml-1">12:48</span>
+            </div>
+          </div>
+
+          <!-- メッセージ3: 自分のメッセージ -->
+          <div class="flex items-end justify-end gap-2.5 relative group" id="msg-container-3">
+            <div class="flex flex-col items-end max-w-[75%]">
+              <div 
+                id="msg-bubble-3"
+                oncontextmenu="event.preventDefault(); showMenu(3, 'me', 'あなた', 'ルールを守って楽しくディベートしましょう！よろしくお願いします✨', event);"
+                onclick="showMenu(3, 'me', 'あなた', 'ルールを守って楽しくディベートしましょう！よろしくお願いします✨', event)"
+                class="bg-blue-600 text-white px-3.5 py-2 rounded-2xl rounded-tr-sm text-xs leading-relaxed shadow cursor-pointer active:scale-98 transition relative select-none hover:bg-blue-500">
+                ルールを守って楽しくディベートしましょう！よろしくお願いします✨
+              </div>
+              <div class="flex items-center gap-1 mt-1 mr-1">
+                <span class="text-[9px] text-blue-400 font-medium">既読</span>
+                <span class="text-[9px] text-slate-500">12:50</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 💡 フローティング長押しポップアップメニュー (動的に配置される) -->
+          <div id="longpress-menu" class="hidden absolute z-50 popover-enter">
+            <!-- 吹き出し本体 (LINE完全再現ダークスタイル) -->
+            <div class="bg-[#232328]/95 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl px-2 py-1.5 flex items-center gap-1 select-none">
+              
+              <!-- 1. リプライ (新追加✨) -->
+              <button onclick="handleMenuAction('リプライ')" class="flex flex-col items-center justify-center w-13 px-2 h-12 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 active:scale-95 transition group">
+                <i class="fa-solid fa-reply text-base group-hover:scale-110 transition text-slate-300"></i>
+                <span class="text-[10px] font-medium mt-1">リプライ</span>
+              </button>
+
+              <!-- 2. コピー -->
+              <button onclick="handleMenuAction('コピー')" class="flex flex-col items-center justify-center w-13 px-2 h-12 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 active:scale-95 transition group">
+                <i class="fa-regular fa-copy text-base group-hover:scale-110 transition text-slate-300"></i>
+                <span class="text-[10px] font-medium mt-1">コピー</span>
+              </button>
+
+              <!-- 3. 非表示 (他人のメッセージのみ) -->
+              <button id="menu-btn-hide" onclick="handleMenuAction('非表示')" class="flex flex-col items-center justify-center w-13 px-2 h-12 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 active:scale-95 transition group">
+                <i class="fa-regular fa-eye-slash text-base group-hover:scale-110 transition text-slate-300"></i>
+                <span class="text-[10px] font-medium mt-1">非表示</span>
+              </button>
+
+              <!-- 4. 通報 (他人のメッセージのみ) -->
+              <button id="menu-btn-report" onclick="handleMenuAction('通報')" class="flex flex-col items-center justify-center w-13 px-2 h-12 rounded-xl text-amber-300 hover:text-amber-200 hover:bg-amber-500/15 active:scale-95 transition group">
+                <i class="fa-solid fa-triangle-exclamation text-base group-hover:scale-110 transition"></i>
+                <span class="text-[10px] font-medium mt-1">通報</span>
+              </button>
+
+              <!-- 5. 削除 (自分用 または オプチャ管理者用の赤背景) -->
+              <button id="menu-btn-delete" onclick="handleMenuAction('削除')" class="flex flex-col items-center justify-center w-13 px-2 h-12 rounded-xl text-rose-300 bg-rose-500/25 hover:bg-rose-500/35 hover:text-white active:scale-95 transition group border border-rose-500/40">
+                <i class="fa-regular fa-trash-can text-base group-hover:scale-110 transition text-rose-400"></i>
+                <span class="text-[10px] font-bold mt-1" id="menu-delete-text">削除</span>
+              </button>
+
+            </div>
+
+            <!-- 下向きの三角ピップ (メッセージの上に表示される場合) -->
+            <div id="popover-arrow" class="w-full flex justify-center -mt-[1px]">
+              <div class="arrow-down"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ↩️ リプライ中プレビューバー（リプライ選択時に表示） -->
+        <div id="replying-preview-bar" class="hidden bg-slate-800/95 border-t border-slate-700/80 px-4 py-2 flex items-center justify-between z-10">
+          <div class="flex items-center gap-2 overflow-hidden text-xs">
+            <i class="fa-solid fa-reply text-blue-400 shrink-0"></i>
+            <div class="overflow-hidden">
+              <span class="font-bold text-white" id="reply-target-user">ねこたろう</span>
+              <span class="text-slate-400 truncate block text-[11px]" id="reply-target-text">こんにちは！今日のディベートテーマは何ですか？</span>
+            </div>
+          </div>
+          <button onclick="cancelReply()" class="text-slate-400 hover:text-white p-1 text-xs">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- チャット入力欄 -->
+        <div class="h-16 bg-slate-900 border-t border-slate-800 px-3 flex items-center gap-2">
+          <button class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+          <div class="flex-1 bg-slate-800/80 rounded-full px-4 py-2 text-xs text-slate-400 border border-slate-700/60 flex items-center justify-between">
+            <span id="input-placeholder">メッセージを入力...</span>
+            <i class="fa-regular fa-face-smile text-slate-400"></i>
+          </div>
+          <button class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs shadow">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 右側：仕様・解説・体験パネル (6カラム) -->
+    <div class="lg:col-span-6 space-y-5">
+      
+      <!-- 操作ガイド -->
+      <div class="bg-slate-800/80 border border-slate-700/70 rounded-2xl p-5 shadow-lg">
+        <h3 class="text-base font-bold text-white flex items-center gap-2 mb-3">
+          <i class="fa-solid fa-hand-pointer text-blue-400"></i>
+          モックの操作方法
+        </h3>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          左側のスマホ画面内の <strong class="text-blue-400">吹き出しをクリック（または右クリック / タップ）</strong> してみてください。<br>
+          新しく <strong class="text-cyan-400">「↩️ リプライ」</strong> を追加したLINE風メニューが表示されます。<br>
+          「リプライ」を押すと、入力欄の上に返信先バーが表示される動作も体験できます。
+        </p>
+        <div class="mt-4 pt-3 border-t border-slate-700 flex flex-wrap gap-2 text-xs">
+          <span class="px-2.5 py-1 bg-slate-900 text-slate-300 rounded-lg border border-slate-700">
+            💬 1番目: 一般発言（他者）
+          </span>
+          <span class="px-2.5 py-1 bg-rose-950/60 text-rose-300 rounded-lg border border-rose-800/50">
+            👺 2番目: 荒らし発言（他者）
+          </span>
+          <span class="px-2.5 py-1 bg-blue-950/60 text-blue-300 rounded-lg border border-blue-800/50">
+            👤 3番目: 自分の発言
+          </span>
+        </div>
+      </div>
+
+      <!-- 権限ごとの表示ルール表 -->
+      <div class="bg-slate-800/80 border border-slate-700/70 rounded-2xl p-5 shadow-lg">
+        <h3 class="text-base font-bold text-white flex items-center gap-2 mb-3">
+          <i class="fa-solid fa-list-check text-emerald-400"></i>
+          長押しメニューの表示ルール（仕様）
+        </h3>
+        
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-slate-900/80 text-slate-400 border-b border-slate-700">
+              <tr>
+                <th class="py-2.5 px-3">対象メッセージ</th>
+                <th class="py-2.5 px-3">あなたの立場</th>
+                <th class="py-2.5 px-3">表示されるボタン</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700/60 text-slate-300">
+              <tr>
+                <td class="py-2.5 px-3 font-semibold text-white">自分のメッセージ</td>
+                <td class="py-2.5 px-3 text-slate-400">全ユーザー</td>
+                <td class="py-2.5 px-3">
+                  <span class="text-cyan-300 font-medium">リプライ</span>、
+                  <span class="text-slate-300 font-medium">コピー</span>、
+                  <span class="text-rose-300 font-bold bg-rose-500/20 px-1.5 py-0.5 rounded border border-rose-500/30">削除</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-3 font-semibold text-white" rowspan="2">相手のメッセージ</td>
+                <td class="py-2.5 px-3 text-slate-400">一般メンバー</td>
+                <td class="py-2.5 px-3">
+                  <span class="text-cyan-300 font-medium">リプライ</span>、
+                  <span class="text-slate-300 font-medium">コピー</span>、
+                  <span class="text-slate-300 font-medium">非表示</span>、
+                  <span class="text-amber-400 font-medium">通報</span>
+                </td>
+              </tr>
+              <tr class="bg-blue-500/5">
+                <td class="py-2.5 px-3 text-blue-400 font-medium">👑 オーナー / 🛡️ 副官</td>
+                <td class="py-2.5 px-3">
+                  <span class="text-cyan-300 font-medium">リプライ</span>、
+                  <span class="text-slate-300 font-medium">コピー</span>、
+                  <span class="text-slate-300 font-medium">非表示</span>、
+                  <span class="text-amber-400 font-medium">通報</span>、
+                  <span class="text-rose-300 font-bold bg-rose-500/25 px-1.5 py-0.5 rounded border border-rose-500/40">削除 (赤背景)</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-3 text-[11px] text-slate-400 flex items-start gap-1.5">
+          <i class="fa-solid fa-circle-info text-blue-400 mt-0.5"></i>
+          <span>
+            「リプライ」は相手の発言・自分の発言のどちらに対しても実行でき、チャット入力欄に返信対象メッセージを引用して送信できます。
+          </span>
+        </div>
+      </div>
+
+      <!-- デザイン上のこだわりポイント -->
+      <div class="bg-slate-800/80 border border-slate-700/70 rounded-2xl p-5 shadow-lg space-y-2.5">
+        <h3 class="text-base font-bold text-white flex items-center gap-2 mb-2">
+          <i class="fa-solid fa-palette text-pink-400"></i>
+          UIデザインの刷新ポイント
+        </h3>
+        <div class="flex items-start gap-2.5 text-xs text-slate-300">
+          <span class="w-5 h-5 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0 font-bold">1</span>
+          <div>
+            <strong class="text-white">LINE完全再現のダークグラスモーフィズム:</strong>
+            透過ダーク（#232328）＋横並びアイコン＋ラベルのスマートな形状。
+          </div>
+        </div>
+        <div class="flex items-start gap-2.5 text-xs text-slate-300">
+          <span class="w-5 h-5 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0 font-bold">2</span>
+          <div>
+            <strong class="text-white">削除ボタンの特別赤背景ハイライト:</strong>
+            危険な操作・管理者権限である削除のみ<span class="text-rose-400 font-semibold">「赤い半透明背景（bg-rose-500/25）＋ 赤枠」</span>で強調。
+          </div>
+        </div>
+        <div class="flex items-start gap-2.5 text-xs text-slate-300">
+          <span class="w-5 h-5 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0 font-bold">3</span>
+          <div>
+            <strong class="text-white">リプライ・通報・非表示の完全共通化:</strong>
+            オプチャ、対戦チャット、DM、履歴など全チャット画面で全く同じ操作感を実現。
+          </div>
+        </div>
+      </div>
+
+      <!-- アクション通知トースト -->
+      <div id="action-toast" class="hidden p-3 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs rounded-xl flex items-center gap-2 shadow-lg transition">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-text">アクションを実行しました</span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // 状態管理
+    let currentRole = 'owner'; // 'general' | 'sub_admin' | 'owner'
+    let currentChatType = 'open_chat'; // 'open_chat' | 'battle' | 'dm'
+    let activeMsgId = null;
+    let activeSenderName = '';
+    let activeContent = '';
+
+    // ロール切り替え
+    function setRole(role) {
+      currentRole = role;
+      document.querySelectorAll('#role-selector button').forEach(btn => {
+        btn.className = "px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white";
+      });
+      const activeBtn = document.getElementById(`role-btn-${role}`);
+      if (activeBtn) {
+        activeBtn.className = "px-3 py-1.5 rounded-lg font-medium transition bg-blue-600 text-white shadow font-bold";
+      }
+      hideMenu();
+      showToast(`権限を「${role === 'owner' ? '👑 オーナー' : role === 'sub_admin' ? '🛡️ 副官' : '一般メンバー'}」に切り替えました`);
+    }
+
+    // チャット種別切り替え
+    function setChatType(type) {
+      currentChatType = type;
+      document.querySelectorAll('#chat-type-selector button').forEach(btn => {
+        btn.className = "px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white";
+      });
+      const activeBtn = document.getElementById(`type-btn-${type}`);
+      if (activeBtn) {
+        activeBtn.className = "px-3 py-1.5 rounded-lg font-medium transition bg-emerald-600 text-white shadow font-bold";
+      }
+      
+      // ヘッダー情報更新
+      const headerTitle = document.getElementById('chat-header-title');
+      const headerSubtitle = document.getElementById('chat-header-subtitle');
+      const headerAvatar = document.getElementById('chat-header-avatar');
+      
+      if (type === 'open_chat') {
+        headerTitle.innerHTML = '雑談＆レスバ研究会 <span class="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded-full font-normal">公式</span>';
+        headerSubtitle.textContent = '24人のメンバー';
+        headerAvatar.textContent = '💬';
+      } else if (type === 'battle') {
+        headerTitle.innerHTML = '🔥 レスバ対戦ルーム #104';
+        headerSubtitle.textContent = '判定中 (観戦者 12人)';
+        headerAvatar.textContent = '⚔️';
+      } else {
+        headerTitle.innerHTML = '佐藤 拓也';
+        headerSubtitle.textContent = 'オンライン';
+        headerAvatar.textContent = '👤';
+      }
+
+      hideMenu();
+      showToast(`チャットを「${type === 'open_chat' ? 'オプチャ' : type === 'battle' ? '対戦チャット' : 'DM'}」に切り替えました`);
+    }
+
+    // メニュー表示
+    function showMenu(msgId, senderType, senderName, content, event) {
+      if (event) event.stopPropagation();
+      activeMsgId = msgId;
+      activeSenderName = senderName;
+      activeContent = content;
+
+      const menu = document.getElementById('longpress-menu');
+      const bubble = document.getElementById(`msg-bubble-${msgId}`);
+      const scrollArea = document.getElementById('chat-scroll-area');
+
+      // ボタンの出し分けロジック
+      const btnHide = document.getElementById('menu-btn-hide');
+      const btnReport = document.getElementById('menu-btn-report');
+      const btnDelete = document.getElementById('menu-btn-delete');
+      const deleteText = document.getElementById('menu-delete-text');
+
+      const isMyMessage = senderType === 'me';
+      const isChatAdmin = (currentRole === 'owner' || currentRole === 'sub_admin') && currentChatType === 'open_chat';
+
+      if (isMyMessage) {
+        // 自分のメッセージ
+        btnHide.classList.add('hidden');
+        btnReport.classList.add('hidden');
+        btnDelete.classList.remove('hidden');
+        deleteText.textContent = '削除';
+      } else {
+        // 他人のメッセージ
+        btnHide.classList.remove('hidden');
+        btnReport.classList.remove('hidden');
+
+        if (isChatAdmin) {
+          // 管理者なら相手のメッセージも強制削除できる（赤背景）
+          btnDelete.classList.remove('hidden');
+          deleteText.textContent = '削除';
+        } else {
+          // 一般メンバーは相手メッセージを削除できない
+          btnDelete.classList.add('hidden');
+        }
+      }
+
+      // 位置計算
+      const bubbleRect = bubble.getBoundingClientRect();
+      const scrollRect = scrollArea.getBoundingClientRect();
+
+      const top = (bubbleRect.top - scrollRect.top) + scrollArea.scrollTop - 60; // 吹き出しの上部に配置
+      let left = (bubbleRect.left - scrollRect.left) + (bubbleRect.width / 2) - 130; // 中央揃え
+
+      // 端のはみ出し防止
+      if (left < 10) left = 10;
+      if (left + 280 > scrollRect.width) left = scrollRect.width - 290;
+
+      menu.style.top = `${Math.max(10, top)}px`;
+      menu.style.left = `${left}px`;
+      menu.classList.remove('hidden');
+    }
+
+    // メニュー非表示
+    function hideMenu() {
+      const menu = document.getElementById('longpress-menu');
+      menu.classList.add('hidden');
+      activeMsgId = null;
+    }
+
+    function handleBackgroundClick(event) {
+      if (!event.target.closest('#longpress-menu')) {
+        hideMenu();
+      }
+    }
+
+    // アクション実行
+    function handleMenuAction(actionName) {
+      hideMenu();
+      if (actionName === 'リプライ') {
+        // リプライバーを表示
+        document.getElementById('replying-preview-bar').classList.remove('hidden');
+        document.getElementById('reply-target-user').textContent = activeSenderName;
+        document.getElementById('reply-target-text').textContent = activeContent;
+        showToast(`↩️ ${activeSenderName}さんにリプライを開始しました`);
+      } else if (actionName === '削除') {
+        showToast(`🗑️ メッセージ #${activeMsgId} を削除しました`);
+      } else if (actionName === '通報') {
+        showToast(`🚨 メッセージ #${activeMsgId} の通報モーダルを開きます`);
+      } else if (actionName === '非表示') {
+        showToast(`🙈 メッセージ #${activeMsgId} を非表示にしました`);
+      } else {
+        showToast(`📋 メッセージテキストをコピーしました`);
+      }
+    }
+
+    // リプライキャンセル
+    function cancelReply() {
+      document.getElementById('replying-preview-bar').classList.add('hidden');
+    }
+
+    // トースト通知表示
+    function showToast(text) {
+      const toast = document.getElementById('action-toast');
+      const toastText = document.getElementById('toast-text');
+      toastText.textContent = text;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    // 初期化（ページロード時に1番目のメッセージの長押しメニューを自動で開いてプレビュー）
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        showMenu(1, 'other', 'ねこたろう', 'こんにちは！今日のディベートテーマは何ですか？');
+      }, 300);
+    });
+  </script>
+</body>
+</html>

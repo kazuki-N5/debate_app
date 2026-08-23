@@ -170,6 +170,7 @@ class ChatHistoryPage extends HookConsumerWidget {
                       chat: chat,
                       isUserMessage: isUserMessage,
                       opponentAvatarUrl: record.opponentAvatarUrl,
+                      opponentName: record.opponentName,
                       myAvatarUrl: myurl,
                       showAvatar: showAvatar,
                       onHide: () => hideMessage(chat.id),

@@ -1,14 +1,10 @@
-// ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'package:debate_project/modes/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:popover/popover.dart';
-// Riverpodのimportを追加
-import 'package:supabase_flutter/supabase_flutter.dart'; // SupabaseClientの型のためにimportを追加
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:debate_project/widgets/full_screen_image_viewer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:debate_project/widgets/chat/chat_message_bubble.dart';
 
 // プロジェクトのパスに合わせて調整してください
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -90,86 +86,84 @@ class ProhibitedService {
 }
 
 class MessageBubble extends HookConsumerWidget {
-  // ConsumerWidgetに変更
   final Chat chat;
   final bool isUserMessage;
   final String? opponentAvatarUrl;
+  final String? opponentName;
   final String? myAvatarUrl;
+  final String? myName;
   final bool showAvatar;
-  final String? roomId; // ★★★ 追加: roomId を受け取るように変更 ★★★
-  final VoidCallback onHide; // 親ウィジェットから非表示処理を受け取るコールバック
-  final VoidCallback? onBlock; // 親ウィジェットからブロック処理を受け取るコールバック(任意)
+  final String? roomId;
+  final VoidCallback onHide;
+  final VoidCallback? onBlock;
+  final VoidCallback? onReply;
+  final VoidCallback? onTapReplyQuote;
+  final bool isHighlighted;
 
   const MessageBubble({
     super.key,
     required this.chat,
     required this.isUserMessage,
     required this.opponentAvatarUrl,
+    this.opponentName,
     this.myAvatarUrl,
+    this.myName,
     required this.showAvatar,
-    this.roomId, // ★★★ 追加: roomId をコンストラクタに追加 ★★★
+    this.roomId,
     required this.onHide,
     this.onBlock,
+    this.onReply,
+    this.onTapReplyQuote,
+    this.isHighlighted = false,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 各メッセージごとに固有のアンカー用キーを生成
-    final anchorKey = useMemoized(() => GlobalKey(), [chat.id]);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
-      child: Row(
-        crossAxisAlignment: isUserMessage
-            ? CrossAxisAlignment.end
-            : CrossAxisAlignment.start,
-        mainAxisAlignment: isUserMessage
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        children: [
-          if (!isUserMessage) ...[
-            showAvatar ? _buildAvatar() : const SizedBox(width: 32),
-            const SizedBox(width: 8),
-          ],
-          if (isUserMessage) ...[
-            _buildStatus(),
-            const SizedBox(width: 4),
-          ],
-          _buildMessageBubble(context, ref, anchorKey),
-        ],
-      ),
+    return ChatMessageBubble(
+      id: chat.id,
+      content: chat.content,
+      imageUrl: chat.imageUrl,
+      isUserMessage: isUserMessage,
+      senderId: chat.senderId,
+      senderName: isUserMessage ? myName : opponentName,
+      senderAvatarUrl: isUserMessage ? myAvatarUrl : opponentAvatarUrl,
+      showAvatar: showAvatar,
+      showSenderName: !isUserMessage && (opponentName != null && opponentName!.isNotEmpty),
+      replyToId: chat.replyToId,
+      replyToContent: chat.replyToContent,
+      replyToUserName: chat.replyToUserName,
+      onReply: onReply,
+      onTapReplyQuote: onTapReplyQuote,
+      isHighlighted: isHighlighted,
+      statusWidget: _buildStatus(),
+      onHide: onHide,
+      onReport: () async {
+        final prohibitedService = ref.read(prohibitedServiceProvider);
+        await prohibitedService.sendProhibited(
+          context: context,
+          opponentId: chat.senderId,
+          roomId: roomId,
+          chatId: chat.id,
+          contentId: chat.id,
+          contentType: 'message',
+          contentSnapshot: chat.content,
+        );
+      },
     );
   }
 
-  Widget _buildAvatar() {
-    return CircleAvatar(
-      radius: 16,
-      backgroundColor: Colors.grey[300],
-      backgroundImage:
-          opponentAvatarUrl != null && opponentAvatarUrl!.isNotEmpty
-              ? NetworkImage(opponentAvatarUrl!)
-              : null,
-      child: (opponentAvatarUrl == null || opponentAvatarUrl!.isEmpty)
-          ? Icon(Icons.person, color: Colors.grey[600], size: 20)
-          : null,
-    );
-  }
-
-  Widget _buildStatus() {
-    if (!isUserMessage) return const SizedBox.shrink();
+  Widget? _buildStatus() {
+    if (!isUserMessage) return null;
 
     String? statusText;
     Color statusColor = Colors.black54;
 
     if (chat.id.startsWith('temp_')) {
-      // 送信中 → 何も表示しない
-      statusText = null;
+      return null;
     } else if (chat.id.startsWith('error_')) {
-      // 送信失敗
       statusText = '✕';
       statusColor = Colors.black54;
     } else {
-      // sent_ または 正規UUID → 送信完了
       statusText = '送信';
     }
 
@@ -177,171 +171,14 @@ class MessageBubble extends HookConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        if (statusText != null)
-          Text(
-            statusText,
-            style: AppTextStyles.notoSans(fontSize: 9, color: statusColor),
-          ),
+        Text(
+          statusText,
+          style: AppTextStyles.notoSans(fontSize: 9, color: statusColor),
+        ),
         const SizedBox(height: 4),
       ],
     );
   }
-
-  Widget _buildMessageBubble(BuildContext context, WidgetRef ref, GlobalKey anchorKey) {
-    return Flexible(
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          GestureDetector(
-            onLongPress: () {
-              // バブル本体のコンテキストではなく、内側に配置したアンカーのコンテキストを使用
-              final anchorContext = anchorKey.currentContext;
-              if (anchorContext == null) return;
-              
-              showCustomPopover(
-                context: anchorContext,
-                height: onBlock != null ? 130 : 90,
-                arrowDxOffset: 0, // アンカー位置で調整するためオフセットは0
-                children: [
-                  PopoverButton(
-                    text: '通報',
-                    onTap: () async {
-                      final prohibitedService =
-                          ref.read(prohibitedServiceProvider);
-                      await prohibitedService.sendProhibited(
-                        context: context,
-                        opponentId: chat.senderId,
-                        roomId: roomId,
-                        chatId: chat.id,
-                        contentId: chat.id,
-                        contentType: 'message',
-                        contentSnapshot: chat.content,
-                      );
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  const SizedBox(height: 4),
-                  PopoverButton(
-                    text: '非表示',
-                    onTap: () {
-                      onHide();
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  if (onBlock != null) ...[
-                    const SizedBox(height: 4),
-                    PopoverButton(
-                      text: 'ブロック',
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        onBlock!();
-                      },
-                    ),
-                  ],
-                ],
-              );
-            },
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
-              ),
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-              decoration: BoxDecoration(
-                color: isUserMessage ? const Color(0xff95eb7c) : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (chat.imageUrl != null)
-                    Padding(
-                      padding: EdgeInsets.only(bottom: chat.content.isNotEmpty ? 4.0 : 0.0),
-                      child: GestureDetector(
-                        // タップで画像を拡大表示
-                        onTap: () {
-                          FullScreenImageViewer.show(
-                            context,
-                            imageUrls: [chat.imageUrl!],
-                            initialIndex: 0,
-                          );
-                        },
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: CachedNetworkImage(
-                            imageUrl: chat.imageUrl!,
-                            fit: BoxFit.cover,
-                            memCacheWidth: 900, // 表示サイズでデコードしてカクつきを抑える
-                            fadeInDuration: Duration.zero, // ふわ〜っと出るフェードを無効化してパッと表示
-                            fadeOutDuration: Duration.zero,
-                            placeholder: (context, url) => Container(height: 150, color: Colors.grey[300]),
-                            errorWidget: (context, url, error) => const Icon(Icons.error),
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (chat.content.isNotEmpty)
-                    Text(
-                      chat.content,
-                      style: AppTextStyles.notoSans(
-                        color: Colors.black,
-                        fontSize: 15,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          // ポップオーバーを表示するための透明なアンカーポイント
-          // 端から28pxの位置に配置することで、メニューが画面端に張り付くのを防ぎ「ゆとり」を持たせる
-          Positioned(
-            bottom: 0,
-            left: isUserMessage ? null : 50,
-            right: isUserMessage ? 50 : null,
-            child: SizedBox(key: anchorKey, width: 1, height: 1),
-          ),
-          Positioned(
-            top: 6,
-            left: isUserMessage ? null : -6,
-            right: isUserMessage ? -6 : null,
-            child: CustomPaint(
-              painter: _BubbleTailPainter(
-                isUserMessage ? const Color(0xff95eb7c) : Colors.white,
-                isUserMessage,
-              ),
-              size: const Size(10, 10),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BubbleTailPainter extends CustomPainter {
-  final Color color;
-  final bool isUserMessage;
-
-  _BubbleTailPainter(this.color, this.isUserMessage);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final path = Path();
-    if (isUserMessage) {
-      path.moveTo(0, 0);
-      path.lineTo(size.width, 0);
-      path.lineTo(0, size.height * 0.8);
-    } else {
-      path.moveTo(size.width, 0);
-      path.lineTo(0, 0);
-      path.lineTo(size.width, size.height * 0.8);
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 void showCustomPopover({

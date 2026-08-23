@@ -68,6 +68,11 @@ _$OpenChatMessageImpl _$$OpenChatMessageImplFromJson(
   content: json['content'] as String,
   createdAt: DateTime.parse(json['created_at'] as String),
   imageUrl: json['image_url'] as String?,
+  isDeleted: (json['is_deleted'] as bool?) ?? false,
+  isAdminDeleted: (json['is_admin_deleted'] as bool?) ?? false,
+  replyToId: json['reply_to_id'] as String?,
+  replyToContent: json['reply_to_content'] as String?,
+  replyToUserName: json['reply_to_user_name'] as String?,
 );
 
 Map<String, dynamic> _$$OpenChatMessageImplToJson(
@@ -79,4 +84,9 @@ Map<String, dynamic> _$$OpenChatMessageImplToJson(
   'content': instance.content,
   'created_at': instance.createdAt.toIso8601String(),
   'image_url': instance.imageUrl,
+  'is_deleted': instance.isDeleted,
+  'is_admin_deleted': instance.isAdminDeleted,
+  'reply_to_id': instance.replyToId,
+  'reply_to_content': instance.replyToContent,
+  'reply_to_user_name': instance.replyToUserName,
 };

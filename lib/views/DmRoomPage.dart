@@ -11,16 +11,14 @@ import 'package:debate_project/provider/image_upload_provider.dart';
 import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/widgets/moderation.dart';
-import 'package:debate_project/widgets/popover_widgets.dart';
 import 'package:debate_project/widgets/resba_attach_sheet.dart';
 import 'package:debate_project/widgets/resba_card.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:debate_project/widgets/full_screen_image_viewer.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/views/dm/DmMenuView.dart';
 import 'package:debate_project/widgets/ios_swipe_back.dart';
+import 'package:debate_project/widgets/chat/chat_message_bubble.dart';
 
 class DmRoomPage extends HookConsumerWidget {
   final String otherUserId;
@@ -47,6 +45,33 @@ class DmRoomPage extends HookConsumerWidget {
 
     // 端末内で非表示にしたメッセージID(「非表示」機能)
     final hiddenMessageIds = useState<Set<String>>({});
+    // リプライ対象メッセージの状態
+    final replyTarget = useState<DmMessage?>(null);
+    // ハイライト表示するメッセージIDの状態
+    final highlightedDmId = useState<String?>(null);
+
+    // 返信先メッセージへジャンプしてハイライトする関数
+    void jumpToMessage(String messageId, List<DmMessage> messages) {
+      final index = messages.indexWhere((m) => m.id == messageId);
+      if (index != -1 && scrollController.hasClients) {
+        final targetOffset = (index * 72.0).clamp(
+          0.0,
+          scrollController.position.maxScrollExtent,
+        );
+        scrollController.animateTo(
+          targetOffset,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+      highlightedDmId.value = messageId;
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (highlightedDmId.value == messageId) {
+          highlightedDmId.value = null;
+        }
+      });
+    }
+
     useEffect(() {
       Future<void> load() async {
         try {
@@ -98,6 +123,8 @@ class DmRoomPage extends HookConsumerWidget {
       scrollController.addListener(scrollListener);
       return () => scrollController.removeListener(scrollListener);
     }, [scrollController, roomId]);
+
+    final myId = ref.read(supabaseProvider).auth.currentUser?.id;
 
     return Scaffold(
       backgroundColor: Colors.blue,
@@ -202,8 +229,6 @@ class DmRoomPage extends HookConsumerWidget {
                         child: Text('エラー: $err',
                             style: const TextStyle(color: Colors.white))),
                     data: (messages) {
-                      final myId =
-                          ref.read(supabaseProvider).auth.currentUser?.id;
                       if (messages.isEmpty) {
                         return Center(
                           child: Container(
@@ -251,307 +276,14 @@ class DmRoomPage extends HookConsumerWidget {
                                   (r.isPending || r.isAccepted))
                               .toList();
 
-                          final hasBubbleContent =
-                              msg.content.isNotEmpty || msg.imageUrl != null;
-
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 4.0, horizontal: 4.0),
-                            child: Column(
-                              crossAxisAlignment: isMe
-                                  ? CrossAxisAlignment.end
-                                  : CrossAxisAlignment.start,
+                          Widget? attachedWidget;
+                          if (msgResbas.isNotEmpty) {
+                            attachedWidget = Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (hasBubbleContent) ...[
-                                  // ① 写真がある場合
-                                  if (msg.imageUrl != null)
-                                    Padding(
-                                      padding: EdgeInsets.only(
-                                          bottom: msg.content.isNotEmpty ? 4.0 : 0.0),
-                                      child: Row(
-                                        crossAxisAlignment: isMe
-                                            ? CrossAxisAlignment.end
-                                            : CrossAxisAlignment.start,
-                                        mainAxisAlignment: isMe
-                                            ? MainAxisAlignment.end
-                                            : MainAxisAlignment.start,
-                                        children: [
-                                          if (!isMe) ...[
-                                            if (showAvatar)
-                                              GestureDetector(
-                                                onTap: () {
-                                                  context.push('/userProfile',
-                                                      extra: otherUserId);
-                                                },
-                                                child: CircleAvatar(
-                                                  radius: 16,
-                                                  backgroundColor: Colors.grey[300],
-                                                  backgroundImage: otherUserAvatar != null &&
-                                                          otherUserAvatar!.isNotEmpty
-                                                      ? NetworkImage(otherUserAvatar!)
-                                                      : null,
-                                                  child: otherUserAvatar == null ||
-                                                          otherUserAvatar!.isEmpty
-                                                      ? Icon(Icons.person,
-                                                          color: Colors.grey[600], size: 16)
-                                                      : null,
-                                                ),
-                                              )
-                                            else
-                                              const SizedBox(width: 32),
-                                            const SizedBox(width: 8),
-                                          ],
-                                          // テキストがない場合のみ写真の左横に送信ステータスを表示
-                                          if (isMe && msg.content.isEmpty) ...[
-                                            _buildStatus(msg.id),
-                                            const SizedBox(width: 4),
-                                          ],
-                                          Flexible(
-                                            child: Opacity(
-                                              opacity: isSending ? 0.6 : 1.0,
-                                              child: Builder(
-                                                builder: (bubbleContext) {
-                                                  return GestureDetector(
-                                                    onLongPress: isMe
-                                                        ? null
-                                                        : () {
-                                                            showCustomPopover(
-                                                              context: bubbleContext,
-                                                              height: 130,
-                                                              children: [
-                                                                PopoverButton(
-                                                                  text: '通報',
-                                                                  onTap: () async {
-                                                                    Navigator.of(context).pop();
-                                                                    await showReportDialog(
-                                                                      context: context,
-                                                                      ref: ref,
-                                                                      opponentId: msg.senderId,
-                                                                      contentId: msg.id,
-                                                                      contentType: 'dm_message',
-                                                                      contentSnapshot: msg.content,
-                                                                    );
-                                                                  },
-                                                                ),
-                                                                const SizedBox(height: 4),
-                                                                PopoverButton(
-                                                                  text: '非表示',
-                                                                  onTap: () {
-                                                                    Navigator.of(context).pop();
-                                                                    hideDmMessage(msg.id);
-                                                                  },
-                                                                ),
-                                                                const SizedBox(height: 4),
-                                                                PopoverButton(
-                                                                  text: 'ブロック',
-                                                                  onTap: () {
-                                                                    Navigator.of(context).pop();
-                                                                    showBlockUserDialog(
-                                                                      context: context,
-                                                                      ref: ref,
-                                                                      targetUserId: msg.senderId,
-                                                                      targetName: otherUserName,
-                                                                    );
-                                                                  },
-                                                                ),
-                                                              ],
-                                                            );
-                                                          },
-                                                    onTap: () {
-                                                      FullScreenImageViewer.show(
-                                                        context,
-                                                        imageUrls: [msg.imageUrl!],
-                                                        initialIndex: 0,
-                                                      );
-                                                    },
-                                                    child: ClipRRect(
-                                                      borderRadius: BorderRadius.circular(12),
-                                                      child: Container(
-                                                        constraints: BoxConstraints(
-                                                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                                                          maxHeight: MediaQuery.of(context).size.height * 0.5,
-                                                        ),
-                                                        child: CachedNetworkImage(
-                                                          imageUrl: msg.imageUrl!,
-                                                          fit: BoxFit.cover,
-                                                          memCacheWidth: 900,
-                                                          fadeInDuration: Duration.zero,
-                                                          fadeOutDuration: Duration.zero,
-                                                          placeholder: (context, url) => Container(
-                                                            height: 150,
-                                                            width: 200,
-                                                            color: Colors.grey[300],
-                                                            child: const Center(
-                                                              child: CircularProgressIndicator(strokeWidth: 2),
-                                                            ),
-                                                          ),
-                                                          errorWidget: (context, url, error) => Container(
-                                                            height: 120,
-                                                            width: 160,
-                                                            color: Colors.grey[200],
-                                                            child: const Icon(Icons.broken_image, color: Colors.grey),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                  // ② テキストがある場合
-                                  if (msg.content.isNotEmpty)
-                                    Row(
-                                      crossAxisAlignment: isMe
-                                          ? CrossAxisAlignment.end
-                                          : CrossAxisAlignment.start,
-                                      mainAxisAlignment: isMe
-                                          ? MainAxisAlignment.end
-                                          : MainAxisAlignment.start,
-                                      children: [
-                                        if (!isMe) ...[
-                                          // 写真が上に表示されていてアバターが表示済みの場合はアバター幅(32)をインデント
-                                          if (msg.imageUrl != null)
-                                            const SizedBox(width: 32)
-                                          else if (showAvatar)
-                                            GestureDetector(
-                                              onTap: () {
-                                                context.push('/userProfile',
-                                                    extra: otherUserId);
-                                              },
-                                              child: CircleAvatar(
-                                                radius: 16,
-                                                backgroundColor: Colors.grey[300],
-                                                backgroundImage: otherUserAvatar != null &&
-                                                        otherUserAvatar!.isNotEmpty
-                                                    ? NetworkImage(otherUserAvatar!)
-                                                    : null,
-                                                child: otherUserAvatar == null ||
-                                                        otherUserAvatar!.isEmpty
-                                                    ? Icon(Icons.person,
-                                                        color: Colors.grey[600], size: 16)
-                                                    : null,
-                                              ),
-                                            )
-                                          else
-                                            const SizedBox(width: 32),
-                                          const SizedBox(width: 8),
-                                        ],
-                                        // ユーザーメッセージの場合、テキスト吹き出しのすぐ左下に送信ステータスを配置
-                                        if (isMe) ...[
-                                          _buildStatus(msg.id),
-                                          const SizedBox(width: 4),
-                                        ],
-                                        Flexible(
-                                          child: Opacity(
-                                            opacity: isSending ? 0.6 : 1.0,
-                                            child: Stack(
-                                              clipBehavior: Clip.none,
-                                              children: [
-                                                Builder(
-                                                  builder: (bubbleContext) {
-                                                    return GestureDetector(
-                                                      onLongPress: isMe
-                                                          ? null
-                                                          : () {
-                                                              showCustomPopover(
-                                                                context: bubbleContext,
-                                                                height: 130,
-                                                                children: [
-                                                                  PopoverButton(
-                                                                    text: '通報',
-                                                                    onTap: () async {
-                                                                      Navigator.of(context).pop();
-                                                                      await showReportDialog(
-                                                                        context: context,
-                                                                        ref: ref,
-                                                                        opponentId: msg.senderId,
-                                                                        contentId: msg.id,
-                                                                        contentType: 'dm_message',
-                                                                        contentSnapshot: msg.content,
-                                                                      );
-                                                                    },
-                                                                  ),
-                                                                  const SizedBox(height: 4),
-                                                                  PopoverButton(
-                                                                    text: '非表示',
-                                                                    onTap: () {
-                                                                      Navigator.of(context).pop();
-                                                                      hideDmMessage(msg.id);
-                                                                    },
-                                                                  ),
-                                                                  const SizedBox(height: 4),
-                                                                  PopoverButton(
-                                                                    text: 'ブロック',
-                                                                    onTap: () {
-                                                                      Navigator.of(context).pop();
-                                                                      showBlockUserDialog(
-                                                                        context: context,
-                                                                        ref: ref,
-                                                                        targetUserId: msg.senderId,
-                                                                        targetName: otherUserName,
-                                                                      );
-                                                                    },
-                                                                  ),
-                                                                ],
-                                                              );
-                                                            },
-                                                      child: Container(
-                                                        constraints: BoxConstraints(
-                                                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                                                        ),
-                                                        padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-                                                        decoration: BoxDecoration(
-                                                          color: isMe
-                                                              ? const Color(0xff95eb7c)
-                                                              : Colors.white,
-                                                          borderRadius: BorderRadius.circular(16),
-                                                        ),
-                                                        child: Text(
-                                                          msg.content,
-                                                          style: AppTextStyles.notoSans(
-                                                            color: Colors.black,
-                                                            fontSize: 15,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                                // しっぽ（テキスト用）
-                                                Positioned(
-                                                  top: 6,
-                                                  left: isMe ? null : -6,
-                                                  right: isMe ? -6 : null,
-                                                  child: CustomPaint(
-                                                    painter: _BubbleTailPainter(
-                                                      isMe
-                                                          ? const Color(0xff95eb7c)
-                                                          : Colors.white,
-                                                      isMe,
-                                                    ),
-                                                    size: const Size(10, 10),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                ],
-                                // レスバカード（承諾/拒否・相手待ち表示）
                                 for (final invite in msgResbas)
                                   Padding(
-                                    padding: EdgeInsets.only(
-                                      top: hasBubbleContent ? 6 : 0,
-                                      left: isMe ? 0 : (hasBubbleContent ? 40 : 0),
-                                      right: isMe ? 8 : 0,
-                                    ),
+                                    padding: const EdgeInsets.only(top: 4),
                                     child: ResbaCard(
                                       invite: invite,
                                       onChanged: () {
@@ -560,6 +292,57 @@ class DmRoomPage extends HookConsumerWidget {
                                     ),
                                   ),
                               ],
+                            );
+                          }
+
+                          return Opacity(
+                            opacity: isSending ? 0.6 : 1.0,
+                            child: ChatMessageBubble(
+                              id: msg.id,
+                              content: msg.content,
+                              imageUrl: msg.imageUrl,
+                              isUserMessage: isMe,
+                              senderId: isMe ? myId : otherUserId,
+                              senderName: isMe ? 'あなた' : otherUserName,
+                              senderAvatarUrl: isMe ? null : otherUserAvatar,
+                              showAvatar: showAvatar,
+                              showSenderName: !isMe,
+                              replyToId: msg.replyToId,
+                              replyToContent: msg.replyToContent,
+                              replyToUserName: msg.replyToUserName,
+                              onReply: () {
+                                replyTarget.value = msg;
+                              },
+                              onTapReplyQuote: msg.replyToId != null
+                                  ? () => jumpToMessage(msg.replyToId!, messages)
+                                  : null,
+                              isHighlighted: highlightedDmId.value == msg.id,
+                              statusWidget: isMe ? _buildStatus(msg.id) : null,
+                              attachedWidget: attachedWidget,
+                              onHide: () => hideDmMessage(msg.id),
+                              onReport: () async {
+                                await showReportDialog(
+                                  context: context,
+                                  ref: ref,
+                                  opponentId: msg.senderId,
+                                  contentId: msg.id,
+                                  contentType: 'dm_message',
+                                  contentSnapshot: msg.imageUrl != null ? '[画像]' : msg.content,
+                                );
+                              },
+                              onDelete: isMe
+                                  ? () async {
+                                      hideDmMessage(msg.id);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('メッセージを削除しました'),
+                                            duration: Duration(seconds: 1),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  : null,
                             ),
                           );
                         },
@@ -583,7 +366,12 @@ class DmRoomPage extends HookConsumerWidget {
                     textAlign: TextAlign.center,
                   ),
                 ),
-              if (!isBlocked) _MessageInputWidget(roomId: rId),
+              if (!isBlocked)
+                _MessageInputWidget(
+                  roomId: rId,
+                  replyTarget: replyTarget,
+                  otherUserName: otherUserName,
+                ),
             ],
           );
         },
@@ -619,37 +407,16 @@ class DmRoomPage extends HookConsumerWidget {
   }
 }
 
-class _BubbleTailPainter extends CustomPainter {
-  final Color color;
-  final bool isUserMessage;
-
-  _BubbleTailPainter(this.color, this.isUserMessage);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final path = Path();
-    if (isUserMessage) {
-      path.moveTo(0, 0);
-      path.lineTo(size.width, 0);
-      path.lineTo(0, size.height * 0.8);
-    } else {
-      path.moveTo(size.width, 0);
-      path.lineTo(0, 0);
-      path.lineTo(size.width, size.height * 0.8);
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 class _MessageInputWidget extends HookConsumerWidget {
   final String roomId;
+  final ValueNotifier<DmMessage?> replyTarget;
+  final String otherUserName;
 
-  const _MessageInputWidget({required this.roomId});
+  const _MessageInputWidget({
+    required this.roomId,
+    required this.replyTarget,
+    required this.otherUserName,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -657,6 +424,7 @@ class _MessageInputWidget extends HookConsumerWidget {
     final selectedImage = useState<File?>(null);
     final isUploading = useState(false);
     final resbaAttachment = useState<ResbaAttachment?>(null);
+    final myId = ref.read(supabaseProvider).auth.currentUser?.id;
 
     void sendMessage() async {
       final text = messageController.text.trim();
@@ -681,10 +449,21 @@ class _MessageInputWidget extends HookConsumerWidget {
           );
         }
 
+        final target = replyTarget.value;
+        final targetUserName = target == null
+            ? null
+            : (target.senderId == myId ? 'あなた' : otherUserName);
+
         // 楽観的UIによる即時反映のためProviderに依頼
         final messageId = await ref
             .read(dmMessagesProvider(roomId).notifier)
-            .sendMessage(sendText, imageUrl: uploadedUrl);
+            .sendMessage(
+              sendText,
+              imageUrl: uploadedUrl,
+              replyToId: target?.id,
+              replyToContent: target?.content,
+              replyToUserName: targetUserName,
+            );
 
         // レスバ（写真）を送る感覚でレスバを添付
         final attachment = resbaAttachment.value;
@@ -702,6 +481,7 @@ class _MessageInputWidget extends HookConsumerWidget {
           ref.invalidate(dmResbaProvider(roomId));
         }
 
+        replyTarget.value = null;
         messageController.clear();
         selectedImage.value = null;
         resbaAttachment.value = null;
@@ -720,16 +500,77 @@ class _MessageInputWidget extends HookConsumerWidget {
         color: Colors.white,
       ),
       padding: EdgeInsets.only(
-        left: 8,
-        right: 2,
-        top: 4,
         bottom: MediaQuery.of(context).padding.bottom + 4,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // リプライ中の返信先プレビューバー
+          if (replyTarget.value != null)
+            Container(
+              color: const Color(0xFFEEF2FF),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 6,
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.reply,
+                    size: 16,
+                    color: Color(0xFF4F46E5),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: RichText(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      text: TextSpan(
+                        style: AppTextStyles.notoSans(
+                          fontSize: 12,
+                          color: Colors.black87,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: replyTarget.value!.senderId == myId
+                                ? '自分'
+                                : otherUserName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF4338CA),
+                            ),
+                          ),
+                          const TextSpan(
+                            text: ' に返信: ',
+                            style: TextStyle(color: Colors.black54),
+                          ),
+                          TextSpan(
+                            text: replyTarget.value!.content.isNotEmpty
+                                ? replyTarget.value!.content
+                                : '[画像]',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => replyTarget.value = null,
+                    child: const Padding(
+                      padding: EdgeInsets.all(4.0),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(left: 8, right: 2, top: 4),
+            child: Row(
             children: [
               IconButton(
                 icon: const Icon(Icons.image, color: Colors.grey),
@@ -805,7 +646,8 @@ class _MessageInputWidget extends HookConsumerWidget {
               ),
             ],
           ),
-          if (selectedImage.value != null)
+        ),
+        if (selectedImage.value != null)
             Padding(
               padding:
                   const EdgeInsets.only(top: 8.0, left: 48.0, bottom: 8.0),

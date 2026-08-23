@@ -22,6 +22,9 @@ class DmMessage {
   final String content;
   final DateTime createdAt;
   final String? imageUrl;
+  final String? replyToId;
+  final String? replyToContent;
+  final String? replyToUserName;
 
   DmMessage({
     required this.id,
@@ -30,6 +33,9 @@ class DmMessage {
     required this.content,
     required this.createdAt,
     this.imageUrl,
+    this.replyToId,
+    this.replyToContent,
+    this.replyToUserName,
   });
 
   factory DmMessage.fromJson(Map<String, dynamic> json) {
@@ -40,6 +46,9 @@ class DmMessage {
       content: json['content'],
       createdAt: DateTime.parse(json['created_at']),
       imageUrl: json['image_url'],
+      replyToId: json['reply_to_id']?.toString(),
+      replyToContent: json['reply_to_content']?.toString(),
+      replyToUserName: json['reply_to_user_name']?.toString(),
     );
   }
 }
@@ -214,7 +223,13 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
   }
 
   /// メッセージを送信し、実際のメッセージIDを返す（レスバ添付時に使用）
-  Future<String?> sendMessage(String content, {String? imageUrl}) async {
+  Future<String?> sendMessage(
+    String content, {
+    String? imageUrl,
+    String? replyToId,
+    String? replyToContent,
+    String? replyToUserName,
+  }) async {
     final supabase = _ref.read(supabaseProvider);
     final myId = supabase.auth.currentUser?.id;
     if (myId == null) return null;
@@ -228,6 +243,9 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
       content: content,
       createdAt: DateTime.now(),
       imageUrl: imageUrl,
+      replyToId: replyToId,
+      replyToContent: replyToContent,
+      replyToUserName: replyToUserName,
     );
 
     if (state is AsyncData) {
@@ -242,6 +260,9 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
         'sender_id': myId,
         'content': content,
         if (imageUrl != null) 'image_url': imageUrl,
+        if (replyToId != null) 'reply_to_id': replyToId,
+        if (replyToContent != null) 'reply_to_content': replyToContent,
+        if (replyToUserName != null) 'reply_to_user_name': replyToUserName,
       }).select().single();
 
       // 送信成功後、仮のメッセージを本物のメッセージに置き換える

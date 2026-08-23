@@ -11,6 +11,7 @@ import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/widgets/floating_spectator_comments.dart';
 import 'package:debate_project/widgets/radar_chart_view.dart';
+import 'package:debate_project/widgets/chat/chat_message_bubble.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -351,7 +352,7 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
     if (!mounted || _isDisposed) return;
 
     log('🔌 [観戦コメント] 接続開始 (理由: $reason, roomId: $roomId)');
-    final channel = supabase.channel('spectator:room:$roomId');
+    final channel = supabase.channel(roomId);
     _spectatorBroadcastChannel = channel;
 
     channel
@@ -777,14 +778,21 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                               _messages[index + 1].senderId !=
                                                   chat.senderId);
 
-                                      final opponentAvatarUrl =
-                                          _avatarOf(room.player1Id);
-
-                                      return _buildMessageBubble(
-                                        chat: chat,
+                                      return ChatMessageBubble(
+                                        id: chat.id,
+                                        content: chat.content,
+                                        imageUrl: chat.imageUrl,
                                         isUserMessage: isUserMessage,
-                                        opponentAvatarUrl: opponentAvatarUrl,
+                                        senderId: chat.senderId,
+                                        senderName: isUserMessage
+                                            ? _displayName(room.player2Id)
+                                            : _displayName(room.player1Id),
+                                        senderAvatarUrl: isUserMessage
+                                            ? _avatarOf(room.player2Id)
+                                            : _avatarOf(room.player1Id),
                                         showAvatar: showAvatar,
+                                        showMyAvatar: true, // 観戦者側もアバターを表示
+                                        showSenderName: true, // 名前を表示
                                       );
                                     },
                                   ),
@@ -818,81 +826,6 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
               ),
           ],
         ),
-      ),
-    );
-  }
-
-  // ==========================================
-  // メッセージ吹き出し（GamePageと同一デザイン）
-  // ==========================================
-  Widget _buildMessageBubble({
-    required Chat chat,
-    required bool isUserMessage,
-    required String? opponentAvatarUrl,
-    required bool showAvatar,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      child: Row(
-        mainAxisAlignment:
-            isUserMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 相手（ホスト/player1）の場合のアバター
-          if (!isUserMessage) ...[
-            if (showAvatar)
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: Colors.grey[300],
-                backgroundImage: opponentAvatarUrl != null &&
-                        opponentAvatarUrl.isNotEmpty
-                    ? NetworkImage(opponentAvatarUrl)
-                    : null,
-                child: opponentAvatarUrl == null || opponentAvatarUrl.isEmpty
-                    ? Icon(Icons.person, size: 16, color: Colors.grey[600])
-                    : null,
-              )
-            else
-              const SizedBox(width: 32),
-            const SizedBox(width: 8),
-          ],
-          // メッセージ本文
-          Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.72,
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                color: isUserMessage ? const Color(0xFF0D47A1) : Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isUserMessage ? 16 : 4),
-                  bottomRight: Radius.circular(isUserMessage ? 4 : 16),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Text(
-                chat.content,
-                style: AppTextStyles.notoSans(
-                  color: isUserMessage ? Colors.white : Colors.black87,
-                  fontSize: 14.5,
-                  height: 1.35,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

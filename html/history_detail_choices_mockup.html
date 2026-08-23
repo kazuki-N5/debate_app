@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>履歴・結果発表画面 選択肢UIデザインモックアップ</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js for Radar Chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            appBlue: '#2196F3',
+            appDarkBlue: '#1976D2',
+            appLightBlue: '#E3F2FD',
+            appWin: '#EF4444',
+            appLose: '#475569',
+            appDraw: '#1E40AF',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: #0f172a;
+      color: #1e293b;
+    }
+    .phone-shadow {
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 12px #1e293b, 0 0 0 14px #334155;
+    }
+    /* スクロールバーのカスタマイズ */
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center justify-start">
+
+  <!-- ヘッダー解説エリア -->
+  <div class="max-w-4xl w-full mb-6 text-center text-white">
+    <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 border border-blue-400/40 rounded-full text-blue-300 text-xs font-bold mb-3">
+      <i class="fa-solid fa-mobile-screen"></i> UI設計・モックアッププレビュー
+    </div>
+    <h1 class="text-2xl md:text-3xl font-black mb-2 tracking-tight">
+      履歴・結果発表画面「両者の選択肢表示」UI提案
+    </h1>
+    <p class="text-sm md:text-base text-slate-400 max-w-2xl mx-auto">
+      現在の履歴結果画面では「勝利/敗北」「分析チャート」のみでテーマや両者の立場が見えなかったため、<br class="hidden md:inline">
+      対戦のお題と<strong class="text-blue-300">「自分の選択肢 vs 相手の選択肢」</strong>を直感的に確認できる3つのUIデザイン案を作成しました。
+    </p>
+  </div>
+
+  <!-- コントロールパネル -->
+  <div class="max-w-4xl w-full mb-8 bg-slate-800/90 border border-slate-700 backdrop-blur rounded-2xl p-4 shadow-xl">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- デザインパターン切り替え -->
+      <div class="flex flex-col gap-1.5">
+        <span class="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-shapes text-blue-400"></i> デザイン案を選択
+        </span>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="setPattern('pattern1')" id="btn-p1" class="pattern-btn px-3 py-1.5 text-xs md:text-sm font-bold rounded-lg transition bg-blue-600 text-white shadow-lg shadow-blue-500/30">
+            案1: VS対峙カード型（推奨🌟）
+          </button>
+          <button onclick="setPattern('pattern2')" id="btn-p2" class="pattern-btn px-3 py-1.5 text-xs md:text-sm font-bold rounded-lg transition bg-slate-700 text-slate-300 hover:bg-slate-600">
+            案2: テーマ＆ピルバッジ型
+          </button>
+          <button onclick="setPattern('pattern3')" id="btn-p3" class="pattern-btn px-3 py-1.5 text-xs md:text-sm font-bold rounded-lg transition bg-slate-700 text-slate-300 hover:bg-slate-600">
+            案3: チャート連動一体型
+          </button>
+        </div>
+      </div>
+
+      <!-- 勝敗切り替え -->
+      <div class="flex flex-col gap-1.5">
+        <span class="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-trophy text-yellow-400"></i> 勝敗シミュレーション
+        </span>
+        <div class="flex gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-700">
+          <button onclick="setResult('win')" id="res-win" class="res-btn px-3 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white">勝利</button>
+          <button onclick="setResult('lose')" id="res-lose" class="res-btn px-3 py-1 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white">敗北</button>
+          <button onclick="setResult('draw')" id="res-draw" class="res-btn px-3 py-1 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white">引き分け</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- スマホフレーム ＆ プレビュー領域 -->
+  <div class="relative w-full max-w-[390px] h-[800px] bg-black rounded-[48px] phone-shadow overflow-hidden flex flex-col border border-slate-700 mb-12">
+    
+    <!-- iPhone ダイナミックアイランド・ステータスバー -->
+    <div class="w-full bg-[#2196F3] pt-3 px-7 flex justify-between items-center text-white text-xs z-30 select-none">
+      <span class="font-bold">12:00</span>
+      <div class="w-24 h-4 bg-black rounded-full mx-auto"></div>
+      <div class="flex items-center gap-1.5">
+        <i class="fa-solid fa-signal text-[10px]"></i>
+        <i class="fa-solid fa-wifi text-[10px]"></i>
+        <i class="fa-solid fa-battery-full text-xs"></i>
+      </div>
+    </div>
+
+    <!-- アプリ AppBar -->
+    <div class="bg-[#2196F3] text-white px-4 py-2.5 flex items-center gap-3 z-20 shadow-sm">
+      <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 active:scale-95 transition text-lg">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <h2 class="font-bold text-lg tracking-wide flex-1">詳細・分析</h2>
+    </div>
+
+    <!-- アプリ画面本体（青背景） -->
+    <div class="flex-1 bg-[#2196F3] p-3.5 pb-4 flex flex-col overflow-hidden">
+      
+      <!-- メイン白カード -->
+      <div class="flex-1 bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden">
+        
+        <!-- 上部固定ヘッダーエリア -->
+        <div class="pt-5 pb-3 px-4 text-center border-b border-slate-100 bg-white">
+          <p class="text-xs font-bold text-slate-400 tracking-wider mb-1">結果発表</p>
+          
+          <div class="flex items-center justify-center gap-2">
+            <!-- トロフィー増減 -->
+            <div id="trophy-badge" class="flex items-center gap-1">
+              <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/trophy.svg" class="w-5 h-5 filter invert-[65%] sepia-[80%] saturate-[1000%] hue-rotate-[5deg]" alt="trophy">
+              <span id="trophy-val" class="font-black text-xl text-red-500">+24</span>
+            </div>
+            <!-- 勝敗テキスト -->
+            <h3 id="result-text" class="text-3xl font-black tracking-tight text-red-500">
+              勝利
+            </h3>
+          </div>
+
+          <!-- 格差ボーナスバッジ -->
+          <div id="underdog-badge" class="mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600 text-white text-[11px] font-black shadow-sm">
+            <i class="fa-solid fa-bolt text-[10px]"></i> 格差ボーナス
+          </div>
+        </div>
+
+        <!-- スクロール可能中央エリア -->
+        <div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-4">
+
+          <!-- ==========================================
+               案1: VS対峙カード型（推奨）
+               お題をバナー表示し、その直下に自分と相手の選択肢をVS構図で対比
+               ========================================== -->
+          <div id="mockup-p1" class="pattern-view space-y-3">
+            <!-- テーマバッジ -->
+            <div class="bg-slate-100 border border-slate-200/80 rounded-xl p-2.5 text-center">
+              <span class="text-[10px] font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded-md">テーマ</span>
+              <p class="font-bold text-sm text-slate-800 mt-1 leading-snug">きのこの山 vs たけのこの里、どちらが優れているか？</p>
+            </div>
+
+            <!-- VS選択肢カード -->
+            <div class="relative bg-gradient-to-r from-blue-50 via-white to-red-50 border border-slate-200 rounded-xl p-3 shadow-sm">
+              <!-- 中央VSバッジ -->
+              <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-7 h-7 bg-slate-800 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-md border-2 border-white z-10">
+                VS
+              </div>
+
+              <div class="grid grid-cols-2 gap-4 items-center">
+                <!-- あなた（左） -->
+                <div class="flex flex-col items-center text-center pl-1">
+                  <div class="relative">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=user1" class="w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-400 p-0.5" alt="avatar">
+                    <span class="absolute -bottom-1 -right-1 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">あなた</span>
+                  </div>
+                  <span class="text-[11px] font-bold text-slate-700 mt-1.5 truncate max-w-[120px]">kazuki</span>
+                  <div class="mt-1 bg-blue-600 text-white font-bold text-xs px-2.5 py-1 rounded-lg shadow-sm w-full truncate">
+                    きのこの山
+                  </div>
+                </div>
+
+                <!-- 相手（右） -->
+                <div class="flex flex-col items-center text-center pr-1">
+                  <div class="relative">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=user2" class="w-10 h-10 rounded-full bg-red-100 border-2 border-red-400 p-0.5" alt="avatar">
+                    <span class="absolute -bottom-1 -right-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">相手</span>
+                  </div>
+                  <span class="text-[11px] font-bold text-slate-700 mt-1.5 truncate max-w-[120px]">論理の覇者</span>
+                  <div class="mt-1 bg-red-500 text-white font-bold text-xs px-2.5 py-1 rounded-lg shadow-sm w-full truncate">
+                    たけのこの里
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==========================================
+               案2: テーマ＆ピルバッジ型
+               テーマをカードにし、内部に2色の立場ピルバッジをすっきり横並び配置
+               ========================================== -->
+          <div id="mockup-p2" class="pattern-view hidden space-y-3">
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <div class="flex items-center gap-1.5 mb-1.5">
+                <i class="fa-solid fa-comments text-blue-500 text-xs"></i>
+                <span class="text-[11px] font-bold text-slate-500">対戦テーマ</span>
+              </div>
+              <p class="font-bold text-sm text-slate-800 leading-snug mb-3">
+                きのこの山 vs たけのこの里、どちらが優れているか？
+              </p>
+
+              <!-- 立場ピルバッジ -->
+              <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/80">
+                <!-- あなたの立場 -->
+                <div class="bg-blue-50 border border-blue-200/70 rounded-lg p-2 flex flex-col gap-0.5">
+                  <div class="flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span class="text-[10px] font-bold text-blue-700">あなたの立場</span>
+                  </div>
+                  <span class="text-xs font-bold text-slate-800 truncate">きのこの山</span>
+                </div>
+
+                <!-- 相手の立場 -->
+                <div class="bg-red-50 border border-red-200/70 rounded-lg p-2 flex flex-col gap-0.5">
+                  <div class="flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                    <span class="text-[10px] font-bold text-red-700">相手 (論理の覇者)</span>
+                  </div>
+                  <span class="text-xs font-bold text-slate-800 truncate">たけのこの里</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==========================================
+               案3: チャート連動一体型
+               レーダーチャートの上下に凡例・プレイヤー情報・選択肢を一体化
+               ========================================== -->
+          <div id="mockup-p3" class="pattern-view hidden space-y-3">
+            <!-- テーマのみシンプル表示 -->
+            <div class="bg-slate-100 rounded-xl p-2.5 text-center">
+              <span class="text-[10px] font-bold text-slate-400">お題</span>
+              <p class="font-bold text-xs text-slate-700 truncate">きのこの山 vs たけのこの里、どちらが優れているか？</p>
+            </div>
+
+            <!-- チャート上部バッジ -->
+            <div class="flex justify-between items-center bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+              <!-- あなた -->
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full bg-blue-500 shadow-sm"></div>
+                <div>
+                  <div class="text-[10px] text-slate-500 font-bold">あなた (kazuki)</div>
+                  <div class="text-xs font-bold text-blue-600">立場：きのこの山</div>
+                </div>
+              </div>
+              <!-- VS -->
+              <span class="text-[11px] font-black text-slate-400">VS</span>
+              <!-- 相手 -->
+              <div class="flex items-center gap-2 text-right">
+                <div>
+                  <div class="text-[10px] text-slate-500 font-bold">論理の覇者</div>
+                  <div class="text-xs font-bold text-red-600">立場：たけのこの里</div>
+                </div>
+                <div class="w-3 h-3 rounded-full bg-red-500 shadow-sm"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- レーダーチャート表示エリア -->
+          <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 flex flex-col items-center">
+            <div class="w-full flex justify-between items-center text-xs font-bold mb-2">
+              <span class="flex items-center gap-1.5 text-blue-600">
+                <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> あなた (78%)
+              </span>
+              <span class="flex items-center gap-1.5 text-red-500">
+                相手 (65%) <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+              </span>
+            </div>
+            <div class="w-[200px] h-[200px] relative">
+              <canvas id="radarCanvas"></canvas>
+            </div>
+          </div>
+
+          <!-- 勝敗の理由 -->
+          <div class="bg-blue-50/80 border border-blue-100 rounded-xl p-3.5 space-y-1.5">
+            <div class="flex items-center gap-1.5 text-blue-800 font-bold text-xs">
+              <i class="fa-solid fa-brain"></i>
+              <span>勝敗の理由:</span>
+            </div>
+            <p class="text-xs text-slate-700 leading-relaxed">
+              'kazuki'さんは「手の汚れにくさ」「チョコとクラッカーの比率」について具体的かつ論理的な根拠を提示し、説得力において相手を上回りました。
+            </p>
+          </div>
+
+        </div>
+
+        <!-- 下部固定ボタンエリア -->
+        <div class="p-3.5 bg-white border-t border-slate-100 space-y-2">
+          <!-- レスバを見るボタン -->
+          <button class="w-full bg-[#2196F3] hover:bg-[#1976D2] active:scale-[0.98] text-white font-bold text-sm py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+            <i class="fa-regular fa-comments text-base"></i>
+            <span>レスバを見る</span>
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ホームバー (iOS) -->
+    <div class="w-full bg-white pb-1.5 pt-1 flex justify-center">
+      <div class="w-32 h-1 bg-slate-300 rounded-full"></div>
+    </div>
+  </div>
+
+  <!-- 下部：デザイン比較・解説セクション -->
+  <div class="max-w-4xl w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-6 text-white shadow-xl space-y-6">
+    <h3 class="text-lg font-bold text-blue-300 flex items-center gap-2">
+      <i class="fa-solid fa-list-check"></i> 各デザイン案の特徴とメリット比較
+    </h3>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      
+      <!-- 案1 -->
+      <div class="bg-slate-800/80 border border-blue-500/30 rounded-xl p-4 flex flex-col justify-between">
+        <div>
+          <div class="inline-block bg-blue-500/20 text-blue-300 text-[11px] font-bold px-2 py-0.5 rounded mb-2">案1（推奨🌟）</div>
+          <h4 class="font-bold text-sm text-white mb-2">VS対峙カード型</h4>
+          <ul class="text-xs text-slate-300 space-y-1.5 leading-relaxed">
+            <li>✅ アバター・名前・選択肢が左右対称に対峙し、ゲーム性が高く直感的。</li>
+            <li>✅ 青（自分）と赤（相手）のカラーリングでどちらが勝ったか一目瞭然。</li>
+            <li>✅ お題テーマも独立した枠でしっかり読める。</li>
+          </ul>
+        </div>
+        <p class="text-[11px] text-blue-400 mt-3 font-semibold">→ 一番おすすめのデザインです！</p>
+      </div>
+
+      <!-- 案2 -->
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4 flex flex-col justify-between">
+        <div>
+          <div class="inline-block bg-slate-700 text-slate-300 text-[11px] font-bold px-2 py-0.5 rounded mb-2">案2</div>
+          <h4 class="font-bold text-sm text-white mb-2">テーマ＆ピルバッジ型</h4>
+          <ul class="text-xs text-slate-300 space-y-1.5 leading-relaxed">
+            <li>✅ 縦幅を最小限に抑え、チャートや勝敗理由がファーストビューに入りやすい。</li>
+            <li>✅ テーマカードの中にすっきり「自分の立場 / 相手の立場」が収まる。</li>
+          </ul>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-3 font-semibold">→ 省スペース性を重視する場合に最適</p>
+      </div>
+
+      <!-- 案3 -->
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4 flex flex-col justify-between">
+        <div>
+          <div class="inline-block bg-slate-700 text-slate-300 text-[11px] font-bold px-2 py-0.5 rounded mb-2">案3</div>
+          <h4 class="font-bold text-sm text-white mb-2">チャート連動一体型</h4>
+          <ul class="text-xs text-slate-300 space-y-1.5 leading-relaxed">
+            <li>✅ チャートの凡例（青＝自分、赤＝相手）と選択肢を完全に1箇所に統合。</li>
+            <li>✅ 情報の重複がなく、整然としたモダンな印象。</li>
+          </ul>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-3 font-semibold">→ チャート分析との一体感を重視</p>
+      </div>
+
+    </div>
+
+    <!-- Flutter実装メモ -->
+    <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 space-y-2">
+      <div class="font-bold text-slate-200 flex items-center gap-1.5">
+        <i class="fa-solid fa-code text-emerald-400"></i> Flutter実装への反映方法（`HistoryDetailPage.dart`）
+      </div>
+      <p>
+        `HistoryDetailPage` に渡されている <code class="bg-slate-800 px-1 py-0.5 rounded text-blue-300">record</code> にはすでに <code class="bg-slate-800 px-1 py-0.5 rounded text-blue-300">record.theme</code>、<code class="bg-slate-800 px-1 py-0.5 rounded text-blue-300">record.userChoice</code>、<code class="bg-slate-800 px-1 py-0.5 rounded text-blue-300">record.opponentChoice</code>、<code class="bg-slate-800 px-1 py-0.5 rounded text-blue-300">record.opponentAvatarUrl</code> が含まれています。<br>
+        そのため、お好みのデザインをお選びいただければ、追加のAPI通信なしですぐにFlutter画面へ反映可能です！
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // レーダーチャートの初期化
+    let radarChart;
+    function initRadarChart() {
+      const ctx = document.getElementById('radarCanvas').getContext('2d');
+      radarChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: ['論理性', '説得力', '反論力', '構成力', '表現力'],
+          datasets: [
+            {
+              label: 'あなた',
+              data: [85, 80, 75, 70, 80],
+              backgroundColor: 'rgba(33, 150, 243, 0.25)',
+              borderColor: '#2196F3',
+              borderWidth: 2,
+              pointBackgroundColor: '#2196F3',
+              pointRadius: 2.5
+            },
+            {
+              label: '相手',
+              data: [65, 70, 60, 65, 65],
+              backgroundColor: 'rgba(239, 68, 68, 0.25)',
+              borderColor: '#EF4444',
+              borderWidth: 2,
+              pointBackgroundColor: '#EF4444',
+              pointRadius: 2.5
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              min: 0,
+              max: 100,
+              ticks: { display: false, stepSize: 25 },
+              grid: { color: '#e2e8f0' },
+              angleLines: { color: '#cbd5e1' },
+              pointLabels: {
+                font: { size: 9, family: "'Noto Sans JP', sans-serif", weight: 'bold' },
+                color: '#64748b'
+              }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    // パターン切り替え
+    function setPattern(patternId) {
+      document.querySelectorAll('.pattern-view').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.pattern-btn').forEach(el => {
+        el.classList.remove('bg-blue-600', 'text-white', 'shadow-lg', 'shadow-blue-500/30');
+        el.classList.add('bg-slate-700', 'text-slate-300');
+      });
+
+      if (patternId === 'pattern1') {
+        document.getElementById('mockup-p1').classList.remove('hidden');
+        document.getElementById('btn-p1').classList.add('bg-blue-600', 'text-white', 'shadow-lg', 'shadow-blue-500/30');
+        document.getElementById('btn-p1').classList.remove('bg-slate-700', 'text-slate-300');
+      } else if (patternId === 'pattern2') {
+        document.getElementById('mockup-p2').classList.remove('hidden');
+        document.getElementById('btn-p2').classList.add('bg-blue-600', 'text-white', 'shadow-lg', 'shadow-blue-500/30');
+        document.getElementById('btn-p2').classList.remove('bg-slate-700', 'text-slate-300');
+      } else if (patternId === 'pattern3') {
+        document.getElementById('mockup-p3').classList.remove('hidden');
+        document.getElementById('btn-p3').classList.add('bg-blue-600', 'text-white', 'shadow-lg', 'shadow-blue-500/30');
+        document.getElementById('btn-p3').classList.remove('bg-slate-700', 'text-slate-300');
+      }
+    }
+
+    // 勝敗切り替え
+    function setResult(result) {
+      document.querySelectorAll('.res-btn').forEach(el => {
+        el.classList.remove('bg-red-600', 'bg-slate-600', 'bg-blue-600', 'text-white');
+        el.classList.add('text-slate-400');
+      });
+
+      const resText = document.getElementById('result-text');
+      const trophyVal = document.getElementById('trophy-val');
+      const trophyBadge = document.getElementById('trophy-badge');
+      const underdogBadge = document.getElementById('underdog-badge');
+
+      if (result === 'win') {
+        document.getElementById('res-win').classList.add('bg-red-600', 'text-white');
+        resText.textContent = '勝利';
+        resText.className = 'text-3xl font-black tracking-tight text-red-500';
+        trophyVal.textContent = '+24';
+        trophyVal.className = 'font-black text-xl text-red-500';
+        trophyBadge.classList.remove('hidden');
+        underdogBadge.classList.remove('hidden');
+      } else if (result === 'lose') {
+        document.getElementById('res-lose').classList.add('bg-slate-600', 'text-white');
+        resText.textContent = '敗北';
+        resText.className = 'text-3xl font-black tracking-tight text-slate-600';
+        trophyVal.textContent = '-16';
+        trophyVal.className = 'font-black text-xl text-slate-600';
+        trophyBadge.classList.remove('hidden');
+        underdogBadge.classList.add('hidden');
+      } else if (result === 'draw') {
+        document.getElementById('res-draw').classList.add('bg-blue-600', 'text-white');
+        resText.textContent = '引き分け';
+        resText.className = 'text-3xl font-black tracking-tight text-blue-800';
+        trophyBadge.classList.add('hidden');
+        underdogBadge.classList.add('hidden');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initRadarChart();
+    });
+  </script>
+</body>
+</html>

@@ -27,7 +27,7 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _tabIndex);
-    _fetch();
+    _fetch(isInitial: true);
   }
 
   @override
@@ -36,8 +36,10 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
     super.dispose();
   }
 
-  Future<void> _fetch() async {
-    setState(() => _loading = true);
+  Future<void> _fetch({bool isInitial = false}) async {
+    if (isInitial) {
+      setState(() => _loading = true);
+    }
     final list = await ref.read(resbaActionsProvider).getMySentResbas();
     await ref.read(applyingInfoProvider.notifier).fetch();
     if (mounted) {

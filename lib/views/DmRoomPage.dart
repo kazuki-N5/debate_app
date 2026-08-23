@@ -454,16 +454,52 @@ class _MessageInputWidget extends HookConsumerWidget {
             ? null
             : (target.senderId == myId ? 'あなた' : otherUserName);
 
-        // 楽観的UIによる即時反映のためProviderに依頼
-        final messageId = await ref
-            .read(dmMessagesProvider(roomId).notifier)
-            .sendMessage(
-              sendText,
-              imageUrl: uploadedUrl,
-              replyToId: target?.id,
-              replyToContent: target?.content,
-              replyToUserName: targetUserName,
-            );
+        String? messageId;
+        if (uploadedUrl != null && sendText.isNotEmpty) {
+          // 画像とテキストの両方がある場合は2通に分けて送信（オプチャと同じ仕様）
+          await ref
+              .read(dmMessagesProvider(roomId).notifier)
+              .sendMessage('', imageUrl: uploadedUrl);
+          messageId = await ref
+              .read(dmMessagesProvider(roomId).notifier)
+              .sendMessage(
+                sendText,
+                replyToId: target?.id,
+                replyToContent: target?.content,
+                replyToUserName: targetUserName,
+              );
+        } else if (uploadedUrl != null) {
+          // 画像単体
+          messageId = await ref
+              .read(dmMessagesProvider(roomId).notifier)
+              .sendMessage(
+                '',
+                imageUrl: uploadedUrl,
+                replyToId: target?.id,
+                replyToContent: target?.content,
+                replyToUserName: targetUserName,
+              );
+        } else if (sendText.isNotEmpty) {
+          // テキスト単体
+          messageId = await ref
+              .read(dmMessagesProvider(roomId).notifier)
+              .sendMessage(
+                sendText,
+                replyToId: target?.id,
+                replyToContent: target?.content,
+                replyToUserName: targetUserName,
+              );
+        } else if (resbaAttachment.value != null) {
+          // ⚔️ レスバ単体（テキストも画像もない場合）
+          messageId = await ref
+              .read(dmMessagesProvider(roomId).notifier)
+              .sendMessage(
+                '',
+                replyToId: target?.id,
+                replyToContent: target?.content,
+                replyToUserName: targetUserName,
+              );
+        }
 
         // レスバ（写真）を送る感覚でレスバを添付
         final attachment = resbaAttachment.value;

@@ -428,7 +428,10 @@ class RankingDialog extends ConsumerWidget {
 
     return AlertDialog(
       backgroundColor: dialogBackground,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.0)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18.0),
+        side: const BorderSide(color: Colors.white, width: 2.0),
+      ),
       insetPadding:
           const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
       titlePadding: const EdgeInsets.all(0),

@@ -18,7 +18,8 @@ class ChatMessageBubble extends StatelessWidget {
   final String? senderAvatarUrl;
   final bool showAvatar;
   final bool showSenderName;
-  final bool showMyAvatar; // 観戦者用: 自分のアバターも表示するか
+  final bool showMyAvatar; // 観戦者用: 自分のアバターも描画するか
+  final bool hasMyAvatarColumn; // 観戦者用: 右側のアバター列スペースを確保するか
   final bool isSending;
   final Widget? statusWidget;
   final Widget? attachedWidget;
@@ -49,6 +50,7 @@ class ChatMessageBubble extends StatelessWidget {
     this.showAvatar = true,
     this.showSenderName = true,
     this.showMyAvatar = false,
+    this.hasMyAvatarColumn = false,
     this.isSending = false,
     this.statusWidget,
     this.attachedWidget,
@@ -147,6 +149,12 @@ class ChatMessageBubble extends StatelessWidget {
 
   /// 通常メッセージの描画
   Widget _buildNormalBubble(BuildContext context) {
+    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
+    final hasText = content.isNotEmpty;
+    final hasReply = (replyToContent != null && replyToContent!.isNotEmpty) ||
+        (replyToUserName != null && replyToUserName!.isNotEmpty);
+    final hasBubbleContent = hasImage || hasText || hasReply;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment:
@@ -182,49 +190,66 @@ class ChatMessageBubble extends StatelessWidget {
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black45,
-                          offset: Offset(0, 1),
-                          blurRadius: 2,
-                        ),
-                      ],
                     ),
                   ),
                 ),
 
               // 吹き出し ＋ ステータス（下揃えで横並び）
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // 自分の場合のステータス（吹き出しの左下）
-                  if (isUserMessage && statusWidget != null) ...[
-                    statusWidget!,
-                    const SizedBox(width: 4),
+              if (hasBubbleContent) ...[
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // 自分の場合のステータス（吹き出しの左下）
+                    if (isUserMessage && statusWidget != null) ...[
+                      statusWidget!,
+                      const SizedBox(width: 4),
+                    ],
+                    Flexible(child: _buildBubbleBody(context)),
+                    // 相手の場合のステータス（必要時）
+                    if (!isUserMessage && statusWidget != null) ...[
+                      const SizedBox(width: 4),
+                      statusWidget!,
+                    ],
                   ],
-                  Flexible(child: _buildBubbleBody(context)),
-                  // 相手の場合のステータス（必要時）
-                  if (!isUserMessage && statusWidget != null) ...[
-                    const SizedBox(width: 4),
-                    statusWidget!,
-                  ],
-                ],
-              ),
+                ),
+              ],
 
               // 付属カード（レスバ招待など）
               if (attachedWidget != null) ...[
-                const SizedBox(height: 4),
-                attachedWidget!,
+                if (hasBubbleContent) const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (!hasBubbleContent && isUserMessage && statusWidget != null) ...[
+                      statusWidget!,
+                      const SizedBox(width: 4),
+                    ],
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.75,
+                      ),
+                      child: attachedWidget!,
+                    ),
+                    if (!hasBubbleContent && !isUserMessage && statusWidget != null) ...[
+                      const SizedBox(width: 4),
+                      statusWidget!,
+                    ],
+                  ],
+                ),
               ],
             ],
           ),
         ),
 
         // 観戦者（自分）のアバター
-        if (isUserMessage && showMyAvatar) ...[
+        if (isUserMessage && (showMyAvatar || hasMyAvatarColumn)) ...[
           const SizedBox(width: 6),
-          _buildAvatarWidget(context),
+          if (showMyAvatar)
+            _buildAvatarWidget(context)
+          else
+            const SizedBox(width: 32),
         ],
       ],
     );
@@ -450,15 +475,7 @@ class ChatMessageBubble extends StatelessWidget {
       isMyMessage: isUserMessage,
       canDelete: canDelete,
       deleteLabel: deleteLabel ?? (isUserMessage ? '削除' : '強制削除'),
-      onReply: onReply ??
-          () {
-            ScaffoldMessenger.of(bubbleContext).showSnackBar(
-              const SnackBar(
-                content: Text('リプライ機能は準備中です'),
-                duration: Duration(seconds: 1),
-              ),
-            );
-          },
+      onReply: onReply,
       onHide: onHide,
       onReport: onReport,
       onDelete: onDelete != null

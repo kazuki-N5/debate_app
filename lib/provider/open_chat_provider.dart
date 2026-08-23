@@ -1,7 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
 import 'package:debate_project/modes/open_chat.dart';
-import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,11 +65,9 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
     }
   }
 
-  /// ブロック済みユーザー・非表示メッセージを除外
+  /// 非表示メッセージを除外（オプチャではブロックに関わらず全メッセージを表示）
   List<OpenChatMessage> _filter(List<OpenChatMessage> messages) {
-    final blocked = _ref.read(blockedUserIdsProvider).toSet();
     return messages
-        .where((m) => !blocked.contains(m.userId))
         .where((m) => !_hiddenMessageIds.contains(m.id))
         .toList();
   }
@@ -402,18 +399,115 @@ class OpenChatActionNotifier extends AutoDisposeNotifier<void> {
     }
   }
 
-  Future<String?> kickMember(String roomId, String targetUserId) async {
+  Future<String?> kickMember(String roomId, String targetUserId, {bool ban = false}) async {
     final supabase = ref.read(supabaseProvider);
     try {
       final response = await supabase.rpc('kick_open_chat_member', params: {
         'p_room_id': roomId,
         'p_target_user_id': targetUserId,
+        'p_ban': ban,
       });
       if (response['success'] == true) {
+        ref.invalidate(openChatMembersProvider(roomId));
+        if (ban) {
+          ref.invalidate(openChatBannedUsersProvider(roomId));
+        }
         return null;
       } else {
-        return response['error'] ?? 'キックに失敗しました';
+        return response['error'] ?? '削除に失敗しました';
       }
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// 再参加禁止（BAN）を解除する
+  Future<String?> unbanMember(String roomId, String targetUserId) async {
+    final supabase = ref.read(supabaseProvider);
+    try {
+      final response = await supabase.rpc('unban_open_chat_member', params: {
+        'p_room_id': roomId,
+        'p_target_user_id': targetUserId,
+      });
+      if (response['success'] == true) {
+        ref.invalidate(openChatBannedUsersProvider(roomId));
+        return null;
+      } else {
+        return response['error'] ?? '解除に失敗しました';
+      }
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// ルーム情報の更新（管理者用）
+  Future<String?> updateRoom(
+    String roomId,
+    String name,
+    String description,
+    String? iconUrl, {
+    String? backgroundUrl,
+    String? password,
+    List<String>? tags,
+  }) async {
+    final supabase = ref.read(supabaseProvider);
+    try {
+      await supabase.from('open_chat_rooms').update({
+        'name': name,
+        'description': description,
+        if (iconUrl != null) 'icon_url': iconUrl,
+        'background_url': backgroundUrl,
+        'password': password,
+        if (tags != null) 'tags': tags,
+      }).eq('id', roomId);
+      ref.invalidate(openChatRoomDetailProvider(roomId));
+      ref.invalidate(openChatRoomsProvider);
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// ルールの更新（管理者用）
+  Future<String?> updateRules(String roomId, String rules) async {
+    final supabase = ref.read(supabaseProvider);
+    try {
+      await supabase.from('open_chat_rooms').update({
+        'rules': rules,
+      }).eq('id', roomId);
+      ref.invalidate(openChatRoomDetailProvider(roomId));
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// ルーム個別通知のミュート切り替え
+  Future<String?> toggleRoomMute(String roomId, bool isMuted) async {
+    final supabase = ref.read(supabaseProvider);
+    final myId = supabase.auth.currentUser?.id;
+    if (myId == null) return 'ログインが必要です';
+    try {
+      await supabase.from('open_chat_members').update({
+        'is_muted': isMuted,
+      }).match({
+        'room_id': roomId,
+        'user_id': myId,
+      });
+      ref.invalidate(openChatMyMemberProvider(roomId));
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// クラブ（ルーム）の削除（オーナー用）
+  Future<String?> deleteRoom(String roomId) async {
+    final supabase = ref.read(supabaseProvider);
+    try {
+      await supabase.from('open_chat_rooms').delete().eq('id', roomId);
+      ref.invalidate(openChatRoomsProvider);
+      return null;
     } catch (e) {
       return e.toString();
     }
@@ -436,4 +530,54 @@ final openChatMembersProvider = FutureProvider.family.autoDispose<List<OpenChatM
   return (response as List<dynamic>)
       .map((e) => OpenChatMember.fromJson(e as Map<String, dynamic>))
       .toList();
+});
+
+// 5. 指定ルームの最新詳細情報を取得する
+final openChatRoomDetailProvider = FutureProvider.family.autoDispose<OpenChatRoom?, String>((ref, roomId) async {
+  final supabase = ref.read(supabaseProvider);
+  final response = await supabase
+      .from('open_chat_rooms')
+      .select('*')
+      .eq('id', roomId)
+      .maybeSingle();
+
+  if (response == null) return null;
+  return OpenChatRoom.fromJson(response);
+});
+
+// 6. 指定ルームにおける現在の自分のメンバー情報を取得する (isMutedやrole判定用)
+final openChatMyMemberProvider = FutureProvider.family.autoDispose<OpenChatMember?, String>((ref, roomId) async {
+  final supabase = ref.read(supabaseProvider);
+  final myId = supabase.auth.currentUser?.id;
+  if (myId == null) return null;
+
+  final response = await supabase
+      .from('open_chat_members')
+      .select('*')
+      .match({
+        'room_id': roomId,
+        'user_id': myId,
+      })
+      .maybeSingle();
+
+  if (response == null) return null;
+  return OpenChatMember.fromJson(response);
+});
+
+// 7. 指定ルームの再参加禁止メンバー一覧を取得する (管理者専用)
+final openChatBannedUsersProvider = FutureProvider.family.autoDispose<List<OpenChatBannedUser>, String>((ref, roomId) async {
+  final supabase = ref.read(supabaseProvider);
+  try {
+    final response = await supabase.rpc('get_open_chat_banned_users', params: {
+      'p_room_id': roomId,
+    });
+    if (response['success'] == true && response['data'] != null) {
+      return (response['data'] as List<dynamic>)
+          .map((e) => OpenChatBannedUser.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
+  } catch (e) {
+    return [];
+  }
 });

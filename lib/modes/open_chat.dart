@@ -19,6 +19,7 @@ class OpenChatRoom with _$OpenChatRoom {
     @JsonKey(name: 'member_count') int? memberCount,
     @JsonKey(name: 'is_joined') bool? isJoined,
     @JsonKey(name: 'tags') List<String>? tags,
+    @JsonKey(name: 'rules') String? rules,
   }) = _OpenChatRoom;
 
   factory OpenChatRoom.fromJson(Map<String, dynamic> json) => _$OpenChatRoomFromJson(json);
@@ -32,6 +33,7 @@ class OpenChatMember with _$OpenChatMember {
     @JsonKey(name: 'user_id') required String userId,
     required String role,
     @JsonKey(name: 'joined_at') required DateTime joinedAt,
+    @JsonKey(name: 'is_muted') @Default(false) bool isMuted,
   }) = _OpenChatMember;
 
   factory OpenChatMember.fromJson(Map<String, dynamic> json) => _$OpenChatMemberFromJson(json);
@@ -49,4 +51,36 @@ class OpenChatMessage with _$OpenChatMessage {
   }) = _OpenChatMessage;
 
   factory OpenChatMessage.fromJson(Map<String, dynamic> json) => _$OpenChatMessageFromJson(json);
+}
+
+/// 再参加禁止（BAN）されたユーザーのモデル
+class OpenChatBannedUser {
+  final String id;
+  final String roomId;
+  final String userId;
+  final DateTime createdAt;
+  final String userName;
+  final String? avatarUrl;
+
+  const OpenChatBannedUser({
+    required this.id,
+    required this.roomId,
+    required this.userId,
+    required this.createdAt,
+    required this.userName,
+    this.avatarUrl,
+  });
+
+  factory OpenChatBannedUser.fromJson(Map<String, dynamic> json) {
+    return OpenChatBannedUser(
+      id: json['id'] as String,
+      roomId: json['room_id'] as String,
+      userId: json['user_id'] as String,
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      userName: json['user_name'] as String? ?? '名無しユーザー',
+      avatarUrl: json['avatar_url'] as String?,
+    );
+  }
 }

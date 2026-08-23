@@ -5,18 +5,17 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:debate_project/modes/resba_invite.dart';
 import 'package:debate_project/provider/open_chat_provider.dart';
 import 'package:debate_project/modes/open_chat.dart';
-import 'package:debate_project/widgets/app_confirm_dialog.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/provider/image_upload_provider.dart';
-import 'package:debate_project/views/open_chat/OpenChatMembersView.dart';
 import 'package:debate_project/widgets/ios_swipe_back.dart';
 import 'package:debate_project/widgets/moderation.dart';
 import 'package:debate_project/widgets/popover_widgets.dart';
 import 'package:debate_project/widgets/resba_attach_sheet.dart';
 import 'package:debate_project/widgets/resba_card.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:debate_project/views/open_chat/OpenChatMenuView.dart';
 import 'package:debate_project/widgets/full_screen_image_viewer.dart';
 import 'package:go_router/go_router.dart';
 
@@ -45,6 +44,10 @@ class OpenChatRoomView extends HookConsumerWidget {
       ref.invalidate(openChatResbasProvider(room.id));
     }
 
+    // 最新のルーム情報（名前更新等の即時反映）
+    final roomDetailAsync = ref.watch(openChatRoomDetailProvider(room.id));
+    final currentRoom = roomDetailAsync.valueOrNull ?? room;
+
     useEffect(() {
       void scrollListener() {
         if (scrollController.position.pixels >=
@@ -58,7 +61,7 @@ class OpenChatRoomView extends HookConsumerWidget {
       return () => scrollController.removeListener(scrollListener);
     }, [scrollController, room.id]);
 
-    final hasBgImage = room.backgroundUrl != null && room.backgroundUrl!.isNotEmpty;
+    final hasBgImage = currentRoom.backgroundUrl != null && currentRoom.backgroundUrl!.isNotEmpty;
 
     return Scaffold(
       extendBodyBehindAppBar: hasBgImage,
@@ -68,70 +71,24 @@ class OpenChatRoomView extends HookConsumerWidget {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
-          room.name,
+          currentRoom.name,
           style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
         ),
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onSelected: (value) async {
-              if (value == 'members') {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (context, _, __) =>
-                        IosSwipeBack(child: OpenChatMembersView(room: room)),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
+          IconButton(
+            icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 26),
+            onPressed: () {
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, _, __) => IosSwipeBack(
+                    child: OpenChatMenuView(room: currentRoom),
                   ),
-                );
-              } else if (value == 'leave') {
-                final confirm = await showAppConfirmDialog(
-                  context: context,
-                  title: '退室の確認',
-                  message: 'このクラブから退室しますか？',
-                  cancelText: 'キャンセル',
-                  confirmText: '退室する',
-                  isDestructive: false,
-                );
-
-                if (confirm == true && context.mounted) {
-                  final error = await ref
-                      .read(openChatActionProvider.notifier)
-                      .leaveRoom(room.id);
-                  if (error == null) {
-                    if (context.mounted) {
-                      Navigator.pop(context); // チャット画面を閉じる
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('退室しました')));
-                    }
-                  } else {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('エラー: $error')));
-                    }
-                  }
-                }
-              }
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
+                ),
+              );
             },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'members',
-                child: Row(children: [
-                  Icon(Icons.people, color: Colors.black87),
-                  SizedBox(width: 8),
-                  Text('メンバー管理')
-                ]),
-              ),
-              const PopupMenuItem(
-                value: 'leave',
-                child: Row(children: [
-                  Icon(Icons.exit_to_app, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('退室する', style: TextStyle(color: Colors.red))
-                ]),
-              ),
-            ],
           ),
         ],
       ),
@@ -215,215 +172,282 @@ class OpenChatRoomView extends HookConsumerWidget {
                               ? CrossAxisAlignment.end
                               : CrossAxisAlignment.start,
                           children: [
-                            if (hasBubbleContent)
-                              Row(
-                                crossAxisAlignment: isUserMessage
-                                    ? CrossAxisAlignment.end
-                                    : CrossAxisAlignment.start,
-                                mainAxisAlignment: isUserMessage
-                                    ? MainAxisAlignment.end
-                                    : MainAxisAlignment.start,
-                                children: [
-                                  if (!isUserMessage) ...[
-                                    if (showAvatar)
-                                      GestureDetector(
-                                        onTap: () {
-                                          context.push('/userProfile',
-                                              extra: message.userId);
-                                        },
-                                        child: CircleAvatar(
-                                          radius: 16,
-                                          backgroundColor: Colors.grey[300],
-                                          child: Icon(Icons.person,
-                                              size: 16, color: Colors.grey[600]),
-                                        ),
-                                      )
-                                    else
-                                      const SizedBox(width: 32),
-                                    const SizedBox(width: 8),
-                                  ],
-                                  if (isUserMessage) ...[
-                                    _buildStatus(message.id),
-                                    const SizedBox(width: 4),
-                                  ],
-                                  Flexible(
-                                    child: Opacity(
-                                      opacity: isSending ? 0.6 : 1.0,
-                                      child: Stack(
-                                        clipBehavior: Clip.none,
-                                        children: [
-                                        Builder(
-                                          builder: (bubbleContext) {
-                                            return GestureDetector(
-                                              onLongPress: isUserMessage
-                                                  ? null
-                                                  : () {
-                                                      showCustomPopover(
-                                                        context: bubbleContext,
-                                                        height: 130,
-                                                        children: [
-                                                          PopoverButton(
-                                                            text: '通報',
-                                                            onTap: () async {
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop();
-                                                              await showReportDialog(
-                                                                context: context,
-                                                                ref: ref,
-                                                                opponentId:
-                                                                    message.userId,
-                                                                contentId:
-                                                                    message.id,
-                                                                contentType:
-                                                                    'open_chat_message',
-                                                                contentSnapshot:
-                                                                    message
-                                                                        .content,
-                                                              );
-                                                            },
-                                                          ),
-                                                          const SizedBox(height: 4),
-                                                          PopoverButton(
-                                                            text: '非表示',
-                                                            onTap: () {
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop();
-                                                              ref
-                                                                  .read(
-                                                                      openChatMessagesProvider(
-                                                                              room.id)
-                                                                          .notifier)
-                                                                  .hideMessage(
-                                                                    message.id);
-                                                            },
-                                                          ),
-                                                          const SizedBox(height: 4),
-                                                          PopoverButton(
-                                                            text: 'ブロック',
-                                                            onTap: () {
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop();
-                                                              showBlockUserDialog(
-                                                                context: context,
-                                                                ref: ref,
-                                                                targetUserId:
-                                                                    message.userId,
-                                                                targetName:
-                                                                    'このユーザー',
-                                                              );
-                                                            },
-                                                          ),
-                                                        ],
-                                                      );
-                                                    },
-                                              child: Container(
-                                                constraints: BoxConstraints(
-                                                  maxWidth: MediaQuery.of(context)
-                                                          .size
-                                                          .width *
-                                                      0.75,
-                                                ),
-                                                padding: const EdgeInsets.fromLTRB(
-                                                    12, 6, 12, 8),
-                                                decoration: BoxDecoration(
-                                                  color: isUserMessage
-                                                      ? const Color(0xff95eb7c)
-                                                      : Colors.white,
-                                                  borderRadius:
-                                                      BorderRadius.circular(16),
-                                                ),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    if (message.imageUrl != null)
-                                                      Padding(
-                                                        padding: EdgeInsets.only(
-                                                            bottom: message
-                                                                    .content
-                                                                    .isNotEmpty
-                                                                ? 4.0
-                                                                : 0.0),
-                                                        child: GestureDetector(
-                                                          onTap: () {
-                                                            FullScreenImageViewer
-                                                                .show(
-                                                              context,
-                                                              imageUrls: [
-                                                                message.imageUrl!
-                                                              ],
-                                                              initialIndex: 0,
-                                                            );
-                                                          },
-                                                          child: ClipRRect(
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(8),
-                                                            child:
-                                                                CachedNetworkImage(
-                                                              imageUrl: message
-                                                                  .imageUrl!,
-                                                              fit: BoxFit.cover,
-                                                              memCacheWidth: 900,
-                                                              fadeInDuration:
-                                                                Duration.zero,
-                                                              fadeOutDuration:
-                                                                Duration.zero,
-                                                              placeholder: (context,
-                                                                      url) =>
-                                                                  Container(
-                                                                      height: 150,
-                                                                      color: Colors
-                                                                              .grey[
-                                                                          300]),
-                                                              errorWidget: (context,
-                                                                      url,
-                                                                      error) =>
-                                                                  const Icon(
-                                                                      Icons.error),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    if (message.content.isNotEmpty)
-                                                      Text(
-                                                        message.content,
-                                                        style:
-                                                            AppTextStyles.notoSans(
-                                                          color: Colors.black,
-                                                          fontSize: 15,
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        // しっぽ（ゲーム画面と同一）
-                                        Positioned(
-                                          top: 6,
-                                          left: isUserMessage ? null : -6,
-                                          right: isUserMessage ? -6 : null,
-                                          child: CustomPaint(
-                                            painter: _OpenChatBubbleTailPainter(
-                                              isUserMessage
-                                                  ? const Color(0xff95eb7c)
-                                                  : Colors.white,
-                                              isUserMessage,
+                            if (hasBubbleContent) ...[
+                              // ① 写真がある場合
+                              if (message.imageUrl != null)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                      bottom: message.content.isNotEmpty ? 4.0 : 0.0),
+                                  child: Row(
+                                    crossAxisAlignment: isUserMessage
+                                        ? CrossAxisAlignment.end
+                                        : CrossAxisAlignment.start,
+                                    mainAxisAlignment: isUserMessage
+                                        ? MainAxisAlignment.end
+                                        : MainAxisAlignment.start,
+                                    children: [
+                                      if (!isUserMessage) ...[
+                                        if (showAvatar)
+                                          GestureDetector(
+                                            onTap: () {
+                                              context.push('/userProfile',
+                                                  extra: message.userId);
+                                            },
+                                            child: CircleAvatar(
+                                              radius: 16,
+                                              backgroundColor: Colors.grey[300],
+                                              child: Icon(Icons.person,
+                                                  size: 16, color: Colors.grey[600]),
                                             ),
-                                            size: const Size(10, 10),
+                                          )
+                                        else
+                                          const SizedBox(width: 32),
+                                        const SizedBox(width: 8),
+                                      ],
+                                      // テキストがない場合のみ写真の左横に送信ステータスを表示
+                                      if (isUserMessage && message.content.isEmpty) ...[
+                                        _buildStatus(message.id),
+                                        const SizedBox(width: 4),
+                                      ],
+                                      Flexible(
+                                        child: Opacity(
+                                          opacity: isSending ? 0.6 : 1.0,
+                                          child: Builder(
+                                            builder: (bubbleContext) {
+                                              return GestureDetector(
+                                                onLongPress: isUserMessage
+                                                    ? null
+                                                    : () {
+                                                        showCustomPopover(
+                                                          context: bubbleContext,
+                                                          height: 130,
+                                                          children: [
+                                                            PopoverButton(
+                                                              text: '通報',
+                                                              onTap: () async {
+                                                                Navigator.of(context).pop();
+                                                                await showReportDialog(
+                                                                  context: context,
+                                                                  ref: ref,
+                                                                  opponentId: message.userId,
+                                                                  contentId: message.id,
+                                                                  contentType: 'open_chat_message',
+                                                                  contentSnapshot: message.content,
+                                                                );
+                                                              },
+                                                            ),
+                                                            const SizedBox(height: 4),
+                                                            PopoverButton(
+                                                              text: '非表示',
+                                                              onTap: () {
+                                                                Navigator.of(context).pop();
+                                                                ref
+                                                                    .read(openChatMessagesProvider(
+                                                                            room.id)
+                                                                        .notifier)
+                                                                    .hideMessage(message.id);
+                                                              },
+                                                            ),
+                                                            const SizedBox(height: 4),
+                                                            PopoverButton(
+                                                              text: 'ブロック',
+                                                              onTap: () {
+                                                                Navigator.of(context).pop();
+                                                                showBlockUserDialog(
+                                                                  context: context,
+                                                                  ref: ref,
+                                                                  targetUserId: message.userId,
+                                                                  targetName: 'このユーザー',
+                                                                );
+                                                              },
+                                                            ),
+                                                          ],
+                                                        );
+                                                      },
+                                                onTap: () {
+                                                  FullScreenImageViewer.show(
+                                                    context,
+                                                    imageUrls: [message.imageUrl!],
+                                                    initialIndex: 0,
+                                                  );
+                                                },
+                                                child: ClipRRect(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  child: Container(
+                                                    constraints: BoxConstraints(
+                                                      maxWidth: MediaQuery.of(context).size.width * 0.75,
+                                                      maxHeight: MediaQuery.of(context).size.height * 0.5,
+                                                    ),
+                                                    child: CachedNetworkImage(
+                                                      imageUrl: message.imageUrl!,
+                                                      fit: BoxFit.cover,
+                                                      memCacheWidth: 900,
+                                                      fadeInDuration: Duration.zero,
+                                                      fadeOutDuration: Duration.zero,
+                                                      placeholder: (context, url) => Container(
+                                                        height: 150,
+                                                        width: 200,
+                                                        color: Colors.grey[300],
+                                                        child: const Center(
+                                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                                        ),
+                                                      ),
+                                                      errorWidget: (context, url, error) => Container(
+                                                        height: 120,
+                                                        width: 160,
+                                                        color: Colors.grey[200],
+                                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
                                           ),
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
+
+                              // ② テキストがある場合
+                              if (message.content.isNotEmpty)
+                                Row(
+                                  crossAxisAlignment: isUserMessage
+                                      ? CrossAxisAlignment.end
+                                      : CrossAxisAlignment.start,
+                                  mainAxisAlignment: isUserMessage
+                                      ? MainAxisAlignment.end
+                                      : MainAxisAlignment.start,
+                                  children: [
+                                    if (!isUserMessage) ...[
+                                      // 写真が上に表示されていてアバターが表示済みの場合はアバター幅(32)をインデント
+                                      if (message.imageUrl != null)
+                                        const SizedBox(width: 32)
+                                      else if (showAvatar)
+                                        GestureDetector(
+                                          onTap: () {
+                                            context.push('/userProfile',
+                                                extra: message.userId);
+                                          },
+                                          child: CircleAvatar(
+                                            radius: 16,
+                                            backgroundColor: Colors.grey[300],
+                                            child: Icon(Icons.person,
+                                                size: 16, color: Colors.grey[600]),
+                                          ),
+                                        )
+                                      else
+                                        const SizedBox(width: 32),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    // ユーザーメッセージの場合、テキスト吹き出しのすぐ左下に送信ステータスを配置
+                                    if (isUserMessage) ...[
+                                      _buildStatus(message.id),
+                                      const SizedBox(width: 4),
+                                    ],
+                                    Flexible(
+                                      child: Opacity(
+                                        opacity: isSending ? 0.6 : 1.0,
+                                        child: Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            Builder(
+                                              builder: (bubbleContext) {
+                                                return GestureDetector(
+                                                  onLongPress: isUserMessage
+                                                      ? null
+                                                      : () {
+                                                          showCustomPopover(
+                                                            context: bubbleContext,
+                                                            height: 130,
+                                                            children: [
+                                                              PopoverButton(
+                                                                text: '通報',
+                                                                onTap: () async {
+                                                                  Navigator.of(context).pop();
+                                                                  await showReportDialog(
+                                                                    context: context,
+                                                                    ref: ref,
+                                                                    opponentId: message.userId,
+                                                                    contentId: message.id,
+                                                                    contentType: 'open_chat_message',
+                                                                    contentSnapshot: message.content,
+                                                                  );
+                                                                },
+                                                              ),
+                                                              const SizedBox(height: 4),
+                                                              PopoverButton(
+                                                                text: '非表示',
+                                                                onTap: () {
+                                                                  Navigator.of(context).pop();
+                                                                  ref
+                                                                      .read(openChatMessagesProvider(
+                                                                              room.id)
+                                                                          .notifier)
+                                                                      .hideMessage(message.id);
+                                                                },
+                                                              ),
+                                                              const SizedBox(height: 4),
+                                                              PopoverButton(
+                                                                text: 'ブロック',
+                                                                onTap: () {
+                                                                  Navigator.of(context).pop();
+                                                                  showBlockUserDialog(
+                                                                    context: context,
+                                                                    ref: ref,
+                                                                    targetUserId: message.userId,
+                                                                    targetName: 'このユーザー',
+                                                                  );
+                                                                },
+                                                              ),
+                                                            ],
+                                                          );
+                                                        },
+                                                  child: Container(
+                                                    constraints: BoxConstraints(
+                                                      maxWidth: MediaQuery.of(context).size.width * 0.75,
+                                                    ),
+                                                    padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+                                                    decoration: BoxDecoration(
+                                                      color: isUserMessage
+                                                          ? const Color(0xff95eb7c)
+                                                          : Colors.white,
+                                                      borderRadius: BorderRadius.circular(16),
+                                                    ),
+                                                    child: Text(
+                                                      message.content,
+                                                      style: AppTextStyles.notoSans(
+                                                        color: Colors.black,
+                                                        fontSize: 15,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                            // しっぽ（テキスト用）
+                                            Positioned(
+                                              top: 6,
+                                              left: isUserMessage ? null : -6,
+                                              right: isUserMessage ? -6 : null,
+                                              child: CustomPaint(
+                                                painter: _OpenChatBubbleTailPainter(
+                                                  isUserMessage
+                                                      ? const Color(0xff95eb7c)
+                                                      : Colors.white,
+                                                  isUserMessage,
+                                                ),
+                                                size: const Size(10, 10),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
                             for (final invite in msgResbas)
                               Padding(
                                 padding: EdgeInsets.only(

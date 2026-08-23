@@ -210,7 +210,7 @@ class UserProfilePage extends HookConsumerWidget {
                                         IconButton(
                                           icon: Icon(
                                             isBlocked ? Icons.person_off : Icons.block,
-                                            color: isBlocked ? Colors.red : Colors.black54,
+                                            color: isBlocked ? Colors.red : null,
                                           ),
                                           tooltip: isBlocked ? 'ブロックを解除' : 'ブロック',
                                           onPressed: () {
@@ -235,8 +235,7 @@ class UserProfilePage extends HookConsumerWidget {
                                         ),
                                         // 通報
                                         IconButton(
-                                          icon: const Icon(Icons.flag_outlined,
-                                              color: Colors.black54),
+                                          icon: const Icon(Icons.flag_outlined),
                                           tooltip: '通報',
                                           onPressed: () => showReportDialog(
                                             context: context,
@@ -272,7 +271,7 @@ class UserProfilePage extends HookConsumerWidget {
                                                 : Icons.favorite_border,
                                             color: isFollowing.valueOrNull == true
                                                 ? Colors.pink
-                                                : Colors.black54,
+                                                : null,
                                           ),
                                           onPressed: () async {
                                             await ref.read(followActionProvider).toggle(user.id);

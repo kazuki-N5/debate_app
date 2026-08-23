@@ -25,7 +25,6 @@ class DmMenuView extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final otherUserName = otherUser.name ?? 'ユーザー';
-    final avatarUrl = otherUser.avatar_url;
 
     // 自分のDMミュート状態を取得
     final isMutedAsync = ref.watch(dmMyMemberMuteProvider(roomId));
@@ -107,20 +106,6 @@ class DmMenuView extends HookConsumerWidget {
         titleSpacing: 0,
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.white24,
-              backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
-                  ? CachedNetworkImageProvider(avatarUrl)
-                  : null,
-              child: (avatarUrl == null || avatarUrl.isEmpty)
-                  ? Text(
-                      otherUserName.isNotEmpty ? otherUserName[0] : '?',
-                      style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 8),
             Flexible(
               child: Text(
                 otherUserName,

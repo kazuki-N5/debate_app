@@ -25,6 +25,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:path_provider/path_provider.dart';
@@ -130,10 +131,7 @@ class FinishPage extends HookConsumerWidget {
                 onPressed: () async {
                   Navigator.of(dialogContext).pop();
                   try {
-                    final result = await usernotifier.fetchUser(user!);
-                    if (result.win! >= 5) {
-                      ref.read(reviewProvider.notifier).state = true;
-                    }
+                    await usernotifier.fetchUser(user!);
                     router.go('/home');
                   } catch (e) {
                     showErrorDialog(context);
@@ -169,6 +167,18 @@ class FinishPage extends HookConsumerWidget {
 
       // 部屋の情報をクリア（チャット購読解除・プレゼンス破棄を含む）
       roomnotifier.delete();
+
+      // ローカルカウンター: Finishページ表示回数を数え、アプリ起動回数と合算して
+      // 合計4回になったらレビューお願いダイアログを表示する
+      // （表示はHomePage側でisreviewフラグにより一度だけ）
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final count = (prefs.getInt(reviewTriggerCountPrefKey) ?? 0) + 1;
+        await prefs.setInt(reviewTriggerCountPrefKey, count);
+        if (count == 4) {
+          ref.read(reviewProvider.notifier).state = true;
+        }
+      }();
 
       return () {};
     }, const []);
@@ -813,13 +823,8 @@ class FinishPage extends HookConsumerWidget {
                                         ? null
                                         : () async {
                                             try {
-                                              final result =
-                                                  await usernotifier.fetchUser(user);
-                                              if (result.win! >= 5) {
-                                                ref
-                                                    .read(reviewProvider.notifier)
-                                                    .state = true;
-                                              }
+                                              await usernotifier.fetchUser(
+                                                  user);
                                               router.go('/home');
                                             } catch (e) {
                                               showErrorDialog(context);
@@ -845,13 +850,8 @@ class FinishPage extends HookConsumerWidget {
                                         ? null
                                         : () async {
                                             try {
-                                              final result =
-                                                  await usernotifier.fetchUser(user);
-                                              if (result.win! >= 5) {
-                                                ref
-                                                    .read(reviewProvider.notifier)
-                                                    .state = true;
-                                              }
+                                              await usernotifier.fetchUser(
+                                                  user);
                                               router.go('/home');
                                             } catch (e) {
                                               showErrorDialog(context);

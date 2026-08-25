@@ -15,7 +15,9 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/provider/notification_service.dart';
+import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/widgets/resba_applying_banner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final scaffoldMessengerKeyProvider = Provider((ref) => GlobalKey<ScaffoldMessengerState>());
 
@@ -44,6 +46,21 @@ void main() async {
   // 通知プロバイダーのコンテナを作成 (ProviderScopeなしの状態でもアクセス可能にするため。またはProviderScope内でrefを利用)
   final container = ProviderContainer();
   await container.read(notificationServiceProvider).initialize();
+
+  // ローカルカウンター: アプリ起動回数を数え、Finishページ表示回数と合算して
+  // 合計4回になったらレビューお願いダイアログを表示する
+  // （表示自体はHomePage側でisreviewフラグにより一度だけ行う）
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final count = (prefs.getInt(reviewTriggerCountPrefKey) ?? 0) + 1;
+    await prefs.setInt(reviewTriggerCountPrefKey, count);
+    if (count == 4) {
+      container.read(reviewProvider.notifier).state = true;
+    }
+  } catch (e) {
+    // カウント失敗時は表示判定をスキップ（アプリ起動は継続する）
+    log('レビューカウンターの更新に失敗: $e');
+  }
 
   runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
 }

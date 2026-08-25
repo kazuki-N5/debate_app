@@ -14,7 +14,14 @@ import 'ad_helper.dart';
 /// タブ(対戦募集/掲示板/クラブ)ごとに独立した Provider を作ることで、
 /// タブ間でのインスタンス共有も回避している。
 class CommunityAdNotifier extends StateNotifier<Map<int, BannerAd>> {
-  CommunityAdNotifier() : super({});
+  final AdSize _size;
+
+  CommunityAdNotifier({AdSize size = AdSize.mediumRectangle})
+      : _size = size,
+        super({});
+
+  /// このタブで使う広告サイズ(プレースホルダーの高さと揃える)。
+  AdSize get adSize => _size;
 
   // ロード中スロット(多重ロード防止)
   final Set<int> _loading = {};
@@ -49,7 +56,7 @@ class CommunityAdNotifier extends StateNotifier<Map<int, BannerAd>> {
         // テスト/本番切り替えは AdHelper.mbannerAdUnitId が吸収する
         adUnitId: AdHelper.mbannerAdUnitId,
         request: const AdRequest(),
-        size: AdSize.mediumRectangle,
+        size: _size,
         listener: BannerAdListener(
           onAdLoaded: (loaded) {
             final banner = loaded as BannerAd;
@@ -78,17 +85,17 @@ class CommunityAdNotifier extends StateNotifier<Map<int, BannerAd>> {
 // 対戦募集タブ用 (CommunityPage 内の ListView)
 final communityRecruitAdProvider =
     StateNotifierProvider<CommunityAdNotifier, Map<int, BannerAd>>(
-  (ref) => CommunityAdNotifier(),
+  (ref) => CommunityAdNotifier(size: AdSize.largeBanner),
 );
 
 // 掲示板タブ用 (BbsTimelineView)
 final communityBbsAdProvider =
     StateNotifierProvider<CommunityAdNotifier, Map<int, BannerAd>>(
-  (ref) => CommunityAdNotifier(),
+  (ref) => CommunityAdNotifier(size: AdSize.mediumRectangle),
 );
 
-// クラブタブ用 (OpenChatRoomsView)
+// クラブタブ用 (OpenChatRoomsView) — 現在は広告非表示
 final communityClubAdProvider =
     StateNotifierProvider<CommunityAdNotifier, Map<int, BannerAd>>(
-  (ref) => CommunityAdNotifier(),
+  (ref) => CommunityAdNotifier(size: AdSize.mediumRectangle),
 );

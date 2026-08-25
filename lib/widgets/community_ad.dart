@@ -64,14 +64,14 @@ Widget communityAdWidget(BannerAd ad) {
 double homeBottomAdClearance() => 150.0;
 
 /// 広告未ロード時に同じ高さを確保するプレースホルダー。
-/// (`communityAdWidget` と同じ縦パディングで、ロード後にレイアウトが跳ねないようにする)
-Widget communityAdPlaceholder() {
+/// ([communityAdWidget] と同じ縦パディングで、ロード後にレイアウトが跳ねないようにする)
+Widget communityAdPlaceholder(AdSize size) {
   return Container(
     alignment: Alignment.center,
     padding: const EdgeInsets.symmetric(vertical: 16),
     color: Colors.white,
     child: SizedBox(
-      height: AdSize.mediumRectangle.height.toDouble(),
+      height: size.height.toDouble(),
     ),
   );
 }

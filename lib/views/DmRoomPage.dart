@@ -10,6 +10,7 @@ import 'package:debate_project/provider/dm_provider.dart';
 import 'package:debate_project/provider/image_upload_provider.dart';
 import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/utils/date_formatter.dart';
 import 'package:debate_project/widgets/moderation.dart';
 import 'package:debate_project/widgets/resba_attach_sheet.dart';
 import 'package:debate_project/widgets/resba_card.dart';
@@ -77,7 +78,8 @@ class DmRoomPage extends HookConsumerWidget {
         try {
           final prefs = await SharedPreferences.getInstance();
           hiddenMessageIds.value =
-              (prefs.getStringList('hidden_dm_message_ids') ?? const []).toSet();
+              (prefs.getStringList('hidden_dm_message_ids') ?? const [])
+                  .toSet();
         } catch (_) {}
       }
 
@@ -131,272 +133,308 @@ class DmRoomPage extends HookConsumerWidget {
       behavior: HitTestBehavior.opaque,
       child: Scaffold(
         backgroundColor: Colors.blue,
-      appBar: AppBar(
-        backgroundColor: Colors.blue,
-        surfaceTintColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            GestureDetector(
-              onTap: () {
-                context.push('/userProfile', extra: otherUserId);
-              },
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: Colors.grey[300],
-                backgroundImage:
-                    otherUserAvatar != null && otherUserAvatar!.isNotEmpty
-                        ? NetworkImage(otherUserAvatar!)
-                        : null,
-                child: otherUserAvatar == null || otherUserAvatar!.isEmpty
-                    ? Icon(Icons.person, size: 16, color: Colors.grey[600])
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                otherUserName,
-                style: AppTextStyles.notoSans(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+        appBar: AppBar(
+          backgroundColor: Colors.blue,
+          surfaceTintColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  context.push('/userProfile', extra: otherUserId);
+                },
+                child: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Colors.grey[300],
+                  backgroundImage:
+                      otherUserAvatar != null && otherUserAvatar!.isNotEmpty
+                      ? NetworkImage(otherUserAvatar!)
+                      : null,
+                  child: otherUserAvatar == null || otherUserAvatar!.isEmpty
+                      ? Icon(Icons.person, size: 16, color: Colors.grey[600])
+                      : null,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  otherUserName,
+                  style: AppTextStyles.notoSans(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            if (roomId != null)
+              IconButton(
+                icon: const Icon(
+                  Icons.menu_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
+                onPressed: () {
+                  final otherUser = Users(
+                    id: otherUserId,
+                    name: otherUserName,
+                    trophy: 0,
+                    avatar_url: otherUserAvatar,
+                  );
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, _, __) => IosSwipeBack(
+                        child: DmMenuView(roomId: roomId, otherUser: otherUser),
+                      ),
+                      transitionDuration: Duration.zero,
+                      reverseTransitionDuration: Duration.zero,
+                    ),
+                  );
+                },
+              ),
           ],
         ),
-        actions: [
-          if (roomId != null)
-            IconButton(
-              icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 26),
-              onPressed: () {
-                final otherUser = Users(
-                  id: otherUserId,
-                  name: otherUserName,
-                  trophy: 0,
-                  avatar_url: otherUserAvatar,
-                );
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (context, _, __) => IosSwipeBack(
-                      child: DmMenuView(
-                        roomId: roomId,
-                        otherUser: otherUser,
-                      ),
-                    ),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-      body: roomIdAsync.when(
-        loading: () => const Center(
-            child: CircularProgressIndicator(color: Colors.white)),
-        error: (err, stack) {
-          // ブロックされている場合は専用メッセージを表示
-          if (err.toString().contains('BLOCKED')) {
+        body: roomIdAsync.when(
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+          error: (err, stack) {
+            // ブロックされている場合は専用メッセージを表示
+            if (err.toString().contains('BLOCKED')) {
+              return Center(
+                child: Text(
+                  blockedByThem ? 'ブロックされてます' : 'ブロックしてます',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              );
+            }
             return Center(
               child: Text(
-                blockedByThem
-                    ? 'ブロックされているためDMを開始できません'
-                    : 'ブロックしたユーザーとのDMは開始できません',
-                style: const TextStyle(color: Colors.white70),
+                'エラー: $err',
+                style: const TextStyle(color: Colors.white),
               ),
             );
-          }
-          return Center(
-              child:
-                  Text('エラー: $err', style: const TextStyle(color: Colors.white)));
-        },
-        data: (rId) {
-          final resbasAsync = ref.watch(dmResbaProvider(rId));
-          final resbas = resbasAsync.valueOrNull ?? const <ResbaInvite>[];
-          return Column(
-            children: [
-              Expanded(
-                child: Container(
-                  color: Colors.blue,
-                  child: messagesAsync.when(
-                    loading: () => const Center(
-                        child: CircularProgressIndicator(color: Colors.white)),
-                    error: (err, stack) => Center(
-                        child: Text('エラー: $err',
-                            style: const TextStyle(color: Colors.white))),
-                    data: (rawMessages) {
-                      // 非表示にしたメッセージは一覧から除外する
-                      // (アイコン・名前の表示判定も「表示中のメッセージ」基準にするため、
-                      //  非表示1件を挟んだ隣接メッセージにも正しくアイコンが出る)
-                      final messages = rawMessages
-                          .where((m) =>
-                              !hiddenMessageIds.value.contains(m.id))
-                          .toList();
-                      if (messages.isEmpty) {
-                        return Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Text(
-                              'まだメッセージはありません',
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 13),
-                            ),
-                          ),
-                        );
-                      }
-                      return ListView.builder(
-                        controller: scrollController,
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        reverse: true,
-                        itemCount: messages.length,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 4),
-                        itemBuilder: (context, index) {
-                          final msg = messages[index];
-                          final isMe = msg.senderId == myId;
-
-                          final isSending = msg.id.startsWith('temp_');
-
-                          // アバター表示ロジック：相手の発言かつ、一つ前（古い方）の送信者と異なる場合に表示
-                          final showAvatar = !isMe &&
-                              (index == messages.length - 1 ||
-                                  messages[index + 1].senderId != msg.senderId);
-
-                          // このメッセージに付いたレスバ（アクティブのみ）
-                          final msgResbas = resbas
-                              .where((r) =>
-                                  r.attachType == 'dm' &&
-                                  r.attachId == msg.id &&
-                                  (r.isPending || r.isAccepted))
-                              .toList();
-
-                          Widget? attachedWidget;
-                          if (msgResbas.isNotEmpty) {
-                            attachedWidget = Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                for (final invite in msgResbas)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: ResbaCard(
-                                      invite: invite,
-                                      onChanged: () {
-                                        ref.invalidate(dmResbaProvider(rId));
-                                      },
-                                    ),
-                                  ),
-                              ],
-                            );
-                          }
-
-                          return Opacity(
-                            opacity: isSending ? 0.6 : 1.0,
-                            child: ChatMessageBubble(
-                              id: msg.id,
-                              content: msg.content,
-                              imageUrl: msg.imageUrl,
-                              isUserMessage: isMe,
-                              senderId: isMe ? myId : otherUserId,
-                              senderName: isMe ? 'あなた' : otherUserName,
-                              senderAvatarUrl: isMe ? null : otherUserAvatar,
-                              showAvatar: showAvatar,
-                              showSenderName: !isMe,
-                              replyToId: msg.replyToId,
-                              replyToContent: msg.replyToContent,
-                              replyToUserName: msg.replyToUserName,
-                              onReply: () {
-                                replyTarget.value = msg;
-                              },
-                              onTapReplyQuote: msg.replyToId != null
-                                  ? () => jumpToMessage(msg.replyToId!, messages)
-                                  : null,
-                              isHighlighted: highlightedDmId.value == msg.id,
-                              statusWidget: isMe ? _buildStatus(msg.id) : null,
-                              attachedWidget: attachedWidget,
-                              onHide: () => hideDmMessage(msg.id),
-                              onReport: () async {
-                                await showReportDialog(
-                                  context: context,
-                                  ref: ref,
-                                  opponentId: msg.senderId,
-                                  contentId: msg.id,
-                                  contentType: 'dm_message',
-                                  contentSnapshot: msg.imageUrl != null ? '[画像]' : msg.content,
-                                );
-                              },
-                              onDelete: isMe
-                                  ? () async {
-                                      hideDmMessage(msg.id);
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('メッセージを削除しました'),
-                                            duration: Duration(seconds: 1),
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  : null,
+          },
+          data: (rId) {
+            final resbasAsync = ref.watch(dmResbaProvider(rId));
+            final resbas = resbasAsync.valueOrNull ?? const <ResbaInvite>[];
+            return Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    color: Colors.blue,
+                    child: messagesAsync.when(
+                      loading: () => const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                      error: (err, stack) => Center(
+                        child: Text(
+                          'エラー: $err',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      data: (rawMessages) {
+                        // 非表示にしたメッセージは一覧から除外する
+                        // (アイコン・名前の表示判定も「表示中のメッセージ」基準にするため、
+                        //  非表示1件を挟んだ隣接メッセージにも正しくアイコンが出る)
+                        final messages = rawMessages
+                            .where(
+                              (m) => !hiddenMessageIds.value.contains(m.id),
+                            )
+                            .toList();
+                        if (messages.isEmpty) {
+                          return Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text(
+                                'まだメッセージはありません',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ),
                           );
-                        },
-                      );
-                    },
+                        }
+                        return ListView.builder(
+                          controller: scrollController,
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          reverse: true,
+                          itemCount: messages.length,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 4,
+                          ),
+                          itemBuilder: (context, index) {
+                            final msg = messages[index];
+                            final isMe = msg.senderId == myId;
+
+                            final isSending = msg.id.startsWith('temp_');
+
+                            // アバター表示ロジック：相手の発言かつ、一つ前（古い方）の送信者と異なる場合に表示
+                            final showAvatar =
+                                !isMe &&
+                                (index == messages.length - 1 ||
+                                    messages[index + 1].senderId !=
+                                        msg.senderId);
+
+                            // このメッセージに付いたレスバ（アクティブのみ）
+                            // 終了(finished)も残して観戦ログを見られるようにする（掲示板・オプチャと同じ）
+                            final msgResbas = resbas
+                                .where(
+                                  (r) =>
+                                      r.attachType == 'dm' &&
+                                      r.attachId == msg.id &&
+                                      (r.isPending ||
+                                          r.isAccepted ||
+                                          r.status == 'finished'),
+                                )
+                                .toList();
+
+                            Widget? attachedWidget;
+                            if (msgResbas.isNotEmpty) {
+                              attachedWidget = Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  for (final invite in msgResbas)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: ResbaCard(
+                                        invite: invite,
+                                        onChanged: () {
+                                          ref.invalidate(dmResbaProvider(rId));
+                                        },
+                                      ),
+                                    ),
+                                ],
+                              );
+                            }
+
+                            return Opacity(
+                              opacity: isSending ? 0.6 : 1.0,
+                              child: ChatMessageBubble(
+                                id: msg.id,
+                                content: msg.content,
+                                imageUrl: msg.imageUrl,
+                                isUserMessage: isMe,
+                                senderId: isMe ? myId : otherUserId,
+                                senderName: isMe ? 'あなた' : otherUserName,
+                                senderAvatarUrl: isMe ? null : otherUserAvatar,
+                                showAvatar: showAvatar,
+                                showSenderName: !isMe,
+                                replyToId: msg.replyToId,
+                                replyToContent: msg.replyToContent,
+                                replyToUserName: msg.replyToUserName,
+                                onReply: () {
+                                  replyTarget.value = msg;
+                                },
+                                onTapReplyQuote: msg.replyToId != null
+                                    ? () => jumpToMessage(
+                                        msg.replyToId!,
+                                        messages,
+                                      )
+                                    : null,
+                                isHighlighted: highlightedDmId.value == msg.id,
+                                statusWidget: isMe
+                                    ? _buildStatus(msg.id)
+                                    : null,
+                                timeLabel: DateFormatter.formatChatTime(
+                                  msg.createdAt,
+                                ),
+                                attachedWidget: attachedWidget,
+                                onHide: () => hideDmMessage(msg.id),
+                                onReport: () async {
+                                  await showReportDialog(
+                                    context: context,
+                                    ref: ref,
+                                    opponentId: msg.senderId,
+                                    contentId: msg.id,
+                                    contentType: 'dm_message',
+                                    contentSnapshot: msg.imageUrl != null
+                                        ? '[画像]'
+                                        : msg.content,
+                                  );
+                                },
+                                onDelete: isMe
+                                    ? () async {
+                                        hideDmMessage(msg.id);
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('メッセージを削除しました'),
+                                              duration: Duration(seconds: 1),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    : null,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              if (isBlocked)
-                Container(
-                  width: double.infinity,
-                  color: Colors.grey[200],
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  child: Text(
-                    blockedByThem
-                        ? 'ブロックされているためDMを送信できません'
-                        : 'ブロックしたユーザーです。DMを送信できません',
-                    style:
-                        AppTextStyles.notoSans(color: Colors.grey, fontSize: 12),
-                    textAlign: TextAlign.center,
+                if (isBlocked)
+                  Container(
+                    width: double.infinity,
+                    color: Colors.grey[200],
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    child: Text(
+                      blockedByThem ? 'ブロックされてます' : 'ブロックしてます',
+                      style: AppTextStyles.notoSans(
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                ),
-              if (!isBlocked)
-                _MessageInputWidget(
-                  roomId: rId,
-                  replyTarget: replyTarget,
-                  otherUserName: otherUserName,
-                ),
-            ],
-          );
-        },
+                if (!isBlocked)
+                  _MessageInputWidget(
+                    roomId: rId,
+                    replyTarget: replyTarget,
+                    otherUserName: otherUserName,
+                  ),
+              ],
+            );
+          },
+        ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildStatus(String messageId) {
-    String? statusText;
+    String statusText;
     Color statusColor = Colors.white70;
 
     if (messageId.startsWith('temp_')) {
-      statusText = null;
+      statusText = '送信中';
+      statusColor = Colors.white60;
     } else if (messageId.startsWith('error_')) {
       statusText = '✕';
       statusColor = Colors.redAccent;
@@ -404,17 +442,9 @@ class DmRoomPage extends HookConsumerWidget {
       statusText = '送信';
     }
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (statusText != null)
-          Text(
-            statusText,
-            style: AppTextStyles.notoSans(fontSize: 9, color: statusColor),
-          ),
-        const SizedBox(height: 4),
-      ],
+    return Text(
+      statusText,
+      style: AppTextStyles.notoSans(fontSize: 9, color: statusColor),
     );
   }
 }
@@ -516,15 +546,18 @@ class _MessageInputWidget extends HookConsumerWidget {
         // レスバ（写真）を送る感覚でレスバを添付
         final attachment = resbaAttachment.value;
         if (attachment != null && messageId != null) {
-          final result = await ref.read(resbaActionsProvider).sendDmResba(
+          final result = await ref
+              .read(resbaActionsProvider)
+              .sendDmResba(
                 messageId: messageId,
                 theme: attachment.theme,
                 choice1: attachment.choice1,
                 choice2: attachment.choice2,
               );
           if (result.error != null && context.mounted) {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text(result.error!)));
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(result.error!)));
           }
           ref.invalidate(dmResbaProvider(roomId));
         }
@@ -535,8 +568,9 @@ class _MessageInputWidget extends HookConsumerWidget {
         resbaAttachment.value = null;
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('送信エラー: $e')));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('送信エラー: $e')));
         }
       } finally {
         isUploading.value = false;
@@ -544,9 +578,7 @@ class _MessageInputWidget extends HookConsumerWidget {
     }
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
+      decoration: const BoxDecoration(color: Colors.white),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).padding.bottom + 4,
       ),
@@ -558,17 +590,10 @@ class _MessageInputWidget extends HookConsumerWidget {
           if (replyTarget.value != null)
             Container(
               color: const Color(0xFFEEF2FF),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.reply,
-                    size: 16,
-                    color: Color(0xFF4F46E5),
-                  ),
+                  const Icon(Icons.reply, size: 16, color: Color(0xFF4F46E5)),
                   const SizedBox(width: 6),
                   Expanded(
                     child: RichText(
@@ -606,11 +631,7 @@ class _MessageInputWidget extends HookConsumerWidget {
                     onTap: () => replyTarget.value = null,
                     child: const Padding(
                       padding: EdgeInsets.all(4.0),
-                      child: Icon(
-                        Icons.close,
-                        size: 16,
-                        color: Colors.black54,
-                      ),
+                      child: Icon(Icons.close, size: 16, color: Colors.black54),
                     ),
                   ),
                 ],
@@ -619,86 +640,92 @@ class _MessageInputWidget extends HookConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(left: 8, right: 2, top: 4),
             child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.image, color: Colors.grey),
-                onPressed: isUploading.value
-                    ? null
-                    : () async {
-                        final picker = ref.read(imageUploadProvider);
-                        final image = await picker.pickImage();
-                        if (image != null) {
-                          selectedImage.value = image;
-                        }
-                      },
-              ),
-              // ⚔️ レスバ（写真）を送る
-              IconButton(
-                icon: const Text('⚔️',
-                    style: TextStyle(fontSize: 20, color: Color(0xFF7856FF))),
-                onPressed: isUploading.value
-                    ? null
-                    : () async {
-                        final attachment = await showResbaAttachSheet(
-                          context,
-                          presetTheme: messageController.text.trim(),
-                        );
-                        if (attachment != null) {
-                          resbaAttachment.value = attachment;
-                        }
-                      },
-              ),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F3F3),
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(color: Colors.grey[300]!),
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.image, color: Colors.grey),
+                  onPressed: isUploading.value
+                      ? null
+                      : () async {
+                          final picker = ref.read(imageUploadProvider);
+                          final image = await picker.pickImage();
+                          if (image != null) {
+                            selectedImage.value = image;
+                          }
+                        },
+                ),
+                // ⚔️ レスバ（写真）を送る
+                IconButton(
+                  icon: const Text(
+                    '⚔️',
+                    style: TextStyle(fontSize: 20, color: Color(0xFF7856FF)),
                   ),
-                  child: TextField(
-                    controller: messageController,
-                    maxLength: 200,
-                    textAlignVertical: TextAlignVertical.center,
-                    style: AppTextStyles.notoSans(
-                        color: Colors.black, fontSize: 14),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      border: InputBorder.none,
-                      hintText: 'メッセージを入力',
-                      counterText: '',
-                      hintStyle:
-                          AppTextStyles.notoSans(color: Colors.grey[400]),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
+                  onPressed: isUploading.value
+                      ? null
+                      : () async {
+                          final attachment = await showResbaAttachSheet(
+                            context,
+                            presetTheme: messageController.text.trim(),
+                          );
+                          if (attachment != null) {
+                            resbaAttachment.value = attachment;
+                          }
+                        },
+                ),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F3F3),
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(color: Colors.grey[300]!),
                     ),
-                    maxLines: null,
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted:
-                        isUploading.value ? null : (_) => sendMessage(),
+                    child: TextField(
+                      controller: messageController,
+                      maxLength: 200,
+                      textAlignVertical: TextAlignVertical.center,
+                      style: AppTextStyles.notoSans(
+                        color: Colors.black,
+                        fontSize: 14,
+                      ),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        hintText: 'メッセージを入力',
+                        counterText: '',
+                        hintStyle: AppTextStyles.notoSans(
+                          color: Colors.grey[400],
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                      ),
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: isUploading.value
+                          ? null
+                          : (_) => sendMessage(),
+                    ),
                   ),
                 ),
-              ),
-              IconButton(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                constraints: const BoxConstraints(),
-                icon: isUploading.value
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.send, color: Colors.blue, size: 24),
-                onPressed: isUploading.value ? null : sendMessage,
-              ),
-            ],
+                IconButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  constraints: const BoxConstraints(),
+                  icon: isUploading.value
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send, color: Colors.blue, size: 24),
+                  onPressed: isUploading.value ? null : sendMessage,
+                ),
+              ],
+            ),
           ),
-        ),
-        if (selectedImage.value != null)
+          if (selectedImage.value != null)
             Padding(
-              padding:
-                  const EdgeInsets.only(top: 8.0, left: 48.0, bottom: 8.0),
+              padding: const EdgeInsets.only(top: 8.0, left: 48.0, bottom: 8.0),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -724,8 +751,11 @@ class _MessageInputWidget extends HookConsumerWidget {
                           color: Colors.black.withValues(alpha: 0.6),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.close,
-                            color: Colors.white, size: 16),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -734,11 +764,12 @@ class _MessageInputWidget extends HookConsumerWidget {
             ),
           if (resbaAttachment.value != null)
             Padding(
-              padding:
-                  const EdgeInsets.only(top: 8.0, left: 48.0, bottom: 8.0),
+              padding: const EdgeInsets.only(top: 8.0, left: 48.0, bottom: 8.0),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFAF8FF),
                   border: Border.all(color: const Color(0xFF7856FF)),
@@ -764,8 +795,11 @@ class _MessageInputWidget extends HookConsumerWidget {
                       onTap: () {
                         resbaAttachment.value = null;
                       },
-                      child:
-                          const Icon(Icons.close, size: 16, color: Colors.grey),
+                      child: const Icon(
+                        Icons.close,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
                     ),
                   ],
                 ),

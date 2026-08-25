@@ -92,6 +92,11 @@ flutter {
 
 
 dependencies {
-    implementation("com.revenuecat.purchases:purchases:8.15.1")
+    // NOTE: Do NOT pin com.revenuecat.purchases:purchases manually here.
+    // purchases_flutter resolves its native SDK (purchases-hybrid-common ->
+    // purchases-android 10.x -> Google Play Billing Library 8.3.0) automatically.
+    // Pinning an older version here (e.g. 8.15.1) downgraded the Google Play
+    // Billing Library to 7.1.1, which fails the Play Console requirement
+    // (must be >= 8.0.0 since 2026-08-31).
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

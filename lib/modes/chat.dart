@@ -4,7 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'chat.freezed.dart';
 
 @freezed
-class Chat with _$Chat {
+abstract class Chat with _$Chat {
   // クラス名は大文字始まり
   factory Chat({
     // コンストラクタも大文字

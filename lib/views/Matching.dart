@@ -19,6 +19,7 @@ import 'package:flutter_hooks/flutter_hooks.dart'; // flutter_hooksをインポ�
 import 'package:hooks_riverpod/hooks_riverpod.dart'; // hooks_riverpodをインポート
 import 'package:go_router/go_router.dart';
 import 'package:debate_project/adsence/ad_banner_provider.dart';
+import 'package:debate_project/adsence/ad_provider.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:developer';
@@ -127,10 +128,12 @@ class MatchingPage extends HookConsumerWidget {
               ),
             ),
             // バナー広告表示エリア
+            // ホームと同じ位置に揃える: ホームは bottom: circleNavBarHeight + adBottomPadding = 60 + 19.2 = 79.2
+            // で広告を底から約79px浮かせている。waitは下部に広い空間があるため、他UIは動かさず広告のみ嵩上げする。
             if (isSubscribe == false)
               if (bannerAd != null)
-                SafeArea(
-                  top: false,
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 79.2),
                   child: Container(
                     alignment: Alignment.center,
                     width: bannerAd.size.width.toDouble(),
@@ -139,11 +142,10 @@ class MatchingPage extends HookConsumerWidget {
                   ),
                 )
               else
-                SafeArea(
-                  top: false,
-                  child: Container(
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 79.2),
+                  child: SizedBox(
                     height: AdSize.banner.height.toDouble(),
-                    color: Colors.transparent,
                   ),
                 ),
           ],
@@ -388,6 +390,16 @@ class BattleTransitionScreen2 extends HookConsumerWidget {
           next.player2_go == true &&
           !(previous?.player1_go == true && previous?.player2_go == true)) {
         log('両者の準備完了 -> /choseに移動');
+        // インタースティシャル広告をプリロード（未購読時）
+        // 対戦開始より前にロード開始し、FinishPage表示時にロード済み広告を表示できるようにする。
+        // 既にロード済み/ロード中の場合は loadAd 内のガードにより自動的にスキップされる。
+        try {
+          if (!ref.read(inAppPurchaseManagerProvider).isSubscribed) {
+            ref.read(adNotifierProvider.notifier).loadAd();
+          }
+        } catch (e) {
+          debugPrint('Interstitial Ad: Preload on match start failed: $e');
+        }
         router.go('/chose');
       }
 

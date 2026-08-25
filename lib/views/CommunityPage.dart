@@ -9,7 +9,16 @@ import 'package:debate_project/views/open_chat/OpenChatRoomsView.dart';
 import 'package:debate_project/widgets/keep_alive_page.dart';
 import 'package:debate_project/widgets/resba_attach_sheet.dart';
 import 'package:debate_project/widgets/resba_card.dart';
+import 'package:debate_project/widgets/community_ad.dart';
+import 'package:debate_project/adsence/ad_community_provider.dart';
+import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:go_router/go_router.dart';
+
+/// 常時表示のバナー広告(非課金時のみ下部に浮かぶ)との重なりを避けるための余白。
+/// HomePage 側の計算(CircleNavBar 高さ 60 + 中央円の張り出し 19.2 + バナー高さ 50 =
+/// バナー上端が画面底から約 129)を確実にクリアできる値。
+/// 課金(広告なし)時はバナーが無いため、この余白は使わない。
+const double _floatingBannerClearance = 150.0;
 
 class CommunityPage extends HookConsumerWidget {
   final PageController? parentPageController;
@@ -23,14 +32,22 @@ class CommunityPage extends HookConsumerWidget {
     final tabController = useTabController(initialLength: 3);
     final pageController = usePageController(initialPage: 0);
 
+    // --- コミュニティ(対戦募集タブ)用の Medium Rectangle 広告 ---
+    // スロット index -> 個別の BannerAd(スロットごとに別インスタンス)
+    final recruitAds = ref.watch(communityRecruitAdProvider);
+    final isSubscribed = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xFFF3F3F3), // 背景色
       floatingActionButton: ListenableBuilder(
         listenable: tabController,
         builder: (context, _) {
+          // 常時表示バナー広告(非課金時)にプラスボタンが隠れないよう上へずらす。
+          // 課金(広告なし)時は従来どおりの位置に戻す。
+          final fabBottom = isSubscribed ? 70.0 : _floatingBannerClearance;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 70.0),
+            padding: EdgeInsets.only(bottom: fabBottom),
             child: FloatingActionButton(
               heroTag: null, // Heroアニメーションを無効化
               onPressed: () {
@@ -124,29 +141,97 @@ class CommunityPage extends HookConsumerWidget {
                           child: recruitAsync.when(
                             data: (invites) {
                               if (invites.isEmpty) {
+                                // 0件のときは広告のみ表示(課金で広告なしなら従来の空メッセージ)
+                                if (!isSubscribed) {
+                                  ref
+                                      .read(communityRecruitAdProvider
+                                          .notifier)
+                                      .prepare({0});
+                                  return ListView(
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    children: [
+                                      const SizedBox(height: 60),
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.fromLTRB(
+                                                16, 8, 16, 96),
+                                        child: recruitAds[0] != null
+                                            ? communityAdWidget(
+                                                recruitAds[0]!)
+                                            : communityAdPlaceholder(),
+                                      ),
+                                    ],
+                                  );
+                                }
                                 return ListView(
                                   physics: const AlwaysScrollableScrollPhysics(),
                                   children: const [
                                     SizedBox(height: 160),
                                     Center(
                                       child: Text(
-                                        '募集中のレスバはありません',
-                                        style: TextStyle(color: Colors.grey),
+                                        '募集中・対戦中のレスバはありません',
+                                        style:
+                                            TextStyle(color: Colors.grey),
                                       ),
                                     ),
                                   ],
                                 );
                               }
-                              return ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                                itemCount: invites.length,
-                                itemBuilder: (context, index) => ResbaCard(
-                                  invite: invites[index],
-                                  onChanged: () => ref
-                                      .read(recruitResbasProvider.notifier)
-                                      .fetch(),
-                                ),
-                              );
+                              return Builder(builder: (context) {
+                                // 対戦募集は件数が少ないので「3件ごとに1個」広告を挟む(開始位置はランダム)
+                                final adSlots = !isSubscribed
+                                    ? communityAdSlotIndexes(
+                                        invites.length,
+                                        3,
+                                        startContentIndex: ref
+                                            .read(
+                                                communityRecruitAdProvider
+                                                    .notifier)
+                                            .resolveFirstAdOffset(
+                                                invites.length, 1),
+                                      )
+                                    : <int>{};
+                                final totalItems =
+                                    invites.length + adSlots.length;
+
+                                // 各広告スロットに個別の広告をロード(多重ロードはProvider側で防止)
+                                if (adSlots.isNotEmpty) {
+                                  ref
+                                      .read(communityRecruitAdProvider.notifier)
+                                      .prepare(adSlots);
+                                }
+
+                                return ListView.builder(
+                                  // 常時表示バナー広告(非課金時)が下部に浮かぶため、その分
+                                  // スクロール下余白を増やし、一番下のカードまで隠れずに
+                                  // 表示できるようにする。課金(広告なし)は従来どおり。
+                                  padding: EdgeInsets.fromLTRB(
+                                      16,
+                                      8,
+                                      16,
+                                      isSubscribed
+                                          ? 96.0
+                                          : _floatingBannerClearance),
+                                  itemCount: totalItems,
+                                  itemBuilder: (context, index) {
+                                    if (adSlots.contains(index)) {
+                                      final slotAd = recruitAds[index];
+                                      return slotAd != null
+                                          ? communityAdWidget(slotAd)
+                                          : communityAdPlaceholder();
+                                    }
+                                    final inviteValue = invites[
+                                        communityContentIndex(
+                                            index, adSlots)];
+                                    return ResbaCard(
+                                      invite: inviteValue,
+                                      onChanged: () => ref
+                                          .read(recruitResbasProvider.notifier)
+                                          .fetch(),
+                                    );
+                                  },
+                                );
+                              });
                             },
                             loading: () =>
                                 const Center(child: CircularProgressIndicator()),

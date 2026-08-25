@@ -29,6 +29,9 @@ final opponentOfflineStatusProvider = StateProvider<int?>((ref) => null);
 final spectatorCommentEventProvider =
     StateProvider<({String text, int timestamp})?>((ref) => null);
 
+/// 観戦者数（presence から集計。観戦者が0人のときは0 → UI側で非表示）
+final spectatorCountProvider = StateProvider<int>((ref) => 0);
+
 // final goProvider = StateProvider<bool>((ref) => false);
 
 class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
@@ -84,6 +87,22 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
       }
     }
     return false;
+  }
+
+  // presence から観戦者数を集計して spectatorCountProvider に反映する
+  // （role == 'spectator' のエントリを user_id 単位で重複排除して数える）
+  void _updateSpectatorCount(RealtimeChannel channel) {
+    final spectatorUserIds = <String>{};
+    for (final p in channel.presenceState()) {
+      for (final meta in p.presences) {
+        final payload = meta.payload;
+        if (payload['role'] == 'spectator') {
+          final uid = payload['user_id']?.toString();
+          if (uid != null) spectatorUserIds.add(uid);
+        }
+      }
+    }
+    ref.read(spectatorCountProvider.notifier).state = spectatorUserIds.length;
   }
 
 
@@ -160,6 +179,8 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
                 ref.read(opponentOfflineStatusProvider.notifier).state = null;
               }
             }
+            // 観戦者数を集計
+            _updateSpectatorCount(channel);
           },
         )
         // ignore: invalid_use_of_internal_member
@@ -192,6 +213,8 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
                 _startOfflineTimer();
               }
             }
+            // 観戦者数を集計
+            _updateSpectatorCount(channel);
           },
         )
         .onBroadcast(
@@ -221,6 +244,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
             if (myUserId != null && _presenceChannel == channel) {
               await channel.track({
                 'user_id': myUserId,
+                'role': 'player', // 観戦者と区別するためのロール
                 'online_at': DateTime.now().toIso8601String(),
               });
             }
@@ -282,6 +306,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     WidgetsBinding.instance.removeObserver(this);
     _offlineTimer?.cancel(); // 追加
     ref.read(opponentOfflineStatusProvider.notifier).state = null;
+    ref.read(spectatorCountProvider.notifier).state = 0;
     ref.read(otherUserProvider.notifier).clear();
     ref.read(friendmatchProvider.notifier).state = false;
     state = MatchingRoom();
@@ -382,7 +407,7 @@ class MatchingRoomNotifier extends StateNotifier<MatchingRoom>
     }
     try {
       // データベース関数を呼び出してトランザクション処理を行う
-      final result = await supabase.rpc('join_room_v2', params: {
+      final result = await supabase.rpc('join_room_v2_v4', params: {
         'p_user_id': userId, // パラメータ名を SQL 関数に合わせる
         'p_room_password': password.isNotEmpty ? password : null,
         'p_room_theme': theme.isNotEmpty ? theme : null,

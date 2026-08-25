@@ -16,6 +16,9 @@ import 'package:debate_project/utils/date_formatter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:debate_project/widgets/full_screen_image_viewer.dart';
 import 'package:debate_project/widgets/moderation.dart';
+import 'package:debate_project/widgets/community_ad.dart';
+import 'package:debate_project/adsence/ad_community_provider.dart';
+import 'package:debate_project/view_model/Paypage_view_model.dart';
 
 class BbsTimelineView extends HookConsumerWidget {
   const BbsTimelineView({super.key});
@@ -25,11 +28,32 @@ class BbsTimelineView extends HookConsumerWidget {
     final timelineAsync = ref.watch(bbsTimelineProvider);
     ref.watch(currentUserIdProvider);
 
+    // --- コミュニティ(掲示板タブ)用の Medium Rectangle 広告 ---
+    // スロット index -> 個別の BannerAd(スロットごとに別インスタンス)
+    final bbsAds = ref.watch(communityBbsAdProvider);
+    final isSubscribed = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
+
         return Scaffold(
       backgroundColor: Colors.white,
       body: timelineAsync.when(
         data: (posts) {
           if (posts.isEmpty) {
+            // 0件のときは広告のみ表示(課金で広告なしなら従来の空メッセージ)
+            if (!isSubscribed) {
+              ref.read(communityBbsAdProvider.notifier).prepare({0});
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  const SizedBox(height: 60),
+                  Padding(
+                    padding: EdgeInsets.only(bottom: homeBottomAdClearance()),
+                    child: bbsAds[0] != null
+                        ? communityAdWidget(bbsAds[0]!)
+                        : communityAdPlaceholder(),
+                  ),
+                ],
+              );
+            }
             return Center(
               child: Text(
                 'まだ投稿がありません',
@@ -40,18 +64,55 @@ class BbsTimelineView extends HookConsumerWidget {
           return RefreshIndicator(
             onRefresh: () =>
                 ref.read(bbsTimelineProvider.notifier).fetchPosts(),
-            child: ListView.separated(
-              padding: EdgeInsets.only(
-                top: 4,
-                bottom: MediaQuery.of(context).padding.bottom + 80,
-              ),
-              itemCount: posts.length,
-              separatorBuilder: (context, index) => Divider(height: 1, thickness: 1, color: Colors.grey[200]),
-              itemBuilder: (context, index) {
-                final post = posts[index];
-                return BbsPostWidget(post: post);
-              },
-            ),
+            child: Builder(builder: (context) {
+              // 掲示板は長いフィードなので「6件ごとに1個」広告を挟む(開始位置はランダム)
+              final adSlots = !isSubscribed
+                  ? communityAdSlotIndexes(
+                      posts.length,
+                      6,
+                      startContentIndex: ref
+                          .read(communityBbsAdProvider.notifier)
+                          .resolveFirstAdOffset(posts.length, 1),
+                    )
+                  : <int>{};
+              final totalItems = posts.length + adSlots.length;
+
+              // 各広告スロットに個別の広告をロード(多重ロードはProvider側で防止)
+              if (adSlots.isNotEmpty) {
+                ref.read(communityBbsAdProvider.notifier).prepare(adSlots);
+              }
+
+              return ListView.separated(
+                padding: EdgeInsets.only(
+                  top: 4,
+                  // 非課金時は下部の常時表示バナーに被らないよう余白を広げる
+                  bottom: isSubscribed
+                      ? MediaQuery.of(context).padding.bottom + 80
+                      : homeBottomAdClearance(),
+                ),
+                itemCount: totalItems,
+                separatorBuilder: (context, index) =>
+                    // 広告の隣では区切り線を出さない(広告スロットは独立表示)
+                    adSlots.contains(index) || adSlots.contains(index + 1)
+                        ? const SizedBox.shrink()
+                        : Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: Colors.grey[200],
+                          ),
+                itemBuilder: (context, index) {
+                  if (adSlots.contains(index)) {
+                    final slotAd = bbsAds[index];
+                    return slotAd != null
+                        ? communityAdWidget(slotAd)
+                        : communityAdPlaceholder();
+                  }
+                  final post =
+                      posts[communityContentIndex(index, adSlots)];
+                  return BbsPostWidget(post: post);
+                },
+              );
+            }),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -65,7 +126,11 @@ class BbsTimelineView extends HookConsumerWidget {
 class BbsPostWidget extends ConsumerWidget {
   final BbsPost post;
 
-  const BbsPostWidget({super.key, required this.post});
+  /// true のとき本文・名前・画像を隠して「ブロックしたユーザーの投稿」を表示する
+  /// (タイムラインではブロック投稿は除外済みのため、主に投稿詳細画面の深堀り遷移用)
+  final bool isBlockedPlaceholder;
+
+  const BbsPostWidget({super.key, required this.post, this.isBlockedPlaceholder = false});
 
   static bool _isNavigating = false;
 
@@ -73,6 +138,35 @@ class BbsPostWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // ▼ ここを一箇所変えれば、すべてのアイコンのサイズがまとめて変わります ▼
     const double iconSize = 15.0;
+
+    // ブロックしたユーザーの投稿: 内容は一切見せない
+    if (isBlockedPlaceholder) {
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: Colors.grey[200],
+              child: Icon(Icons.block, color: Colors.grey[400], size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'ブロックしたユーザーの投稿です',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     final user = post.user;
     final userName = user?.name ?? '名無し';

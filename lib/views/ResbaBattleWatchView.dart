@@ -1,4 +1,4 @@
-// ignore_for_file: file_names, use_build_context_synchronously
+// ignore_for_file: file_names, use_build_context_synchronously, depend_on_referenced_packages
 import 'dart:async';
 import 'dart:developer';
 
@@ -11,12 +11,16 @@ import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/view_model/prohibited_view_model.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/widgets/floating_spectator_comments.dart';
+import 'package:debate_project/utils/date_formatter.dart';
 import 'package:debate_project/widgets/radar_chart_view.dart';
+import 'package:debate_project/widgets/spectator_count_badge.dart';
 import 'package:debate_project/widgets/chat/chat_message_bubble.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+// ignore: implementation_imports
+import 'package:realtime_client/src/types.dart' show ChannelFilter;
 
 /// レスバの観戦画面
 /// - 挑戦者（応募者/player2）視点の GamePage と全く同じUIでリアルタイムに観戦
@@ -67,6 +71,7 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
   bool _isRoomReconnecting = false;
   bool _isSpectatorReconnecting = false;
   bool _showChatInResult = false;
+  int _spectatorCount = 0; // 観戦者数（presence から集計）
   Set<String> _hiddenMessageIds = {};
 
   @override
@@ -191,7 +196,8 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
   }
 
   void _updateDeadline(MatchingRoom room) {
-    final isStarted = room.player1Choice != null &&
+    final isStarted =
+        room.player1Choice != null &&
         room.player2Choice != null &&
         room.player1Choice != room.player2Choice;
     if (isStarted && room.updatedAt != null) {
@@ -354,7 +360,9 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
               status == RealtimeSubscribeStatus.timedOut) {
             if (_isRoomReconnecting) return;
             _isRoomReconnecting = true;
-            log('⚠️ [観戦ルーム同期] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
+            log(
+              '⚠️ [観戦ルーム同期] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続',
+            );
             await Future.delayed(const Duration(seconds: 3));
             if (!mounted || _isDisposed || _roomChannel != channel) {
               _isRoomReconnecting = false;
@@ -378,7 +386,10 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
         });
   }
 
-  void _subscribeSpectatorBroadcast(String roomId, {String reason = '初回接続'}) async {
+  void _subscribeSpectatorBroadcast(
+    String roomId, {
+    String reason = '初回接続',
+  }) async {
     if (!mounted || _isDisposed) return;
 
     if (_spectatorBroadcastChannel != null) {
@@ -404,20 +415,55 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
             }
           },
         )
+        // 観戦者数を集計するための presence 監視
+        // （matching_provider と同じく、高レイヤーの onPresenceSync は本番で
+        //   発火しない既知バグがあるため生の Phoenix イベントを直接リスニング）
+        // ignore: invalid_use_of_internal_member
+        .onEvents('presence_state', const ChannelFilter(), (payload, [_]) {
+          if (!mounted ||
+              _isDisposed ||
+              _spectatorBroadcastChannel != channel) {
+            return;
+          }
+          _updateSpectatorCount(channel);
+        })
+        // ignore: invalid_use_of_internal_member
+        .onEvents('presence_diff', const ChannelFilter(), (payload, [_]) {
+          if (!mounted ||
+              _isDisposed ||
+              _spectatorBroadcastChannel != channel) {
+            return;
+          }
+          _updateSpectatorCount(channel);
+        })
         .subscribe((status, [error]) async {
-          if (!mounted || _isDisposed || _spectatorBroadcastChannel != channel) return;
+          if (!mounted || _isDisposed || _spectatorBroadcastChannel != channel)
+            return;
 
           if (status == RealtimeSubscribeStatus.subscribed) {
             log('✅ [観戦コメント] 接続成功 (理由: $reason, roomId: $roomId)');
             _isSpectatorReconnecting = false;
+            // 観戦者として presence に参加（観戦者数の集計に含める）
+            final myUserId = ref.read(currentUserIdProvider);
+            if (myUserId != null && _spectatorBroadcastChannel == channel) {
+              await channel.track({
+                'user_id': myUserId,
+                'role': 'spectator', // 対戦者(player)と区別するためのロール
+                'joined_at': DateTime.now().toIso8601String(),
+              });
+            }
           } else if (status == RealtimeSubscribeStatus.closed ||
               status == RealtimeSubscribeStatus.channelError ||
               status == RealtimeSubscribeStatus.timedOut) {
             if (_isSpectatorReconnecting) return;
             _isSpectatorReconnecting = true;
-            log('⚠️ [観戦コメント] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続');
+            log(
+              '⚠️ [観戦コメント] 切断/エラー/タイムアウト検知 (status: $status, error: $error) ➔ 3秒後に再接続',
+            );
             await Future.delayed(const Duration(seconds: 3));
-            if (!mounted || _isDisposed || _spectatorBroadcastChannel != channel) {
+            if (!mounted ||
+                _isDisposed ||
+                _spectatorBroadcastChannel != channel) {
               _isSpectatorReconnecting = false;
               return;
             }
@@ -471,12 +517,30 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
     });
   }
 
+  // presence から観戦者数（role == 'spectator' を user_id 単位で重複排除）を集計
+  void _updateSpectatorCount(RealtimeChannel channel) {
+    final spectatorUserIds = <String>{};
+    for (final p in channel.presenceState()) {
+      for (final meta in p.presences) {
+        final payload = meta.payload;
+        if (payload['role'] == 'spectator') {
+          final uid = payload['user_id']?.toString();
+          if (uid != null) spectatorUserIds.add(uid);
+        }
+      }
+    }
+    if (mounted && !_isDisposed) {
+      setState(() => _spectatorCount = spectatorUserIds.length);
+    }
+  }
+
   int? get _remainingSeconds {
     if (!_isBattleStarted) return null;
     final deadline = _deadline;
     if (deadline == null) return null;
-    final estimatedServerTime =
-        DateTime.now().add(_timeOffset ?? Duration.zero);
+    final estimatedServerTime = DateTime.now().add(
+      _timeOffset ?? Duration.zero,
+    );
     final diff = deadline.difference(estimatedServerTime).inSeconds;
     return diff >= 0 ? diff : 0;
   }
@@ -523,7 +587,10 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
         backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.blue,
-          title: Text('観戦', style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
+          title: Text(
+            '観戦',
+            style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
+          ),
           iconTheme: const IconThemeData(color: Colors.white),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
@@ -541,8 +608,10 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                 Text(
                   _error!,
                   textAlign: TextAlign.center,
-                  style:
-                      AppTextStyles.notoSans(fontSize: 14, color: Colors.grey),
+                  style: AppTextStyles.notoSans(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
                 ),
               ],
             ),
@@ -555,9 +624,7 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
     if (room == null) {
       return const Scaffold(
         backgroundColor: Colors.blue,
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
       );
     }
 
@@ -639,7 +706,9 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                           child: Center(
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 15, vertical: 6),
+                                horizontal: 15,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.grey[200],
                                 borderRadius: BorderRadius.circular(16),
@@ -672,7 +741,8 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                             ),
                           ),
                         ),
-                        // 右に配置するボタン（コメント非表示 ＆ 退出）
+                        // 右に配置するボタン（観戦者数 ＆ コメント非表示 ＆ 退出）
+                        // 時計とドアの間には観戦者数とコメントON/OFFを等間隔で並べる
                         Expanded(
                           flex: 1,
                           child: Padding(
@@ -680,6 +750,10 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
+                                // 観戦者数バッジ（0人のときは非表示）
+                                if (_spectatorCount > 0)
+                                  SpectatorCountBadge(count: _spectatorCount),
+                                const SizedBox(width: 8),
                                 IconButton(
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
@@ -757,9 +831,13 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.9,
                       margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(20),
@@ -793,16 +871,21 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                 ? Center(
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 8),
+                                        horizontal: 16,
+                                        vertical: 8,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.15),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         borderRadius: BorderRadius.circular(16),
                                       ),
                                       child: const Text(
                                         '対戦開始！発言を待っています...',
                                         style: TextStyle(
-                                            color: Colors.white, fontSize: 13),
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                        ),
                                       ),
                                     ),
                                   )
@@ -811,7 +894,9 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                     reverse: true,
                                     itemCount: _messages.length,
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 4, vertical: 4),
+                                      horizontal: 4,
+                                      vertical: 4,
+                                    ),
                                     itemBuilder: (context, index) {
                                       final chat = _messages[index];
                                       // 挑戦者側（応募者側＝player2）を自分側として右に配置
@@ -821,8 +906,8 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                       // 連続発言の最初（一番上）のメッセージかどうか
                                       final bool isFirstOfSequence =
                                           index == _messages.length - 1 ||
-                                              _messages[index + 1].senderId !=
-                                                  chat.senderId;
+                                          _messages[index + 1].senderId !=
+                                              chat.senderId;
 
                                       return ChatMessageBubble(
                                         id: chat.id,
@@ -838,8 +923,12 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                             : _avatarOf(room.player1Id),
                                         showAvatar: isFirstOfSequence,
                                         showMyAvatar: isFirstOfSequence,
-                                        hasMyAvatarColumn: true, // 右側アバター列スペースを確保
+                                        hasMyAvatarColumn:
+                                            true, // 右側アバター列スペースを確保
                                         showSenderName: true, // アイコン表示時のみ名前が出る
+                                        timeLabel: DateFormatter.formatChatTime(
+                                          chat.createdAt,
+                                        ),
                                       );
                                     },
                                   ),
@@ -882,9 +971,7 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
   // ==========================================
   Widget _buildCommentInputBar() {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
+      decoration: const BoxDecoration(color: Colors.white),
       padding: EdgeInsets.only(
         left: 8,
         right: 2,
@@ -914,9 +1001,7 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                   border: InputBorder.none,
                   hintText: 'コメントする',
                   counterText: '',
-                  hintStyle: AppTextStyles.notoSans(
-                    color: Colors.grey[400],
-                  ),
+                  hintStyle: AppTextStyles.notoSans(color: Colors.grey[400]),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 10,
@@ -1012,8 +1097,10 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('詳細・分析',
-            style: AppTextStyles.bold(color: Colors.white, fontSize: 20)),
+        title: Text(
+          '詳細・分析',
+          style: AppTextStyles.bold(color: Colors.white, fontSize: 20),
+        ),
         backgroundColor: Colors.blue,
         elevation: 0,
         leading: IconButton(
@@ -1067,7 +1154,8 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                     child: Column(
                       children: [
                         // --- 両者の選択肢 VS対峙カード ---
-                        if (hostChoice.isNotEmpty || challengerChoice.isNotEmpty) ...[
+                        if (hostChoice.isNotEmpty ||
+                            challengerChoice.isNotEmpty) ...[
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
@@ -1089,23 +1177,41 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                           CircleAvatar(
                                             radius: 18,
                                             backgroundColor: Colors.blue[100],
-                                            backgroundImage: _avatarOf(room.player1Id) != null &&
-                                                    _avatarOf(room.player1Id)!.isNotEmpty
+                                            backgroundImage:
+                                                _avatarOf(room.player1Id) !=
+                                                        null &&
+                                                    _avatarOf(
+                                                      room.player1Id,
+                                                    )!.isNotEmpty
                                                 ? ResizeImage(
-                                                    NetworkImage(_avatarOf(room.player1Id)!),
-                                                    width: 72)
+                                                    NetworkImage(
+                                                      _avatarOf(
+                                                        room.player1Id,
+                                                      )!,
+                                                    ),
+                                                    width: 72,
+                                                  )
                                                 : null,
-                                            child: _avatarOf(room.player1Id) == null ||
-                                                    _avatarOf(room.player1Id)!.isEmpty
-                                                ? Icon(Icons.person,
-                                                    size: 20, color: Colors.blue[700])
+                                            child:
+                                                _avatarOf(room.player1Id) ==
+                                                        null ||
+                                                    _avatarOf(
+                                                      room.player1Id,
+                                                    )!.isEmpty
+                                                ? Icon(
+                                                    Icons.person,
+                                                    size: 20,
+                                                    color: Colors.blue[700],
+                                                  )
                                                 : null,
                                           ),
                                           const SizedBox(height: 6),
                                           Text(
                                             hostName,
                                             style: AppTextStyles.bold(
-                                                fontSize: 11, color: Colors.grey[800]),
+                                              fontSize: 11,
+                                              color: Colors.grey[800],
+                                            ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
@@ -1113,16 +1219,23 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                           Container(
                                             width: double.infinity,
                                             padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 5),
+                                              horizontal: 6,
+                                              vertical: 5,
+                                            ),
                                             decoration: BoxDecoration(
                                               color: Colors.blue,
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: Text(
-                                              hostChoice.isNotEmpty ? hostChoice : '未選択',
+                                              hostChoice.isNotEmpty
+                                                  ? hostChoice
+                                                  : '未選択',
                                               textAlign: TextAlign.center,
                                               style: AppTextStyles.bold(
-                                                  fontSize: 11, color: Colors.white),
+                                                fontSize: 11,
+                                                color: Colors.white,
+                                              ),
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -1138,23 +1251,41 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                           CircleAvatar(
                                             radius: 18,
                                             backgroundColor: Colors.red[100],
-                                            backgroundImage: _avatarOf(room.player2Id) != null &&
-                                                    _avatarOf(room.player2Id)!.isNotEmpty
+                                            backgroundImage:
+                                                _avatarOf(room.player2Id) !=
+                                                        null &&
+                                                    _avatarOf(
+                                                      room.player2Id,
+                                                    )!.isNotEmpty
                                                 ? ResizeImage(
-                                                    NetworkImage(_avatarOf(room.player2Id)!),
-                                                    width: 72)
+                                                    NetworkImage(
+                                                      _avatarOf(
+                                                        room.player2Id,
+                                                      )!,
+                                                    ),
+                                                    width: 72,
+                                                  )
                                                 : null,
-                                            child: _avatarOf(room.player2Id) == null ||
-                                                    _avatarOf(room.player2Id)!.isEmpty
-                                                ? Icon(Icons.person,
-                                                    size: 20, color: Colors.red[700])
+                                            child:
+                                                _avatarOf(room.player2Id) ==
+                                                        null ||
+                                                    _avatarOf(
+                                                      room.player2Id,
+                                                    )!.isEmpty
+                                                ? Icon(
+                                                    Icons.person,
+                                                    size: 20,
+                                                    color: Colors.red[700],
+                                                  )
                                                 : null,
                                           ),
                                           const SizedBox(height: 6),
                                           Text(
                                             challengerName,
                                             style: AppTextStyles.bold(
-                                                fontSize: 11, color: Colors.grey[800]),
+                                              fontSize: 11,
+                                              color: Colors.grey[800],
+                                            ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
@@ -1162,10 +1293,13 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                           Container(
                                             width: double.infinity,
                                             padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 5),
+                                              horizontal: 6,
+                                              vertical: 5,
+                                            ),
                                             decoration: BoxDecoration(
                                               color: Colors.red,
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: Text(
                                               challengerChoice.isNotEmpty
@@ -1173,7 +1307,9 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                                   : '未選択',
                                               textAlign: TextAlign.center,
                                               style: AppTextStyles.bold(
-                                                  fontSize: 11, color: Colors.white),
+                                                fontSize: 11,
+                                                color: Colors.white,
+                                              ),
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -1190,10 +1326,15 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                   decoration: BoxDecoration(
                                     color: Colors.grey[850],
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 2),
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.15),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
                                       ),
@@ -1203,7 +1344,9 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                                     child: Text(
                                       'VS',
                                       style: AppTextStyles.bold(
-                                          fontSize: 9, color: Colors.white),
+                                        fontSize: 9,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1302,8 +1445,7 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
   // ==========================================
   Widget _buildChatLogView(MatchingRoom room) {
     // 時系列順（古い順：上から下へスクロール）
-    final visibleMessages = _messages
-        .reversed
+    final visibleMessages = _messages.reversed
         .where((chat) => !_hiddenMessageIds.contains(chat.id))
         .toList();
 
@@ -1329,7 +1471,10 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
               child: Container(
                 width: MediaQuery.of(context).size.width * 0.9,
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.grey[200],
                   borderRadius: BorderRadius.circular(20),
@@ -1356,15 +1501,18 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                   ),
                 ),
                 child: ListView.builder(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 16,
+                  ),
                   itemCount: visibleMessages.length,
                   itemBuilder: (context, index) {
                     final chat = visibleMessages[index];
                     // 挑戦者側（応募者側＝player2）を自分側（右側）、ホスト（player1）を相手側（左側）に配置
                     final isUserMessage = chat.senderId == room.player2Id;
 
-                    final bool showAvatar = index == 0 ||
+                    final bool showAvatar =
+                        index == 0 ||
                         visibleMessages[index - 1].senderId != chat.senderId;
 
                     return ChatMessageBubble(
@@ -1383,13 +1531,15 @@ class _ResbaBattleWatchViewState extends ConsumerState<ResbaBattleWatchView>
                       showMyAvatar: showAvatar,
                       hasMyAvatarColumn: true,
                       showSenderName: true,
+                      timeLabel: DateFormatter.formatChatTime(chat.createdAt),
                       replyToId: chat.replyToId,
                       replyToContent: chat.replyToContent,
                       replyToUserName: chat.replyToUserName,
                       onHide: () => _hideMessage(chat.id),
                       onReport: () async {
-                        final prohibitedService =
-                            ref.read(prohibitedServiceProvider);
+                        final prohibitedService = ref.read(
+                          prohibitedServiceProvider,
+                        );
                         await prohibitedService.sendProhibited(
                           context: context,
                           opponentId: chat.senderId,

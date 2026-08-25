@@ -67,7 +67,8 @@ class BbsCommentNotifier extends StateNotifier<AsyncValue<List<BbsComment>>> {
     try {
       final supabase = _ref.read(supabaseProvider);
       final currentUserId = _ref.read(currentUserIdProvider);
-      // ブロック済みユーザーのコメントは表示しない
+      // ブロック済みユーザーのコメントは保持し、表示側で「ブロックしたユーザーのコメント」にする
+      // (さらにそのコメントへの返信は下のhasBlockedAncestorでサブツリーごと非表示)
       final blocked = _ref.read(blockedUserIdsProvider).toSet();
 
       // コメント一覧を取得 (古い順、いいねフラグ付き)
@@ -90,13 +91,28 @@ class BbsCommentNotifier extends StateNotifier<AsyncValue<List<BbsComment>>> {
         allComments.add(comment);
       }
 
-      // ブロック済みユーザーのコメントを除外
-      allComments = allComments.where((c) => !blocked.contains(c.userId)).toList();
+      // ブロック済みユーザーのコメントは除外せずに保持する。
+      // (コメント自体は「ブロックしたユーザーのコメント」プレースホルダーとして表示し、
+      //   そのコメントへの返信(サブツリー)は非表示にする)
 
       // すべてのコメントをMapに保持しておく
       Map<String, BbsComment> commentMap = {};
       for (var c in allComments) {
         commentMap[c.id] = c;
+      }
+
+      // あるコメントの祖先(親・祖父…)にブロック済みユーザーのコメントがいるか
+      // (ブロック済みユーザーのコメントへの返信はサブツリーごと非表示にする)
+      bool hasBlockedAncestor(BbsComment c) {
+        var parentId = c.parentCommentId;
+        final visited = <String>{};
+        while (parentId != null && visited.add(parentId)) {
+          final parent = commentMap[parentId];
+          if (parent == null) break;
+          if (blocked.contains(parent.userId)) return true;
+          parentId = parent.parentCommentId;
+        }
+        return false;
       }
 
       // あるコメントの最も大元のルートコメント(parentCommentIdがnullのコメント)のIDを探す関数
@@ -121,6 +137,8 @@ class BbsCommentNotifier extends StateNotifier<AsyncValue<List<BbsComment>>> {
       // 子孫コメントを対応するルートのリストに追加
       for (var c in allComments) {
         if (c.parentCommentId != null) {
+          // ブロック済みユーザーのコメントへの返信(サブツリー)は非表示
+          if (hasBlockedAncestor(c)) continue;
           final rootId = findRootId(c.parentCommentId);
           if (rootId != null && repliesMap.containsKey(rootId)) {
             repliesMap[rootId]!.add(c);

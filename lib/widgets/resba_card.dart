@@ -152,10 +152,8 @@ class ResbaCard extends ConsumerWidget {
           ];
         }
       }
-    } else if (invite.status == 'finished' &&
-        invite.battleRoomId != null &&
-        invite.attachType != 'dm') {
-      // 対戦終了: 観戦ログは消さずに残す（クリックで閲覧）
+    } else if (invite.status == 'finished' && invite.battleRoomId != null) {
+      // 対戦終了: 観戦ログは消さずに残す（クリックで閲覧・DM含む）
       actionButtons = [
         _ActionButton(
           label: '観戦ログを見る',
@@ -255,13 +253,6 @@ class ResbaCard extends ConsumerWidget {
                   ),
                 ),
               ],
-            ),
-          ],
-          if (invite.status == 'finished') ...[
-            const SizedBox(height: 6),
-            Text(
-              '⚔️ 対戦が終了しました・観戦ログを見る',
-              style: AppTextStyles.bold(fontSize: 12, color: Colors.grey),
             ),
           ],
           if (actionButtons.isNotEmpty) ...[

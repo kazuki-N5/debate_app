@@ -5,6 +5,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:popover/popover.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:debate_project/widgets/chat/chat_message_bubble.dart';
+import 'package:debate_project/utils/date_formatter.dart';
 
 // プロジェクトのパスに合わせて調整してください
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -128,7 +129,8 @@ class MessageBubble extends HookConsumerWidget {
       senderName: isUserMessage ? myName : opponentName,
       senderAvatarUrl: isUserMessage ? myAvatarUrl : opponentAvatarUrl,
       showAvatar: showAvatar,
-      showSenderName: !isUserMessage && (opponentName != null && opponentName!.isNotEmpty),
+      showSenderName:
+          !isUserMessage && (opponentName != null && opponentName!.isNotEmpty),
       replyToId: chat.replyToId,
       replyToContent: chat.replyToContent,
       replyToUserName: chat.replyToUserName,
@@ -136,6 +138,7 @@ class MessageBubble extends HookConsumerWidget {
       onTapReplyQuote: onTapReplyQuote,
       isHighlighted: isHighlighted,
       statusWidget: _buildStatus(),
+      timeLabel: DateFormatter.formatChatTime(chat.createdAt),
       onHide: onHide,
       onReport: () async {
         final prohibitedService = ref.read(prohibitedServiceProvider);
@@ -155,28 +158,20 @@ class MessageBubble extends HookConsumerWidget {
   Widget? _buildStatus() {
     if (!isUserMessage) return null;
 
-    String? statusText;
+    String statusText;
     Color statusColor = Colors.black54;
 
     if (chat.id.startsWith('temp_')) {
-      return null;
+      statusText = '送信中';
     } else if (chat.id.startsWith('error_')) {
       statusText = '✕';
-      statusColor = Colors.black54;
     } else {
       statusText = '送信';
     }
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          statusText,
-          style: AppTextStyles.notoSans(fontSize: 9, color: statusColor),
-        ),
-        const SizedBox(height: 4),
-      ],
+    return Text(
+      statusText,
+      style: AppTextStyles.notoSans(fontSize: 9, color: statusColor),
     );
   }
 }
@@ -213,11 +208,7 @@ class PopoverButton extends StatelessWidget {
   final String text;
   final VoidCallback onTap;
 
-  const PopoverButton({
-    super.key,
-    required this.text,
-    required this.onTap,
-  });
+  const PopoverButton({super.key, required this.text, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

@@ -420,8 +420,7 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
             if (isPending ||
                 isAccepted ||
                 (invite.status == 'finished' &&
-                    invite.battleRoomId != null &&
-                    invite.attachType != 'dm')) ...[
+                    invite.battleRoomId != null)) ...[
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -459,9 +458,8 @@ class _MyResbaListPageState extends ConsumerState<MyResbaListPage> {
                       ),
                     )
                   else if (invite.status == 'finished' &&
-                      invite.battleRoomId != null &&
-                      invite.attachType != 'dm')
-                    // 対戦終了: 観戦ログは消さずに残す（クリックで閲覧）
+                      invite.battleRoomId != null)
+                    // 対戦終了: 観戦ログは消さずに残す（クリックで閲覧・DM含む）
                     Expanded(
                       child: _actionButton(
                         label: '観戦ログを見る',

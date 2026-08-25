@@ -1,5 +1,6 @@
 // ignore_for_file: file_names, avoid_print, use_build_context_synchronously
 import 'dart:developer';
+import 'dart:math' hide log; // dart:math の log は dart:developer の log と衝突するため除外
 
 import 'package:circle_nav_bar/circle_nav_bar.dart';
 import 'package:debate_project/adsence/ad_banner_provider.dart';
@@ -334,6 +335,22 @@ class HomePage extends HookConsumerWidget {
 
     double a = 25;
     double bigicon = 290;
+
+    // --- ボトムバーの円と広告の重なり対策 ---
+    // ボトムバーの高さは既存レイアウトで確保されているため、
+    // 広告には中央円の張り出し分だけ下余白を設ける。
+    const double circleNavWidth = 60.0; // CircleNavBar の circleWidth 指定値
+    const double circleNavR = circleNavWidth / 2 * 1.2; // getR: 60/2*1.2 = 36
+    const double circleNavMiniRadius = circleNavR * 0.3; // getMiniRadius: 36*0.3 = 10.8
+    const double adBottomPadding =
+        circleNavWidth * 0.5 - circleNavMiniRadius; // 30 - 10.8 = 19.2
+    // CircleNavBar 自体の高さ(バナーをナビバーの上に浮かせるために使用)
+    const double circleNavBarHeight = 60.0;
+    // ボタン(フレンド対戦⇄ランダムマッチ)同士の間隔。
+    // ランダムマッチ⇄バナー広告の間隔もこの値に揃える。
+    const double buttonGap = 16.0;
+    // 下部ボタンブロックの下パディング。EdgeInsets.all(20.0) の bottom と揃える。
+    const double footerButtonBlockPadding = 20.0;
 
     // --- メインのbuildメソッド ---
     return Scaffold(
@@ -718,7 +735,7 @@ class HomePage extends HookConsumerWidget {
                                           Container(
                                             width: double.infinity,
                                             margin: const EdgeInsets.only(
-                                                bottom: 16),
+                                                bottom: buttonGap),
                                             child: ElevatedButton(
                                               onPressed: () {
                                                 // 新しいカスタムダイアログを表示
@@ -860,36 +877,39 @@ class HomePage extends HookConsumerWidget {
                                         ],
                                       ),
                                     ),
-
-                                    // --- バナー広告表示エリア ---
-                                    if (ref
-                                            .watch(inAppPurchaseManagerProvider)
-                                            .isSubscribed ==
-                                        false)
-                                      if (bannerAd != null)
-                                        Container(
-                                          alignment:
-                                              Alignment.center, // 広告を水平方向に中央揃え
-                                          width: bannerAd.size.width.toDouble(),
-                                          height:
-                                              bannerAd.size.height.toDouble(),
-                                          child: AdWidget(
-                                              ad: bannerAd), // ロードされた広告ウィジェット
-                                        )
-                                      else
-                                        // オプション: ロード中や失敗時にプレースホルダーを表示
-                                        Container(
-                                          height: AdSize.banner.height
-                                              .toDouble(), // 広告の高さ分のスペースを確保
-                                          color: Colors.blue, // プレースホルダーの背景色
+                                    // --- 広告表示時(非課金)はボタンを上に詰める ---
+                                    // 常時表示バナー(ナビバーの上＝広告下部が起点)とボタンが
+                                    // 重ならないよう余白を確保する。間隔は「ボタン同士の間隔」
+                                    // (=buttonGap)と同じにする。
+                                    // SafeArea の下パディングは extendBody:true により
+                                    // max(システム下インセット, circleNavBarHeight) になるが、
+                                    // この build の context は外側の Scaffold より上なので
+                                    // MediaQuery.of(context).padding.bottom はシステムインセット
+                                    // しか返さない。そのため max() で SafeArea と同じ値を引く。
+                                    if (!ref.watch(inAppPurchaseManagerProvider)
+                                        .isSubscribed)
+                                      SizedBox(
+                                        height: max(
+                                          0,
+                                          circleNavBarHeight +
+                                              adBottomPadding +
+                                              (bannerAd?.size.height ??
+                                                  AdSize.banner.height) +
+                                              buttonGap -
+                                              footerButtonBlockPadding -
+                                              max(
+                                                MediaQuery.of(context)
+                                                    .padding
+                                                    .bottom,
+                                                circleNavBarHeight,
+                                              ),
                                         ),
-                                    // --- バナー広告表示エリア 終了 ---
+                                      ),
                                   ],
                                 ),
                               ],
                             ),
                           ),
-
                           // 前景レイヤー：画面の中央に画像を配置
                           IgnorePointer(
                             child: Center(
@@ -916,6 +936,25 @@ class HomePage extends HookConsumerWidget {
                   : const SizedBox.shrink(), // 2: メッセージ
             ],
           ),
+
+          // --- 常時表示のバナー広告(全タブ共通でボトムバーの上に浮かせる) ---
+          if (!ref.watch(inAppPurchaseManagerProvider).isSubscribed)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: circleNavBarHeight + adBottomPadding,
+              child: bannerAd != null
+                  ? Container(
+                      alignment: Alignment.center, // 水平中央揃え
+                      width: bannerAd.size.width.toDouble(),
+                      height: bannerAd.size.height.toDouble(),
+                      child: AdWidget(ad: bannerAd),
+                    )
+                  : Container(
+                      height: AdSize.banner.height.toDouble(),
+                      color: Colors.transparent,
+                    ),
+            ),
         ],
       ),
       bottomNavigationBar: Container(

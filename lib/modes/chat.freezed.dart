@@ -1,6 +1,6 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
-// ignore_for_file: type=lint
+// coverage:ignore-file
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'chat.dart';
@@ -9,327 +9,288 @@ part of 'chat.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
-
 /// @nodoc
 mixin _$Chat {
-  // コンストラクタも大文字
-  String get id => throw _privateConstructorUsedError; // セミコロンではなくカンマ
-  String get roomId => throw _privateConstructorUsedError;
-  String get senderId => throw _privateConstructorUsedError;
-  String get content => throw _privateConstructorUsedError;
-  DateTime get createdAt => throw _privateConstructorUsedError;
-  String? get imageUrl => throw _privateConstructorUsedError;
-  String? get replyToId => throw _privateConstructorUsedError;
-  String? get replyToContent => throw _privateConstructorUsedError;
-  String? get replyToUserName => throw _privateConstructorUsedError;
 
-  /// Create a copy of Chat
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $ChatCopyWith<Chat> get copyWith => throw _privateConstructorUsedError;
+ String get id; String get roomId; String get senderId; String get content; DateTime get createdAt; String? get imageUrl; String? get replyToId; String? get replyToContent; String? get replyToUserName;
+/// Create a copy of Chat
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ChatCopyWith<Chat> get copyWith => _$ChatCopyWithImpl<Chat>(this as Chat, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Chat&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.content, content) || other.content == content)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.replyToContent, replyToContent) || other.replyToContent == replyToContent)&&(identical(other.replyToUserName, replyToUserName) || other.replyToUserName == replyToUserName));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,id,roomId,senderId,content,createdAt,imageUrl,replyToId,replyToContent,replyToUserName);
+
+@override
+String toString() {
+  return 'Chat(id: $id, roomId: $roomId, senderId: $senderId, content: $content, createdAt: $createdAt, imageUrl: $imageUrl, replyToId: $replyToId, replyToContent: $replyToContent, replyToUserName: $replyToUserName)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $ChatCopyWith<$Res> {
-  factory $ChatCopyWith(Chat value, $Res Function(Chat) then) =
-      _$ChatCopyWithImpl<$Res, Chat>;
-  @useResult
-  $Res call({
-    String id,
-    String roomId,
-    String senderId,
-    String content,
-    DateTime createdAt,
-    String? imageUrl,
-    String? replyToId,
-    String? replyToContent,
-    String? replyToUserName,
-  });
-}
+abstract mixin class $ChatCopyWith<$Res>  {
+  factory $ChatCopyWith(Chat value, $Res Function(Chat) _then) = _$ChatCopyWithImpl;
+@useResult
+$Res call({
+ String id, String roomId, String senderId, String content, DateTime createdAt, String? imageUrl, String? replyToId, String? replyToContent, String? replyToUserName
+});
 
+
+
+
+}
 /// @nodoc
-class _$ChatCopyWithImpl<$Res, $Val extends Chat>
+class _$ChatCopyWithImpl<$Res>
     implements $ChatCopyWith<$Res> {
-  _$ChatCopyWithImpl(this._value, this._then);
+  _$ChatCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final Chat _self;
+  final $Res Function(Chat) _then;
 
-  /// Create a copy of Chat
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? id = null,
-    Object? roomId = null,
-    Object? senderId = null,
-    Object? content = null,
-    Object? createdAt = null,
-    Object? imageUrl = freezed,
-    Object? replyToId = freezed,
-    Object? replyToContent = freezed,
-    Object? replyToUserName = freezed,
-  }) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            roomId: null == roomId
-                ? _value.roomId
-                : roomId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            senderId: null == senderId
-                ? _value.senderId
-                : senderId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            content: null == content
-                ? _value.content
-                : content // ignore: cast_nullable_to_non_nullable
-                      as String,
-            createdAt: null == createdAt
-                ? _value.createdAt
-                : createdAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime,
-            imageUrl: freezed == imageUrl
-                ? _value.imageUrl
-                : imageUrl // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            replyToId: freezed == replyToId
-                ? _value.replyToId
-                : replyToId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            replyToContent: freezed == replyToContent
-                ? _value.replyToContent
-                : replyToContent // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            replyToUserName: freezed == replyToUserName
-                ? _value.replyToUserName
-                : replyToUserName // ignore: cast_nullable_to_non_nullable
-                      as String?,
-          )
-          as $Val,
-    );
-  }
+/// Create a copy of Chat
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? roomId = null,Object? senderId = null,Object? content = null,Object? createdAt = null,Object? imageUrl = freezed,Object? replyToId = freezed,Object? replyToContent = freezed,Object? replyToUserName = freezed,}) {
+  return _then(Chat(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
+as String,senderId: null == senderId ? _self.senderId : senderId // ignore: cast_nullable_to_non_nullable
+as String,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
+as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime,imageUrl: freezed == imageUrl ? _self.imageUrl : imageUrl // ignore: cast_nullable_to_non_nullable
+as String?,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore: cast_nullable_to_non_nullable
+as String?,replyToContent: freezed == replyToContent ? _self.replyToContent : replyToContent // ignore: cast_nullable_to_non_nullable
+as String?,replyToUserName: freezed == replyToUserName ? _self.replyToUserName : replyToUserName // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [Chat].
+extension ChatPatterns on Chat {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _Chat value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _Chat() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _Chat value)  $default,){
+final _that = this;
+switch (_that) {
+case _Chat():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _Chat value)?  $default,){
+final _that = this;
+switch (_that) {
+case _Chat() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String roomId,  String senderId,  String content,  DateTime createdAt,  String? imageUrl,  String? replyToId,  String? replyToContent,  String? replyToUserName)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _Chat() when $default != null:
+return $default(_that.id,_that.roomId,_that.senderId,_that.content,_that.createdAt,_that.imageUrl,_that.replyToId,_that.replyToContent,_that.replyToUserName);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String roomId,  String senderId,  String content,  DateTime createdAt,  String? imageUrl,  String? replyToId,  String? replyToContent,  String? replyToUserName)  $default,) {final _that = this;
+switch (_that) {
+case _Chat():
+return $default(_that.id,_that.roomId,_that.senderId,_that.content,_that.createdAt,_that.imageUrl,_that.replyToId,_that.replyToContent,_that.replyToUserName);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String roomId,  String senderId,  String content,  DateTime createdAt,  String? imageUrl,  String? replyToId,  String? replyToContent,  String? replyToUserName)?  $default,) {final _that = this;
+switch (_that) {
+case _Chat() when $default != null:
+return $default(_that.id,_that.roomId,_that.senderId,_that.content,_that.createdAt,_that.imageUrl,_that.replyToId,_that.replyToContent,_that.replyToUserName);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
-abstract class _$$ChatImplCopyWith<$Res> implements $ChatCopyWith<$Res> {
-  factory _$$ChatImplCopyWith(
-    _$ChatImpl value,
-    $Res Function(_$ChatImpl) then,
-  ) = __$$ChatImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({
-    String id,
-    String roomId,
-    String senderId,
-    String content,
-    DateTime createdAt,
-    String? imageUrl,
-    String? replyToId,
-    String? replyToContent,
-    String? replyToUserName,
-  });
+
+
+class _Chat implements Chat {
+   _Chat({required this.id, required this.roomId, required this.senderId, required this.content, required this.createdAt, this.imageUrl, this.replyToId, this.replyToContent, this.replyToUserName});
+  
+
+@override final  String id;
+@override final  String roomId;
+@override final  String senderId;
+@override final  String content;
+@override final  DateTime createdAt;
+@override final  String? imageUrl;
+@override final  String? replyToId;
+@override final  String? replyToContent;
+@override final  String? replyToUserName;
+
+/// Create a copy of Chat
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ChatCopyWith<_Chat> get copyWith => __$ChatCopyWithImpl<_Chat>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Chat&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.content, content) || other.content == content)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.replyToContent, replyToContent) || other.replyToContent == replyToContent)&&(identical(other.replyToUserName, replyToUserName) || other.replyToUserName == replyToUserName));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,id,roomId,senderId,content,createdAt,imageUrl,replyToId,replyToContent,replyToUserName);
+
+@override
+String toString() {
+  return 'Chat(id: $id, roomId: $roomId, senderId: $senderId, content: $content, createdAt: $createdAt, imageUrl: $imageUrl, replyToId: $replyToId, replyToContent: $replyToContent, replyToUserName: $replyToUserName)';
+}
+
+
 }
 
 /// @nodoc
-class __$$ChatImplCopyWithImpl<$Res>
-    extends _$ChatCopyWithImpl<$Res, _$ChatImpl>
-    implements _$$ChatImplCopyWith<$Res> {
-  __$$ChatImplCopyWithImpl(_$ChatImpl _value, $Res Function(_$ChatImpl) _then)
-    : super(_value, _then);
+abstract mixin class _$ChatCopyWith<$Res> implements $ChatCopyWith<$Res> {
+  factory _$ChatCopyWith(_Chat value, $Res Function(_Chat) _then) = __$ChatCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String roomId, String senderId, String content, DateTime createdAt, String? imageUrl, String? replyToId, String? replyToContent, String? replyToUserName
+});
 
-  /// Create a copy of Chat
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? id = null,
-    Object? roomId = null,
-    Object? senderId = null,
-    Object? content = null,
-    Object? createdAt = null,
-    Object? imageUrl = freezed,
-    Object? replyToId = freezed,
-    Object? replyToContent = freezed,
-    Object? replyToUserName = freezed,
-  }) {
-    return _then(
-      _$ChatImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        roomId: null == roomId
-            ? _value.roomId
-            : roomId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        senderId: null == senderId
-            ? _value.senderId
-            : senderId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        content: null == content
-            ? _value.content
-            : content // ignore: cast_nullable_to_non_nullable
-                  as String,
-        createdAt: null == createdAt
-            ? _value.createdAt
-            : createdAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime,
-        imageUrl: freezed == imageUrl
-            ? _value.imageUrl
-            : imageUrl // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        replyToId: freezed == replyToId
-            ? _value.replyToId
-            : replyToId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        replyToContent: freezed == replyToContent
-            ? _value.replyToContent
-            : replyToContent // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        replyToUserName: freezed == replyToUserName
-            ? _value.replyToUserName
-            : replyToUserName // ignore: cast_nullable_to_non_nullable
-                  as String?,
-      ),
-    );
-  }
+
+
+
 }
-
 /// @nodoc
+class __$ChatCopyWithImpl<$Res>
+    implements _$ChatCopyWith<$Res> {
+  __$ChatCopyWithImpl(this._self, this._then);
 
-class _$ChatImpl implements _Chat {
-  _$ChatImpl({
-    required this.id,
-    required this.roomId,
-    required this.senderId,
-    required this.content,
-    required this.createdAt,
-    this.imageUrl,
-    this.replyToId,
-    this.replyToContent,
-    this.replyToUserName,
-  });
+  final _Chat _self;
+  final $Res Function(_Chat) _then;
 
-  // コンストラクタも大文字
-  @override
-  final String id;
-  // セミコロンではなくカンマ
-  @override
-  final String roomId;
-  @override
-  final String senderId;
-  @override
-  final String content;
-  @override
-  final DateTime createdAt;
-  @override
-  final String? imageUrl;
-  @override
-  final String? replyToId;
-  @override
-  final String? replyToContent;
-  @override
-  final String? replyToUserName;
-
-  @override
-  String toString() {
-    return 'Chat(id: $id, roomId: $roomId, senderId: $senderId, content: $content, createdAt: $createdAt, imageUrl: $imageUrl, replyToId: $replyToId, replyToContent: $replyToContent, replyToUserName: $replyToUserName)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$ChatImpl &&
-            (identical(other.id, id) || other.id == id) &&
-            (identical(other.roomId, roomId) || other.roomId == roomId) &&
-            (identical(other.senderId, senderId) ||
-                other.senderId == senderId) &&
-            (identical(other.content, content) || other.content == content) &&
-            (identical(other.createdAt, createdAt) ||
-                other.createdAt == createdAt) &&
-            (identical(other.imageUrl, imageUrl) ||
-                other.imageUrl == imageUrl) &&
-            (identical(other.replyToId, replyToId) ||
-                other.replyToId == replyToId) &&
-            (identical(other.replyToContent, replyToContent) ||
-                other.replyToContent == replyToContent) &&
-            (identical(other.replyToUserName, replyToUserName) ||
-                other.replyToUserName == replyToUserName));
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    id,
-    roomId,
-    senderId,
-    content,
-    createdAt,
-    imageUrl,
-    replyToId,
-    replyToContent,
-    replyToUserName,
-  );
-
-  /// Create a copy of Chat
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$ChatImplCopyWith<_$ChatImpl> get copyWith =>
-      __$$ChatImplCopyWithImpl<_$ChatImpl>(this, _$identity);
+/// Create a copy of Chat
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? roomId = null,Object? senderId = null,Object? content = null,Object? createdAt = null,Object? imageUrl = freezed,Object? replyToId = freezed,Object? replyToContent = freezed,Object? replyToUserName = freezed,}) {
+  return _then(_Chat(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
+as String,senderId: null == senderId ? _self.senderId : senderId // ignore: cast_nullable_to_non_nullable
+as String,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
+as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime,imageUrl: freezed == imageUrl ? _self.imageUrl : imageUrl // ignore: cast_nullable_to_non_nullable
+as String?,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore: cast_nullable_to_non_nullable
+as String?,replyToContent: freezed == replyToContent ? _self.replyToContent : replyToContent // ignore: cast_nullable_to_non_nullable
+as String?,replyToUserName: freezed == replyToUserName ? _self.replyToUserName : replyToUserName // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
 }
 
-abstract class _Chat implements Chat {
-  factory _Chat({
-    required final String id,
-    required final String roomId,
-    required final String senderId,
-    required final String content,
-    required final DateTime createdAt,
-    final String? imageUrl,
-    final String? replyToId,
-    final String? replyToContent,
-    final String? replyToUserName,
-  }) = _$ChatImpl;
 
-  // コンストラクタも大文字
-  @override
-  String get id; // セミコロンではなくカンマ
-  @override
-  String get roomId;
-  @override
-  String get senderId;
-  @override
-  String get content;
-  @override
-  DateTime get createdAt;
-  @override
-  String? get imageUrl;
-  @override
-  String? get replyToId;
-  @override
-  String? get replyToContent;
-  @override
-  String? get replyToUserName;
-
-  /// Create a copy of Chat
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ChatImplCopyWith<_$ChatImpl> get copyWith =>
-      throw _privateConstructorUsedError;
 }
+
+// dart format on

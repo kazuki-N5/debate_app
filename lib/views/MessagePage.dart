@@ -4,8 +4,10 @@ import 'package:debate_project/modes/bbs_post.dart';
 import 'package:debate_project/provider/chat_inbox_provider.dart';
 import 'package:debate_project/provider/notification_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
+import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:debate_project/views/DmRoomPage.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/community_ad.dart';
 import 'package:debate_project/widgets/notification/chat_inbox_list_tile.dart';
 import 'package:debate_project/widgets/notification/notification_list_tile.dart';
 import 'package:debate_project/widgets/count_badge.dart';
@@ -32,6 +34,12 @@ class MessagePage extends HookConsumerWidget {
     final unreadMessages = inboxAsync.valueOrNull
             ?.fold<int>(0, (sum, item) => sum + item.unreadCount) ??
         0;
+
+    // 下部の常時表示バナー(ホームシェル)にリスト最下部が被らないよう、
+    // 非課金(広告表示)時のみ下パディングを確保する
+    final isSubscribed = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
+    final bottomPadding =
+        isSubscribed ? 0.0 : homeBottomAdClearance();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -77,11 +85,13 @@ class MessagePage extends HookConsumerWidget {
                       .fetchNotifications(),
                   onLoadMore: () =>
                       ref.read(notificationProvider.notifier).loadMore(),
+                  bottomPadding: bottomPadding,
                 ),
                 _MessageList(
                   inboxAsync: inboxAsync,
                   onRefresh: () => ref.refresh(chatInboxProvider.future),
                   onTapItem: (item) => _openChat(context, ref, item),
+                  bottomPadding: bottomPadding,
                 ),
               ],
             ),
@@ -298,12 +308,14 @@ class _NotificationList extends StatefulWidget {
   final void Function(AppNotification) onTapNotification;
   final Future<void> Function() onRefresh;
   final Future<void> Function()? onLoadMore;
+  final double bottomPadding;
 
   const _NotificationList({
     required this.notificationsAsync,
     required this.onTapNotification,
     required this.onRefresh,
     this.onLoadMore,
+    this.bottomPadding = 0.0,
   });
 
   @override
@@ -348,6 +360,7 @@ class _NotificationListState extends State<_NotificationList> {
           child: ListView.builder(
             controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(bottom: widget.bottomPadding),
             itemCount: notifications.length,
             itemBuilder: (context, index) {
               final n = notifications[index];
@@ -374,11 +387,13 @@ class _MessageList extends StatelessWidget {
   final AsyncValue<List<ChatInboxItem>> inboxAsync;
   final Future<void> Function() onRefresh;
   final void Function(ChatInboxItem) onTapItem;
+  final double bottomPadding;
 
   const _MessageList({
     required this.inboxAsync,
     required this.onRefresh,
     required this.onTapItem,
+    this.bottomPadding = 0.0,
   });
 
   @override
@@ -396,6 +411,7 @@ class _MessageList extends StatelessWidget {
           onRefresh: onRefresh,
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(bottom: bottomPadding),
             itemCount: items.length,
             itemBuilder: (context, index) {
               final item = items[index];

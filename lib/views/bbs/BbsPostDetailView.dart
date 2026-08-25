@@ -5,6 +5,7 @@ import 'package:debate_project/modes/resba_invite.dart';
 import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/provider/bbs_comment_provider.dart';
 import 'package:debate_project/provider/bbs_timeline_provider.dart';
+import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/image_upload_provider.dart';
 import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
@@ -41,6 +42,11 @@ class BbsPostDetailView extends HookConsumerWidget {
           orElse: () => post,
         );
     final commentsAsync = ref.watch(bbsCommentProvider(post.id));
+
+    // ブロックしたユーザーの投稿かどうか
+    // (投稿本文・レスバは隠し、コメントの閲覧のみ可能にする)
+    final isBlockedPost =
+        ref.watch(blockedUserIdsProvider).contains(currentPost.userId);
 
     // 画面表示時に最新の投稿データ、コメント、レスバを自動再取得
     useEffect(() {
@@ -188,14 +194,15 @@ class BbsPostDetailView extends HookConsumerWidget {
               },
               child: ListView(
                 children: [
-                  // 親の投稿
-                  BbsPostWidget(post: currentPost),
-                  // ポストに付いたレスバ
-                  _PostResbaSection(
-                    post: currentPost,
-                    resbas: resbas.where((r) => r.attachType == 'post' && r.attachId == currentPost.id).toList(),
-                    onChanged: refreshResba,
-                  ),
+                  // 親の投稿(ブロックしたユーザーの投稿は本文を隠す)
+                  BbsPostWidget(post: currentPost, isBlockedPlaceholder: isBlockedPost),
+                  // ポストに付いたレスバ(ブロックしたユーザーの投稿では非表示)
+                  if (!isBlockedPost)
+                    _PostResbaSection(
+                      post: currentPost,
+                      resbas: resbas.where((r) => r.attachType == 'post' && r.attachId == currentPost.id).toList(),
+                      onChanged: refreshResba,
+                    ),
                   const Divider(height: 1),
                   // コメント欄のヘッダー
                   Padding(
@@ -263,8 +270,8 @@ class BbsPostDetailView extends HookConsumerWidget {
               ),
             ),
           ),
-          // 入力フォーム（削除済みポストでは非表示）
-          if (!currentPost.isDeleted)
+          // 入力フォーム（削除済みポスト・ブロックしたユーザーのポストでは非表示）
+          if (!currentPost.isDeleted && !isBlockedPost)
           Container(
             padding: const EdgeInsets.fromLTRB(8, 4, 2, 4),
             decoration: BoxDecoration(
@@ -661,6 +668,35 @@ class _CommentThreadWidget extends HookConsumerWidget {
     final userName = user?.name ?? '名無し';
     final userAvatar = user?.avatar_url;
     final dateStr = DateFormatter.formatBbsDate(comment.createdAt);
+
+    // ブロックしたユーザーのコメント: 内容は一切見せない
+    if (ref.watch(blockedUserIdsProvider).contains(comment.userId)) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.grey[200],
+              child: const Icon(Icons.block, color: Colors.grey, size: 18),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'ブロックしたユーザーのコメントです',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     
     // 投稿主かどうか
     final isOwner = comment.userId == post.userId;
@@ -862,6 +898,35 @@ class _CommentThreadWidget extends HookConsumerWidget {
                   final rDateStr = DateFormatter.formatBbsDate(reply.createdAt);
                   final rIsOwner = reply.userId == post.userId;
                   final rDeleted = reply.isDeleted;
+
+                  // ブロックしたユーザーの返信: 内容は一切見せない
+                  if (ref.watch(blockedUserIdsProvider).contains(reply.userId)) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundColor: Colors.grey[200],
+                            child: const Icon(Icons.block, color: Colors.grey, size: 12),
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'ブロックしたユーザーのコメントです',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                                fontStyle: FontStyle.italic,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),

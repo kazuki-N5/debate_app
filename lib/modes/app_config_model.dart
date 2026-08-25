@@ -5,7 +5,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'app_config_model.freezed.dart';
 
 @freezed
-class AppConfig with _$AppConfig {
+abstract class AppConfig with _$AppConfig {
   const factory AppConfig({
     String? minVersion, // 変更: 汎用的な最小サポートバージョン
     String? latestVersion, // 変更: 汎用的な最新バージョン

@@ -92,7 +92,7 @@ class ChosePage extends HookConsumerWidget {
       }
     }
 
-    void resetTimer() async {
+    void resetTimer({bool isFirstRound = false}) async {
       timerRef.value?.cancel();
       DateTime deadline;
 
@@ -103,7 +103,10 @@ class ChosePage extends HookConsumerWidget {
       final timeOffset = serverTime.difference(clientTime);
       isTimerActive.value = true;
       selectedChoice.value = null;
-      if (room.isBbs == true) {
+      // BBSはマッチング後にgoを押さずupdated_atが更新されないため、
+      // 初回の選択のみ時間を伸ばして実効的な選択時間を確保する。
+      // 選択が被った（リトライ）以降は、ランダムマッチと同じ9秒に戻す。
+      if (room.isBbs == true && isFirstRound) {
         deadline = room.updatedAt!.add(const Duration(seconds: 16));
       } else {
         deadline = room.updatedAt!.add(const Duration(seconds: 9));
@@ -200,7 +203,8 @@ class ChosePage extends HookConsumerWidget {
     useEffect(() {
       if (room.player1Choice != null && room.player2Choice != null) {
       } else {
-        resetTimer();
+        final isFirstRound = isfirst.value == false;
+        resetTimer(isFirstRound: isFirstRound);
         if (isfirst.value == false) {
           isfirst.value = true;
           return null;

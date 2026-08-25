@@ -1,4 +1,12 @@
 class DateFormatter {
+  /// チャット吹き出し横に表示する時刻ラベル。
+  /// 日付に関わらず常に HH:MM を返す。
+  static String formatChatTime(DateTime date) {
+    final hh = date.hour.toString().padLeft(2, '0');
+    final mm = date.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
   static String formatBbsDate(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
@@ -7,7 +15,7 @@ class DateFormatter {
       // 24時間以内
       final hours = diff.inHours;
       final minutes = diff.inMinutes % 60;
-      
+
       if (hours > 0) {
         if (minutes > 0) {
           return '$hours時間$minutes分前';

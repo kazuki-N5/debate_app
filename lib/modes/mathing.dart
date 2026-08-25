@@ -5,7 +5,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'mathing.freezed.dart';
 
 @freezed
-class MatchingRoom with _$MatchingRoom {
+abstract class MatchingRoom with _$MatchingRoom {
   factory MatchingRoom({
     String? roomId,
     String? player1Id,

@@ -22,6 +22,7 @@ class ChatMessageBubble extends StatelessWidget {
   final bool hasMyAvatarColumn; // 観戦者用: 右側のアバター列スペースを確保するか
   final bool isSending;
   final Widget? statusWidget;
+  final String? timeLabel; // 送信時刻（HH:MM 等）。吹き出しの左下（自分）/右下（相手）に表示
   final Widget? attachedWidget;
   final String? replyToId;
   final String? replyToContent;
@@ -53,6 +54,7 @@ class ChatMessageBubble extends StatelessWidget {
     this.hasMyAvatarColumn = false,
     this.isSending = false,
     this.statusWidget,
+    this.timeLabel,
     this.attachedWidget,
     this.replyToId,
     this.replyToContent,
@@ -75,8 +77,9 @@ class ChatMessageBubble extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
         child: Column(
-          crossAxisAlignment:
-              isUserMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isUserMessage
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             // ① 削除済みメッセージ表示
             if (isDeleted) ...[
@@ -94,10 +97,12 @@ class ChatMessageBubble extends StatelessWidget {
   /// 削除されたメッセージ（LINE風送信取消 or 管理者削除）
   Widget _buildDeletedBubble(BuildContext context) {
     return Row(
-      crossAxisAlignment:
-          isUserMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      mainAxisAlignment:
-          isUserMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
+      crossAxisAlignment: isUserMessage
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      mainAxisAlignment: isUserMessage
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
       children: [
         if (!isUserMessage) ...[
           _buildAvatarWidget(context),
@@ -126,13 +131,13 @@ class ChatMessageBubble extends StatelessWidget {
                 color: isAdminDeleted ? Colors.red[700] : Colors.grey[600],
               ),
               const SizedBox(width: 6),
-              Text(
-                isAdminDeleted
-                    ? '管理者によって削除されました'
-                    : (isUserMessage ? 'メッセージを削除しました' : 'メッセージが削除されました'),
+              // 削除済みメッセージは名前を出さず、共通文言で表示する
+              // (追放と違い本人はクラブに残っているため、削除者名は出さない仕様)
+              const Text(
+                'メッセージは削除されました',
                 style: TextStyle(
                   fontSize: 13,
-                  color: isAdminDeleted ? Colors.red[700] : Colors.grey[600],
+                  color: Colors.grey,
                   fontStyle: FontStyle.italic,
                 ),
               ),
@@ -151,14 +156,16 @@ class ChatMessageBubble extends StatelessWidget {
   Widget _buildNormalBubble(BuildContext context) {
     final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
     final hasText = content.isNotEmpty;
-    final hasReply = (replyToContent != null && replyToContent!.isNotEmpty) ||
+    final hasReply =
+        (replyToContent != null && replyToContent!.isNotEmpty) ||
         (replyToUserName != null && replyToUserName!.isNotEmpty);
     final hasBubbleContent = hasImage || hasText || hasReply;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment:
-          isUserMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: isUserMessage
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
       children: [
         // 相手のアバター
         if (!isUserMessage) ...[
@@ -194,22 +201,23 @@ class ChatMessageBubble extends StatelessWidget {
                   ),
                 ),
 
-              // 吹き出し ＋ ステータス（下揃えで横並び）
+              // 吹き出し ＋ ステータス/時刻（下揃えで横並び）
               if (hasBubbleContent) ...[
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // 自分の場合のステータス（吹き出しの左下）
-                    if (isUserMessage && statusWidget != null) ...[
-                      statusWidget!,
+                    // 自分の場合：ステータス（送信/送信中/✕）と時刻をくっつけて吹き出し左下に表示
+                    if (isUserMessage &&
+                        (statusWidget != null || timeLabel != null)) ...[
+                      _buildStatusAndTime(context),
                       const SizedBox(width: 4),
                     ],
                     Flexible(child: _buildBubbleBody(context)),
-                    // 相手の場合のステータス（必要時）
-                    if (!isUserMessage && statusWidget != null) ...[
+                    // 相手の場合：時刻を吹き出し右下に表示（ステータスはなし）
+                    if (!isUserMessage && timeLabel != null) ...[
                       const SizedBox(width: 4),
-                      statusWidget!,
+                      _buildTimeLabel(context),
                     ],
                   ],
                 ),
@@ -222,8 +230,10 @@ class ChatMessageBubble extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    if (!hasBubbleContent && isUserMessage && statusWidget != null) ...[
-                      statusWidget!,
+                    if (!hasBubbleContent &&
+                        isUserMessage &&
+                        (statusWidget != null || timeLabel != null)) ...[
+                      _buildStatusAndTime(context),
                       const SizedBox(width: 4),
                     ],
                     ConstrainedBox(
@@ -232,9 +242,11 @@ class ChatMessageBubble extends StatelessWidget {
                       ),
                       child: attachedWidget!,
                     ),
-                    if (!hasBubbleContent && !isUserMessage && statusWidget != null) ...[
+                    if (!hasBubbleContent &&
+                        !isUserMessage &&
+                        timeLabel != null) ...[
                       const SizedBox(width: 4),
-                      statusWidget!,
+                      _buildTimeLabel(context),
                     ],
                   ],
                 ),
@@ -252,6 +264,29 @@ class ChatMessageBubble extends StatelessWidget {
             const SizedBox(width: 32),
         ],
       ],
+    );
+  }
+
+  /// ステータス（送信/送信中/✕）を時刻の上に縦に並べて描画する
+  Widget _buildStatusAndTime(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (statusWidget != null) statusWidget!,
+        if (timeLabel != null) ...[
+          const SizedBox(height: 2),
+          _buildTimeLabel(context),
+        ],
+      ],
+    );
+  }
+
+  /// 時刻ラベルのテキスト
+  Widget _buildTimeLabel(BuildContext context) {
+    return Text(
+      timeLabel!,
+      style: const TextStyle(fontSize: 9, color: Colors.white70),
     );
   }
 
@@ -278,16 +313,18 @@ class ChatMessageBubble extends StatelessWidget {
                   color: (hasImage && !hasText)
                       ? Colors.transparent
                       : (isUserMessage
-                          ? const Color(0xff95eb7c)
-                          : Colors.white),
+                            ? const Color(0xff95eb7c)
+                            : Colors.white),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 返信（リプライ）元の引用プレビューブロック
-                    if ((replyToContent != null && replyToContent!.isNotEmpty) ||
-                        (replyToUserName != null && replyToUserName!.isNotEmpty))
+                    if ((replyToContent != null &&
+                            replyToContent!.isNotEmpty) ||
+                        (replyToUserName != null &&
+                            replyToUserName!.isNotEmpty))
                       _buildReplyQuoteBlock(context),
 
                     // 写真がある場合
@@ -323,15 +360,18 @@ class ChatMessageBubble extends StatelessWidget {
                                   color: Colors.grey[300],
                                   child: const Center(
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2),
+                                      strokeWidth: 2,
+                                    ),
                                   ),
                                 ),
                                 errorWidget: (context, url, error) => Container(
                                   height: 120,
                                   width: 160,
                                   color: Colors.grey[200],
-                                  child: const Icon(Icons.broken_image,
-                                      color: Colors.grey),
+                                  child: const Icon(
+                                    Icons.broken_image,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ),
                             ),
@@ -361,9 +401,7 @@ class ChatMessageBubble extends StatelessWidget {
                   right: isUserMessage ? -6 : null,
                   child: CustomPaint(
                     painter: _UniversalBubbleTailPainter(
-                      isUserMessage
-                          ? const Color(0xff95eb7c)
-                          : Colors.white,
+                      isUserMessage ? const Color(0xff95eb7c) : Colors.white,
                       isUserMessage,
                     ),
                     size: const Size(10, 10),
@@ -520,10 +558,7 @@ class _ShakeWidget extends StatefulWidget {
   final Widget child;
   final bool shake;
 
-  const _ShakeWidget({
-    required this.child,
-    required this.shake,
-  });
+  const _ShakeWidget({required this.child, required this.shake});
 
   @override
   State<_ShakeWidget> createState() => _ShakeWidgetState();
@@ -541,13 +576,16 @@ class _ShakeWidgetState extends State<_ShakeWidget>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _animation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: -4.5), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: -4.5, end: 4.5), weight: 3),
-      TweenSequenceItem(tween: Tween(begin: 4.5, end: -2.5), weight: 3),
-      TweenSequenceItem(tween: Tween(begin: -2.5, end: 1.5), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: 1.5, end: 0.0), weight: 2),
-    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic));
+    _animation =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween(begin: 0.0, end: -4.5), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: -4.5, end: 4.5), weight: 3),
+          TweenSequenceItem(tween: Tween(begin: 4.5, end: -2.5), weight: 3),
+          TweenSequenceItem(tween: Tween(begin: -2.5, end: 1.5), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: 1.5, end: 0.0), weight: 2),
+        ]).animate(
+          CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
+        );
 
     if (widget.shake) {
       _controller.forward(from: 0.0);

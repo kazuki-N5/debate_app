@@ -196,6 +196,17 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
     return { message: "No targets." };
   }
 
+  // ★ 送信者をブロックしている受信者(ブロックした人の視界からだけ消す)はプッシュ対象から除外
+  const blockedReceiverIds = await getBlockedReceiverIds(
+    supabase,
+    sender_id,
+    receiverIds
+  );
+  receiverIds = receiverIds.filter((uid: string) => !blockedReceiverIds.has(uid));
+  if (receiverIds.length === 0) {
+    return { message: "No targets (blocked)." };
+  }
+
   const { data: targetUsers, error: usersError } = await supabase
     .from("users")
     .select("id, fcm_token, notification_settings(is_notification_enabled, dm_enabled, open_chat_enabled)")
@@ -246,6 +257,30 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
     body: messageBody,
     counts: { success: successCount, total: uniqueTokens.size },
   };
+}
+
+/**
+ * 送信者をブロックしている受信者IDを返す(ブロックした人の視界からだけ消す)
+ */
+async function getBlockedReceiverIds(
+  supabase: SupabaseClient,
+  senderId: string,
+  receiverIds: string[]
+): Promise<Set<string>> {
+  const blocked = new Set<string>();
+  if (!senderId || receiverIds.length === 0) return blocked;
+
+  // 受信者が送信者をブロックしている
+  const { data: receiverBlocks } = await supabase
+    .from("brock_user")
+    .select("user_id")
+    .eq("block_user_id", senderId)
+    .in("user_id", receiverIds);
+  for (const r of receiverBlocks ?? []) {
+    if (r.user_id) blocked.add(r.user_id as string);
+  }
+
+  return blocked;
 }
 
 function isPushEnabled(type: string, settings?: NotificationSettings): boolean {

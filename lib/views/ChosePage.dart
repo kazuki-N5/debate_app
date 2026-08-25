@@ -15,6 +15,7 @@ import 'package:debate_project/view_model/Profile_model.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/widgets/floating_spectator_comments.dart';
+import 'package:debate_project/widgets/spectator_count_badge.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 //import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -29,6 +30,7 @@ class ChosePage extends HookConsumerWidget {
     final supabase = ref.read(supabaseProvider);
     final user = ref.read(currentUserIdProvider);
     final room = ref.watch(matchingRoomProvider);
+    final spectatorCount = ref.watch(spectatorCountProvider);
     final selectedChoice = useState<bool?>(null);
     final next = useState(false);
     final showerror = useState(false);
@@ -232,34 +234,44 @@ class ChosePage extends HookConsumerWidget {
           backgroundColor: Colors.blue,
           automaticallyImplyLeading: false,
           title: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.timer,
-                      size: 20,
-                      color: secondsLeft.value != null && secondsLeft.value! <= 3
-                          ? Colors.red
-                          : Colors.grey[800]),
-                  const SizedBox(width: 5),
-                  Text(
-                    secondsLeft.value != null
-                        ? formatTime(secondsLeft.value!)
-                        : '-',
-                    style: AppTextStyles.bold(
-                        fontSize: 16,
-                        color:
-                            secondsLeft.value != null && secondsLeft.value! <= 3
-                                ? Colors.red
-                                : Colors.grey[800]),
-                  )
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.timer,
+                          size: 20,
+                          color: secondsLeft.value != null && secondsLeft.value! <= 3
+                              ? Colors.red
+                              : Colors.grey[800]),
+                      const SizedBox(width: 5),
+                      Text(
+                        secondsLeft.value != null
+                            ? formatTime(secondsLeft.value!)
+                            : '-',
+                        style: AppTextStyles.bold(
+                            fontSize: 16,
+                            color:
+                                secondsLeft.value != null && secondsLeft.value! <= 3
+                                    ? Colors.red
+                                    : Colors.grey[800]),
+                      )
+                    ],
+                  ),
+                ),
+                // 観戦者数バッジ（0人のときは非表示）
+                if (spectatorCount > 0) ...[
+                  const SizedBox(width: 10),
+                  SpectatorCountBadge(count: spectatorCount),
                 ],
-              ),
+              ],
             ),
           ),
         ),

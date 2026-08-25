@@ -14,6 +14,12 @@ class BlockedUserIdsNotifier extends StateNotifier<List<String>> {
 
   BlockedUserIdsNotifier(this._ref) : super(const []) {
     _load();
+    // 起動直後はログインが確定していない場合があるため、ログイン確定後に再読み込みする
+    _ref.listen<String?>(currentUserIdProvider, (prev, next) {
+      if (prev == null && next != null) {
+        _load();
+      }
+    });
   }
 
   Future<void> _load() async {

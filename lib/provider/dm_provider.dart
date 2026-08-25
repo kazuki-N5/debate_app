@@ -1,10 +1,11 @@
 import 'dart:developer';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:debate_project/provider/block_provider.dart';
+import 'package:debate_project/provider/match_error_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 
 // 1. ルームIDを取得・作成するプロバイダー
+// 既存ルームがある場合はブロック中でもルームIDを返す（RPC側仕様）
 final dmRoomIdProvider = FutureProvider.family.autoDispose<String, String>((ref, otherUserId) async {
   final supabase = ref.read(supabaseProvider);
   final response = await supabase.rpc(
@@ -70,12 +71,6 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
     _init();
   }
 
-  /// ブロック済みユーザーのメッセージを除外
-  List<DmMessage> _filter(List<DmMessage> messages) {
-    final blocked = _ref.read(blockedUserIdsProvider).toSet();
-    return messages.where((m) => !blocked.contains(m.senderId)).toList();
-  }
-
   Future<void> _fetchLatestOrCatchUp() async {
     final supabase = _ref.read(supabaseProvider);
     try {
@@ -113,7 +108,7 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
             .map((e) => DmMessage.fromJson(e as Map<String, dynamic>))
             .toList();
 
-        state = AsyncValue.data(_filter(messages));
+        state = AsyncValue.data(messages);
         if (messages.length < 50) {
           hasMore = false;
         }
@@ -155,10 +150,8 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
         ),
         callback: (payload) {
           final newMsg = DmMessage.fromJson(payload.newRecord);
-          // ブロック済みユーザーのメッセージは追加しない
           if (state is AsyncData) {
             final currentList = state.value!;
-            if (_filter([newMsg]).isEmpty) return;
             // 重複チェック (送信時の楽観的UIで追加済みの場合は無視、または上書き)
             if (!currentList.any((msg) => msg.id == newMsg.id)) {
               // reverse: true (最新が0番目) を想定して先頭に追加
@@ -216,7 +209,7 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
         hasMore = false;
       }
 
-      state = AsyncValue.data([...currentList, ..._filter(olderMessages)]);
+      state = AsyncValue.data([...currentList, ...olderMessages]);
     } catch (e) {
       print('loadMore error: $e');
     }
@@ -275,7 +268,7 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
       }
       return response['id'] as String?;
     } catch (e) {
-      // エラー処理（本来ならエラー表示などが必要）
+      // エラー処理（一時メッセージを消して共通エラーUIで表示）
       print('sendMessage error: $e');
       if (state is AsyncData) {
         final currentList = state.value!;
@@ -283,6 +276,17 @@ class DmMessagesNotifier extends StateNotifier<AsyncValue<List<DmMessage>>> {
           currentList.where((m) => m.id != tempId).toList() // 送信失敗したら仮メッセージを消す
         );
       }
+      // ブロックされている場合は専用文言、それ以外は汎用文言を表示
+      var isBlockedRoom = false;
+      try {
+        isBlockedRoom = await supabase.rpc(
+                  'is_dm_room_blocked',
+                  params: {'p_room_id': roomId}) as bool? ?? false;
+      } catch (_) {}
+      _ref.read(matchErrorServiceProvider).showMatchEndMessage(
+        isBlockedRoom ? 'ブロックされているので送れません' : '送信に失敗しました',
+        0.68,
+      );
       return null;
     }
   }

@@ -16,6 +16,7 @@ import 'package:debate_project/view_model/prohibited_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/widgets/floating_spectator_comments.dart';
+import 'package:debate_project/widgets/spectator_count_badge.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -43,6 +44,7 @@ class GamePage extends HookConsumerWidget {
 
     final scrollController = useScrollController();
     final room = ref.watch(matchingRoomProvider);
+    final spectatorCount = ref.watch(spectatorCountProvider);
     final chats = ref.watch(chatProvider);
     final chatsnotifier = ref.read(chatProvider.notifier);
 
@@ -393,7 +395,8 @@ class GamePage extends HookConsumerWidget {
                           ),
                         ),
                       ),
-                      // 右に配置するボタン
+                      // 右に配置するボタン（観戦者数 ＆ コメント非表示 ＆ 退出）
+                      // 時計とドアの間には観戦者数とコメントON/OFFを等間隔で並べる
                       Expanded(
                         flex: 1,
                         child: Padding(
@@ -401,6 +404,10 @@ class GamePage extends HookConsumerWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
+                              // 観戦者数バッジ（0人のときは非表示）
+                              if (spectatorCount > 0)
+                                SpectatorCountBadge(count: spectatorCount),
+                              const SizedBox(width: 8),
                               // コメント非表示トグルボタン
                               IconButton(
                                 padding: EdgeInsets.zero,

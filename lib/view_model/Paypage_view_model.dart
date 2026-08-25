@@ -97,7 +97,8 @@ class InAppPurchaseManager with ChangeNotifier {
 
   Future<void> purchase(Package package) async {
     try {
-      CustomerInfo customerInfo = await Purchases.purchasePackage(package);
+      final result = await Purchases.purchase(PurchaseParams.package(package));
+      final customerInfo = result.customerInfo;
       // 購入が成功すると、上のリスナーが自動で呼ばれて状態が更新される
       print("購入成功: ${customerInfo.entitlements.all}");
     } on PlatformException catch (e) {

@@ -6,8 +6,8 @@ part of 'open_chat.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$OpenChatRoomImpl _$$OpenChatRoomImplFromJson(Map<String, dynamic> json) =>
-    _$OpenChatRoomImpl(
+_OpenChatRoom _$OpenChatRoomFromJson(Map<String, dynamic> json) =>
+    _OpenChatRoom(
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String?,
@@ -21,7 +21,7 @@ _$OpenChatRoomImpl _$$OpenChatRoomImplFromJson(Map<String, dynamic> json) =>
       rules: json['rules'] as String?,
     );
 
-Map<String, dynamic> _$$OpenChatRoomImplToJson(_$OpenChatRoomImpl instance) =>
+Map<String, dynamic> _$OpenChatRoomToJson(_OpenChatRoom instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
@@ -36,8 +36,8 @@ Map<String, dynamic> _$$OpenChatRoomImplToJson(_$OpenChatRoomImpl instance) =>
       'rules': instance.rules,
     };
 
-_$OpenChatMemberImpl _$$OpenChatMemberImplFromJson(Map<String, dynamic> json) =>
-    _$OpenChatMemberImpl(
+_OpenChatMember _$OpenChatMemberFromJson(Map<String, dynamic> json) =>
+    _OpenChatMember(
       id: json['id'] as String,
       roomId: json['room_id'] as String,
       userId: json['user_id'] as String,
@@ -46,45 +46,44 @@ _$OpenChatMemberImpl _$$OpenChatMemberImplFromJson(Map<String, dynamic> json) =>
       isMuted: json['is_muted'] as bool? ?? false,
     );
 
-Map<String, dynamic> _$$OpenChatMemberImplToJson(
-  _$OpenChatMemberImpl instance,
-) => <String, dynamic>{
-  'id': instance.id,
-  'room_id': instance.roomId,
-  'user_id': instance.userId,
-  'role': instance.role,
-  'joined_at': instance.joinedAt.toIso8601String(),
-  'is_muted': instance.isMuted,
-};
+Map<String, dynamic> _$OpenChatMemberToJson(_OpenChatMember instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'room_id': instance.roomId,
+      'user_id': instance.userId,
+      'role': instance.role,
+      'joined_at': instance.joinedAt.toIso8601String(),
+      'is_muted': instance.isMuted,
+    };
 
-_$OpenChatMessageImpl _$$OpenChatMessageImplFromJson(
-  Map<String, dynamic> json,
-) => _$OpenChatMessageImpl(
-  id: json['id'] as String,
-  roomId: json['room_id'] as String,
-  userId: json['user_id'] as String,
-  content: json['content'] as String,
-  createdAt: DateTime.parse(json['created_at'] as String),
-  imageUrl: json['image_url'] as String?,
-  isDeleted: json['is_deleted'] as bool? ?? false,
-  isAdminDeleted: json['is_admin_deleted'] as bool? ?? false,
-  replyToId: json['reply_to_id'] as String?,
-  replyToContent: json['reply_to_content'] as String?,
-  replyToUserName: json['reply_to_user_name'] as String?,
-);
+_OpenChatMessage _$OpenChatMessageFromJson(Map<String, dynamic> json) =>
+    _OpenChatMessage(
+      id: json['id'] as String,
+      roomId: json['room_id'] as String,
+      userId: json['user_id'] as String,
+      content: json['content'] as String,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      imageUrl: json['image_url'] as String?,
+      isDeleted: json['is_deleted'] as bool? ?? false,
+      isAdminDeleted: json['is_admin_deleted'] as bool? ?? false,
+      isSystem: json['is_system'] as bool? ?? false,
+      replyToId: json['reply_to_id'] as String?,
+      replyToContent: json['reply_to_content'] as String?,
+      replyToUserName: json['reply_to_user_name'] as String?,
+    );
 
-Map<String, dynamic> _$$OpenChatMessageImplToJson(
-  _$OpenChatMessageImpl instance,
-) => <String, dynamic>{
-  'id': instance.id,
-  'room_id': instance.roomId,
-  'user_id': instance.userId,
-  'content': instance.content,
-  'created_at': instance.createdAt.toIso8601String(),
-  'image_url': instance.imageUrl,
-  'is_deleted': instance.isDeleted,
-  'is_admin_deleted': instance.isAdminDeleted,
-  'reply_to_id': instance.replyToId,
-  'reply_to_content': instance.replyToContent,
-  'reply_to_user_name': instance.replyToUserName,
-};
+Map<String, dynamic> _$OpenChatMessageToJson(_OpenChatMessage instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'room_id': instance.roomId,
+      'user_id': instance.userId,
+      'content': instance.content,
+      'created_at': instance.createdAt.toIso8601String(),
+      'image_url': instance.imageUrl,
+      'is_deleted': instance.isDeleted,
+      'is_admin_deleted': instance.isAdminDeleted,
+      'is_system': instance.isSystem,
+      'reply_to_id': instance.replyToId,
+      'reply_to_content': instance.replyToContent,
+      'reply_to_user_name': instance.replyToUserName,
+    };

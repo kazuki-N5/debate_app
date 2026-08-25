@@ -5,7 +5,7 @@ part 'open_chat.freezed.dart';
 part 'open_chat.g.dart';
 
 @freezed
-class OpenChatRoom with _$OpenChatRoom {
+abstract class OpenChatRoom with _$OpenChatRoom {
   factory OpenChatRoom({
     required String id,
     required String name,
@@ -25,7 +25,7 @@ class OpenChatRoom with _$OpenChatRoom {
 }
 
 @freezed
-class OpenChatMember with _$OpenChatMember {
+abstract class OpenChatMember with _$OpenChatMember {
   factory OpenChatMember({
     required String id,
     @JsonKey(name: 'room_id') required String roomId,
@@ -54,7 +54,7 @@ extension OpenChatMemberRoleX on OpenChatMember {
 }
 
 @freezed
-class OpenChatMessage with _$OpenChatMessage {
+abstract class OpenChatMessage with _$OpenChatMessage {
   factory OpenChatMessage({
     required String id,
     @JsonKey(name: 'room_id') required String roomId,
@@ -64,6 +64,7 @@ class OpenChatMessage with _$OpenChatMessage {
     @JsonKey(name: 'image_url') String? imageUrl,
     @JsonKey(name: 'is_deleted') @Default(false) bool isDeleted,
     @JsonKey(name: 'is_admin_deleted') @Default(false) bool isAdminDeleted,
+    @JsonKey(name: 'is_system') @Default(false) bool isSystem,
     @JsonKey(name: 'reply_to_id') String? replyToId,
     @JsonKey(name: 'reply_to_content') String? replyToContent,
     @JsonKey(name: 'reply_to_user_name') String? replyToUserName,

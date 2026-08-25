@@ -723,3 +723,126 @@ final openChatBannedUsersProvider = FutureProvider.family.autoDispose<List<OpenC
     return [];
   }
 });
+
+// 8. 自分がこのルームから追放されたかをリアルタイムで保持するプロバイダー
+//    - open_chat_members の DELETE イベント (自分) を検知したら true になる
+//    - 初回チェックで自分がメンバーに存在しない場合も追放済みとして true になる
+final openChatKickedProvider = StateNotifierProvider.family.autoDispose<
+    OpenChatKickedNotifier, bool, String>(
+  (ref, roomId) => OpenChatKickedNotifier(ref, roomId),
+);
+
+class OpenChatKickedNotifier extends StateNotifier<bool> {
+  final Ref _ref;
+  final String roomId;
+  RealtimeChannel? _channel;
+  bool _disposed = false;
+  // 自分のメンバー行の主キー(id)
+  // ※ 開発サーバーのRealtimeは DELETE の old_record に id(主キー)しか
+  //   含めないことがあるため、user_id ではなくこの id で一致判定する
+  String? _myMemberRowId;
+
+  OpenChatKickedNotifier(this._ref, this.roomId) : super(false) {
+    _init();
+  }
+
+  /// サーバー上で自分がメンバーでなくなったかを確認する
+  /// (リアルタイムイベントを取りこぼした場合や再接続時のフォールバック)
+  Future<void> _checkMembership() async {
+    if (state) { print('🔎 [退会検知] 既に退会状態のためスキップ (room=$roomId)'); return; }
+    final supabase = _ref.read(supabaseProvider);
+    final myId = supabase.auth.currentUser?.id;
+    if (myId == null) return;
+    try {
+      final mine = await supabase
+          .from('open_chat_members')
+          .select('id, user_id')
+          .match({'room_id': roomId, 'user_id': myId})
+          .maybeSingle();
+      if (mine == null) {
+        print('🔎 [退会検知] メンバー確認 room=$roomId myId=$myId → メンバーに存在しない(退会済み)');
+        state = true;
+        _ref.invalidate(openChatMembersProvider(roomId));
+        _ref.invalidate(openChatMyMemberProvider(roomId));
+      } else {
+        _myMemberRowId = mine['id'] as String?;
+        print('🔎 [退会検知] メンバー確認 room=$roomId myId=$myId → メンバーに存在 (myRowId=$_myMemberRowId)');
+      }
+    } catch (e) {
+      print('🔎 [退会検知] メンバー確認エラー: $e');
+    }
+  }
+
+  /// 追放(退会させられた)状態を確定する。
+  /// 送信時に RLS エラー(42501)が出た場合など、リアルタイム検知の
+  /// フォールバックとして UI から呼び出す。
+  void markKicked() {
+    if (state) return;
+    print('📛 [退会検知] markKicked() 呼び出し (room=$roomId)');
+    state = true;
+    _ref.invalidate(openChatMembersProvider(roomId));
+    _ref.invalidate(openChatMyMemberProvider(roomId));
+  }
+
+  Future<void> _init() async {
+    final supabase = _ref.read(supabaseProvider);
+    final myId = supabase.auth.currentUser?.id;
+    if (myId == null) {
+      print('🔌 [退会検知] ログインしていないため監視しない (room=$roomId)');
+      return;
+    }
+
+    // 初回チェック: 自分が既にメンバーに存在しない場合は退会済みとみなす
+    print('🔌 [退会検知] 監視開始 room=$roomId myId=$myId');
+    await _checkMembership();
+    if (state || _disposed) return;
+
+    // リアルタイム購読: 自分がメンバーから削除された (退会させられた) ら true
+    final channel =
+        supabase.channel('public:open_chat_members:room_id=$roomId');
+    _channel = channel;
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'open_chat_members',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'room_id',
+            value: roomId,
+          ),
+          callback: (payload) {
+            final oldRecord = payload.oldRecord;
+            print('📡 [退会検知] DELETEイベント受信 room=$roomId oldRecord=$oldRecord myId=$myId myRowId=$_myMemberRowId');
+            // old_record には id(主キー)は必ず含まれる(user_id等はサーバー
+            // 設定により欠けることがある)ため、自分のメンバー行 id で判定する
+            final matchedById = oldRecord['id'] != null && oldRecord['id'] == _myMemberRowId;
+            final matchedByUser = oldRecord['user_id'] != null && oldRecord['user_id'] == myId;
+            if (matchedById || matchedByUser) {
+              print('📡 [退会検知] 自分($myId)の削除を検知 (byId=$matchedById byUser=$matchedByUser) → 退会状態へ');
+              markKicked();
+            }
+          },
+        )
+        .subscribe((status, [error]) {
+          // 再接続時にもメンバー状態を再確認する (イベント取りこぼし対策)
+          print('🔌 [退会検知] チャンネルstatus: $status room=$roomId error=$error');
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            _checkMembership();
+          }
+        });
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    if (_channel != null) {
+      try {
+        final supabase = _ref.read(supabaseProvider);
+        supabase.removeChannel(_channel!);
+      } catch (_) {}
+      _channel = null;
+    }
+    super.dispose();
+  }
+}

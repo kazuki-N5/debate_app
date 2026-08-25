@@ -1,7 +1,6 @@
 // ignore_for_file: file_names, avoid_print
 import 'dart:developer';
 import 'package:debate_project/modes/open_chat.dart';
-import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -320,11 +319,6 @@ final chatInboxProvider =
       print('open chat inbox fallback error: $e');
     }
   }
-
-  // ブロック済みユーザーとのDM会話は一覧に表示しない
-  final blocked = ref.read(blockedUserIdsProvider).toSet();
-  items.removeWhere((item) =>
-      item.isDm && item.otherUserId != null && blocked.contains(item.otherUserId));
 
   // 最新メッセージ順にソート (メッセージ無しは末尾)
   items.sort((a, b) {

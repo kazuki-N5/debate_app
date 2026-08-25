@@ -44,6 +44,8 @@ class AdNotifier extends StateNotifier<bool> {
   }
 
   // 広告を表示すべきかどうかの判定ロジック
+  // 注意: カウント(_displayCount)は「実際に広告が表示(インプレッション)された回数」のみを計上する。
+  // 表示されなかった回(=ロード失敗・未ロード時)はカウントされないため、表示頻度が実態と一致する。
   Future<bool> _shouldShowInterstitialAd() async {
     final count = await _getAdDisplayCount();
     // 初回3回 (カウントが0, 1, 2 の時) は表示しない
@@ -74,8 +76,6 @@ class AdNotifier extends StateNotifier<bool> {
     }
 
     _isLoading = true; // ロード開始フラグを立てる
-
-    // 広告表示機会のカウントをインクリメント（ロードを試みる度にカウント）
 
     // 広告を表示すべきか判定
     final shouldShow = await _shouldShowInterstitialAd();
@@ -130,7 +130,11 @@ class AdNotifier extends StateNotifier<bool> {
               // 内部でdisposeとstateクリア
               // 表示失敗時も同様にFinishPageからの遷移はここでは行わない
             },
-            onAdImpression: (ad) => debugPrint('Interstitial Ad: Impression.'),
+            onAdImpression: (ad) {
+              debugPrint('Interstitial Ad: Impression.');
+              // 実際に広告が表示された（インプレッション記録）時のみカウントを進める
+              _incrementAdDisplayCount();
+            },
             onAdShowedFullScreenContent: (ad) =>
                 debugPrint('Interstitial Ad: Shown.'),
           );
@@ -153,12 +157,13 @@ class AdNotifier extends StateNotifier<bool> {
     if (_interstitialAd != null) {
       debugPrint('Interstitial Ad: Showing...');
       _interstitialAd!.show();
-      _incrementAdDisplayCount();
+      // 注意: カウントは onAdImpression 時点で加算するため、ここでは加算しない
+      // （show failed や未ロード時はカウントされない）
     } else {
       debugPrint('Interstitial Ad: No ad loaded to show or load failed.');
       _disposeAdInternal();
-      _incrementAdDisplayCount();
-      // 表示する広告がない場合、特に何もせずFinishPageに留まる
+      // 表示する広告がない場合（未ロード・ロード失敗）はカウントしない。
+      // 表示されなかった回を頻度判定に含めないため。
     }
   }
 

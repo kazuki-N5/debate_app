@@ -42,6 +42,11 @@ class OpenChatPreviewPage extends HookConsumerWidget {
             // 参加成功 -> ルーム一覧を更新してチャットルームへ遷移
             ref.invalidate(openChatRoomsProvider);
             context.pushReplacement('/openChatRoom', extra: room);
+          } else if (error == 'BANNED_FROM_ROOM') {
+            // 追放されている場合は参加できない旨を表示
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('このクラブから追放されているため、参加できません')),
+            );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('参加エラー: $error')),

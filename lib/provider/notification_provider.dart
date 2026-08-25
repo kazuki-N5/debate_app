@@ -1,6 +1,7 @@
 // ignore_for_file: file_names, avoid_print
 import 'dart:developer';
 import 'package:debate_project/modes/app_notification.dart';
+import 'package:debate_project/provider/block_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -132,9 +133,14 @@ class NotificationNotifier
           .order('created_at', ascending: false)
           .limit(_pageSize);
 
-      final notifications = (response as List<dynamic>)
+      var notifications = (response as List<dynamic>)
           .map((e) => _fromMap(e as Map<String, dynamic>))
           .toList();
+
+      // ブロックしたユーザーからの通知は表示しない
+      final blocked = _ref.read(blockedUserIdsProvider).toSet();
+      notifications =
+          notifications.where((n) => !blocked.contains(n.actorId)).toList();
 
       hasMore = notifications.length >= _pageSize;
       state = AsyncValue.data(notifications);
@@ -167,9 +173,13 @@ class NotificationNotifier
           .order('created_at', ascending: false)
           .limit(_pageSize);
 
-      final more = (response as List<dynamic>)
+      var more = (response as List<dynamic>)
           .map((e) => _fromMap(e as Map<String, dynamic>))
           .toList();
+
+      // ブロックしたユーザーからの通知は表示しない
+      final blocked = _ref.read(blockedUserIdsProvider).toSet();
+      more = more.where((n) => !blocked.contains(n.actorId)).toList();
 
       if (more.length < _pageSize) {
         hasMore = false;

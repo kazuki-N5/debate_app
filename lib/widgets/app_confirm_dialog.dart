@@ -151,11 +151,11 @@ Future<bool?> showAppConfirmDialog({
   );
 }
 
-/// メンバー退出確認ダイアログ（再参加禁止チェックボックス付き / アイコンなし・共通スタイル）
-/// 
+/// メンバー追放確認ダイアログ（再参加禁止チェックボックス付き / アイコンなし・共通スタイル）
+///
 /// 戻り値:
 /// - null: キャンセル
-/// - false: 通常の退出（再参加可能）
+/// - false: 追放（再参加可能）
 /// - true: 強制退会（再参加禁止）
 Future<bool?> showKickMemberConfirmDialog({
   required BuildContext context,
@@ -182,7 +182,7 @@ Future<bool?> showKickMemberConfirmDialog({
                 children: [
                   // タイトル（アイコンなし）
                   Text(
-                    'メンバーの削除',
+                    'メンバーの追放',
                     textAlign: TextAlign.center,
                     style: AppTextStyles.bold(
                       color: const Color(0xFF0F172A),
@@ -192,7 +192,7 @@ Future<bool?> showKickMemberConfirmDialog({
                   const SizedBox(height: 10.0),
                   // 説明文
                   Text(
-                    'このメンバーをクラブから退出させますか？',
+                    'このメンバーをクラブから追放しますか？',
                     textAlign: TextAlign.center,
                     style: AppTextStyles.notoSans(
                       color: const Color(0xFF64748B),
@@ -250,7 +250,7 @@ Future<bool?> showKickMemberConfirmDialog({
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '今後のクラブへの再参加をブロックします',
+                                  'チェックしない場合は再参加できます',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: isBanChecked ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
@@ -294,7 +294,7 @@ Future<bool?> showKickMemberConfirmDialog({
                         ),
                       ),
                       const SizedBox(width: 10),
-                      // 削除・退出実行ボタン
+                      // 追放・強制退会実行ボタン
                       Expanded(
                         child: SizedBox(
                           height: 44,
@@ -311,7 +311,7 @@ Future<bool?> showKickMemberConfirmDialog({
                             ),
                             onPressed: () => Navigator.of(dialogContext).pop(isBanChecked),
                             child: Text(
-                              isBanChecked ? '強制退会' : '削除する',
+                              isBanChecked ? '強制退会' : '追放する',
                               style: AppTextStyles.bold(
                                 fontSize: 14,
                                 color: Colors.white,

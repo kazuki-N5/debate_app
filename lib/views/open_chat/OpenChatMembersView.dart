@@ -306,7 +306,7 @@ class OpenChatMembersView extends HookConsumerWidget {
     if (error == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(isBan ? 'メンバーを強制退会（再参加禁止）にしました' : 'メンバーを退出させました'),
+          content: Text(isBan ? 'メンバーを強制退会（再参加禁止）にしました' : 'メンバーを追放しました'),
           duration: const Duration(seconds: 2),
         ),
       );

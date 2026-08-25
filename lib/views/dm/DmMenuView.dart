@@ -199,17 +199,6 @@ class DmMenuView extends HookConsumerWidget {
               },
             ),
 
-            // ③ 設定
-            _buildLineTile(
-              icon: Icons.settings_outlined,
-              title: '設定',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('背景・チャット設定を開きます')),
-                );
-              },
-            ),
-
             const SizedBox(height: 24),
 
             // ==========================================

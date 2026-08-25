@@ -19,12 +19,12 @@ import 'package:debate_project/view_model/Homepage_view_model.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:debate_project/view_model/start_error_dialog.dart';
 import 'package:debate_project/widgets/app_confirm_dialog.dart';
+import 'package:debate_project/widgets/app_review_dialog.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart'; // Hooksを継続して使用
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart'; // hooks_riverpodを継続して使用
-import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:debate_project/views/CommunityPage.dart';
@@ -116,148 +116,6 @@ class HomePage extends HookConsumerWidget {
 
     final friendmatch = ref.watch(friendmatchProvider);
     final friendmatchnotifier = ref.watch(friendmatchProvider.notifier);
-
-    // HomePageクラスの外に追加
-
-    void showAppReviewDialog(BuildContext context) async {
-      // final InAppReview inAppReview = InAppReview.instance; // レビュー機能を使う場合
-
-      return showDialog<void>(
-        context: context, // ダイアログ外タップで閉じることを許可
-        barrierDismissible: false,
-        builder: (BuildContext dialogContext) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20.0), // ダイアログの角を丸くする
-            ),
-            elevation: 5,
-            backgroundColor: Colors.transparent, // Dialog自体の背景は透明に
-            child: Container(
-              padding: const EdgeInsets.all(24.0),
-              decoration: BoxDecoration(
-                color: Colors.white, // コンテナの背景色（優しい白）
-                borderRadius: BorderRadius.circular(20.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.3),
-                    spreadRadius: 2,
-                    blurRadius: 7,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: SingleChildScrollView(
-                // コンテンツが溢れた場合にスクロール可能に
-                child: Column(
-                  mainAxisSize: MainAxisSize.min, // 内容に合わせて高さを調整
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: <Widget>[
-                    Text(
-                      '応援をよろしくお願いします！',
-                      style: AppTextStyles.bold(
-                        fontSize: 22,
-                        color: Colors.orangeAccent[700], // 暖色系のアクセント
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Image.asset(
-                        'assets/images/stars.png',
-                        height: 150, // 画像の高さを適宜調整
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'いつもご利用いただきありがとうございます。\nより良いコンテンツをお届けられるように日々改善を続けております。\nぜひレビューしていただけると嬉しいです！',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.notoSans(
-                        fontSize: 15,
-                        color: Colors.grey[800], // 落ち着いたテキスト色
-                        height: 1.6, // 行間を少し広めに
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: <Widget>[
-                        TextButton(
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              side: BorderSide(
-                                  color: Colors.grey[300]!), // 控えめな枠線
-                            ),
-                          ),
-                          child: Text(
-                            'また今度',
-                            style: AppTextStyles.notoSans(
-                              color: Colors.grey[700],
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          onPressed: () async {
-                            Navigator.of(dialogContext).pop();
-                            final SharedPreferences prefs =
-                                await SharedPreferences.getInstance();
-                            await prefs.setBool('isreview', true);
-                          },
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.amber[600], // 星の色に合わせた暖色
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 30, vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                            ),
-                            elevation: 4, // 少し影をつける
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.star,
-                                  color: Colors.white, size: 18), // 星アイコン
-                              const SizedBox(width: 8),
-                              Text(
-                                '応援する',
-                                style: AppTextStyles.bold(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                          onPressed: () async {
-                            Navigator.of(dialogContext).pop();
-
-                            final InAppReview inAppReview =
-                                InAppReview.instance;
-
-                            if (await inAppReview.isAvailable()) {
-                              inAppReview.requestReview();
-                            }
-
-                            final SharedPreferences prefs =
-                                await SharedPreferences.getInstance();
-                            await prefs.setBool('isreview', true);
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    }
 
     final bannerAd = ref.watch(
         bannerAdProvider); // 空の依存配列 [] は、このエフェクトがウィジェットがマウントされたとき一度だけ実行されることを意味します (initState と同様)

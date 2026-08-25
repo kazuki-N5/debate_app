@@ -20,9 +20,6 @@ class CommunityAdNotifier extends StateNotifier<Map<int, BannerAd>> {
       : _size = size,
         super({});
 
-  /// このタブで使う広告サイズ(プレースホルダーの高さと揃える)。
-  AdSize get adSize => _size;
-
   // ロード中スロット(多重ロード防止)
   final Set<int> _loading = {};
   final Random _random = Random();

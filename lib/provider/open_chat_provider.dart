@@ -213,7 +213,18 @@ class OpenChatMessagesNotifier extends StateNotifier<AsyncValue<List<OpenChatMes
             if (filtered.isEmpty) return;
             // 重複チェック (送信時の楽観的UIで追加済みの場合は無視)
             if (!currentList.any((msg) => msg.id == newMsg.id)) {
-              state = AsyncValue.data([newMsg, ...currentList]);
+              // メッセージは created_at 降順(最新→最古)で整列される。
+              // 削除ログなど「過去の時刻」を持つシステムメッセージを先頭に足すと
+              // 常に一番下(最新)に表示されてしまうため、created_at に基づく
+              // 正しい位置に挿入する(既存の相対順序は維持する)。
+              final newList = List<OpenChatMessage>.of(currentList);
+              var insertAt = 0;
+              while (insertAt < newList.length &&
+                  newList[insertAt].createdAt.isAfter(newMsg.createdAt)) {
+                insertAt++;
+              }
+              newList.insert(insertAt, newMsg);
+              state = AsyncValue.data(newList);
             }
           }
         }

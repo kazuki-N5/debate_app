@@ -6,3 +6,7 @@ final forceboolProvider = StateProvider<bool>((ref) => false);
 final maintenanceboolProvider = StateProvider<bool>((ref) => false);
 
 final reviewProvider = StateProvider<bool>((ref) => false);
+
+/// レビューお願いダイアログの表示条件に使うローカルカウンターのキー
+/// （アプリ起動回数とFinishページ表示回数の合計を数える）
+const String reviewTriggerCountPrefKey = 'review_trigger_count';

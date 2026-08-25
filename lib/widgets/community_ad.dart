@@ -63,15 +63,7 @@ Widget communityAdWidget(BannerAd ad) {
 /// に少し余裕を持たせた値)。
 double homeBottomAdClearance() => 150.0;
 
-/// 広告未ロード時に同じ高さを確保するプレースホルダー。
-/// ([communityAdWidget] と同じ縦パディングで、ロード後にレイアウトが跳ねないようにする)
-Widget communityAdPlaceholder(AdSize size) {
-  return Container(
-    alignment: Alignment.center,
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    color: Colors.white,
-    child: SizedBox(
-      height: size.height.toDouble(),
-    ),
-  );
-}
+/// 広告未ロード時は**何も表示しない**。
+/// ロード完了時にその場へ広告が表示される。未ロード時は高さ0のため、
+/// ロード成功時は下のコンテンツが広告ぶんだけ下がる(「ずれる」)。
+Widget communityAdPlaceholder() => const SizedBox.shrink();

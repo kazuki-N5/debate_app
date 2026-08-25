@@ -49,9 +49,7 @@ class BbsTimelineView extends HookConsumerWidget {
                     padding: EdgeInsets.only(bottom: homeBottomAdClearance()),
                     child: bbsAds[0] != null
                         ? communityAdWidget(bbsAds[0]!)
-                        : communityAdPlaceholder(
-                            ref.read(communityBbsAdProvider.notifier)
-                                .adSize),
+                        : communityAdPlaceholder(),
                   ),
                 ],
               );
@@ -107,9 +105,7 @@ class BbsTimelineView extends HookConsumerWidget {
                     final slotAd = bbsAds[index];
                     return slotAd != null
                         ? communityAdWidget(slotAd)
-                        : communityAdPlaceholder(
-                            ref.read(communityBbsAdProvider.notifier)
-                                .adSize);
+                        : communityAdPlaceholder();
                   }
                   final post =
                       posts[communityContentIndex(index, adSlots)];

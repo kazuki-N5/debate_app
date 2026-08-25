@@ -158,12 +158,7 @@ class CommunityPage extends HookConsumerWidget {
                                         child: recruitAds[0] != null
                                             ? communityAdWidget(
                                                 recruitAds[0]!)
-                                            : communityAdPlaceholder(
-                                                ref
-                                                    .read(
-                                                        communityRecruitAdProvider
-                                                            .notifier)
-                                                    .adSize),
+                                            : communityAdPlaceholder(),
                                       ),
                                     ],
                                   );
@@ -223,12 +218,7 @@ class CommunityPage extends HookConsumerWidget {
                                       final slotAd = recruitAds[index];
                                       return slotAd != null
                                           ? communityAdWidget(slotAd)
-                                          : communityAdPlaceholder(
-                                              ref
-                                                  .read(
-                                                      communityRecruitAdProvider
-                                                          .notifier)
-                                                  .adSize);
+                                          : communityAdPlaceholder();
                                     }
                                     final inviteValue = invites[
                                         communityContentIndex(

@@ -1,8 +1,0 @@
-Analyzing debata...
-
-  error - lib\provider\user.dart:126:4 - Only static fields can be declared as const. Try declaring the field as final, or adding the keyword 'static'. - const_instance_field
-  error - lib\views\SettingPage.dart:363:14 - The expression doesn't evaluate to a function, so it can't be invoked. - invocation_of_non_function_expression
-  error - lib\views\SettingPage.dart:370:14 - The expression doesn't evaluate to a function, so it can't be invoked. - invocation_of_non_function_expression
-  error - lib\views\SettingPage.dart:373:13 - The expression doesn't evaluate to a function, so it can't be invoked. - invocation_of_non_function_expression
-
-4 issues found.

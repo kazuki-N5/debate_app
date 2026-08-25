@@ -52,3 +52,14 @@ supabase/functions/*/service-account.json
 
 # Flutter Demon user preferences (not tracked)
 .fdemon/settings.local.toml
+
+# 開発スクラッチ・一時ファイル(コミット対象外)
+.omo/
+schema_compare_tmp/
+br_out*.txt
+analyze_out.txt
+dot_shorthand_scan.txt
+mock/
+*モック.html
+html/chat_time_display_mockup.html
+.zed/debug.json

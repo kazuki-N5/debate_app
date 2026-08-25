@@ -4,10 +4,12 @@ import 'package:debate_project/provider/matching_provider.dart';
 import 'package:debate_project/provider/resba_provider.dart';
 import 'package:debate_project/provider/supabase_provider.dart';
 import 'package:debate_project/router/router.dart';
+import 'package:debate_project/utils/date_formatter.dart';
 import 'package:debate_project/widgets/app_confirm_dialog.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 const _resbaColor = Color(0xFF7856FF);
 
@@ -192,21 +194,55 @@ class ResbaCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ヘッダー
+          // ヘッダー（プロフィールアイコン + 掲示板と同じ名前・日時）
           Row(
             children: [
-              if (invite.senderAvatar != null && invite.senderAvatar!.isNotEmpty)
-                CircleAvatar(
-                  radius: 12,
-                  backgroundImage: ResizeImage(NetworkImage(invite.senderAvatar!), width: 72),
-                )
-              else
-                CircleAvatar(radius: 12, backgroundColor: Colors.grey[300], child: Icon(Icons.person, size: 14, color: Colors.grey[600])),
+              // プロフィールアイコン: タップで本人のプロフィールへ
+              GestureDetector(
+                onTap: () =>
+                    context.push('/userProfile', extra: invite.senderId),
+                child: invite.senderAvatar != null &&
+                        invite.senderAvatar!.isNotEmpty
+                    ? CircleAvatar(
+                        radius: 12,
+                        backgroundImage: ResizeImage(
+                            NetworkImage(invite.senderAvatar!),
+                            width: 72),
+                      )
+                    : CircleAvatar(
+                        radius: 12,
+                        backgroundColor: Colors.grey[300],
+                        child: Icon(Icons.person,
+                            size: 14, color: Colors.grey[600]),
+                      ),
+              ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  '⚔️ レスバ',
-                  style: AppTextStyles.bold(fontSize: 12.5),
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        invite.senderName ?? '名無し',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Colors.black87,
+                          height: 1.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '・ ${DateFormatter.formatBbsDate(invite.createdAt)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF536471),
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               if (showStatusOnly)
@@ -287,13 +323,24 @@ class ResbaCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              if (app.applicantAvatar != null && app.applicantAvatar!.isNotEmpty)
-                CircleAvatar(
-                  radius: 14,
-                  backgroundImage: ResizeImage(NetworkImage(app.applicantAvatar!), width: 84),
-                )
-              else
-                CircleAvatar(radius: 14, backgroundColor: Colors.grey[300], child: Icon(Icons.person, size: 16, color: Colors.grey[600])),
+              GestureDetector(
+                onTap: () =>
+                    context.push('/userProfile', extra: app.applicantId),
+                child: app.applicantAvatar != null &&
+                        app.applicantAvatar!.isNotEmpty
+                    ? CircleAvatar(
+                        radius: 14,
+                        backgroundImage: ResizeImage(
+                            NetworkImage(app.applicantAvatar!),
+                            width: 84),
+                      )
+                    : CircleAvatar(
+                        radius: 14,
+                        backgroundColor: Colors.grey[300],
+                        child: Icon(Icons.person,
+                            size: 16, color: Colors.grey[600]),
+                      ),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(

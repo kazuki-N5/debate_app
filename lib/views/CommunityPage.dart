@@ -158,7 +158,12 @@ class CommunityPage extends HookConsumerWidget {
                                         child: recruitAds[0] != null
                                             ? communityAdWidget(
                                                 recruitAds[0]!)
-                                            : communityAdPlaceholder(),
+                                            : communityAdPlaceholder(
+                                                ref
+                                                    .read(
+                                                        communityRecruitAdProvider
+                                                            .notifier)
+                                                    .adSize),
                                       ),
                                     ],
                                   );
@@ -178,11 +183,11 @@ class CommunityPage extends HookConsumerWidget {
                                 );
                               }
                               return Builder(builder: (context) {
-                                // 対戦募集は件数が少ないので「3件ごとに1個」広告を挟む(開始位置はランダム)
+                                // 対戦募集は件数が少ないので「5件ごとに1個」広告を挟む(開始位置はランダム)
                                 final adSlots = !isSubscribed
                                     ? communityAdSlotIndexes(
                                         invites.length,
-                                        3,
+                                        5,
                                         startContentIndex: ref
                                             .read(
                                                 communityRecruitAdProvider
@@ -218,7 +223,12 @@ class CommunityPage extends HookConsumerWidget {
                                       final slotAd = recruitAds[index];
                                       return slotAd != null
                                           ? communityAdWidget(slotAd)
-                                          : communityAdPlaceholder();
+                                          : communityAdPlaceholder(
+                                              ref
+                                                  .read(
+                                                      communityRecruitAdProvider
+                                                          .notifier)
+                                                  .adSize);
                                     }
                                     final inviteValue = invites[
                                         communityContentIndex(

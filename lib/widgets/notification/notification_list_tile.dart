@@ -35,7 +35,10 @@ class NotificationListTile extends StatelessWidget {
       case 'comment':
         return 'あなたのポストにコメントしました';
       case 'resba_invite':
-        return 'あなたにレスバを申し込みました';
+        // 返信・コメントにレスバを添付して送信された（メッセージ扱い）
+        return 'レスバが届きました';
+      case 'resba_apply':
+        return 'あなたのレスバに応募しました';
       case 'resba_accepted':
         return 'あなたのレスバを承諾しました';
       case 'resba_declined':
@@ -57,6 +60,7 @@ class NotificationListTile extends StatelessWidget {
       case 'comment':
         return (Icons.chat_bubble, const Color(0xFF00BA7C));
       case 'resba_invite':
+      case 'resba_apply':
         return (Icons.sports_kabaddi, const Color(0xFF7856FF));
       case 'resba_accepted':
         return (Icons.sports_kabaddi, const Color(0xFF00BA7C));

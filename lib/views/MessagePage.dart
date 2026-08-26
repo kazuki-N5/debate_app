@@ -112,6 +112,7 @@ class MessagePage extends HookConsumerWidget {
         context.push('/userProfile', extra: n.actorId);
         break;
       case 'resba_invite':
+      case 'resba_apply':
       case 'resba_accepted':
       case 'resba_declined':
         if (n.inviteId != null) {

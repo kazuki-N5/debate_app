@@ -8,6 +8,7 @@ class NotificationSettingsModel {
   final bool dmEnabled; // DM
   final bool openChatEnabled; // オプチャ
   final bool matchWaitingEnabled; // 対戦待ち
+  final bool resbaApplyEnabled; // レスバ応募（自分が作ったレスバに応募が来たとき）
 
   const NotificationSettingsModel({
     this.isNotificationEnabled = false,
@@ -17,6 +18,7 @@ class NotificationSettingsModel {
     this.dmEnabled = true,
     this.openChatEnabled = true,
     this.matchWaitingEnabled = true,
+    this.resbaApplyEnabled = true,
   });
 
   factory NotificationSettingsModel.fromMap(Map<String, dynamic> map) {
@@ -28,6 +30,7 @@ class NotificationSettingsModel {
       dmEnabled: map['dm_enabled'] as bool? ?? true,
       openChatEnabled: map['open_chat_enabled'] as bool? ?? true,
       matchWaitingEnabled: map['match_waiting_enabled'] as bool? ?? true,
+      resbaApplyEnabled: map['resba_apply_enabled'] as bool? ?? true,
     );
   }
 
@@ -39,6 +42,7 @@ class NotificationSettingsModel {
         'dm_enabled': dmEnabled,
         'open_chat_enabled': openChatEnabled,
         'match_waiting_enabled': matchWaitingEnabled,
+        'resba_apply_enabled': resbaApplyEnabled,
       };
 
   NotificationSettingsModel copyWith({
@@ -49,6 +53,7 @@ class NotificationSettingsModel {
     bool? dmEnabled,
     bool? openChatEnabled,
     bool? matchWaitingEnabled,
+    bool? resbaApplyEnabled,
   }) {
     return NotificationSettingsModel(
       isNotificationEnabled:
@@ -59,6 +64,7 @@ class NotificationSettingsModel {
       dmEnabled: dmEnabled ?? this.dmEnabled,
       openChatEnabled: openChatEnabled ?? this.openChatEnabled,
       matchWaitingEnabled: matchWaitingEnabled ?? this.matchWaitingEnabled,
+      resbaApplyEnabled: resbaApplyEnabled ?? this.resbaApplyEnabled,
     );
   }
 }

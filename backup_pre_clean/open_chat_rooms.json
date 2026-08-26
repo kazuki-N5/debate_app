@@ -1,0 +1,224 @@
+[
+  {
+    "background_url": "http://192.168.11.52:54321/storage/v1/object/public/open_chat_images/backgrounds/1787541697138.jpg",
+    "created_at": "2026-08-24T03:21:37.467578Z",
+    "description": "はゆはんわははわはや",
+    "icon_url": "http://192.168.11.52:54321/storage/v1/object/public/open_chat_images/icons/1787541696934.jpg",
+    "id": "ac23105c-4942-42c7-9905-d6683edb356f",
+    "member_count": 7,
+    "name": "はややさなんわさ",
+    "password": null,
+    "rules": null,
+    "tags": [
+      "ディベート"
+    ]
+  },
+  {
+    "background_url": "http://192.168.11.52:54321/storage/v1/object/public/open_chat_images/backgrounds/1787674711109.jpg",
+    "created_at": "2026-08-25T16:18:31.220775Z",
+    "description": "変態紳士クラブニコニコ",
+    "icon_url": "http://192.168.11.52:54321/storage/v1/object/public/open_chat_images/icons/1787674755189.jpg",
+    "id": "da4a0be7-78c8-499b-aced-31e4547a4cd9",
+    "member_count": 3,
+    "name": "変態紳士クラブ",
+    "password": null,
+    "rules": null,
+    "tags": [
+      "ディベート"
+    ]
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:27:52.448201Z",
+    "description": "やたやなた",
+    "icon_url": null,
+    "id": "68ea2f62-be52-4e22-8250-834b3deec203",
+    "member_count": 1,
+    "name": "やたやた",
+    "password": null,
+    "rules": null,
+    "tags": []
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:27:59.047711Z",
+    "description": "なたにた",
+    "icon_url": null,
+    "id": "718edea7-7417-4bd4-83bd-51949681cad4",
+    "member_count": 1,
+    "name": "やたな",
+    "password": null,
+    "rules": null,
+    "tags": []
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:28:03.531088Z",
+    "description": "ややてあ",
+    "icon_url": null,
+    "id": "43b09eab-5a8e-4750-93df-645047720c55",
+    "member_count": 1,
+    "name": "ややてた",
+    "password": null,
+    "rules": null,
+    "tags": []
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:28:06.790892Z",
+    "description": "やた（た",
+    "icon_url": null,
+    "id": "8ca4f96b-47f4-441c-b67c-1e44e547e017",
+    "member_count": 1,
+    "name": "やた（た",
+    "password": null,
+    "rules": null,
+    "tags": []
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:36:22.282356Z",
+    "description": "初心者向け。気軽に議論しよう",
+    "icon_url": null,
+    "id": "9ee57429-eb91-4069-8bb2-eb8bbfe9c145",
+    "member_count": 1,
+    "name": "ディベート初心者歓迎部屋",
+    "password": null,
+    "rules": null,
+    "tags": [
+      "#初心者"
+    ]
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:36:22.282356Z",
+    "description": "政治・経済を真面目に議論する部屋",
+    "icon_url": null,
+    "id": "456ae684-695b-4e76-aebc-b4b2e974da96",
+    "member_count": 1,
+    "name": "政治経済トーク",
+    "password": null,
+    "rules": null,
+    "tags": [
+      "#政治"
+    ]
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:36:22.282356Z",
+    "description": "スポーツ観戦と考察の部屋",
+    "icon_url": null,
+    "id": "90b3622e-f28d-4e1b-a686-216cd7b277b7",
+    "member_count": 1,
+    "name": "スポーツ議論クラブ",
+    "password": null,
+    "rules": null,
+    "tags": [
+      "#スポーツ"
+    ]
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:36:22.282356Z",
+    "description": "アニメの語り合い",
+    "icon_url": null,
+    "id": "ccf18dd2-4087-4a5a-909f-0f5eaa96ac87",
+    "member_count": 1,
+    "name": "アニメ大好き会",
+    "password": null,
+    "rules": null,
+    "tags": [
+      "#アニメ"
+    ]
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:36:22.282356Z",
+    "description": "ゲームの攻略・戦略を議論",
+    "icon_url": null,
+    "id": "531ba586-0097-4b03-ba9f-91d88501d501",
+    "member_count": 1,
+    "name": "ゲーム戦略会議",
+    "password": null,
+    "rules": null,
+    "tags": [
+      "#ゲーム"
+    ]
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:36:22.282356Z",
+    "description": "好きな音楽を語り合う",
+    "icon_url": null,
+    "id": "813973a7-c8fe-4989-8b1e-2a7b35e0f2f3",
+    "member_count": 1,
+    "name": "音楽談義サロン",
+    "password": null,
+    "rules": null,
+    "tags": [
+      "#音楽"
+    ]
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:39:26.708532Z",
+    "description": "まこかや",
+    "icon_url": null,
+    "id": "3f818fda-29e2-4066-9eb3-84d7295176f5",
+    "member_count": 2,
+    "name": "かやかゆ",
+    "password": null,
+    "rules": null,
+    "tags": []
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T06:36:22.282356Z",
+    "description": "雑談と議論のミックス",
+    "icon_url": null,
+    "id": "7b552937-af5a-4ac2-92d3-7366628921b7",
+    "member_count": 2,
+    "name": "深夜の雑談部屋",
+    "password": null,
+    "rules": null,
+    "tags": [
+      "#雑談"
+    ]
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T07:42:49.635789Z",
+    "description": "",
+    "icon_url": null,
+    "id": "51ad56e8-cd13-4e1b-932e-dfaad4a26ce1",
+    "member_count": 1,
+    "name": "ややか",
+    "password": null,
+    "rules": null,
+    "tags": []
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T07:42:52.4731Z",
+    "description": "",
+    "icon_url": null,
+    "id": "8640371d-bfaa-4d40-b42e-c0d645ca59c2",
+    "member_count": 1,
+    "name": "やや",
+    "password": null,
+    "rules": null,
+    "tags": []
+  },
+  {
+    "background_url": null,
+    "created_at": "2026-08-25T08:44:34.781075Z",
+    "description": "やなまひた",
+    "icon_url": null,
+    "id": "1fdf8e54-1e2e-478f-86c4-c174b0f9d654",
+    "member_count": 1,
+    "name": "ああああああ",
+    "password": null,
+    "rules": null,
+    "tags": []
+  }
+]

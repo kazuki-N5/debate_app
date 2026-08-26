@@ -1,0 +1,554 @@
+{
+  "schemaVersion": 2,
+  "appName": "レスバト",
+  "themeId": "debata-pop",
+  "connectedCanvas": true,
+  "locales": [
+    "ja"
+  ],
+  "locale": "ja",
+  "device": "ipad",
+  "orientation": "portrait",
+  "appIcon": "/app-icon.png",
+  "slidesByDevice": {
+    "iphone": [
+      {
+        "id": "s_debata_iphone_1",
+        "layout": "hero",
+        "label": {},
+        "headline": {
+          "ja": "日本初\nレスバ専用SNS"
+        },
+        "screenshot": "/screenshots/apple/iphone/ja/01.png",
+        "transforms": {
+          "device": {
+            "x": 111.99428515392636,
+            "y": 528.574833468244,
+            "width": 1107,
+            "height": 2256,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 102.2636381736767,
+            "y": 161.7815695763814,
+            "width": 1109,
+            "height": 906,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      },
+      {
+        "id": "s_debata_iphone_2",
+        "layout": "device-bottom",
+        "label": {},
+        "headline": {
+          "ja": "日本中の人と\nオンライン対戦！！"
+        },
+        "screenshot": "/screenshots/apple/iphone/ja/02.png",
+        "transforms": {
+          "device": {
+            "x": 109.53664405731433,
+            "y": 528.795153414426,
+            "width": 1071,
+            "height": 2182,
+            "rotation": -12,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 118.94453305411662,
+            "y": 176.05638455911867,
+            "width": 1099,
+            "height": 803,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      },
+      {
+        "id": "s_debata_iphone_3",
+        "layout": "device-top",
+        "label": {},
+        "headline": {
+          "ja": "AIがあなたのレスバを判定"
+        },
+        "screenshot": "/screenshots/apple/iphone/ja/03.png",
+        "transforms": {
+          "device": {
+            "x": 144.62753562851367,
+            "y": 537.3376220285654,
+            "width": 1048,
+            "height": 2135,
+            "rotation": 7,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 118.9462599959943,
+            "y": 179.23467550560582,
+            "width": 1108.8,
+            "height": 803.0400000000001,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      },
+      {
+        "id": "s_debata_iphone_4",
+        "layout": "two-devices",
+        "label": {},
+        "headline": {
+          "ja": "相手を見つけて\nすぐバトル"
+        },
+        "screenshot": "/screenshots/apple/iphone/ja/04.png",
+        "screenshotSecondary": "",
+        "transforms": {
+          "device": {
+            "x": 360.13857614755125,
+            "y": 695.2604950770904,
+            "width": 912.27195389049,
+            "height": 1858.4640000000002,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "deviceSecondary": {
+            "x": 74.28198995394496,
+            "y": 869.7294850338124,
+            "width": 871.2,
+            "height": 1774.7929549902153,
+            "rotation": 0,
+            "zIndex": 2
+          },
+          "caption": {
+            "x": 118.94625999599475,
+            "y": 216.09374000400481,
+            "width": 1108.8,
+            "height": 803.0400000000001,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      },
+      {
+        "id": "s_debata_iphone_5",
+        "layout": "device-bottom",
+        "label": {},
+        "headline": {
+          "ja": "クラブを作って\nつながろう"
+        },
+        "screenshot": "/screenshots/apple/iphone/ja/05.png",
+        "transforms": {
+          "device": {
+            "x": 153.18224783861842,
+            "y": 622.227095037044,
+            "width": 1013.6355043227666,
+            "height": 2064.96,
+            "rotation": 0,
+            "zIndex": 3
+          }
+        }
+      },
+      {
+        "id": "s_debata_iphone_6",
+        "layout": "device-top",
+        "label": {},
+        "headline": {
+          "ja": "好きなテーマでフレンドと対戦"
+        },
+        "screenshot": "/screenshots/apple/iphone/ja/06.png",
+        "transforms": {
+          "caption": {
+            "x": 134.39731255293918,
+            "y": 244.9788009484517,
+            "width": 1052,
+            "height": 860,
+            "rotation": 0,
+            "zIndex": 4
+          },
+          "device": {
+            "x": 157.99026898128068,
+            "y": 656.4922120881838,
+            "width": 1013.6355043227666,
+            "height": 2064.96,
+            "rotation": 0,
+            "zIndex": 3
+          }
+        }
+      },
+      {
+        "id": "s_debata_iphone_7",
+        "layout": "hero",
+        "label": {},
+        "headline": {
+          "ja": "新感覚\nディベートアプリ"
+        },
+        "screenshot": "/screenshots/apple/iphone/ja/07.png",
+        "transforms": {
+          "device": {
+            "x": 109.79252742253175,
+            "y": 525.5499948814563,
+            "width": 1115,
+            "height": 2272,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 105.6043894760187,
+            "y": 161.50710459137787,
+            "width": 1109,
+            "height": 953,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      }
+    ],
+    "android": [
+      {
+        "id": "s_debata_android_1",
+        "layout": "hero",
+        "label": {
+          "ja": "日本初"
+        },
+        "headline": {
+          "ja": "レスバ専用SNS"
+        },
+        "screenshot": "/screenshots/android/phone/ja/01.png"
+      },
+      {
+        "id": "s_debata_android_2",
+        "layout": "device-bottom",
+        "label": {
+          "ja": "⚡リアルタイム対戦"
+        },
+        "headline": {
+          "ja": "1対1の熱すぎる\n議論バトル⚡"
+        },
+        "screenshot": "/screenshots/android/phone/ja/02.png"
+      },
+      {
+        "id": "s_debata_android_3",
+        "layout": "device-top",
+        "label": {
+          "ja": "🏆AIジャッジ"
+        },
+        "headline": {
+          "ja": "AIが勝敗を\nズバッと判定🏆"
+        },
+        "screenshot": "/screenshots/android/phone/ja/03.png"
+      },
+      {
+        "id": "s_debata_android_4",
+        "layout": "two-devices",
+        "label": {
+          "ja": "🎯対戦募集"
+        },
+        "headline": {
+          "ja": "相手を見つけて\nすぐバトル💥"
+        },
+        "screenshot": "/screenshots/android/phone/ja/04.png",
+        "screenshotSecondary": ""
+      },
+      {
+        "id": "s_debata_android_5",
+        "layout": "device-bottom",
+        "label": {
+          "ja": "👥クラブ"
+        },
+        "headline": {
+          "ja": "仲間とワイワイ\n白熱レスバ🎉"
+        },
+        "screenshot": "/screenshots/android/phone/ja/05.png"
+      },
+      {
+        "id": "s_debata_android_6",
+        "layout": "device-top",
+        "label": {
+          "ja": "⚖️立場を選択"
+        },
+        "headline": {
+          "ja": "賛成？反対？\nさあ決めよう👊"
+        },
+        "screenshot": "/screenshots/android/phone/ja/06.png"
+      },
+      {
+        "id": "s_debata_android_7",
+        "layout": "hero",
+        "label": {
+          "ja": "✨レスバト"
+        },
+        "headline": {
+          "ja": "今日も\n熱く語ろう🔥"
+        },
+        "screenshot": "/screenshots/android/phone/ja/07.png"
+      }
+    ],
+    "ipad": [
+      {
+        "id": "s_debata_ipad_1",
+        "layout": "hero",
+        "label": {},
+        "headline": {
+          "ja": "日本初\nレスバ専用SNS"
+        },
+        "screenshot": "/screenshots/apple/ipad/ja/01.png",
+        "transforms": {
+          "device": {
+            "x": 217.86548354921172,
+            "y": 578.6322318320981,
+            "width": 1641,
+            "height": 2131,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 168.3216132765847,
+            "y": 61.98642995809179,
+            "width": 1733.76,
+            "height": 770.5600000000001,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      },
+      {
+        "id": "s_debata_ipad_2",
+        "layout": "device-bottom",
+        "label": {},
+        "headline": {
+          "ja": "日本中の人と\nオンライン対戦！！"
+        },
+        "screenshot": "/screenshots/apple/ipad/ja/02.png",
+        "transforms": {
+          "device": {
+            "x": 223.23103096009072,
+            "y": 598.1656235297268,
+            "width": 1612,
+            "height": 2093,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 173.82457034862455,
+            "y": 32.61273628755703,
+            "width": 1808,
+            "height": 771,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      },
+      {
+        "id": "s_debata_ipad_3",
+        "layout": "device-top",
+        "label": {},
+        "headline": {
+          "ja": "AIがあなたのレスバを判定"
+        },
+        "screenshot": "/screenshots/apple/ipad/ja/03.png",
+        "transforms": {
+          "device": {
+            "x": 254.4826941082565,
+            "y": 578.5350337856376,
+            "width": 1594,
+            "height": 2071,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 154.3643984661112,
+            "y": 54.99703273732931,
+            "width": 1733.76,
+            "height": 770.5600000000001,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      },
+      {
+        "id": "s_debata_ipad_4",
+        "layout": "two-devices",
+        "label": {},
+        "headline": {
+          "ja": "相手を見つけて\nすぐバトル"
+        },
+        "screenshot": "/screenshots/apple/ipad/ja/04.png",
+        "screenshotSecondary": "",
+        "transforms": {
+          "deviceSecondary": {
+            "x": 157.95676018785525,
+            "y": 954.4614243256524,
+            "width": 1238.3999999999999,
+            "height": 1608.3116883116882,
+            "rotation": 0,
+            "zIndex": 2
+          },
+          "device": {
+            "x": 469.8740076107524,
+            "y": 586.9040414739782,
+            "width": 1439,
+            "height": 1869,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 165.1199999999999,
+            "y": 69.6841760005227,
+            "width": 1733.76,
+            "height": 770.5600000000001,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      },
+      {
+        "id": "s_debata_ipad_5",
+        "layout": "device-bottom",
+        "label": {},
+        "headline": {
+          "ja": "クラブを作って\nつながろう"
+        },
+        "screenshot": "/screenshots/apple/ipad/ja/05.png",
+        "transforms": {
+          "device": {
+            "x": 244.23885110322772,
+            "y": 610.4038989235407,
+            "width": 1567,
+            "height": 2035,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 155.51516017024005,
+            "y": 88.89385566003041,
+            "width": 1733.76,
+            "height": 770.5600000000001,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      },
+      {
+        "id": "s_debata_ipad_6",
+        "layout": "device-top",
+        "label": {},
+        "headline": {
+          "ja": "好きなテーマでフレンドと対戦"
+        },
+        "screenshot": "/screenshots/apple/ipad/ja/06.png",
+        "transforms": {
+          "device": {
+            "x": 260.54111877288415,
+            "y": 617.5149273126658,
+            "width": 1525.7087999999999,
+            "height": 1981.4399999999998,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 185.9138128482773,
+            "y": 74.35711549832689,
+            "width": 1733.76,
+            "height": 770.5600000000001,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      },
+      {
+        "id": "s_debata_ipad_7",
+        "layout": "hero",
+        "label": {},
+        "headline": {
+          "ja": "新感覚\nディベートアプリ"
+        },
+        "screenshot": "/screenshots/apple/ipad/ja/07.png",
+        "transforms": {
+          "device": {
+            "x": 293.95868507868363,
+            "y": 650.5087948523268,
+            "width": 1525.7087999999999,
+            "height": 1981.4399999999998,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 188.68205464021958,
+            "y": 99.45323630100529,
+            "width": 1733.76,
+            "height": 770.5600000000001,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      }
+    ],
+    "android-7": [
+      {
+        "id": "s_mt9z0rql_d",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Pocket-sized\npower."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mt9z0rql_e",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Wide canvas,\nbigger ideas."
+        },
+        "screenshot": ""
+      }
+    ],
+    "android-10": [
+      {
+        "id": "s_mt9z0rql_f",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Made for\nthe big screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mt9z0rql_g",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Wide canvas,\nbigger ideas."
+        },
+        "screenshot": ""
+      }
+    ],
+    "feature-graphic": [
+      {
+        "id": "s_mt9z0rql_h",
+        "layout": "feature-graphic",
+        "label": {},
+        "headline": {
+          "en": "Your tagline goes here."
+        },
+        "screenshot": ""
+      }
+    ]
+  },
+  "crossScreenMockupsByDevice": {
+    "iphone": [],
+    "ipad": [],
+    "android": [],
+    "android-7": [],
+    "android-10": [],
+    "feature-graphic": []
+  }
+}

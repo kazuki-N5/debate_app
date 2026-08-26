@@ -7,6 +7,7 @@ import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
+import 'package:debate_project/widgets/app_confirm_dialog.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -188,6 +189,20 @@ class SettingPage extends HookConsumerWidget {
             title: '購入情報を復元',
             onTap: () async => await inappNotifier.restorePurchases(),
           ),
+          // --- アカウント削除（is_signout フラグを立ててログアウト） ---
+          const SizedBox(height: 1),
+          Center(
+            child: TextButton(
+              onPressed: () => _confirmDeleteAccount(context, ref),
+              child: Text(
+                'アカウント削除',
+                style: AppTextStyles.notoSans(
+                  fontSize: 13,
+                  color: Colors.white70, // グレーの字
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 30), // 下部のスペース確保
         ],
       ),
@@ -195,6 +210,46 @@ class SettingPage extends HookConsumerWidget {
   }
 
   // --- 以下のヘルパーメソッドは変更なし ---
+
+  /// アカウント削除の確認ダイアログを表示し、承認されたら実行する
+  /// ※ データは物理削除せず、users.is_signout = true を立ててからログアウトする
+  ///   （将来のアカウント復元・一括削除に備える）
+  Future<void> _confirmDeleteAccount(
+      BuildContext context, WidgetRef ref) async {
+    final confirmed = await showAppConfirmDialog(
+      context: context,
+      title: 'アカウント削除',
+      message: 'アカウントを削除しますか？\nこの操作は取り消せません。',
+      cancelText: 'キャンセル',
+      confirmText: '削除する',
+      isDestructive: true, // 削除ボタンを赤背景にする
+      barrierDismissible: false,
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final supabase = ref.read(supabaseProvider);
+    final userId = supabase.auth.currentUser?.id;
+    try {
+      // 削除フラグを立てる（失敗してもログアウト自体は続行する）
+      if (userId != null) {
+        try {
+          await supabase.from('users').update({'is_signout': true}).eq('id', userId);
+        } catch (flagErr) {
+          debugPrint('is_signout更新に失敗しました: $flagErr');
+        }
+      }
+      await supabase.auth.signOut();
+      if (context.mounted) {
+        router.go('/');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('アカウント削除に失敗しました: $e')),
+        );
+      }
+    }
+  }
 
   Widget _buildSectionTitle(String title) {
     return Padding(

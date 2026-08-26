@@ -1,0 +1,211 @@
+[
+  {
+    "content": "やまひはまはな",
+    "created_at": "2026-08-25T08:44:18.280166Z",
+    "id": "a33246fb-5c2d-474b-ba67-ae2e83804edc",
+    "image_url": "http://192.168.11.52:54321/storage/v1/object/public/bbs_images/comments/1787647458080.jpg",
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": null,
+    "post_id": "017a99ac-08ec-4185-90ef-638bb1477b91",
+    "user_id": "687ff142-490b-4bdc-b49a-0cf2bc256044"
+  },
+  {
+    "content": "ななはら",
+    "created_at": "2026-08-26T01:04:44.15863Z",
+    "id": "8b7d3db5-0e58-426c-934b-73c34241212b",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": null,
+    "post_id": "dfa6da43-49c6-491c-87f7-47f3344d8bd7",
+    "user_id": "f2818697-8ab0-4e42-8c46-1e5af61fe836"
+  },
+  {
+    "content": "なややや",
+    "created_at": "2026-08-26T01:04:48.489884Z",
+    "id": "5f639fc4-75b1-454f-82e5-01ee26cb0046",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": "8b7d3db5-0e58-426c-934b-73c34241212b",
+    "post_id": "dfa6da43-49c6-491c-87f7-47f3344d8bd7",
+    "user_id": "03f60ba7-a0de-4bb6-9b89-ac3a573ae399"
+  },
+  {
+    "content": "@はたらやはわわ ^_^まなやゆ",
+    "created_at": "2026-08-26T01:04:54.605522Z",
+    "id": "e0a126cd-da85-441f-ba1b-4c90be285bc7",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": "5f639fc4-75b1-454f-82e5-01ee26cb0046",
+    "post_id": "dfa6da43-49c6-491c-87f7-47f3344d8bd7",
+    "user_id": "f2818697-8ab0-4e42-8c46-1e5af61fe836"
+  },
+  {
+    "content": "ややなや",
+    "created_at": "2026-08-26T01:05:51.000576Z",
+    "id": "1ed8df17-9f54-40bf-bd40-d133d4889d0c",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": null,
+    "post_id": "7a640ee1-0244-4adb-af3e-a54f37c72fff",
+    "user_id": "f2818697-8ab0-4e42-8c46-1e5af61fe836"
+  },
+  {
+    "content": "やまなゎや",
+    "created_at": "2026-08-26T01:06:00.982304Z",
+    "id": "002f2c73-4127-4bb7-93ae-96091dd1bd96",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": "1ed8df17-9f54-40bf-bd40-d133d4889d0c",
+    "post_id": "7a640ee1-0244-4adb-af3e-a54f37c72fff",
+    "user_id": "f2818697-8ab0-4e42-8c46-1e5af61fe836"
+  },
+  {
+    "content": "@まわたわ ままなや",
+    "created_at": "2026-08-26T01:06:04.122617Z",
+    "id": "75ec2ab6-74b4-4029-a836-10ce9d628d35",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": "002f2c73-4127-4bb7-93ae-96091dd1bd96",
+    "post_id": "7a640ee1-0244-4adb-af3e-a54f37c72fff",
+    "user_id": "f2818697-8ab0-4e42-8c46-1e5af61fe836"
+  },
+  {
+    "content": "ややわわやや",
+    "created_at": "2026-08-26T01:06:10.57202Z",
+    "id": "cf534004-e5f1-4613-8709-f812de4497a0",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": "1ed8df17-9f54-40bf-bd40-d133d4889d0c",
+    "post_id": "7a640ee1-0244-4adb-af3e-a54f37c72fff",
+    "user_id": "03f60ba7-a0de-4bb6-9b89-ac3a573ae399"
+  },
+  {
+    "content": "@まわたわ やややややや",
+    "created_at": "2026-08-26T01:06:45.854812Z",
+    "id": "83bda8cd-91f9-4d74-bb6c-1db120117b87",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": "002f2c73-4127-4bb7-93ae-96091dd1bd96",
+    "post_id": "7a640ee1-0244-4adb-af3e-a54f37c72fff",
+    "user_id": "f2818697-8ab0-4e42-8c46-1e5af61fe836"
+  },
+  {
+    "content": "なな",
+    "created_at": "2026-08-26T01:49:18.774305Z",
+    "id": "d6581e07-bc1c-4cbf-8799-055d8317a75c",
+    "image_url": null,
+    "is_deleted": true,
+    "likes_count": 0,
+    "parent_comment_id": null,
+    "post_id": "61440e32-3231-4c6a-875e-3f1a3ff2718c",
+    "user_id": "03f60ba7-a0de-4bb6-9b89-ac3a573ae399"
+  },
+  {
+    "content": "わのわのなん",
+    "created_at": "2026-08-26T01:49:22.845729Z",
+    "id": "5ece744a-2f43-4859-b31e-48ece9b142ee",
+    "image_url": null,
+    "is_deleted": true,
+    "likes_count": 0,
+    "parent_comment_id": "d6581e07-bc1c-4cbf-8799-055d8317a75c",
+    "post_id": "61440e32-3231-4c6a-875e-3f1a3ff2718c",
+    "user_id": "03f60ba7-a0de-4bb6-9b89-ac3a573ae399"
+  },
+  {
+    "content": "わのわなわの",
+    "created_at": "2026-08-26T01:53:44.200962Z",
+    "id": "ad8191be-a495-494e-88f0-e2cd06d89934",
+    "image_url": null,
+    "is_deleted": true,
+    "likes_count": 0,
+    "parent_comment_id": null,
+    "post_id": "76b48f1a-9434-418a-92a0-a9611b1c2197",
+    "user_id": "03f60ba7-a0de-4bb6-9b89-ac3a573ae399"
+  },
+  {
+    "content": "@はたらやはわわ のなんなや",
+    "created_at": "2026-08-26T01:49:26.675059Z",
+    "id": "835434fc-bc70-4a1a-b445-62559ffb7b37",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": "5ece744a-2f43-4859-b31e-48ece9b142ee",
+    "post_id": "61440e32-3231-4c6a-875e-3f1a3ff2718c",
+    "user_id": "03f60ba7-a0de-4bb6-9b89-ac3a573ae399"
+  },
+  {
+    "content": "なな",
+    "created_at": "2026-08-26T01:49:18.769972Z",
+    "id": "3fef1eea-1ffa-4a38-aae0-439f9856707f",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": null,
+    "post_id": "61440e32-3231-4c6a-875e-3f1a3ff2718c",
+    "user_id": "03f60ba7-a0de-4bb6-9b89-ac3a573ae399"
+  },
+  {
+    "content": "okokok",
+    "created_at": "2026-08-26T02:37:01.930869Z",
+    "id": "82258c34-45da-4916-953c-7b2b75a5b36a",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": null,
+    "post_id": "fcc2d06b-c9dd-4b62-acd2-8ed9edb4954c",
+    "user_id": "90419c5e-0f97-4825-84c2-b19bcd29991d"
+  },
+  {
+    "content": "okoko",
+    "created_at": "2026-08-26T02:37:10.53846Z",
+    "id": "a76d2056-9ad3-4e62-853a-783ddff1e3f1",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": "82258c34-45da-4916-953c-7b2b75a5b36a",
+    "post_id": "fcc2d06b-c9dd-4b62-acd2-8ed9edb4954c",
+    "user_id": "90419c5e-0f97-4825-84c2-b19bcd29991d"
+  },
+  {
+    "content": "@aasas らんわほ",
+    "created_at": "2026-08-26T02:37:25.336451Z",
+    "id": "b976e173-80f5-4a93-9c83-d1c1695dcfc4",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": "a76d2056-9ad3-4e62-853a-783ddff1e3f1",
+    "post_id": "fcc2d06b-c9dd-4b62-acd2-8ed9edb4954c",
+    "user_id": "03f60ba7-a0de-4bb6-9b89-ac3a573ae399"
+  },
+  {
+    "content": "@はたらやはわわ kok",
+    "created_at": "2026-08-26T02:37:34.763371Z",
+    "id": "787bcacd-bc02-42f2-b239-c2377f9ce567",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": "b976e173-80f5-4a93-9c83-d1c1695dcfc4",
+    "post_id": "fcc2d06b-c9dd-4b62-acd2-8ed9edb4954c",
+    "user_id": "90419c5e-0f97-4825-84c2-b19bcd29991d"
+  },
+  {
+    "content": "やや",
+    "created_at": "2026-08-26T03:08:30.00478Z",
+    "id": "c7c9b093-db4d-45a7-825a-c42fa84dd002",
+    "image_url": null,
+    "is_deleted": false,
+    "likes_count": 0,
+    "parent_comment_id": null,
+    "post_id": "76b48f1a-9434-418a-92a0-a9611b1c2197",
+    "user_id": "f2818697-8ab0-4e42-8c46-1e5af61fe836"
+  }
+]

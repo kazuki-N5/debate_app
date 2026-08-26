@@ -8,11 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// 共通ダイアログ骨格（[AppDialogShell]）を使い、ほかの確認ダイアログ
 /// （[showAppConfirmDialog]）と同じ見た目で表示する。
-/// - タイトル: 「応援をよろしくお願いします！」
+/// - タイトル: 「気に入っていただけましたか？」
 /// - 画像: assets/images/stars.png
-/// - ボタン: 「また今度」 / 「応援する」(OSのレビュー画面を開く)
+/// - ボタン: 「また今度」 / 「はい」(OSのレビュー画面を開く)
 ///
-/// 「また今度」「応援する」どちらを押しても SharedPreferences の
+/// 「また今度」「はい」どちらを押しても SharedPreferences の
 /// `isreview` フラグを true に設定する（一度だけ表示するための
 /// 判定は呼び出し側で行う）。
 Future<void> showAppReviewDialog(BuildContext context) async {
@@ -21,7 +21,7 @@ Future<void> showAppReviewDialog(BuildContext context) async {
     barrierDismissible: false,
     builder: (dialogContext) {
       return AppDialogShell(
-        title: '応援をよろしくお願いします！',
+        title: '気に入っていただけましたか？',
         image: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Image.asset(
@@ -44,7 +44,7 @@ Future<void> showAppReviewDialog(BuildContext context) async {
             },
           ),
           AppDialogButton(
-            label: '応援する',
+            label: 'はい',
             variant: AppDialogButtonVariant.confirm,
             icon: const Icon(Icons.star, color: Colors.white, size: 18),
             onPressed: () async {

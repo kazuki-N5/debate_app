@@ -171,17 +171,18 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
 
       const { data: lastMsg } = await supabase
         .from("dm_messages")
-        .select("content")
+        .select("content, image_url")
         .eq("room_id", room_id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      title = "DMが届きました";
+      // タイトルは送信者名 / 2通目以降は「◯◯ さん:」プレフィックスなしで本文のみ表示
+      title = actorName;
       if (count === 1) {
         messageBody = `${actorName} さんから通知が来ました`;
       } else {
-        messageBody = `${actorName} さん: ${truncate(lastMsg?.content ?? "")}`;
+        messageBody = buildMessageBody(lastMsg?.content, lastMsg?.image_url);
       }
     }
   } else {
@@ -205,12 +206,13 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
     } else {
       const { data: lastMsg } = await supabase
         .from("open_chat_messages")
-        .select("content")
+        .select("content, image_url")
         .eq("room_id", room_id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      messageBody = `${actorName} さん: ${truncate(lastMsg?.content ?? "")}`;
+      // 「◯◯ さん:」プレフィックスなしで本文のみ表示（画像のみなら「画像が送信されました」）
+      messageBody = buildMessageBody(lastMsg?.content, lastMsg?.image_url);
     }
   }
 
@@ -443,6 +445,26 @@ async function sendFcm(
 function truncate(text: string, length = 30): string {
   if (!text) return "";
   return text.length > length ? text.substring(0, length) + "…" : text;
+}
+
+/**
+ * メッセージ本文を組み立てる
+ * - テキストあり: そのまま（30文字で切り詰め）
+ * - 画像のみ (content空 + image_urlあり): 「画像が送信されました」
+ * - どちらも無い場合 (例: レスバ単体): 「メッセージが届きました」
+ */
+function buildMessageBody(
+  content?: string | null,
+  imageUrl?: string | null
+): string {
+  const text = content?.trim() ?? "";
+  if (text.length > 0) {
+    return truncate(text);
+  }
+  if (imageUrl && imageUrl.trim() !== "") {
+    return "画像が送信されました";
+  }
+  return "メッセージが届きました";
 }
 
 // Google OAuth アクセストークンのモジュールスコープキャッシュ（ウォームスタンバイ中に再利用）

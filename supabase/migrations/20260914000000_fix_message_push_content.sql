@@ -42,10 +42,10 @@ BEGIN
 
     IF v_should_push THEN
         PERFORM net.http_post(
-            url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+            url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
             headers := jsonb_build_object(
                 'Content-Type', 'application/json',
-                'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+                'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'
             ),
             body := jsonb_build_object(
                 'type', 'dm',
@@ -84,10 +84,10 @@ BEGIN
 
     IF v_should_push THEN
         PERFORM net.http_post(
-            url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+            url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
             headers := jsonb_build_object(
                 'Content-Type', 'application/json',
-                'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+                'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'
             ),
             body := jsonb_build_object(
                 'type', 'open_chat',

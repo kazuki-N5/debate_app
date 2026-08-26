@@ -50,8 +50,8 @@ BEGIN
 
     SELECT name INTO v_actor_name FROM public.users WHERE id = NEW.sender_id;
     PERFORM net.http_post(
-      url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
-      headers := jsonb_build_object('Content-Type', 'application/json', 'x-notify-secret', 'YOUR_NOTIFY_SECRET'),
+      url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
+      headers := jsonb_build_object('Content-Type', 'application/json', 'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'),
       body := jsonb_build_object('user_id', NEW.target_user_id, 'type', 'resba_invite', 'actor_name', v_actor_name)
     );
   END IF;
@@ -75,8 +75,8 @@ BEGIN
 
     SELECT name INTO v_actor_name FROM public.users WHERE id = NEW.responder_id;
     PERFORM net.http_post(
-      url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
-      headers := jsonb_build_object('Content-Type', 'application/json', 'x-notify-secret', 'YOUR_NOTIFY_SECRET'),
+      url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
+      headers := jsonb_build_object('Content-Type', 'application/json', 'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'),
       body := jsonb_build_object('user_id', NEW.sender_id, 'type', 'resba_accepted', 'actor_name', v_actor_name)
     );
   END IF;
@@ -103,8 +103,8 @@ BEGIN
 
       SELECT name INTO v_actor_name FROM public.users WHERE id = v_actor_id;
       PERFORM net.http_post(
-        url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
-        headers := jsonb_build_object('Content-Type', 'application/json', 'x-notify-secret', 'YOUR_NOTIFY_SECRET'),
+        url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
+        headers := jsonb_build_object('Content-Type', 'application/json', 'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'),
         body := jsonb_build_object('user_id', NEW.sender_id, 'type', 'resba_declined', 'actor_name', v_actor_name)
       );
     END IF;

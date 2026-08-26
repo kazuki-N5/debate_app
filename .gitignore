@@ -63,3 +63,6 @@ mock/
 *モック.html
 html/chat_time_display_mockup.html
 .zed/debug.json
+
+# 本番DBバックアップ（機密データ含むためコミット対象外）
+backup_prod_*/

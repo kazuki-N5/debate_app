@@ -72,7 +72,7 @@ class BbsTimelineView extends HookConsumerWidget {
                       6,
                       startContentIndex: ref
                           .read(communityBbsAdProvider.notifier)
-                          .resolveFirstAdOffset(posts.length, 1),
+                          .resolveFirstAdOffset(posts.length, 2),
                     )
                   : <int>{};
               final totalItems = posts.length + adSlots.length;
@@ -130,9 +130,50 @@ class BbsPostWidget extends ConsumerWidget {
   /// (タイムラインではブロック投稿は除外済みのため、主に投稿詳細画面の深堀り遷移用)
   final bool isBlockedPlaceholder;
 
-  const BbsPostWidget({super.key, required this.post, this.isBlockedPlaceholder = false});
+  /// true のときカード本体のタップで投稿詳細へ遷移する
+  /// (詳細画面内で使うときは false にして二重遷移を防ぐ)
+  final bool enableTapToDetail;
+
+  /// いいねボタンの処理を差し替える(省略時はタイムラインの toggleLike で楽観更新)
+  final void Function(BbsPost post)? onLikeTap;
+
+  const BbsPostWidget({
+    super.key,
+    required this.post,
+    this.isBlockedPlaceholder = false,
+    this.enableTapToDetail = true,
+    this.onLikeTap,
+  });
 
   static bool _isNavigating = false;
+
+  /// 投稿カードのタップで詳細画面へ遷移する（二重遷移ガード付き）
+  void _openPostDetail(BuildContext context) {
+    if (_isNavigating) {
+      debugPrint('RESBA_DEBUG: skip (isNavigating=true)');
+      return;
+    }
+    _isNavigating = true;
+    debugPrint('RESBA_DEBUG: onTap, pushing /bbsPostDetail');
+    try {
+      context
+          .push(
+            '/bbsPostDetail',
+            extra: post,
+          )
+          .whenComplete(() {
+            debugPrint('RESBA_DEBUG: push completed');
+            _isNavigating = false;
+          });
+    } catch (e) {
+      debugPrint('RESBA_DEBUG: push error: $e');
+      _isNavigating = false;
+    }
+    // 保険: push が完了しなくても3秒でフラグを戻す
+    Future.delayed(const Duration(seconds: 3), () {
+      _isNavigating = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -152,10 +193,10 @@ class BbsPostWidget extends ConsumerWidget {
               child: Icon(Icons.block, color: Colors.grey[400], size: 20),
             ),
             const SizedBox(width: 12),
-            Expanded(
+            const Expanded(
               child: Text(
                 'ブロックしたユーザーの投稿です',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   color: Colors.grey,
                   fontStyle: FontStyle.italic,
@@ -175,62 +216,99 @@ class BbsPostWidget extends ConsumerWidget {
     final dateStr = DateFormatter.formatBbsDate(post.createdAt);
     final isBookmarked = ref.watch(bbsBookmarkIdsProvider).contains(post.id);
 
-    // 論理削除された投稿はプレースホルダーを表示（本文・画像・アクションは隠す）
+    // 論理削除された投稿: アイコン・名前・時間はそのまま表示し、
+    // 本文・画像・アクションの代わりに「このポストは削除されました」を表示する
+    // (コメントの削除表示と同じ方針。カードはタップで詳細(コメント)を開ける)
     if (post.isDeleted) {
-      return Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: Colors.grey[200],
-              child: Icon(Icons.block, color: Colors.grey[400], size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'この投稿は削除されました',
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Colors.grey,
-                  fontStyle: FontStyle.italic,
-                  height: 1.4,
+      return InkWell(
+        onTap: enableTapToDetail ? () => _openPostDetail(context) : null,
+        child: Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ヘッダー: アイコン(通常と同じ)
+              GestureDetector(
+                onTap: () {
+                  context.push('/userProfile', extra: post.userId);
+                },
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey[300],
+                  backgroundImage:
+                      userAvatar != null && userAvatar.isNotEmpty
+                          // 表示サイズ(radius20=40px)に縮小デコードしてカクつきを抑える
+                          ? ResizeImage(NetworkImage(userAvatar), width: 120)
+                          : null,
+                  child: userAvatar == null || userAvatar.isEmpty
+                      ? Icon(Icons.person, color: Colors.grey[600])
+                      : null,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              // コンテンツ
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 名前・時間(通常と同じ)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  userName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: Colors.black87,
+                                    height: 1.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text('・ $dateStr',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF536471),
+                                    height: 1.2,
+                                  )),
+                            ],
+                          ),
+                        ),
+                        // メニュー(…)は削除済みのため非表示(コメントと同じ)
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    // 削除プレースホルダー(本文・画像・アクションの代わり)
+                    const Text(
+                      'このポストは削除されました',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return InkWell(
-      onTap: () {
-        if (_isNavigating) {
-          debugPrint('RESBA_DEBUG: skip (isNavigating=true)');
-          return;
-        }
-        _isNavigating = true;
-        debugPrint('RESBA_DEBUG: onTap, pushing /bbsPostDetail');
-        try {
-          context
-              .push(
-                '/bbsPostDetail',
-                extra: post,
-              )
-              .whenComplete(() {
-                debugPrint('RESBA_DEBUG: push completed');
-                _isNavigating = false;
-              });
-        } catch (e) {
-          debugPrint('RESBA_DEBUG: push error: $e');
-          _isNavigating = false;
-        }
-        // 保険: push が完了しなくても3秒でフラグを戻す
-        Future.delayed(const Duration(seconds: 3), () {
-          _isNavigating = false;
-        });
-      },
+      onTap: enableTapToDetail ? () => _openPostDetail(context) : null,
       child: Container(
         color: Colors.white,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -384,7 +462,13 @@ class BbsPostWidget extends ConsumerWidget {
                           // いいね
                           InkWell(
                             onTap: () {
-                              ref.read(bbsTimelineProvider.notifier).toggleLike(post);
+                              if (onLikeTap != null) {
+                                onLikeTap!(post);
+                              } else {
+                                ref
+                                    .read(bbsTimelineProvider.notifier)
+                                    .toggleLike(post);
+                              }
                             },
                             child: Row(
                               children: [

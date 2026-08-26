@@ -31,7 +31,7 @@ class CommunityAdNotifier extends StateNotifier<Map<int, BannerAd>> {
 
   /// 1件目の広告の開始位置(コンテンツindex)を乱数で決める。
   /// [maxFirstOffset] は「1件目から最大何個後ろまで入れられるか」
-  /// (例: 対戦募集・掲示板=1 → 1-2 / 2-3 の間、クラブ=2 → 1-2 / 2-3 / 3-4 の間)。
+  /// (例: 掲示板・対戦募集=2 → 1-2 / 2-3 / 3-4 の間)。
   /// ビルド毎に位置が飛ばないよう、コンテンツ量が変わったときだけ抽選し直す。
   int resolveFirstAdOffset(int contentLength, int maxFirstOffset) {
     if (contentLength <= 0) return 0;
@@ -91,8 +91,8 @@ final communityBbsAdProvider =
   (ref) => CommunityAdNotifier(size: AdSize.mediumRectangle),
 );
 
-// クラブタブ用 (OpenChatRoomsView) — 現在は広告非表示
+// クラブタブ用 (OpenChatRoomsView) — 検索バー下に固定表示
 final communityClubAdProvider =
     StateNotifierProvider<CommunityAdNotifier, Map<int, BannerAd>>(
-  (ref) => CommunityAdNotifier(size: AdSize.mediumRectangle),
+  (ref) => CommunityAdNotifier(size: AdSize.largeBanner),
 );

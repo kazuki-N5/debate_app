@@ -24,6 +24,9 @@ final userProvider = StateNotifierProvider<UserNotifier, Users>((ref) {
   return UserNotifier(ref);
 });
 
+/// 初回起動時の通知許可ダイアログを表示済みかどうかのフラグキー (SharedPreferences)
+const String firstLaunchNotifPromptShownKey = 'first_launch_notif_prompt_shown';
+
 class UserNotifier extends StateNotifier<Users> {
   UserNotifier(this._ref)
       : super(const Users(
@@ -592,6 +595,44 @@ class UserNotifier extends StateNotifier<Users> {
     if (isAuthorized && (current?.isNotificationEnabled == false)) {
       print('OS側の通知許可を検知したため、アプリ内の設定もオンに同期します');
       await updateNotificationStatus(null, true, isSilent: true);
+    }
+  }
+
+  /// 初回起動時のみ通知の許可ダイアログを表示する。
+  /// 許可された場合は最初から通知ON（マスター設定ON + FCMトークン保存）にする。
+  Future<void> requestFirstLaunchNotificationPermission() async {
+    try {
+      final userId = state.id;
+      if (userId.isEmpty) return;
+
+      // 初回起動時のみ表示（2回目以降の起動ではスキップ）
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(firstLaunchNotifPromptShownKey) ?? false) return;
+      await prefs.setBool(firstLaunchNotifPromptShownKey, true);
+
+      // マスター設定の更新が確実に効くよう、通知設定の読み込みを完了させておく
+      await _ref.read(notificationSettingsProvider.notifier).load();
+      final current = _ref.read(notificationSettingsProvider).valueOrNull;
+      // すでに通知ONになっている場合はダイアログを出さない
+      if (current?.isNotificationEnabled == true) return;
+
+      // OSの許可ダイアログを表示（初回のみOS側がダイアログを表示する）
+      final settings = await _ref
+          .read(fcmServiceProvider)
+          .requestNotificationPermission();
+      final isAuthorized =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
+
+      if (isAuthorized) {
+        // 許可された場合は最初から通知ONにする（権限は取得済みなのでサイレント更新）
+        print('初回起動時に通知が許可されたため、通知をONにします');
+        await updateNotificationStatus(null, true, isSilent: true);
+      } else {
+        print('初回起動時の通知許可が得られませんでした: ${settings.authorizationStatus}');
+      }
+    } catch (e) {
+      print('初回起動時の通知許可処理に失敗しました: $e');
     }
   }
 }

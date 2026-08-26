@@ -98,10 +98,6 @@ class _BbsPostCreateViewState extends ConsumerState<BbsPostCreateView> {
           onPressed: isUploading ? null : () => context.pop(),
         ),
         actions: [
-          TextButton(
-            onPressed: () {}, // ダミー
-            child: const Text('下書き', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
             child: ElevatedButton(

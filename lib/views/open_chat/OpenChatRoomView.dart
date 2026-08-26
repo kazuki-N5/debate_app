@@ -17,6 +17,7 @@ import 'package:debate_project/widgets/resba_card.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:debate_project/views/open_chat/OpenChatMenuView.dart';
 import 'package:debate_project/widgets/chat/chat_message_bubble.dart';
+import 'package:debate_project/widgets/chat/chat_date_separator.dart';
 import 'package:debate_project/provider/user_profile_provider.dart';
 
 class OpenChatRoomView extends HookConsumerWidget {
@@ -210,6 +211,14 @@ class OpenChatRoomView extends HookConsumerWidget {
                           ),
                         );
                       }
+                      // 日付区切り（今日/昨日/M月D日）を挟んだ表示用アイテム列を作る
+                      // (reverse: true なので index 0 = 最新 = 画面下)
+                      // 削除済みメッセージは表示されないため日付判定の対象から除外する
+                      final renderItems = buildChatListEntries(
+                        messages,
+                        (m) => m.createdAt,
+                        isSkipped: (m) => m.isDeleted,
+                      );
                       return ListView.builder(
                         controller: scrollController,
                         keyboardDismissBehavior:
@@ -219,17 +228,26 @@ class OpenChatRoomView extends HookConsumerWidget {
                           horizontal: 4,
                           vertical: 4,
                         ),
-                        itemCount: messages.length,
+                        itemCount: renderItems.length,
                         itemBuilder: (context, index) {
-                          final message = messages[index];
+                          final entry = renderItems[index];
+                          // 日付区切りラベル
+                          if (entry is ChatListDateDividerEntry) {
+                            return ChatDateSeparator(
+                              key: ValueKey('date_divider_$index'),
+                              date: entry.date,
+                            );
+                          }
+                          final i = (entry as ChatListMessageEntry).index;
+                          final message = messages[i];
                           final isUserMessage = message.userId == currentUserId;
                           final isSending = message.id.startsWith('temp_');
 
                           // アバター表示ロジック：相手の発言かつ、一つ前（古い方）の送信者と異なる場合に表示
                           final showAvatar =
                               !isUserMessage &&
-                              (index == messages.length - 1 ||
-                                  messages[index + 1].userId != message.userId);
+                              (i == messages.length - 1 ||
+                                  messages[i + 1].userId != message.userId);
 
                           // このメッセージに付いたレスバ(募集型)
                           // キャンセル・拒否(declined/cancelled)はカードを消す（掲示板と同じ仕様）

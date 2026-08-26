@@ -5,6 +5,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:debate_project/provider/open_chat_provider.dart';
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/widgets/community_ad.dart';
+import 'package:debate_project/adsence/ad_community_provider.dart';
 import 'package:debate_project/view_model/Paypage_view_model.dart';
 import 'package:go_router/go_router.dart';
 
@@ -16,8 +17,14 @@ class OpenChatRoomsView extends HookConsumerWidget {
     final roomsAsync = ref.watch(openChatRoomsProvider);
     final searchController = useTextEditingController();
 
-    // ホーム下部の常時表示バナーに被らないよう下端余白を制御(クラブ自体は広告なし)
+    // リスト先頭(1番目)に表示する広告(Large Banner・非課金時のみ)
+    final clubAds = ref.watch(communityClubAdProvider);
     final isSubscribed = ref.watch(inAppPurchaseManagerProvider).isSubscribed;
+
+    // 先頭スロット(0)の広告をロード(多重ロードはProvider側で防止)
+    if (!isSubscribed) {
+      ref.read(communityClubAdProvider.notifier).prepare({0});
+    }
 
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
@@ -69,6 +76,22 @@ class OpenChatRoomsView extends HookConsumerWidget {
                 data: (originalRooms) {
                   final rooms = originalRooms;
                   if (rooms.isEmpty) {
+                    // 0件のときは広告のみ表示(課金で広告なしなら従来の空メッセージ)
+                    if (!isSubscribed) {
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          const SizedBox(height: 60),
+                          Padding(
+                            padding: EdgeInsets.only(
+                                bottom: homeBottomAdClearance()),
+                            child: clubAds[0] != null
+                                ? communityAdWidget(clubAds[0]!)
+                                : communityAdPlaceholder(),
+                          ),
+                        ],
+                      );
+                    }
                     return Center(
                       child: Text(
                         'クラブが見つかりません',
@@ -84,14 +107,22 @@ class OpenChatRoomsView extends HookConsumerWidget {
                     child: ListView.builder(
                       padding: EdgeInsets.only(
                         top: 4,
-                        // 非課金時は下部の常時表示バナーに被らないよう余白を広げる(クラブ自体は広告なし)
+                        // 非課金時は下部の常時表示バナーに被らないよう余白を広げる(クラブ自体のリスト内広告は先頭の1個のみ)
                         bottom: isSubscribed
                             ? MediaQuery.of(context).padding.bottom + 80
                             : homeBottomAdClearance(),
                       ),
-                      itemCount: rooms.length,
+                      // 非課金時はリストの先頭に広告を1つ表示する
+                      itemCount: rooms.length + (isSubscribed ? 0 : 1),
                       itemBuilder: (context, index) {
-                        final room = rooms[index];
+                        // 先頭(1番目)の広告スロット
+                        if (!isSubscribed && index == 0) {
+                          return clubAds[0] != null
+                              ? communityAdWidget(clubAds[0]!)
+                              : communityAdPlaceholder();
+                        }
+                        final room =
+                            rooms[isSubscribed ? index : index - 1];
                           final tags =
                               (room.tags != null && room.tags!.isNotEmpty)
                                   ? room.tags!

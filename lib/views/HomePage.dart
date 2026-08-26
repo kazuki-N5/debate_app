@@ -91,6 +91,16 @@ class HomePage extends HookConsumerWidget {
       return null;
     }, []);
 
+    // 初回起動時のみ通知の許可ダイアログを表示する（許可されたら最初から通知ON）
+    useEffect(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref
+            .read(userProvider.notifier)
+            .requestFirstLaunchNotificationPermission();
+      });
+      return null;
+    }, []);
+
     // 現在のトロフィー数を保存して、次回の「前回値」として使う
     useEffect(() {
       if (user.trophy != lastTrophy) {

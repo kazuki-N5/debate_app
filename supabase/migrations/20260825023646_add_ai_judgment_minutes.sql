@@ -1,8 +1,7 @@
 -- =============================================================================
 -- add_ai_judgment_minutes
 -- rooms_v2 に「AI判定待ち分数」カラムを追加し、バトル種別ごとに判定時間を
--- トリガーが自動決定できるようにする。URLはローカル検証用(ngrok)のまま維持。
--- (本番push前に target_url を本番URLへ戻すこと)
+-- トリガーが自動決定できるようにする。target_url は本番URL。
 -- =============================================================================
 
 -- 1) rooms_v2 に判定分数カラムを追加（additive）-------------------------------
@@ -12,7 +11,7 @@ ALTER TABLE public.rooms_v2
 -- 2) handle_room_updates_v2 を再定義 -------------------------------------------
 --    - INSERT 時に is_bbs=TRUE なら ai_judgment_minutes := 10（レスバ既定）
 --    - QStash 遅延を「ai_judgment_minutes 分」から動的生成する
---    - target_url はローカル検証用ngrokのまま（本番push前に要修正）
+--    - target_url は本番URL
 CREATE OR REPLACE FUNCTION public.handle_room_updates_v2()
   RETURNS TRIGGER
   LANGUAGE plpgsql
@@ -24,8 +23,8 @@ CREATE OR REPLACE FUNCTION public.handle_room_updates_v2()
     new_theme_id INT;
     qstash_token text := 'eyJVc2VySUQiOiJhYzQ3YjI2Yi03MTg4LTQ4ZjUtYTIwMS00ZGE2MTQ0ZmEwZDAiLCJQYXNzd29yZCI6IjJlYjA4YzRlZjg2YjRkNjI5YTg4ODhkYjFmNzU2OTczIn0=';
     
-    -- 【ローカル検証用】ngrok のURL
-    target_url text := 'https://undebilitative-engagedly-salma.ngrok-free.dev/functions/v1/gemini_v2';
+    -- 【本番】エッジ関数 gemini_v2 のURL
+    target_url text := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/gemini_v2';
     qstash_publish_url text := 'https://qstash-us-east-1.upstash.io/v2/publish/' || target_url;
 BEGIN
     IF TG_OP = 'INSERT' THEN

@@ -291,8 +291,8 @@ CREATE OR REPLACE FUNCTION public.handle_room_updates_v2()
     new_theme_id INT;
     qstash_token text := 'eyJVc2VySUQiOiJhYzQ3YjI2Yi03MTg4LTQ4ZjUtYTIwMS00ZGE2MTQ0ZmEwZDAiLCJQYXNzd29yZCI6IjJlYjA4YzRlZjg2YjRkNjI5YTg4ODhkYjFmNzU2OTczIn0=';
     
-    -- 【ローカル検証用】ngrok のURL
-    target_url text := 'https://undebilitative-engagedly-salma.ngrok-free.dev/functions/v1/gemini_v2';
+    -- 【本番】エッジ関数 gemini_v2 のURL
+    target_url text := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/gemini_v2';
     qstash_publish_url text := 'https://qstash-us-east-1.upstash.io/v2/publish/' || target_url;
 BEGIN
     IF TG_OP = 'INSERT' THEN

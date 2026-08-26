@@ -443,10 +443,10 @@ BEGIN
         -- FCMプッシュ通知: 新規いいねのみ送信
         IF v_is_new THEN
             PERFORM net.http_post(
-                url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+                url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
                 headers := jsonb_build_object(
                     'Content-Type', 'application/json',
-                    'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+                    'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'
                 ),
                 body := jsonb_build_object(
                     'user_id', v_owner,
@@ -505,10 +505,10 @@ BEGIN
         -- (URL は環境に合わせて置換。NOTIFY_SECRET 未設定なら x-notify-secret ヘッダー行を削除)
         IF v_is_new THEN
             PERFORM net.http_post(
-                url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+                url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
                 headers := jsonb_build_object(
                     'Content-Type', 'application/json',
-                    'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+                    'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'
                 ),
                 body := jsonb_build_object(
                     'user_id', v_owner,
@@ -545,10 +545,10 @@ BEGIN
 
             -- FCMプッシュ通知: Edge Function を呼び出し
             PERFORM net.http_post(
-                url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+                url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
                 headers := jsonb_build_object(
                     'Content-Type', 'application/json',
-                    'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+                    'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'
                 ),
                 body := jsonb_build_object(
                     'user_id', v_target_owner,
@@ -566,10 +566,10 @@ BEGIN
 
             -- FCMプッシュ通知: Edge Function を呼び出し
             PERFORM net.http_post(
-                url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+                url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
                 headers := jsonb_build_object(
                     'Content-Type', 'application/json',
-                    'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+                    'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'
                 ),
                 body := jsonb_build_object(
                     'user_id', v_target_owner,
@@ -596,10 +596,10 @@ CREATE FUNCTION public.notify_dm_message()
   AS $function$
 BEGIN
     PERFORM net.http_post(
-        url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+        url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
         headers := jsonb_build_object(
             'Content-Type', 'application/json',
-            'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+            'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'
         ),
         body := jsonb_build_object(
             'type', 'dm',
@@ -628,10 +628,10 @@ BEGIN
 
     -- FCMプッシュ通知: Edge Function を呼び出し
     PERFORM net.http_post(
-        url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+        url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
         headers := jsonb_build_object(
             'Content-Type', 'application/json',
-            'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+            'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'
         ),
         body := jsonb_build_object(
             'user_id', NEW.followed_id,
@@ -656,10 +656,10 @@ CREATE FUNCTION public.notify_open_chat_message()
   AS $function$
 BEGIN
     PERFORM net.http_post(
-        url := 'http://192.168.11.52:54321/functions/v1/notify_trigger',
+        url := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/notify_trigger',
         headers := jsonb_build_object(
             'Content-Type', 'application/json',
-            'x-notify-secret', 'YOUR_NOTIFY_SECRET'
+            'x-notify-secret', '4a5d3df69e9baa4456e120a8b1fc45c924730ded80c03fe7b3872b2693847d73'
         ),
         body := jsonb_build_object(
             'type', 'open_chat',

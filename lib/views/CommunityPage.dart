@@ -188,7 +188,7 @@ class CommunityPage extends HookConsumerWidget {
                                                 communityRecruitAdProvider
                                                     .notifier)
                                             .resolveFirstAdOffset(
-                                                invites.length, 1),
+                                                invites.length, 2),
                                       )
                                     : <int>{};
                                 final totalItems =

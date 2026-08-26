@@ -35,12 +35,52 @@ class BbsPostDetailView extends HookConsumerWidget {
     final fetchedPost = useState<BbsPost?>(null);
     final isDeleted = useState(false);
     final postsAsync = ref.watch(bbsTimelineProvider);
-    final BbsPost currentPost = fetchedPost.value ??
-        postsAsync.maybeWhen<BbsPost>(
-          data: (posts) =>
-              posts.firstWhere((p) => p.id == post.id, orElse: () => post),
-          orElse: () => post,
+
+    // 表示する投稿を解決する
+    // - 「いいね」の状態はタイムライン(一覧)側の楽観更新を最優先で反映する
+    //   (詳細画面でいいねを押しても、一覧と同じく色・カウントが即座に変わる)
+    // - 本文やレスバなどの最新情報は画面表示時に取得したスナップショット(fetchedPost)を優先する
+    BbsPost? livePost;
+    postsAsync.maybeWhen(
+      data: (posts) {
+        for (final p in posts) {
+          if (p.id == post.id) {
+            livePost = p;
+            break;
+          }
+        }
+      },
+      orElse: () {},
+    );
+    final BbsPost currentPost = () {
+      final snapshot = fetchedPost.value;
+      if (livePost != null) {
+        final live = livePost!;
+        return (snapshot ?? live).copyWith(
+          isLikedByMe: live.isLikedByMe,
+          likesCount: live.likesCount,
         );
+      }
+      return snapshot ?? post;
+    }();
+
+    // ポスト本体のいいね: 楽観的UI更新(ローカルで色・カウントを先に変え、後からサーバーへ同期)
+    void togglePostLike(BbsPost target) {
+      if (ref.read(currentUserIdProvider) == null) return;
+
+      final isLiked = target.isLikedByMe;
+      final newLikesCount = isLiked
+          ? (target.likesCount - 1 >= 0 ? target.likesCount - 1 : 0)
+          : target.likesCount + 1;
+      fetchedPost.value = target.copyWith(
+        isLikedByMe: !isLiked,
+        likesCount: newLikesCount,
+      );
+
+      // タイムライン側にも同じ楽観更新を反映しつつ、サーバー(bbs_likes)へ同期する
+      ref.read(bbsTimelineProvider.notifier).toggleLike(target);
+    }
+
     final commentsAsync = ref.watch(bbsCommentProvider(post.id));
 
     // ブロックしたユーザーの投稿かどうか
@@ -195,7 +235,14 @@ class BbsPostDetailView extends HookConsumerWidget {
               child: ListView(
                 children: [
                   // 親の投稿(ブロックしたユーザーの投稿は本文を隠す)
-                  BbsPostWidget(post: currentPost, isBlockedPlaceholder: isBlockedPost),
+                  BbsPostWidget(
+                    post: currentPost,
+                    isBlockedPlaceholder: isBlockedPost,
+                    // 詳細画面内ではカード本体タップによる二重遷移を防ぐ
+                    enableTapToDetail: false,
+                    // いいねは楽観的UI更新(詳細画面側でもローカルに色・カウントを即反映)
+                    onLikeTap: togglePostLike,
+                  ),
                   // ポストに付いたレスバ(ブロックしたユーザーの投稿では非表示)
                   if (!isBlockedPost)
                     _PostResbaSection(

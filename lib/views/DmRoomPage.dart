@@ -20,6 +20,7 @@ import 'package:debate_project/modes/users.dart';
 import 'package:debate_project/views/dm/DmMenuView.dart';
 import 'package:debate_project/widgets/ios_swipe_back.dart';
 import 'package:debate_project/widgets/chat/chat_message_bubble.dart';
+import 'package:debate_project/widgets/chat/chat_date_separator.dart';
 
 class DmRoomPage extends HookConsumerWidget {
   final String otherUserId;
@@ -274,18 +275,34 @@ class DmRoomPage extends HookConsumerWidget {
                             ),
                           );
                         }
+
+                        // 日付区切り（今日/昨日/M月D日）を挟んだ表示用アイテム列を作る
+                        // (reverse: true なので index 0 = 最新 = 画面下)
+                        final renderItems = buildChatListEntries(
+                          messages,
+                          (DmMessage m) => m.createdAt,
+                        );
                         return ListView.builder(
                           controller: scrollController,
                           keyboardDismissBehavior:
                               ScrollViewKeyboardDismissBehavior.onDrag,
                           reverse: true,
-                          itemCount: messages.length,
+                          itemCount: renderItems.length,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 4,
                             vertical: 4,
                           ),
                           itemBuilder: (context, index) {
-                            final msg = messages[index];
+                            final entry = renderItems[index];
+                            // 日付区切りラベル
+                            if (entry is ChatListDateDividerEntry) {
+                              return ChatDateSeparator(
+                                key: ValueKey('date_divider_$index'),
+                                date: entry.date,
+                              );
+                            }
+                            final i = (entry as ChatListMessageEntry).index;
+                            final msg = messages[i];
                             final isMe = msg.senderId == myId;
 
                             final isSending = msg.id.startsWith('temp_');
@@ -293,8 +310,8 @@ class DmRoomPage extends HookConsumerWidget {
                             // アバター表示ロジック：相手の発言かつ、一つ前（古い方）の送信者と異なる場合に表示
                             final showAvatar =
                                 !isMe &&
-                                (index == messages.length - 1 ||
-                                    messages[index + 1].senderId !=
+                                (i == messages.length - 1 ||
+                                    messages[i + 1].senderId !=
                                         msg.senderId);
 
                             // このメッセージに付いたレスバ（アクティブのみ）

@@ -17,6 +17,7 @@ interface RequestBody {
   invite_id?: string;
   theme?: string;
   content?: string;
+  image_url?: string;
 }
 
 interface NotificationSettings {
@@ -123,7 +124,7 @@ Deno.serve(async (req: Request) => {
 /**
  * ルーム型通知 (DM / オプチャ) を送信する
  */
-async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
+async function sendRoomNotification({ type, room_id, sender_id, content, image_url }: RequestBody) {
   if (!room_id || !sender_id) {
     return { message: "room_id and sender_id are required" };
   }
@@ -169,19 +170,22 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
         .select("id", { count: "exact", head: true })
         .eq("room_id", room_id);
 
-      const { data: lastMsg } = await supabase
-        .from("dm_messages")
-        .select("content, image_url")
-        .eq("room_id", room_id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
       // タイトルは送信者名 / 2通目以降は「◯◯ さん:」プレフィックスなしで本文のみ表示
       title = actorName;
       if (count === 1) {
         messageBody = `${actorName} さんから通知が来ました`;
+      } else if (content !== undefined || image_url !== undefined) {
+        // トリガーから渡された本文を使う（画像+テキスト同時送信でも重複通知しない）
+        messageBody = buildMessageBody(content, image_url);
       } else {
+        // 旧トリガー互換: 最新メッセージから本文を組み立てる
+        const { data: lastMsg } = await supabase
+          .from("dm_messages")
+          .select("content, image_url")
+          .eq("room_id", room_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
         messageBody = buildMessageBody(lastMsg?.content, lastMsg?.image_url);
       }
     }
@@ -203,7 +207,12 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
     if (isResba) {
       // レスバ添付: タイトル=グループ名 / 本文=「レスバが届きました」
       messageBody = "レスバが届きました";
+    } else if (content !== undefined || image_url !== undefined) {
+      // 「◯◯ さん:」プレフィックスなしで本文のみ表示（画像のみなら「画像が送信されました」）
+      // トリガーから渡された本文を使う（画像+テキスト同時送信でも重複通知しない）
+      messageBody = buildMessageBody(content, image_url);
     } else {
+      // 旧トリガー互換: 最新メッセージから本文を組み立てる
       const { data: lastMsg } = await supabase
         .from("open_chat_messages")
         .select("content, image_url")
@@ -211,7 +220,6 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      // 「◯◯ さん:」プレフィックスなしで本文のみ表示（画像のみなら「画像が送信されました」）
       messageBody = buildMessageBody(lastMsg?.content, lastMsg?.image_url);
     }
   }

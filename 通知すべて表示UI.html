@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>通知一覧UI（全タイプ）— Debata</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
+    background: #F3F3F3;
+    color: #0F1419;
+    padding: 24px;
+  }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .sub { color: #536471; font-size: 13px; margin-bottom: 24px; line-height: 1.7; }
+  .sub code { background: #e5e7eb; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+
+  h2 {
+    font-size: 16px;
+    margin: 36px 0 12px;
+    padding: 8px 12px;
+    background: #fff;
+    border-left: 4px solid #1D9BF0;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  }
+  .note { font-size: 12px; color: #536471; margin: 4px 0 14px; line-height: 1.8; }
+  .note b { color: #1D9BF0; }
+
+  /* ---------- スマホ枠 ---------- */
+  .phone {
+    width: 400px;
+    max-width: 100%;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,.08);
+    margin-bottom: 14px;
+  }
+  /* AppBar (MessagePage: Colors.blue) */
+  .appbar {
+    background: #2196F3;
+    color: #fff;
+    text-align: center;
+    padding: 13px;
+    font-weight: bold;
+    font-size: 15px;
+    letter-spacing: .5px;
+    border-bottom: 1px solid rgba(0,0,0,.12);
+  }
+  /* セグメントタブ (通知 / メッセージ) */
+  .segments { display: flex; border-bottom: 1px solid #E6E6E6; }
+  .seg {
+    flex: 1; text-align: center; padding: 12px 0;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    border-bottom: 3px solid transparent;
+    font-size: 14px; font-weight: bold; color: #9E9E9E;
+    cursor: pointer;
+  }
+  .seg.active { color: #1D9BF0; border-bottom-color: #1D9BF0; }
+  .seg-badge {
+    background: #4FAFF5; color: #fff;
+    min-width: 21px; height: 21px; border-radius: 999px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11.5px; font-weight: 700; padding: 0 6px;
+  }
+
+  /* ---------- 通知タイル ---------- */
+  .tile {
+    display: flex; gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 0.5px solid #EEEEEE;
+    cursor: pointer;
+    position: relative;
+  }
+  .tile.unread { background: #F0F7FF; }
+  .tile.read  { background: #fff; }
+  .avatar-wrap { position: relative; flex: 0 0 auto; width: 44px; height: 44px; }
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: bold; font-size: 17px;
+  }
+  .badge {
+    position: absolute; right: -4px; bottom: -4px;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #fff;
+  }
+  .tile-body { flex: 1; min-width: 0; }
+  .tile-head { display: flex; justify-content: space-between; gap: 8px; }
+  .name { font-weight: bold; font-size: 14px; color: rgba(0,0,0,.87); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .time { font-size: 11px; color: #9E9E9E; flex: 0 0 auto; padding-top: 2px; }
+  .action { font-size: 13px; margin-top: 2px; line-height: 1.45; }
+  .unread .action { color: rgba(0,0,0,.87); font-weight: 600; }
+  .read .action  { color: #616161; font-weight: 400; }
+  .resba-pill {
+    display: inline-block; margin-top: 6px;
+    padding: 2px 8px;
+    background: #F1EBFF; border: 1px solid #CFC4FF; border-radius: 10px;
+    color: #7856FF; font-size: 10px; font-weight: bold;
+  }
+  .quote {
+    margin-top: 6px; padding: 6px 10px;
+    background: #F5F5F5; border: 1px solid #EEEEEE; border-radius: 8px;
+    font-size: 12px; color: #616161;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  /* 種別バッジ色 (notification_list_tile.dart の _badge と一致) */
+  .badge-heart  { background: #F91880; } /* like_post / like_comment */
+  .badge-follow { background: #1D9BF0; } /* follow */
+  .badge-chat   { background: #00BA7C; } /* reply_comment / comment */
+  .badge-invite { background: #7856FF; } /* resba_apply */
+
+  /* アバター背景色（モック用。実機はユーザー画像 or グレー+人アイコン） */
+  .av1 { background: #4A90D9; } .av2 { background: #E07B54; } .av3 { background: #41B883; }
+  .av4 { background: #9B6BD9; } .av5 { background: #D95B8F; } .av6 { background: #E0A53A; }
+  .av7 { background: #3BA6A6; } .av8 { background: #C25B8E; }
+
+  /* タイル下の種別注釈（実機には無い、モック解説用） */
+  .type-label {
+    font-size: 10.5px; color: #8B98A5;
+    padding: 3px 14px 9px; background: inherit;
+    display: block;
+  }
+  .tile.unread + .type-label { background: #F0F7FF; border-bottom: 0.5px solid #EEEEEE; }
+  .tile.read  + .type-label { background: #fff; border-bottom: 0.5px solid #EEEEEE; }
+  .type-label code { background: #EDEFF2; padding: 0 5px; border-radius: 4px; font-size: 10px; color: #5B7083; }
+
+  /* ---------- 空状態 ---------- */
+  .empty { text-align: center; padding: 56px 20px; color: #9E9E9E; }
+  .empty .icon { font-size: 44px; }
+  .empty .txt { font-size: 14px; margin-top: 10px; color: #9E9E9E; }
+
+  /* ---------- 種別一覧テーブル ---------- */
+  table.ref {
+    width: 100%; max-width: 860px;
+    border-collapse: collapse; background: #fff;
+    font-size: 12.5px; box-shadow: 0 1px 2px rgba(0,0,0,.06);
+    border-radius: 8px; overflow: hidden;
+  }
+  table.ref th, table.ref td {
+    border: 1px solid #E7E7E7; padding: 8px 10px; text-align: left; vertical-align: top;
+  }
+  table.ref th { background: #F7F9FC; font-size: 12px; white-space: nowrap; }
+  table.ref td code { background: #EDEFF2; padding: 0 5px; border-radius: 4px; font-size: 11px; }
+  .mini-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%;
+    color: #fff; font-size: 10px; border: 1px solid #fff;
+    box-shadow: 0 0 0 1px #ddd;
+  }
+</style>
+</head>
+<body>
+
+<h1>🔔 通知一覧UI — 全タイプ表示</h1>
+<div class="sub">
+  Debata のアプリ内通知（<b>メッセージタブ &gt; 通知</b>）で表示される通知タイプを再現したHTMLモックです。<br>
+  新仕様で通知タブに表示するのは7種
+  （<code>like_post</code> / <code>like_comment</code> / <code>follow</code> / <code>reply_comment</code> / <code>comment</code> /
+  <code>resba_apply</code>（応募）／ <code>resba添付</code>（返信・コメント））と、
+  未読・既読・いいね集約・レスバ付きバッジ・引用ボックスなど全表示パターンを含みます。<br>
+  ※ DM・オプチャのレスバ添付（「レスバが届きました」）は通知タブに表示せず、<b>メッセージタブ</b>（DM/クラブ）で表示します。<br>
+  配色・文言は <code>lib/widgets/notification/notification_list_tile.dart</code> と <code>lib/views/MessagePage.dart</code> の実コードに準拠。
+  <code>resba_apply</code> / <code>resba添付</code> は新規追加予定のタイプ（モック表示のみ・実装未着手）。
+</div>
+
+<h2>① 通知リスト（全タイプ × 全パターン）</h2>
+<div class="note">形式: [アバター+種別バッジ] [アクター名] [相対日時] / [アクション文] / [⚔️ レスバ付きバッジ] / [引用ボックス(最大2行)]。未読=水色背景 <code>#F0F7FF</code>、既読=白。タイル下の <code>type</code> ラベルは解説用で実機には表示されません。</div>
+
+<div class="phone">
+  <div class="appbar">メッセージ</div>
+  <div class="segments">
+    <div class="seg active">通知 <span class="seg-badge">7</span></div>
+    <div class="seg">メッセージ <span class="seg-badge">2</span></div>
+  </div>
+
+  <!-- ============ 1. like_post / 未読 / 1件 ============ -->
+  <div class="tile unread">
+    <div class="avatar-wrap"><div class="avatar av1">は</div><div class="badge badge-heart">❤</div></div>
+    <div class="tile-body">
+      <div class="tile-head"><span class="name">はるか</span><span class="time">3分前</span></div>
+      <div class="action">あなたのポストにいいねしました</div>
+      <div class="quote">みなさんは「AIと人間の議論、どっちが面白い」と思いますか？ 私は人間らしい熱量が好きですが……</div>
+    </div>
+  </div>
+  <span class="type-label">▸ <code>like_post</code> ／ 未読 ／ count=1（単発）</span>
+
+  <!-- ============ 2. like_post / 未読 / 集約 ============ -->
+  <div class="tile unread">
+    <div class="avatar-wrap"><div class="avatar av2">た</div><div class="badge badge-heart">❤</div></div>
+    <div class="tile-body">
+      <div class="tile-head"><span class="name">たける</span><span class="time">15分前</span></div>
+      <div class="action">3件のいいねが来ました</div>
+      <div class="quote">ラーメンvs寿司、本当に決められるのか議論しようぜ</div>
+    </div>
+  </div>
+  <span class="type-label">▸ <code>like_post</code> ／ 未読 ／ count=3（未読のまま別の人からいいねが増えると自動集約・先頭へ）</span>
+
+  <!-- ============ 3. like_comment / 既読 / 1件 ============ -->
+  <div class="tile read">
+    <div class="avatar-wrap"><div class="avatar av3">み</div><div class="badge badge-heart">❤</div></div>
+    <div class="tile-body">
+      <div class="tile-head"><span class="name">みお</span><span class="time">2時間前</span></div>
+      <div class="action">あなたのコメントにいいねしました</div>
+      <div class="quote">確かにその視点は大事ですね。ただ時間制限があると深掘りしきれないのが難点かと……</div>
+    </div>
+  </div>
+  <span class="type-label">▸ <code>like_comment</code> ／ 既読 ／ count=1</span>
+
+  <!-- ============ 4. like_comment / 未読 / 集約 ============ -->
+  <div class="tile unread">
+    <div class="avatar-wrap"><div class="avatar av4">そ</div><div class="badge badge-heart">❤</div></div>
+    <div class="tile-body">
+      <div class="tile-head"><span class="name">そら</span><span class="time">5分前</span></div>
+      <div class="action">5件のいいねが来ました</div>
+      <div class="quote">このテーマ、賛成側の論理がすごく明確で勉強になりました</div>
+    </div>
+  </div>
+  <span class="type-label">▸ <code>like_comment</code> ／ 未読 ／ count=5（集約）</span>
+
+  <!-- ============ 5. follow / 既読 ============ -->
+  <div class="tile read">
+    <div class="avatar-wrap"><div class="avatar av5">ゆ</div><div class="badge badge-follow">＋</div></div>
+    <div class="tile-body">
+      <div class="tile-head"><span class="name">ゆうと</span><span class="time">昨日</span></div>
+      <div class="action">あなたをフォローしました</div>
+    </div>
+  </div>
+  <span class="type-label">▸ <code>follow</code> ／ 既読 ／ 引用なし・タップでプロフィールへ</span>
+
+  <!-- ============ 6. reply_comment / 未読 / レスバ付き ============ -->
+  <div class="tile unread">
+    <div class="avatar-wrap"><div class="avatar av6">か</div><div class="badge badge-chat">💬</div></div>
+    <div class="tile-body">
+      <div class="tile-head"><span class="name">かえで</span><span class="time">1時間前</span></div>
+      <div class="action">あなたのコメントに返信しました</div>
+      <div class="resba-pill">⚔️ レスバ付き</div>
+      <div class="quote">いや、それは逆だと思う。データ的には夜型の方が集中できるはず……</div>
+    </div>
+  </div>
+  <span class="type-label">▸ <code>reply_comment</code> ／ 未読 ／ <b>has_resba=true</b>（対象コメントにレスバが付くと「⚔️ レスバ付き」バッジ表示）</span>
+
+  <!-- ============ 7. reply_comment / 既読 / レスバなし ============ -->
+  <div class="tile read">
+    <div class="avatar-wrap"><div class="avatar av7">あ</div><div class="badge badge-chat">💬</div></div>
+    <div class="tile-body">
+      <div class="tile-head"><span class="name">あおい</span><span class="time">2時間前</span></div>
+      <div class="action">あなたのコメントに返信しました</div>
+      <div class="quote">補足ありがとうございます。その条件なら私も賛成側に回ります</div>
+    </div>
+  </div>
+  <span class="type-label">▸ <code>reply_comment</code> ／ 既読 ／ has_resba=false（バッジなし）</span>
+
+  <!-- ============ 8. comment / 未読 ============ -->
+  <div class="tile unread">
+    <div class="avatar-wrap"><div class="avatar av8">り</div><div class="badge badge-chat">💬</div></div>
+    <div class="tile-body">
+      <div class="tile-head"><span class="name">りお</span><span class="time">3時間前</span></div>
+      <div class="action">あなたのポストにコメントしました</div>
+      <div class="quote">面白いテーマですね。私の意見は、前提となる定義を先に決めるべきだと思います……</div>
+    </div>
+  </div>
+  <span class="type-label">▸ <code>comment</code> ／ 未読 ／ ポストへのトップレベルコメント</span>
+
+  <!-- ============ 9. resba_apply / 未読（新仕様: 応募が来たときのみ） ============ -->
+  <div class="tile unread">
+    <div class="avatar-wrap"><div class="avatar av2">た</div><div class="badge badge-invite">⚔</div></div>
+    <div class="tile-body">
+      <div class="tile-head"><span class="name">たける</span><span class="time">5分前</span></div>
+      <div class="action">あなたのレスバに応募しました</div>
+      <div class="quote">「朝型vs夜型、どっちが生産的か」で勝負しよう</div>
+    </div>
+  </div>
+  <span class="type-label">▸ <code>resba_apply</code>（新仕様） ／ 未読 ／ <b>自分が作ったレスバに応募が来たときのみ</b>。タップで「届いた応募」/応募キューへ（承認・拒否はアプリ内で）</span>
+
+  <!-- ============ 10. resba 添付（返信・コメント） 未読 ============ -->
+  <div class="tile unread">
+    <div class="avatar-wrap"><div class="avatar av1">は</div><div class="badge badge-invite">⚔</div></div>
+    <div class="tile-body">
+      <div class="tile-head"><span class="name">はるか</span><span class="time">8分前</span></div>
+      <div class="action">レスバが届きました</div>
+      <div class="quote">「朝型vs夜型、どっちが生産的か」で勝負しよう</div>
+    </div>
+  </div>
+  <span class="type-label">▸ <code>resba</code> 添付（返信・コメント） ／ 未読 ／ 返信・コメントにレスバを添付して送信したら、<b>メッセージのように通知</b>（プッシュ文言: 「◯◯からレスバ」・通知設定は「コメント・返信」に従う）</span>
+
+  <!-- ============ 空状態（参考） ============ -->
+  <div class="empty">
+    <div class="icon">🔕</div>
+    <div class="txt">通知はまだありません</div>
+  </div>
+</div>
+<div class="note">
+  ※ タブの未読バッジ（青 <code>#4FAFF5</code>）は未読通知の合計数。<br>
+  ※ 日時は <code>DateFormatter.formatBbsDate</code> 準拠（たった今 / N分前 / N時間前 / N時間M分前 / N日前 / M/D HH:MM）。<br>
+  ※ 引用ボックスは「コメント通知ならコメント本文、それ以外はポスト本文」を優先表示し、最大2行で省略。<br>
+  ※ いいね集約は「同じ投稿/コメントへの未読いいね」が増えたときだけ1行にまとまり、既読化すると次回から新しい行になります。
+</div>
+
+<h2>② タイプ別表示仕様（実装コード対応表）</h2>
+<table class="ref">
+  <tr>
+    <th>type</th>
+    <th>バッジ（アイコン・色）</th>
+    <th>アクション文</th>
+    <th>引用</th>
+    <th>タップ時の遷移</th>
+    <th>備考</th>
+  </tr>
+  <tr>
+    <td><code>like_post</code></td>
+    <td><span class="mini-badge" style="background:#F91880">❤</span> ハート / <code>#F91880</code></td>
+    <td>あなたのポストにいいねしました<br>（count&gt;1 → 「{N}件のいいねが来ました」）</td>
+    <td>◯（ポスト本文）</td>
+    <td rowspan="5">投稿/コメント詳細<br><code>/bbsPostDetail</code></td>
+    <td rowspan="2">未読のうちに別の人から増えると集約（count+1・最新のいいね主を表示）</td>
+  </tr>
+  <tr>
+    <td><code>like_comment</code></td>
+    <td><span class="mini-badge" style="background:#F91880">❤</span> ハート / <code>#F91880</code></td>
+    <td>あなたのコメントにいいねしました<br>（count&gt;1 → 「{N}件のいいねが来ました」）</td>
+    <td>◯（コメント本文優先）</td>
+  </tr>
+  <tr>
+    <td><code>follow</code></td>
+    <td><span class="mini-badge" style="background:#1D9BF0">＋</span> 人追加 / <code>#1D9BF0</code></td>
+    <td>あなたをフォローしました</td>
+    <td>—</td>
+    <td>フォローしたユーザーのプロフィール<br><code>/userProfile</code></td>
+  </tr>
+  <tr>
+    <td><code>reply_comment</code></td>
+    <td><span class="mini-badge" style="background:#00BA7C">💬</span> 吹き出し / <code>#00BA7C</code></td>
+    <td>あなたのコメントに返信しました</td>
+    <td>◯（返信コメント本文）</td>
+    <td>has_resba=true なら「⚔️ レスバ付き」バッジ</td>
+  </tr>
+  <tr>
+    <td><code>comment</code></td>
+    <td><span class="mini-badge" style="background:#00BA7C">💬</span> 吹き出し / <code>#00BA7C</code></td>
+    <td>あなたのポストにコメントしました</td>
+    <td>◯（コメント本文）</td>
+    <td>ポストへのトップレベルコメント</td>
+  </tr>
+  <tr>
+    <td><code>resba_apply</code><br><small style="color:#8B98A5">（新規・実装未着手）</small></td>
+    <td><span class="mini-badge" style="background:#7856FF">⚔</span> 対戦 / <code>#7856FF</code></td>
+    <td>あなたのレスバに応募しました</td>
+    <td>◯（テーマ/添付内容）</td>
+    <td>マイレスバ「届いた応募」/ 応募キュー</td>
+    <td><b>自分が作ったレスバに応募が来たときのみ</b>（オプチャ・DM関係なく全ての応募で通知）。プッシュは<b>フォアグラウンドでも表示</b>。通知設定は新設「レスバ応募」に従う</td>
+  </tr>
+  <tr>
+    <td><code>resba</code> 添付<br><small style="color:#8B98A5">（返信・コメント・新規）</small></td>
+    <td><span class="mini-badge" style="background:#7856FF">⚔</span> 対戦 / <code>#7856FF</code></td>
+    <td>レスバが届きました<br>（プッシュ: 「◯◯からレスバ」）</td>
+    <td>◯（テーマ）</td>
+    <td>レスバカード（応募画面）へ</td>
+    <td>返信・コメントにレスバを添付して送信したら<b>メッセージのように通知</b>。通知設定は既存の「<b>コメント・返信</b>」に従う</td>
+  </tr>
+  <tr>
+    <td><code>resba</code> 添付<br><small style="color:#8B98A5">（DM・オプチャ・新規）</small></td>
+    <td><span class="mini-badge" style="background:#7856FF">⚔</span> 対戦 / <code>#7856FF</code></td>
+    <td>レスバが届きました<br>（プッシュ: 「◯◯」+「レスバが届きました」）</td>
+    <td>◯（テーマ）</td>
+    <td>—（メッセージタブのDM/クラブで表示）</td>
+    <td><b>通知タブには表示しない</b>（メッセージタブ表示）。通知設定は既存の「<b>DM</b>」「<b>クラブ</b>」に従う</td>
+  </tr>
+</table>
+
+<div class="note" style="margin-top:14px">
+  <b>関連する別モック:</b> OSに届くプッシュ通知（FCMバナー・通知トレイ）の見た目は「<code>プッシュ通知UIモック.html</code>」を参照（同じく新仕様に改訂済み）。本ページはアプリ内通知（通知タブ）の表示です。
+</div>
+
+</body>
+</html>

@@ -55,7 +55,7 @@ class NotificationService {
             final data = jsonDecode(details.payload!) as Map<String, dynamic>;
             final type = data['type'];
             final inviteId = data['invite_id'];
-            if (type == 'resba_invite' && inviteId != null && inviteId.toString().isNotEmpty) {
+            if ((type == 'resba_invite' || type == 'resba_apply') && inviteId != null && inviteId.toString().isNotEmpty) {
               router.push(
                 '/resbaRequest',
                 extra: (inviteId: inviteId.toString(), notification: null),
@@ -91,10 +91,10 @@ class NotificationService {
       final type = message.data['type'];
       print('Foreground message received: type=$type, title=${message.notification?.title}');
 
-      // DMからのレスバ招待（resba_invite）のみ、フォアグラウンド（操作中）でも通知バナーを表示
-      if (type == 'resba_invite') {
-        final title = message.notification?.title ?? 'レスバの対戦申し込みが届きました！';
-        final body = message.notification?.body ?? 'レスバの対戦申し込みが届きました';
+      // レスバ応募（resba_apply）のみ、フォアグラウンド（操作中）でも通知バナーを表示
+      if (type == 'resba_apply') {
+        final title = message.notification?.title ?? 'あなたのレスバに応募が来ました';
+        final body = message.notification?.body ?? 'あなたのレスバに応募が来ました';
 
         final androidDetails = AndroidNotificationDetails(
           _channel.id,

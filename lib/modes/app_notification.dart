@@ -12,7 +12,7 @@ class AppNotification {
   final String? postId;
   final String? commentId;
 
-  /// レスバ通知（resba_invite / resba_accepted / resba_declined）の対象 battle_invites のID
+  /// レスバ通知（resba_invite: 返信・コメントへの添付 / resba_apply: 応募が来たとき）の対象 battle_invites のID
   final String? inviteId;
   /// 返信通知の対象コメントにレスバが付いているか（「⚔️ レスバ付き」表示用）
   final bool hasResba;

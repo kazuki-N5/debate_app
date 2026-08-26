@@ -123,6 +123,14 @@ class NotificationSettingsPage extends HookConsumerWidget {
                   onChanged: (v) =>
                       notifier.setCategory('match_waiting_enabled', v),
                 ),
+                _buildSwitchTile(
+                  icon: Icons.sports_kabaddi,
+                  title: 'レスバ応募',
+                  subtitle: 'あなたが作ったレスバに応募が来たとき',
+                  value: settings.resbaApplyEnabled,
+                  onChanged: (v) =>
+                      notifier.setCategory('resba_apply_enabled', v),
+                ),
                 const SizedBox(height: 30),
               ],
             ),

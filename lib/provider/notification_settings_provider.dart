@@ -105,6 +105,8 @@ class NotificationSettingsNotifier
         return m.copyWith(openChatEnabled: value);
       case 'match_waiting_enabled':
         return m.copyWith(matchWaitingEnabled: value);
+      case 'resba_apply_enabled':
+        return m.copyWith(resbaApplyEnabled: value);
       default:
         return m;
     }

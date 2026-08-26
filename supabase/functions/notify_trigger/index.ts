@@ -15,6 +15,8 @@ interface RequestBody {
   room_id?: string;
   sender_id?: string;
   invite_id?: string;
+  theme?: string;
+  content?: string;
 }
 
 interface NotificationSettings {
@@ -25,6 +27,7 @@ interface NotificationSettings {
   dm_enabled?: boolean;
   open_chat_enabled?: boolean;
   match_waiting_enabled?: boolean;
+  resba_apply_enabled?: boolean;
 }
 
 Deno.serve(async (req: Request) => {
@@ -41,8 +44,11 @@ Deno.serve(async (req: Request) => {
     const body: RequestBody = await req.json();
     const { type } = body;
 
-    // ルーム型通知 (DM / オプチャ): 受信者をDBから特定して送信
-    if (type === "dm" || type === "open_chat") {
+    // ルーム型通知 (DM / オプチャ / レスバ添付): 受信者をDBから特定して送信
+    if (
+      type === "dm" || type === "open_chat" ||
+      type === "dm_resba" || type === "open_chat_resba"
+    ) {
       const result = await sendRoomNotification(body);
       return new Response(JSON.stringify(result), {
         headers: { "Content-Type": "application/json" },
@@ -65,7 +71,7 @@ Deno.serve(async (req: Request) => {
     // 受信者のFCMトークンを取得 (トークン保有者のみ)
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("fcm_token, notification_settings(is_notification_enabled, like_enabled, comment_enabled, follow_enabled, dm_enabled, open_chat_enabled, match_waiting_enabled)")
+      .select("fcm_token, notification_settings(is_notification_enabled, like_enabled, comment_enabled, follow_enabled, dm_enabled, open_chat_enabled, match_waiting_enabled, resba_apply_enabled)")
       .eq("id", user_id)
       .not("fcm_token", "is", null)
       .maybeSingle();
@@ -87,7 +93,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { title, body: messageBody } = buildMessage(type, actor_name ?? "誰か");
+    const { title, body: messageBody } = buildMessage(type, actor_name ?? "誰か", body.theme, body.content);
     const accessToken = await getAccessToken();
     const sent = await sendFcm(
       supabase,
@@ -134,11 +140,16 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
     .maybeSingle();
   const actorName = sender?.name ?? "誰か";
 
+  // レスバ添付（dm_resba / open_chat_resba）は「◯◯（名前/グループ名）+ レスバが届きました」形式
+  const isResba = type === "dm_resba" || type === "open_chat_resba";
+  const baseType =
+    type === "dm_resba" ? "dm" : type === "open_chat_resba" ? "open_chat" : type;
+
   let receiverIds: string[] = [];
   let title = "";
   let messageBody = "";
 
-  if (type === "dm") {
+  if (baseType === "dm") {
     const { data: members } = await supabase
       .from("dm_room_members")
       .select("user_id")
@@ -148,24 +159,30 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
       .map((m: { user_id: string }) => m.user_id)
       .filter((uid: string) => uid !== sender_id);
 
-    const { count } = await supabase
-      .from("dm_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("room_id", room_id);
-
-    const { data: lastMsg } = await supabase
-      .from("dm_messages")
-      .select("content")
-      .eq("room_id", room_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    title = "DMが届きました";
-    if (count === 1) {
-      messageBody = `${actorName} さんから通知が来ました`;
+    if (isResba) {
+      // レスバ添付: タイトル=送信者名 / 本文=「レスバが届きました」
+      title = actorName;
+      messageBody = "レスバが届きました";
     } else {
-      messageBody = `${actorName} さん: ${truncate(lastMsg?.content ?? "")}`;
+      const { count } = await supabase
+        .from("dm_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("room_id", room_id);
+
+      const { data: lastMsg } = await supabase
+        .from("dm_messages")
+        .select("content")
+        .eq("room_id", room_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      title = "DMが届きました";
+      if (count === 1) {
+        messageBody = `${actorName} さんから通知が来ました`;
+      } else {
+        messageBody = `${actorName} さん: ${truncate(lastMsg?.content ?? "")}`;
+      }
     }
   } else {
     const { data: room } = await supabase
@@ -178,18 +195,23 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
       .select("user_id")
       .eq("room_id", room_id)
       .or("is_muted.is.null,is_muted.eq.false");
-    const { data: lastMsg } = await supabase
-      .from("open_chat_messages")
-      .select("content")
-      .eq("room_id", room_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
     receiverIds = (members ?? [])
       .map((m: { user_id: string }) => m.user_id)
       .filter((uid: string) => uid !== sender_id);
     title = room?.name ?? "オープンチャット";
-    messageBody = `${actorName} さん: ${truncate(lastMsg?.content ?? "")}`;
+    if (isResba) {
+      // レスバ添付: タイトル=グループ名 / 本文=「レスバが届きました」
+      messageBody = "レスバが届きました";
+    } else {
+      const { data: lastMsg } = await supabase
+        .from("open_chat_messages")
+        .select("content")
+        .eq("room_id", room_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      messageBody = `${actorName} さん: ${truncate(lastMsg?.content ?? "")}`;
+    }
   }
 
   if (receiverIds.length === 0) {
@@ -222,7 +244,7 @@ async function sendRoomNotification({ type, room_id, sender_id }: RequestBody) {
     const settingsList = u.notification_settings as unknown as NotificationSettings[] | null;
     const s = settingsList?.[0];
     if (s?.is_notification_enabled === false) return false;
-    if (type === "dm") return s?.dm_enabled !== false;
+    if (baseType === "dm") return s?.dm_enabled !== false;
     return s?.open_chat_enabled !== false;
   });
   if (filteredUsers.length === 0) {
@@ -296,13 +318,17 @@ function isPushEnabled(type: string, settings?: NotificationSettings): boolean {
     case "follow":
       return settings.follow_enabled !== false;
     case "resba_invite":
-      return settings.dm_enabled !== false || settings.match_waiting_enabled !== false;
+      // コメント・返信へのレスバ添付は「コメント・返信」設定に従う
+      return settings.comment_enabled !== false;
+    case "resba_apply":
+      // レスバ応募は新設の「レスバ応募」設定に従う（オプチャ・DM関係なく全ての応募）
+      return settings.resba_apply_enabled !== false;
     default:
       return true;
   }
 }
 
-function buildMessage(type: string, actorName: string): { title: string; body: string } {
+function buildMessage(type: string, actorName: string, theme?: string, content?: string): { title: string; body: string } {
   switch (type) {
     case "like_post":
       return {
@@ -320,29 +346,30 @@ function buildMessage(type: string, actorName: string): { title: string; body: s
         body: `${actorName} さんがあなたをフォローしました`,
       };
     case "reply_comment":
+      // 返信類: 「◯◯から返信」+ 返信内容
       return {
-        title: "返信が来ました",
-        body: `${actorName} さんがあなたのコメントに返信しました`,
+        title: `${actorName}から返信`,
+        body: content && content.length > 0 ? content : "返信が届きました",
       };
     case "comment":
+      // 返信類: 「◯◯からコメント」+ コメント内容
       return {
-        title: "コメントが来ました",
-        body: `${actorName} さんがあなたのポストにコメントしました`,
+        title: `${actorName}からコメント`,
+        body: content && content.length > 0 ? content : "コメントが届きました",
       };
     case "resba_invite":
+      // 返信・コメントにレスバを添付して送信 → 「◯◯からレスバ」+ テーマ
       return {
-        title: "レスバの対戦申し込みが届きました！",
-        body: `${actorName} さんからレスバの対戦申し込みが届きました`,
+        title: `${actorName}からレスバ`,
+        body: theme && theme.length > 0 ? theme : "レスバが届きました",
       };
-    case "resba_accepted":
+    case "resba_apply":
+      // 自分が作ったレスバに応募が来たとき → 「◯◯から応募が来ました」
       return {
-        title: "レスバの申し込みが承諾されました！",
-        body: `${actorName} さんが対戦申し込みを承諾しました`,
-      };
-    case "resba_declined":
-      return {
-        title: "レスバの申し込みが辞退されました",
-        body: `${actorName} さんが対戦申し込みを辞退しました`,
+        title: `${actorName}から応募が来ました`,
+        body: theme && theme.length > 0
+          ? `あなたのレスバ「${theme}」に応募しました`
+          : "あなたのレスバに応募が来ました",
       };
     default:
       return { title: "新しい通知", body: actorName };

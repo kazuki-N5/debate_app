@@ -80,9 +80,8 @@ class InAppPurchaseManager with ChangeNotifier {
     // entitlements.allはMapなので、キーが存在するかどうかと、そのキーの値がisActiveかを見る
     final entitlement = customerInfo.entitlements.all[entitlementID];
 
-    // シンプルな判定ロジック
-    // entitlementが存在し、かつisActiveなら購読中
-    final newStatus = entitlement != null && entitlement.isActive;
+    // 一時的テスト用: 広告表示確認のため強制的に無料会員(false)に固定
+    final newStatus = false;
 
     // 状態が変わった場合のみ更新して通知する
     if (isSubscribed != newStatus) {

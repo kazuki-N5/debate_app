@@ -100,6 +100,11 @@ class HomePage extends HookConsumerWidget {
             .requestFirstLaunchNotificationPermission();
         // 通知ダイアログ完了後、AdMobのIDFA説明メッセージ / ATTダイアログを表示して広告を初期化
         await AdConsentService.requestConsentAndInitializeAds();
+        // 初期化完了後、バナー広告をロード
+        if (ref.read(inAppPurchaseManagerProvider).isSubscribed == false) {
+          ref.read(bannerAdProvider.notifier).loadAd();
+          ref.read(matchingBannerAdProvider.notifier).loadAd();
+        }
       });
       return null;
     }, []);

@@ -153,12 +153,13 @@ class CommunityPage extends HookConsumerWidget {
                                       .prepare({0});
                                   return ListView(
                                     physics: const AlwaysScrollableScrollPhysics(),
+                                    padding: EdgeInsets.only(
+                                      top: 8,
+                                      bottom: homeBottomAdClearance(),
+                                    ),
                                     children: [
-                                      const SizedBox(height: 60),
                                       Padding(
-                                        padding:
-                                            const EdgeInsets.fromLTRB(
-                                                16, 8, 16, 96),
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
                                         child: recruitAds[0] != null
                                             ? communityAdWidget(
                                                 recruitAds[0]!)

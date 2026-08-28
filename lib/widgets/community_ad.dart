@@ -45,7 +45,7 @@ int communityContentIndex(int combinedIndex, Set<int> adSlots) {
 Widget communityAdWidget(BannerAd ad) {
   return Container(
     alignment: Alignment.center,
-    padding: const EdgeInsets.symmetric(vertical: 16),
+    padding: EdgeInsets.zero,
     color: Colors.white,
     child: SizedBox(
       width: ad.size.width.toDouble(),

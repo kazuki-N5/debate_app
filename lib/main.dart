@@ -16,7 +16,6 @@ import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/provider/notification_service.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/widgets/resba_applying_banner.dart';
-import 'package:debate_project/adsence/ad_consent_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final scaffoldMessengerKeyProvider = Provider((ref) => GlobalKey<ScaffoldMessengerState>());
@@ -32,8 +31,6 @@ void main() async {
 
   // Firebaseの初期化
   await Firebase.initializeApp();
-  // AdMobのIDFA説明メッセージ / UMP同意取得と初期化
-  await AdConsentService.requestConsentAndInitializeAds();
 
 
   await Supabase.initialize(

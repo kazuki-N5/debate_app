@@ -33,6 +33,7 @@ import 'package:debate_project/views/MessagePage.dart';
 import 'package:debate_project/widgets/keep_alive_page.dart';
 import 'package:debate_project/widgets/trophy_count_animation.dart';
 import 'package:debate_project/widgets/count_badge.dart';
+import 'package:debate_project/adsence/ad_consent_service.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 // 前回のトロフィー数を保持してアニメーションの起点にするためのプロバイダー
@@ -91,12 +92,14 @@ class HomePage extends HookConsumerWidget {
       return null;
     }, []);
 
-    // 初回起動時のみ通知の許可ダイアログを表示する（許可されたら最初から通知ON）
+    // 初回起動時: 通知許可ダイアログを先に表示し、完了後にAdMob IDFA/ATT同意ダイアログを表示
     useEffect(() {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await ref
             .read(userProvider.notifier)
             .requestFirstLaunchNotificationPermission();
+        // 通知ダイアログ完了後、AdMobのIDFA説明メッセージ / ATTダイアログを表示して広告を初期化
+        await AdConsentService.requestConsentAndInitializeAds();
       });
       return null;
     }, []);

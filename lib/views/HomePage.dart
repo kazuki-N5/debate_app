@@ -785,6 +785,23 @@ class HomePage extends HookConsumerWidget {
                                                 circleNavBarHeight,
                                               ),
                                         ),
+                                      )
+                                    else
+                                      // 課金時: バナー広告がない場合でも、ナビバー中央の円と接しないよう16px空ける
+                                      SizedBox(
+                                        height: max(
+                                          0,
+                                          circleNavBarHeight +
+                                              adBottomPadding +
+                                              16.0 -
+                                              footerButtonBlockPadding -
+                                              max(
+                                                MediaQuery.of(context)
+                                                    .padding
+                                                    .bottom,
+                                                circleNavBarHeight,
+                                              ),
+                                        ),
                                       ),
                                   ],
                                 ),

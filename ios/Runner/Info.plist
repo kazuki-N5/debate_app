@@ -43,6 +43,8 @@
 		<string>プロフィール画像の撮影</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>プロフィール画像の選択</string>
+		<key>NSUserTrackingUsageDescription</key>
+		<string>お客様に最適化された広告を表示するために使用されます。</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

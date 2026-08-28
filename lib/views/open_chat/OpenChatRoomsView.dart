@@ -75,36 +75,40 @@ class OpenChatRoomsView extends HookConsumerWidget {
               child: roomsAsync.when(
                 data: (originalRooms) {
                   final rooms = originalRooms;
-                  if (rooms.isEmpty) {
-                    // 0件のときは広告のみ表示(課金で広告なしなら従来の空メッセージ)
-                    if (!isSubscribed) {
-                      return ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        children: [
-                          const SizedBox(height: 60),
-                          Padding(
-                            padding: EdgeInsets.only(
-                                bottom: homeBottomAdClearance()),
-                            child: clubAds[0] != null
-                                ? communityAdWidget(clubAds[0]!)
-                                : communityAdPlaceholder(),
-                          ),
-                        ],
-                      );
-                    }
-                    return Center(
-                      child: Text(
-                        'クラブが見つかりません',
-                        style: AppTextStyles.notoSans(
-                          color: Colors.grey,
-                          fontSize: 16,
-                        ),
-                      ),
-                    );
-                  }
                   return RefreshIndicator(
-                    onRefresh: () async => ref.refresh(openChatRoomsProvider),
-                    child: ListView.builder(
+                    onRefresh: () async {
+                      if (!isSubscribed) {
+                        ref.read(communityClubAdProvider.notifier).refresh();
+                      }
+                      ref.invalidate(openChatRoomsProvider);
+                    },
+                    child: rooms.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.only(
+                              top: 4,
+                              bottom: homeBottomAdClearance(),
+                            ),
+                            children: [
+                              if (!isSubscribed) ...[
+                                clubAds[0] != null
+                                    ? communityAdWidget(clubAds[0]!)
+                                    : communityAdPlaceholder(),
+                              ] else ...[
+                                const SizedBox(height: 120),
+                                Center(
+                                  child: Text(
+                                    'クラブが見つかりません',
+                                    style: AppTextStyles.notoSans(
+                                      color: Colors.grey,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          )
+                        : ListView.builder(
                       padding: EdgeInsets.only(
                         top: 4,
                         // 非課金時は下部の常時表示バナーに被らないよう余白を広げる(クラブ自体のリスト内広告は先頭の1個のみ)

@@ -37,30 +37,6 @@ class BbsTimelineView extends HookConsumerWidget {
       backgroundColor: Colors.white,
       body: timelineAsync.when(
         data: (posts) {
-          if (posts.isEmpty) {
-            // 0件のときは広告のみ表示(課金で広告なしなら従来の空メッセージ)
-            if (!isSubscribed) {
-              ref.read(communityBbsAdProvider.notifier).prepare({0});
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  const SizedBox(height: 60),
-                  Padding(
-                    padding: EdgeInsets.only(bottom: homeBottomAdClearance()),
-                    child: bbsAds[0] != null
-                        ? communityAdWidget(bbsAds[0]!)
-                        : communityAdPlaceholder(),
-                  ),
-                ],
-              );
-            }
-            return Center(
-              child: Text(
-                'まだ投稿がありません',
-                style: AppTextStyles.notoSans(color: Colors.grey, fontSize: 16),
-              ),
-            );
-          }
           return RefreshIndicator(
             onRefresh: () async {
               if (!isSubscribed) {
@@ -68,7 +44,31 @@ class BbsTimelineView extends HookConsumerWidget {
               }
               await ref.read(bbsTimelineProvider.notifier).fetchPosts();
             },
-            child: Builder(builder: (context) {
+            child: posts.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      top: 4,
+                      bottom: homeBottomAdClearance(),
+                    ),
+                    children: [
+                      if (!isSubscribed) ...[
+                        bbsAds[0] != null
+                            ? communityAdWidget(bbsAds[0]!)
+                            : communityAdPlaceholder(),
+                      ] else ...[
+                        const SizedBox(height: 120),
+                        Center(
+                          child: Text(
+                            'まだ投稿がありません',
+                            style: AppTextStyles.notoSans(
+                                color: Colors.grey, fontSize: 16),
+                          ),
+                        ),
+                      ],
+                    ],
+                  )
+                : Builder(builder: (context) {
               // 掲示板は長いフィードなので「6件ごとに1個」広告を挟む(開始位置はランダム)
               final adSlots = !isSubscribed
                   ? communityAdSlotIndexes(
@@ -95,15 +95,17 @@ class BbsTimelineView extends HookConsumerWidget {
                       : homeBottomAdClearance(),
                 ),
                 itemCount: totalItems,
-                separatorBuilder: (context, index) =>
-                    // 広告の隣では区切り線を出さない(広告スロットは独立表示)
-                    adSlots.contains(index) || adSlots.contains(index + 1)
-                        ? const SizedBox.shrink()
-                        : Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: Colors.grey[200],
-                          ),
+                separatorBuilder: (context, index) {
+                  // 広告が未ロードの間は2本目の区切り線を抑制し、二重線になるのを防止する
+                  if (adSlots.contains(index) && bbsAds[index] == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Colors.grey[200],
+                  );
+                },
                 itemBuilder: (context, index) {
                   if (adSlots.contains(index)) {
                     final slotAd = bbsAds[index];

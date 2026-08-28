@@ -34,6 +34,7 @@ import 'package:debate_project/widgets/keep_alive_page.dart';
 import 'package:debate_project/widgets/trophy_count_animation.dart';
 import 'package:debate_project/widgets/count_badge.dart';
 import 'package:debate_project/adsence/ad_consent_service.dart';
+import 'package:debate_project/adsence/ad_community_provider.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 // 前回のトロフィー数を保持してアニメーションの起点にするためのプロバイダー
@@ -100,10 +101,14 @@ class HomePage extends HookConsumerWidget {
             .requestFirstLaunchNotificationPermission();
         // 通知ダイアログ完了後、AdMobのIDFA説明メッセージ / ATTダイアログを表示して広告を初期化
         await AdConsentService.requestConsentAndInitializeAds();
-        // 初期化完了後、バナー広告をロード
+        // 初期化完了後、バナー広告およびコミュニティ広告を先行ロード
         if (ref.read(inAppPurchaseManagerProvider).isSubscribed == false) {
           ref.read(bannerAdProvider.notifier).loadAd();
           ref.read(matchingBannerAdProvider.notifier).loadAd();
+          // コミュニティタブの先頭広告も先回りしてロード（タップ時に即時表示するため）
+          ref.read(communityRecruitAdProvider.notifier).prepare({0});
+          ref.read(communityBbsAdProvider.notifier).prepare({0});
+          ref.read(communityClubAdProvider.notifier).prepare({0});
         }
       });
       return null;

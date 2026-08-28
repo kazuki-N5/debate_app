@@ -1,5 +1,4 @@
 // ignore_for_file: file_names, avoid_print, use_build_context_synchronously
-import 'package:debate_project/adsence/ad_banner_provider.dart';
 import 'package:debate_project/adsence/ad_mbanner_provider.dart';
 import 'package:debate_project/adsence/ad_provider.dart'; // adNotifierProvider がここにあると仮定
 import 'package:debate_project/modes/debate_scores.dart';
@@ -155,15 +154,6 @@ class FinishPage extends HookConsumerWidget {
 
       // マッチングフラグを確実にリセット
       ref.read(friendmatchProvider.notifier).state = false;
-
-      Future.microtask(() {
-        if (isSubscribe == false) {
-          // 広告をロード
-          ref.read(bannerAdProvider.notifier).loadAd();
-          ref.read(matchingBannerAdProvider.notifier).loadAd();
-        }
-        // ロード済みの広告を表示 (Medium Rectangle Ad はビルド内で watch しているのでここで特別な処理は不要)
-      });
 
       // 部屋の情報をクリア（チャット購読解除・プレゼンス破棄を含む）
       roomnotifier.delete();

@@ -136,8 +136,12 @@ class CommunityPage extends HookConsumerWidget {
                       child: Scaffold(
                         backgroundColor: Colors.white,
                         body: RefreshIndicator(
-                          onRefresh: () =>
-                              ref.read(recruitResbasProvider.notifier).fetch(),
+                          onRefresh: () async {
+                            if (!isSubscribed) {
+                              ref.read(communityRecruitAdProvider.notifier).refresh();
+                            }
+                            await ref.read(recruitResbasProvider.notifier).fetch();
+                          },
                           child: recruitAsync.when(
                             data: (invites) {
                               if (invites.isEmpty) {

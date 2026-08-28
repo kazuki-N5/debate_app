@@ -70,6 +70,21 @@ class CommunityAdNotifier extends StateNotifier<Map<int, BannerAd>> {
     }
   }
 
+  /// 既存の広告を破棄して、新しい広告を再ロードする
+  void refresh([Set<int>? slots]) {
+    final targetSlots = slots ?? (state.isEmpty ? {0} : state.keys.toSet());
+    for (final slot in targetSlots) {
+      state[slot]?.dispose();
+      _loading.remove(slot);
+    }
+    final nextState = Map<int, BannerAd>.from(state);
+    for (final slot in targetSlots) {
+      nextState.remove(slot);
+    }
+    state = nextState;
+    prepare(targetSlots);
+  }
+
   @override
   void dispose() {
     for (final ad in state.values) {

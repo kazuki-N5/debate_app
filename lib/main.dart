@@ -10,13 +10,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 
 import 'package:debate_project/widgets/app_text_styles.dart';
 import 'package:debate_project/provider/notification_service.dart';
 import 'package:debate_project/provider/appstate_provider.dart';
 import 'package:debate_project/widgets/resba_applying_banner.dart';
+import 'package:debate_project/adsence/ad_consent_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final scaffoldMessengerKeyProvider = Provider((ref) => GlobalKey<ScaffoldMessengerState>());
@@ -32,7 +32,8 @@ void main() async {
 
   // Firebaseの初期化
   await Firebase.initializeApp();
-  await MobileAds.instance.initialize();
+  // AdMobのIDFA説明メッセージ / UMP同意取得と初期化
+  await AdConsentService.requestConsentAndInitializeAds();
 
 
   await Supabase.initialize(

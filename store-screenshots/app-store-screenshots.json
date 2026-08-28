@@ -7,7 +7,7 @@
     "ja"
   ],
   "locale": "ja",
-  "device": "ipad",
+  "device": "iphone",
   "orientation": "portrait",
   "appIcon": "/app-icon.png",
   "slidesByDevice": {
@@ -19,7 +19,7 @@
         "headline": {
           "ja": "日本初\nレスバ専用SNS"
         },
-        "screenshot": "/screenshots/apple/iphone/ja/01.png",
+        "screenshot": "/screenshots/uploaded/08724ebbd3554a01.jpg",
         "transforms": {
           "device": {
             "x": 111.99428515392636,
@@ -30,8 +30,8 @@
             "zIndex": 3
           },
           "caption": {
-            "x": 102.2636381736767,
-            "y": 161.7815695763814,
+            "x": 105.6002031726755,
+            "y": 155.10843957838367,
             "width": 1109,
             "height": 906,
             "rotation": 0,

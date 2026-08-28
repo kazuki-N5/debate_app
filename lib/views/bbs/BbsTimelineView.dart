@@ -62,8 +62,12 @@ class BbsTimelineView extends HookConsumerWidget {
             );
           }
           return RefreshIndicator(
-            onRefresh: () =>
-                ref.read(bbsTimelineProvider.notifier).fetchPosts(),
+            onRefresh: () async {
+              if (!isSubscribed) {
+                ref.read(communityBbsAdProvider.notifier).refresh();
+              }
+              await ref.read(bbsTimelineProvider.notifier).fetchPosts();
+            },
             child: Builder(builder: (context) {
               // 掲示板は長いフィードなので「6件ごとに1個」広告を挟む(開始位置はランダム)
               final adSlots = !isSubscribed

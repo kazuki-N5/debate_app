@@ -66,3 +66,19 @@ html/chat_time_display_mockup.html
 
 # 本番DBバックアップ（機密データ含むためコミット対象外）
 backup_prod_*/
+
+# 動画生成仕様書・一時ファイル
+動画.md
+
+# ポートフォリオ（就活用・非公開）
+ポートフォリオ/
+
+# AIエージェントの作業ログ・一時バックアップ・スクラッチSQL（公開しない）
+.agents/
+backup_pre_clean/
+backup_mock_clean_*.sql
+supabase/snippets/
+
+# 生成物・比較用HTML
+html/readme_comparison.html
+

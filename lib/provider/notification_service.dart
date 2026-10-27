@@ -91,10 +91,14 @@ class NotificationService {
       final type = message.data['type'];
       print('Foreground message received: type=$type, title=${message.notification?.title}');
 
-      // レスバ応募（resba_apply）のみ、フォアグラウンド（操作中）でも通知バナーを表示
-      if (type == 'resba_apply') {
-        final title = message.notification?.title ?? 'あなたのレスバに応募が来ました';
-        final body = message.notification?.body ?? 'あなたのレスバに応募が来ました';
+      // レスバ応募（resba_apply）およびDM（dm, dm_resba）は、フォアグラウンド（操作中）でも通知バナーを表示
+      if (type == 'resba_apply' || type == 'dm' || type == 'dm_resba') {
+        final title = message.notification?.title ??
+            (type == 'resba_apply' ? 'あなたのレスバに応募が来ました' : '新しいメッセージ');
+        final body = message.notification?.body ??
+            (type == 'resba_apply'
+                ? 'あなたのレスバに応募が来ました'
+                : (type == 'dm_resba' ? 'レスバが届きました' : 'DMが届きました'));
 
         final androidDetails = AndroidNotificationDetails(
           _channel.id,

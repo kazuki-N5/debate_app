@@ -1,1 +1,0 @@
-ALTER TABLE public.users ADD COLUMN IF NOT EXISTS header_url TEXT;

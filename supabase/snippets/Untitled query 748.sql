@@ -1,1 +1,0 @@
-SELECT * FROM battle_invites LIMIT 1;

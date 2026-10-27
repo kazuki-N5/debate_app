@@ -611,7 +611,7 @@ CREATE OR REPLACE FUNCTION "public"."handle_room_updates_v2"() RETURNS "trigger"
     total_themes INT;
     current_used_ids INTEGER[];
     new_theme_id INT;
-    qstash_token text := '***REMOVED***=';
+    qstash_token text := public.get_qstash_token();
     target_url text := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/gemini_v2';
     qstash_publish_url text := 'https://qstash-us-east-1.upstash.io/v2/publish/' || target_url;
 BEGIN
@@ -690,7 +690,7 @@ CREATE OR REPLACE FUNCTION "public"."handle_room_updates_v3"() RETURNS "trigger"
     current_used_ids INTEGER[];
     new_theme_id INT;
     -- v2->v3への変更
-    qstash_token text := '***REMOVED***=';
+    qstash_token text := public.get_qstash_token();
     target_url text := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/gemini_v3';
     qstash_publish_url text := 'https://qstash-us-east-1.upstash.io/v2/publish/' || target_url;
 BEGIN

@@ -13,7 +13,7 @@ CREATE OR REPLACE FUNCTION public.handle_room_updates_v2() RETURNS trigger
     total_themes INT;
     current_used_ids INTEGER[];
     new_theme_id INT;
-    qstash_token text := '***REMOVED***=';
+    qstash_token text := public.get_qstash_token();
     
     -- 【ローカル検証用】ngrok のURL
     target_url text := 'https://undebilitative-engagedly-salma.ngrok-free.dev/functions/v1/gemini_v2';
@@ -94,7 +94,7 @@ CREATE OR REPLACE FUNCTION public.handle_room_updates_v2() RETURNS trigger
     total_themes INT;
     current_used_ids INTEGER[];
     new_theme_id INT;
-    qstash_token text := '***REMOVED***=';
+    qstash_token text := public.get_qstash_token();
     
     -- 【本番用】本番環境のEdge Function URL
     target_url text := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/gemini_v2';

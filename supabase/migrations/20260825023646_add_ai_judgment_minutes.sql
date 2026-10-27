@@ -21,7 +21,7 @@ CREATE OR REPLACE FUNCTION public.handle_room_updates_v2()
     total_themes INT;
     current_used_ids INTEGER[];
     new_theme_id INT;
-    qstash_token text := '***REMOVED***=';
+    qstash_token text := public.get_qstash_token();
     
     -- 【本番】エッジ関数 gemini_v2 のURL
     target_url text := 'https://ljgvqdcailabzuutaeha.supabase.co/functions/v1/gemini_v2';

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DB設計の基本と、この実装の話し方</title>
+<style>
+  :root{
+    --bg:#fbfbfa;
+    --panel:#ffffff;
+    --fg:#1d1f21;
+    --muted:#5b6270;
+    --border:#e3e5e8;
+    --accent:#2b5c8a;
+    --accent-weak:#eaf1f8;
+    --danger:#a33a3a;
+    --danger-weak:#fbeceb;
+    --warn:#8a6215;
+    --warn-weak:#fdf4e2;
+    --ok:#2f6a44;
+    --ok-weak:#eaf5ee;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--fg);
+    font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:15px;line-height:1.85;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px;display:grid;grid-template-columns:210px 1fr;gap:48px}
+  header.top{grid-column:1/-1;padding:56px 0 28px;border-bottom:1px solid var(--border);margin-bottom:40px}
+  header.top h1{font-size:28px;line-height:1.4;margin:0 0 10px;letter-spacing:.01em}
+  header.top p{margin:0;color:var(--muted);font-size:14px}
+  .meta{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap}
+  .meta span{font-size:12px;padding:3px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted);background:var(--panel)}
+  nav.toc{position:sticky;top:28px;align-self:start;font-size:13px;padding-bottom:40px}
+  nav.toc h2{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:600}
+  nav.toc a{display:block;padding:6px 0 6px 12px;color:var(--muted);text-decoration:none;border-left:2px solid var(--border)}
+  nav.toc a:hover{color:var(--accent);border-left-color:var(--accent);background:var(--accent-weak)}
+  main{min-width:0;padding-bottom:120px}
+  section{margin-bottom:56px;scroll-margin-top:24px}
+  h2.sec{font-size:20px;margin:0 0 6px;letter-spacing:.01em}
+  h2.sec .num{color:var(--accent);font-family:var(--mono);font-size:14px;margin-right:10px;font-weight:500}
+  .lead{color:var(--muted);font-size:14px;margin:0 0 22px;padding-left:34px}
+  h3{font-size:15px;margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+  h4{font-size:14px;margin:22px 0 8px;color:var(--accent)}
+  p{margin:0 0 14px}
+  ul,ol{margin:0 0 14px;padding-left:22px}
+  li{margin:4px 0}
+  code{font-family:var(--mono);font-size:12.5px;background:#f1f2f4;padding:1px 5px;border-radius:4px;border:1px solid #e7e8ea}
+  pre{background:#1f2430;color:#e6e9ef;padding:16px 18px;border-radius:8px;overflow-x:auto;font-size:12.5px;line-height:1.7;margin:0 0 16px}
+  pre code{background:none;border:0;padding:0;color:inherit;font-size:inherit}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin:0 0 18px}
+  .card.acc{border-left:3px solid var(--accent);background:var(--accent-weak)}
+  .card.bad{border-left:3px solid var(--danger);background:var(--danger-weak)}
+  .card.warn{border-left:3px solid #c79a3a;background:var(--warn-weak)}
+  .card.ok{border-left:3px solid var(--ok);background:var(--ok-weak)}
+  .card > :last-child{margin-bottom:0}
+  .card .label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px;display:block}
+  table{width:100%;border-collapse:collapse;margin:0 0 18px;font-size:13.5px;background:var(--panel)}
+  th,td{border:1px solid var(--border);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:#f4f5f7;font-weight:600;font-size:12.5px;color:#3a4150}
+  td code{font-size:12px}
+  .sev{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.04em;white-space:nowrap}
+  .sev.c{background:var(--danger);color:#fff}
+  .sev.h{background:#c97a2b;color:#fff}
+  .sev.m{background:#d8ae4a;color:#3a2c05}
+  .sev.l{background:#d5d8dd;color:#3a4150}
+  .tbl-wrap{overflow-x:auto}
+  .kv{display:grid;grid-template-columns:150px 1fr;gap:2px 16px;font-size:13.5px;margin:0 0 16px}
+  .kv dt{color:var(--muted);padding:5px 0;border-bottom:1px dashed var(--border)}
+  .kv dd{margin:0;padding:5px 0;border-bottom:1px dashed var(--border)}
+  .quote{border-left:3px solid var(--accent);padding:2px 0 2px 18px;margin:16px 0;color:#2a3442;font-size:14.5px}
+  .quote p{margin:0 0 12px}
+  .quote p:last-child{margin-bottom:0}
+  .note{font-size:12.5px;color:var(--muted)}
+  /* schema diagram */
+  .er{display:flex;flex-direction:column;gap:14px;margin:0 0 18px}
+  .er-row{display:flex;gap:14px;flex-wrap:wrap}
+  .ent{flex:1 1 240px;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:12.5px}
+  .ent .hd{padding:8px 12px;background:#eef1f5;font-family:var(--mono);font-weight:600;color:#243040;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .ent .hd em{font-style:normal;font-size:10.5px;color:var(--muted);font-weight:400;letter-spacing:.06em}
+  .ent ul{list-style:none;margin:0;padding:6px 0}
+  .ent li{padding:3px 12px;font-family:var(--mono);font-size:11.5px;color:#333a45;display:flex;justify-content:space-between;gap:8px}
+  .ent li span.t{color:#7a828f}
+  .ent li.pk{background:#f7f9fc}
+  .ent.prog .hd{background:#e7f0f8}
+  .ent.hist .hd{background:#eef7f0}
+  .flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:12px 0 20px}
+  .flow .box{border:1px solid var(--border);background:var(--panel);border-radius:6px;padding:6px 12px;color:var(--fg);font-family:var(--mono);font-size:12px}
+  .flow .arr{color:#9aa2ae}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0 0 16px}
+  .steps li{counter-increment:s;position:relative;padding:0 0 16px 38px;border-left:2px solid var(--border);margin-left:12px}
+  .steps li::before{content:counter(s);position:absolute;left:-13px;top:0;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-family:var(--mono);display:flex;align-items:center;justify-content:center}
+  .steps li:last-child{border-left-color:transparent}
+  .steps .st{font-weight:600;display:block;margin-bottom:2px}
+  footer{grid-column:1/-1;border-top:1px solid var(--border);padding:24px 0 60px;color:var(--muted);font-size:12.5px}
+  @media (max-width:860px){
+    .wrap{grid-template-columns:1fr;gap:0}
+    nav.toc{display:none}
+    .lead{padding-left:0}
+    header.top{padding-top:36px}
+  }
+  @media print{
+    body{background:#fff;font-size:11pt}
+    nav.toc{display:none}
+    .wrap{display:block;max-width:none;padding:0}
+    .card{break-inside:avoid}
+    pre{background:#f4f5f7;color:#111;border:1px solid #ddd}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>DB設計の基本と、この実装の話し方</h1>
+  <p>正規化の考え方 → 面接で使える言葉 → 現状スキーマの評価と改善優先度</p>
+  <div class="meta">
+    <span>対象: supabase/migrations（約30テーブル / 85ポリシー定義 / 80関数）</span>
+    <span>Flutter + Supabase</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目次</h2>
+  <a href="#norm">01 正規化とは</a>
+  <a href="#basic">02 設計の基本</a>
+  <a href="#mine">03 この実装の構造</a>
+  <a href="#talk">04 面接での話し方</a>
+  <a href="#bad">05 悪いところ</a>
+  <a href="#fix">06 改善の順番</a>
+  <a href="#qa">07 想定質問</a>
+</nav>
+
+<main>
+
+<!-- ============ 01 ============ -->
+<section id="norm">
+  <h2 class="sec"><span class="num">01</span>正規化とは</h2>
+  <p class="lead">一言でいうと「同じ事実を、2箇所に書かないようにテーブルを分けること」。</p>
+
+  <div class="card acc">
+    <span class="label">定義</span>
+    <p>正規化 = 1つの事実（ファクト）を1箇所だけに保存するように、テーブルを分解していく作業。目的は「きれいにすること」ではなく、<strong>更新時にデータが矛盾しないようにすること</strong>。</p>
+  </div>
+
+  <h3>正規化しないと何が起きるか（アノマリー）</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>種類</th><th>起きること</th><th>例</th></tr></thead>
+    <tbody>
+      <tr><td>更新</td><td>同じ事実の片方だけ直して食い違う</td><td>ユーザー名を <code>users</code> と <code>posts</code> の両方に持たせると、改名したとき片方だけ古い</td></tr>
+      <tr><td>挿入</td><td>まだ存在しない対象の情報を入れられない</td><td>「部屋」と「対戦結果」を1テーブルにすると、対戦前の部屋を作るのに結果列が埋められない</td></tr>
+      <tr><td>削除</td><td>1行消すと別の事実まで消える</td><td>最後のメッセージを消したら部屋の情報まで消える</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>第1〜第3正規形</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>段階</th><th>ルール</th><th>違反の例</th><th>直し方</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>1NF</strong></td>
+        <td>1つのセルに1つの値だけ。繰り返し・配列・カンマ区切りを入れない</td>
+        <td><code>used_theme_ids integer[]</code>、<code>"a,b,c"</code> のような文字列</td>
+        <td><code>room_used_themes(room_id, theme_id)</code> の行に分ける</td>
+      </tr>
+      <tr>
+        <td><strong>2NF</strong></td>
+        <td>複合主キーの<em>一部</em>だけで決まる列を外に出す</td>
+        <td><code>(room_id, user_id)</code> が主キーの表に <code>user_name</code>（user_idだけで決まる）</td>
+        <td><code>users</code> に持たせ、参照する</td>
+      </tr>
+      <tr>
+        <td><strong>3NF</strong></td>
+        <td>主キー以外の列から決まる列（推移的依存）を外に出す</td>
+        <td><code>orders</code> に <code>customer_id</code> と <code>customer_name</code> を両方持つ</td>
+        <td><code>customers</code> を参照する</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>非正規化は「間違い」ではなく「取引」</h3>
+  <div class="card">
+    <p>正規化すると結合が増えて遅くなる。だから性能のために意図的に崩す（非正規化）。ただし崩すには条件がある。</p>
+    <ol>
+      <li><strong>書き込み経路が1つ</strong> — カウンタを更新するのはトリガーかRPCだけ。アプリの各画面から <code>update</code> しない</li>
+      <li><strong>再計算できる</strong> — 元データ（<code>match_record</code>）から <code>users.trophy</code> を再構築できる</li>
+      <li><strong>ズレを検知できる</strong> — 定期的に突き合わせるクエリがある</li>
+    </ol>
+    <p class="note">この3つが言えない非正規化は、単なるバグの温床。面接では「なぜ崩したか」と「どう守っているか」をセットで言う。</p>
+  </div>
+
+  <h3>面接での答え方（正規化を聞かれたら）</h3>
+  <div class="quote">
+    <p>「正規化は更新時の矛盾を防ぐための分解で、1つの事実を1箇所に置くのが原則です。ただ実務では読み取り性能のために意図的に非正規化するので、<em>書き込み経路を1つに限定する・元データから再計算できる・ズレを検知できる</em>、この3つを満たすときだけ崩しています。」</p>
+    <p>「このアプリだと <code>users.trophy</code> がそれで、元は <code>match_record</code> を集計すれば出せますが、ランキング表示のたびに集計したくないので列として持たせて、更新はトリガーとRPCに閉じています。」</p>
+  </div>
+</section>
+
+<!-- ============ 02 ============ -->
+<section id="basic">
+  <h2 class="sec"><span class="num">02</span>データベース設計の基本</h2>
+  <p class="lead">テーブルを書き始める前に決めること。ここを飛ばすと後でテーブルを作り直すことになる。</p>
+
+  <h3>決める順番</h3>
+  <ol class="steps">
+    <li><span class="st">エンティティを名詞で洗い出す</span>ユーザー、部屋、対戦結果、メッセージ、募集。動詞（参加する・承認する）は状態か中間テーブルになる。</li>
+    <li><span class="st">各エンティティの「寿命」を分ける</span>進行中（頻繁に更新され、短命）／確定（追記のみ、不変）／ログ（監査用）。寿命が違うものは同じテーブルに入れない。</li>
+    <li><span class="st">関係のカーディナリティを決める</span>1対多ならFKを多側に。多対多は中間テーブル。1対1は「分ける理由」があるときだけ。</li>
+    <li><span class="st">キーを決める</span>代理キー（uuid/連番）を主キーにし、業務上の一意性は別途UNIQUEで守る。公開IDは推測されない値にする。</li>
+    <li><span class="st">制約を書く</span>NOT NULL / FK / UNIQUE / CHECK。ここを書かないと、不正なデータは必ず入る。</li>
+    <li><span class="st">主要クエリを先に書く</span>どの画面がどの条件で何を並べて読むかを先に決め、そこからインデックスを逆算する。</li>
+    <li><span class="st">認可を決める</span>誰がどの行を読める／書けるか。アプリ側のifではなくDBのポリシーで表現できる形にする。</li>
+  </ol>
+
+  <h3>制約の効き方</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>制約</th><th>守れること</th><th>書かないと</th></tr></thead>
+    <tbody>
+      <tr><td><code>NOT NULL</code></td><td>必須項目</td><td>NULLが混ざり、クライアント側に <code>??</code> が増える</td></tr>
+      <tr><td><code>FOREIGN KEY</code></td><td>参照先が存在する</td><td>削除済みユーザーを指す孤児行が残る</td></tr>
+      <tr><td><code>UNIQUE</code></td><td>二重登録の防止</td><td>同じ人が同じ募集に2回応募できる</td></tr>
+      <tr><td><code>CHECK</code></td><td>値の範囲・列間の関係</td><td><code>player1_id = player2_id</code> の部屋が作れる</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>インデックスの考え方</h3>
+  <div class="card">
+    <p>インデックスは「クエリの形」に対して貼る。迷ったら<strong>複合インデックスの列順は「等値条件 → 並べ替え列」</strong>。</p>
+    <pre><code>-- 一覧クエリ: ある部屋のメッセージを新しい順に20件
+select * from open_chat_messages
+ where room_id = $1 order by created_at desc limit 20;
+
+-- これに対応するインデックス（等値 → ソート列）
+create index idx_open_chat_messages_room_created
+  on open_chat_messages (room_id, created_at desc);</code></pre>
+    <p class="note">FK列だけのインデックスでは「絞り込み」は速くなるが「並べ替え」は残る。複合にするとソートが消える。</p>
+  </div>
+
+  <h3>迷ったときの判断基準</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>問い</th><th>判断</th></tr></thead>
+    <tbody>
+      <tr><td>同じ事実が2箇所にある？</td><td>片方を消す。性能上必要なら「更新経路を1つに」して残す</td></tr>
+      <tr><td>この列、どこからも読まれていない？</td><td>消す。将来使うかも、で残すと永久に残る</td></tr>
+      <tr><td>状態をbooleanで持っている？</td><td>日時（<code>matched_at</code>）にできないか検討。booleanは「いつ」を失う</td></tr>
+      <tr><td>文字列で状態を持つ？</td><td><code>CHECK</code> か <code>ENUM</code> を付ける。付けないとタイポが入る</td></tr>
+      <tr><td>複数テーブルを同時に更新する？</td><td>1トランザクション（RPC）に閉じる。クライアントの呼び順に依存させない</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ 03 ============ -->
+<section id="mine">
+  <h2 class="sec"><span class="num">03</span>この実装の構造</h2>
+  <p class="lead">実際のスキーマを読んだ上での要約。面接ではこの3層構造を最初に言う。</p>
+
+  <h3>全体像：状態を寿命で3層に分ける</h3>
+  <div class="er">
+    <div class="er-row">
+      <div class="ent prog">
+        <div class="hd">rooms_v3 <em>進行中</em></div>
+        <ul>
+          <li class="pk"><span>id</span><span class="t">uuid PK</span></li>
+          <li><span>player1_id / player2_id</span><span class="t">uuid</span></li>
+          <li><span>is_matched</span><span class="t">bool</span></li>
+          <li><span>current_theme</span><span class="t">text</span></li>
+          <li><span>player1_choice</span><span class="t">bool</span></li>
+          <li><span>used_theme_ids</span><span class="t">int[]</span></li>
+        </ul>
+      </div>
+      <div class="ent hist">
+        <div class="hd">match_record <em>確定</em></div>
+        <ul>
+          <li class="pk"><span>roomid</span><span class="t">uuid PK</span></li>
+          <li><span>player1_id / player2_id</span><span class="t">uuid FK</span></li>
+          <li><span>theme</span><span class="t">text</span></li>
+          <li><span>winner</span><span class="t">uuid</span></li>
+          <li><span>result</span><span class="t">text</span></li>
+          <li><span>created_at</span><span class="t">timestamptz</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="er-row">
+      <div class="ent">
+        <div class="hd">users <em>マスタ</em></div>
+        <ul>
+          <li class="pk"><span>id</span><span class="t">uuid PK → auth.users</span></li>
+          <li><span>trophy / win / lose</span><span class="t">int 非正規化</span></li>
+          <li><span>fcm_token</span><span class="t">text</span></li>
+          <li><span>bio</span><span class="t">text</span></li>
+        </ul>
+      </div>
+      <div class="ent">
+        <div class="hd">battle_invites <em>募集</em></div>
+        <ul>
+          <li class="pk"><span>id</span><span class="t">uuid PK</span></li>
+          <li><span>sender_id / target_user_id</span><span class="t">uuid FK</span></li>
+          <li><span>battle_room_id</span><span class="t">uuid FK</span></li>
+        </ul>
+      </div>
+      <div class="ent">
+        <div class="hd">battle_invite_applications</div>
+        <ul>
+          <li class="pk"><span>id</span><span class="t">uuid PK</span></li>
+          <li><span>invite_id</span><span class="t">uuid FK</span></li>
+          <li><span>applicant_id</span><span class="t">uuid FK</span></li>
+          <li><span>UNIQUE(invite_id, applicant_id)</span><span class="t">制約</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <span class="box">rooms_v3</span><span class="arr">──対戦終了──▶</span>
+    <span class="box">match_record</span><span class="arr">──トリガー/RPC──▶</span>
+    <span class="box">users.trophy/win/lose</span>
+  </div>
+
+  <h3>この実装で実際にやっている設計判断</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>判断</th><th>根拠（実装）</th><th>面接での言い方</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>進行中と確定を分離</td>
+        <td><code>rooms_v3</code> と <code>match_record</code></td>
+        <td>更新頻度と寿命が違うので混ぜない。進行中はRealtimeで頻繁にUPDATEされ、結果は追記のみで不変</td>
+      </tr>
+      <tr>
+        <td>読みは非正規化</td>
+        <td><code>users.trophy/win/lose</code></td>
+        <td>ランキングのたびに <code>match_record</code> を集計しないため。更新はトリガーに一本化</td>
+      </tr>
+      <tr>
+        <td>整合性はDB側</td>
+        <td>RPC約80本（<code>join_room</code>, 承認系）</td>
+        <td>複数テーブルにまたがる操作を1トランザクションに閉じる。クライアントの呼び順に依存させない</td>
+      </tr>
+      <tr>
+        <td>認可はRLS</td>
+        <td>ポリシー85件、<code>dm_*</code>・<code>open_chat_*</code> は厳格</td>
+        <td>anon keyが漏れても他人のDMは読めない。アプリ側のifに頼らない</td>
+      </tr>
+      <tr>
+        <td>インデックスはクエリ起点</td>
+        <td><code>(room_id, created_at)</code> の複合索引</td>
+        <td>一覧は「新しい順にN件」しかないので、複合索引でソートを消す</td>
+      </tr>
+      <tr>
+        <td>監査ログを残す</td>
+        <td><code>is_deleted</code>、<code>open_chat_delete_log</code>、<code>notification_logs</code></td>
+        <td>通報対応で「消した事実」が必要。物理削除だと説明も復元もできない</td>
+      </tr>
+      <tr>
+        <td>スキーマはmigrationで履歴化</td>
+        <td><code>supabase/migrations/*.sql</code></td>
+        <td>本番を手で触らない。差分レビューと再現性のため</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ 04 ============ -->
+<section id="talk">
+  <h2 class="sec"><span class="num">04</span>面接での話し方</h2>
+  <p class="lead">AIに書かせたことは隠さない。評価されるのは「判断を説明できるか」と「出力を検証できるか」。</p>
+
+  <h3>30秒版</h3>
+  <div class="quote">
+    <p>「設計で軸にしているのは、<strong>状態を寿命で分けること</strong>と、<strong>整合性をクライアントに持たせないこと</strong>です。進行中の対戦・確定した結果・監査ログを別テーブルに分け、複数テーブルにまたがる更新はRPCで1トランザクションに閉じ、認可はRLSでテーブル単位に定義しています。AIはその方針を渡して雛形を書かせるのに使い、生成物は制約と実行計画で検証して直しています。」</p>
+  </div>
+
+  <h3>90秒版（深掘りされたとき）</h3>
+  <div class="quote">
+    <p>「まず状態を寿命で3層に分けています。進行中の対戦は更新が頻繁で短命なので <code>rooms_v3</code>、確定した結果は追記だけで不変なので <code>match_record</code>、削除や通知は <code>log</code> テーブルです。同じテーブルに入れると、更新のたびに履歴側の整合性を気にする必要が出るためです。」</p>
+    <p>「次に整合性です。参加・承認のような複数テーブルを更新する操作は、クライアントから複数APIを叩かせると途中で失敗したときに中途半端な状態が残るので、<code>security definer</code> のRPCで1トランザクションに閉じています。権限はアプリのifではなくRLSで持たせていて、anon keyが漏れても他人のDMは読めない形にしています。」</p>
+    <p>「読みの性能は非正規化で確保しています。戦績は元データから集計できますが、一覧のたびに集計したくないので <code>users</code> にカウンタとして持たせて、更新経路はトリガー1箇所に限定しています。」</p>
+    <p>「AIの使い方ですが、設計判断は自分で決めて、それを制約としてプロンプトに明示しています。生成されたDDLは、制約が入っているか・RLSを別ユーザーで叩いて期待通りか・一覧クエリが <code>EXPLAIN ANALYZE</code> でインデックスを使っているか、を確認して直しています。」</p>
+  </div>
+
+  <h3>言い方の変換表</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>そのまま言うと弱い</th><th>こう言う</th></tr></thead>
+    <tbody>
+      <tr><td>AIに作ってもらいました</td><td>方針と制約を自分で決め、AIにドラフトを書かせて検証しています</td></tr>
+      <tr><td>正規化しました</td><td>どこを正規化し、どこを性能のために崩したか、崩した分をどう守っているか</td></tr>
+      <tr><td>RLSを入れました</td><td>誰がどの行を読めるかをポリシーで表現し、別ユーザーで検証した</td></tr>
+      <tr><td>インデックスを貼りました</td><td>この一覧クエリに対してこの列順で貼り、実行計画でソートが消えたことを確認した</td></tr>
+      <tr><td>関数にまとめました</td><td>複数テーブル更新の原子性を保つため、1トランザクションに閉じた</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="card warn">
+    <span class="label">注意</span>
+    <p>上のスクリプトは、<strong>実際にやったことにしか使わない</strong>。特に「EXPLAINを見た」「別ユーザーでRLSを確認した」は、聞かれた瞬間に詳細を突かれる。今日1回ずつ実行しておけば、そのまま事実として言える。</p>
+  </div>
+</section>
+
+<!-- ============ 05 ============ -->
+<section id="bad">
+  <h2 class="sec"><span class="num">05</span>悪いところ</h2>
+  <p class="lead">migrationを読んだ結果の指摘。上から直す。<code>[INFERENCE]</code> は本番DBで要確認。</p>
+
+  <div class="card bad">
+    <span class="label">重大 / セキュリティ</span>
+    <h4 style="margin-top:0">1. レガシー7テーブルが <code>USING (true)</code> のまま</h4>
+    <p><code>users</code>, <code>rooms</code>, <code>rooms_v2</code>, <code>rooms_v3</code>, <code>messages</code>, <code>match_record</code>, <code>transfer</code> に、全操作を許可するポリシーが残っている。</p>
+    <pre><code>CREATE POLICY "Allow all access for anon and authenticated"
+  ON "public"."users" TO "authenticated", "anon"
+  USING (true) WITH CHECK (true);</code></pre>
+    <p>これがあると、anon keyだけで<strong>他人の <code>trophy</code>/<code>win</code>/<code>lose</code> を書き換えられる</strong>。ランキングが成立しない。メッセージの改ざん・削除も同じ。RLSを有効にしていても、このポリシーがOR条件で全部通すので意味がない。</p>
+    <p class="note">修正: <code>DROP POLICY</code> して本人限定のポリシーに置き換える。まず <code>guides</code> ではなく <code>pg_policies</code> を本番で確認して、残っているものを列挙する。</p>
+  </div>
+
+  <div class="card bad">
+    <span class="label">重大 / セキュリティ</span>
+    <h4 style="margin-top:0">2. ポリシー置換の条件が逆</h4>
+    <pre><code>IF EXISTS (SELECT 1 FROM pg_policies
+           WHERE tablename='users'
+             AND policyname='Users can update their own data')
+THEN
+  DROP POLICY ...; CREATE POLICY ...;
+END IF;</code></pre>
+    <p>「存在したら作る」になっているので、ポリシーが無い状態では<strong>何も作られない</strong>。<code>IF NOT EXISTS</code> か、<code>DROP POLICY IF EXISTS</code> してから無条件に作る。</p>
+  </div>
+
+  <div class="card warn">
+    <span class="label">高 / 設計</span>
+    <h4 style="margin-top:0">3. <code>rooms</code> / <code>rooms_v2</code> / <code>rooms_v3</code> の三重化</h4>
+    <p>3つがほぼ同一の列構成（<code>player1_id</code>, <code>player2_id</code>, <code>is_matched</code>, <code>current_theme</code>, <code>used_theme_ids</code> …）。しかも <code>messages.room_id</code> はどれを指すか不明。同じ事実が3箇所にある、正規化の逆。</p>
+    <p>「v2に上げた」ではなく<strong>旧テーブルを消していない</strong>だけ。データ移行してビューかリネームで1本にすべき。面接では「段階リリースの名残で、今は移行対象」と正直に言うのが安全。</p>
+  </div>
+
+  <div class="card warn">
+    <span class="label">高 / 整合性</span>
+    <h4 style="margin-top:0">4. FKが無い列がある</h4>
+    <ul>
+      <li><code>rooms_v3.player1_id / player2_id</code> — FKなし</li>
+      <li><code>messages.room_id</code> — FKなし</li>
+      <li><code>match_record.roomid</code> — 部屋へのFKなし（ユーザーへはあり）</li>
+    </ul>
+    <p>ユーザーを消しても部屋は残り、存在しない部屋を指すメッセージも入る。<strong>孤児行は後から消せない</strong>（何が正しいか判断できない）。</p>
+  </div>
+
+  <div class="card">
+    <span class="label">中 / 一貫性</span>
+    <h4 style="margin-top:0">5. 同じ概念を別の型で表現している</h4>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>概念</th><th>rooms</th><th>match_record</th><th>問題</th></tr></thead>
+      <tbody>
+        <tr><td>勝者</td><td><code>rooms_v2.winner char(1)</code></td><td><code>winner uuid</code></td><td>片方は"1"/"2"、片方はユーザーID。変換が必要で事故る</td></tr>
+        <tr><td>選択</td><td><code>player1_choice boolean</code></td><td><code>player1_choice text</code></td><td>boolとtextで意味が違う</td></tr>
+        <tr><td>マッチ成立</td><td><code>is_matched boolean</code></td><td>—</td><td>「いつ」が消える。遅延計測もできない</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>同じ概念は1つの型・1つの表現に統一する。<code>winner_user_id uuid</code> に寄せる。<code>is_matched</code> は <code>matched_at timestamptz</code> に。</p>
+  </div>
+
+  <div class="card">
+    <span class="label">中 / 1NF</span>
+    <h4 style="margin-top:0">6. <code>used_theme_ids integer[]</code></h4>
+    <p>配列なので、<strong>重複を防げない・参照整合性がない・「このテーマを使った部屋」を索引で引けない</strong>。正規化するなら:</p>
+    <pre><code>create table room_used_themes (
+  room_id  uuid not null references rooms_v3(id) on delete cascade,
+  theme_id integer not null references debate_themes(id),
+  primary key (room_id, theme_id)   -- 重複をDBが拒否する
+);</code></pre>
+  </div>
+
+  <div class="card">
+    <span class="label">中 / 重複</span>
+    <h4 style="margin-top:0">7. 同じ事実が2箇所</h4>
+    <p><code>users.is_notification_enabled</code> と <code>notification_settings.is_notification_enabled</code>。<code>users.fcm_token</code> と通知設定。<code>users.trophy</code> と <code>match_record</code> の集計値。</p>
+    <p>1つ目は明確な重複。どちらかを消す。カウンタは「更新経路1つ」の条件付きで残す。</p>
+  </div>
+
+  <div class="card">
+    <span class="label">中 / 要確認 [INFERENCE]</span>
+    <h4 style="margin-top:0">8. <code>brock_user.id</code> にデフォルトが無い</h4>
+    <pre><code>"id" bigint NOT NULL,   -- nextval / identity なし</code></pre>
+    <p>一方 <code>debate_themes.id</code> にはシーケンスが付いているので、dumpの取りこぼしではない可能性が高い。アプリは <code>id</code> を指定せずに insert している:</p>
+    <pre><code>await supabase.from('brock_user').insert({
+  'user_id': myId, 'block_user_id': targetUserId,
+});</code></pre>
+    <p>この場合 <code>null value in column "id" violates not-null constraint</code> で<strong>ブロック機能が毎回失敗する</strong>。本番で <code>\d brock_user</code> を確認する。直すなら:</p>
+    <pre><code>create sequence if not exists brock_user_id_seq;
+alter table brock_user alter column id set default nextval('brock_user_id_seq');
+-- もしくは id を uuid default gen_random_uuid() に統一</code></pre>
+  </div>
+
+  <div class="card">
+    <span class="label">中 / 構造</span>
+    <h4 style="margin-top:0">9. ロジックがRPC 80本に集中</h4>
+    <p>原子性は担保できるが、<strong>SQLの関数はテストしづらく、差分レビューもしにくい</strong>。1本が200行を超えると、もはやmigrationのレビューでは追えない。</p>
+    <p>目安: 「原子性が必要」「RLSだけでは表現できない」ものだけRPCに残し、それ以外のドメインロジックはアプリ側へ。少なくとも純粋な計算はSQLに置かない。</p>
+  </div>
+
+  <div class="card">
+    <span class="label">低 / 命名</span>
+    <h4 style="margin-top:0">10. 命名の揺れ</h4>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>現状</th><th>あるべき</th></tr></thead>
+      <tbody>
+        <tr><td><code>brock_user</code></td><td><code>blocked_users</code>（typo + 単数形）</td></tr>
+        <tr><td><code>match_record.roomid</code></td><td><code>room_id</code></td></tr>
+        <tr><td><code>debate_themes_request</code> のPKが <code>theme</code> text</td><td>代理キー + <code>UNIQUE(theme)</code></td></tr>
+        <tr><td>テーブル名の単複混在（<code>users</code> / <code>messages</code> / <code>app_config</code>）</td><td>複数形に統一</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="note">命名は後から直すのが一番高い。だから面接でも「次に作るときは先に規約を決める」と言える。</p>
+  </div>
+</section>
+
+<!-- ============ 06 ============ -->
+<section id="fix">
+  <h2 class="sec"><span class="num">06</span>改善の順番</h2>
+  <p class="lead">全部やると終わらない。影響が大きく、戻せるものから。</p>
+
+  <ol class="steps">
+    <li>
+      <span class="st">レガシーテーブルの全許可ポリシーを落とす</span>
+      セキュリティなので最優先。新しいmigrationで <code>DROP POLICY</code> → 本人限定のポリシーに置換。適用前に <code>pg_policies</code> で現状を列挙する。
+    </li>
+    <li>
+      <span class="st">ポリシー置換の条件を直す</span>
+      <code>IF EXISTS</code> の反転を修正。既存のmigrationは書き換えず、修正用の新しいmigrationを足す（適用済みの履歴は変えない）。
+    </li>
+    <li>
+      <span class="st"><code>brock_user.id</code> のデフォルトを確認・修正</span>
+      ブロック機能が動いていない可能性があるので、機能の生死を先に確認。
+    </li>
+    <li>
+      <span class="st">FKを足す</span>
+      <code>rooms_v3.player1_id/player2_id</code>、<code>messages.room_id</code>。既存の孤児行を先に洗い出してから <code>ALTER TABLE ... ADD CONSTRAINT</code>。<code>ON DELETE</code> は業務で決める（履歴を残すなら <code>SET NULL</code>）。
+    </li>
+    <li>
+      <span class="st">型と表現の統一</span>
+      <code>winner</code> を <code>uuid</code> に、<code>is_matched</code> を <code>matched_at</code> に。アプリ側の読み替えを1箇所に集約してから移行。
+    </li>
+    <li>
+      <span class="st"><code>used_theme_ids</code> を中間テーブルへ</span>
+      データ移行 → アプリ移行 → 列削除。3ステップに分けると戻せる。
+    </li>
+    <li>
+      <span class="st">rooms 系を1本に統合</span>
+      一番大きい。ビューで吸収してから実テーブルを畳む。
+    </li>
+  </ol>
+
+  <div class="card ok">
+    <span class="label">面接での言い方</span>
+    <p>「今の構造には技術的負債があって、レガシーテーブルに全許可のRLSが残っているのは最優先で直すべき点です。すでにFKの欠如とroomsの三重化も把握していて、影響の大きい順にmigrationを分けて直す計画を持っています。」</p>
+    <p>弱点を自分から言える人は、設計を理解している人と見なされる。隠すより強い。</p>
+  </div>
+</section>
+
+<!-- ============ 07 ============ -->
+<section id="qa">
+  <h2 class="sec"><span class="num">07</span>想定質問と返し</h2>
+
+  <h3>設計について</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>質問</th><th>返す中身</th></tr></thead>
+    <tbody>
+      <tr><td>なぜ正規化しきらない？</td><td>読みのホットパスを集計クエリにしないため。代わりに更新経路をトリガー/RPCに限定して整合性を守っている</td></tr>
+      <tr><td>なぜRPCが多い？</td><td>複数テーブル更新の原子性と、RLSだけでは表現できない業務ルールをDB側に置いたため。副作用としてテストしづらいのは認識している</td></tr>
+      <tr><td>なぜuuid？</td><td>IDが推測されると他人のリソースを狙える。クライアント生成もできる。代償は索引の局所性で、ログ系は日時複合索引で緩和</td></tr>
+      <tr><td>なぜSupabase？</td><td>Auth・Realtime・RLSが揃っていて、個人開発でサーバーを書かずに認可まで作れる。代償はロジックがDBに寄りやすいこと</td></tr>
+      <tr><td>インデックスはどう決めた？</td><td>画面の一覧クエリを先に列挙し、<code>(等値列, 並べ替え列)</code> で複合索引。実行計画でソートが消えることを確認</td></tr>
+      <tr><td>同時実行は？</td><td>カウンタ更新はトリガー/RPCに閉じ、クライアントから直接 <code>update</code> させない。参加系はUNIQUE制約で二重登録を弾く</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>AI利用について</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>質問</th><th>返す中身</th></tr></thead>
+    <tbody>
+      <tr><td>AIにどこまで任せた？</td><td>設計判断は自分。DDL・migration・RLSの雛形はAI。生成物は制約・権限・実行計画で検証して直す</td></tr>
+      <tr><td>AIの出力が間違っていた例は？</td><td>RLSの再帰（<code>dm_room_members</code> を自分のポリシー内で参照して無限再帰）。関数で回避した。実例を1つ話せると強い</td></tr>
+      <tr><td>AIに任せて理解していない部分は？</td><td>正直に言う。その上で「ここは説明できる／ここはまだ」と切り分ける。全部理解していると言い切る方が危険</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>今日やっておくこと</h3>
+  <ol>
+    <li><code>rooms_v3</code> / <code>match_record</code> / <code>users</code> の3テーブルだけ、紙にER図を書けるようにする</li>
+    <li>一覧クエリ1本に <code>EXPLAIN ANALYZE</code> を実際に打って、索引が効いている出力を見る</li>
+    <li>別ユーザー（anonキー）で <code>users</code> を <code>update</code> して、通ってしまうことを確認する。→ 重大指摘1の証拠になる</li>
+    <li>「今見直すなら」を1つ、自分の言葉で決める（例: <code>rooms_v3</code> を参加者テーブルに）</li>
+  </ol>
+</section>
+
+</main>
+
+<footer>
+  このドキュメントは <code>supabase/migrations/*.sql</code> を読んで作成。数値はmigration上の定義数（適用済みの本番と差異があり得る）。<code>[INFERENCE]</code> は本番DBでの確認が必要な項目。
+</footer>
+
+</div>
+</body>
+</html>

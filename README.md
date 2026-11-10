@@ -72,7 +72,7 @@
 | **累計対戦数** | **約7,000試合** | マッチング待機のみを除き、実際に開始された累計試合数 |
 | **ショート動画による集客施策** | **累計約6万再生相当**<br>（約3カ月で登録者 約1,000人 ➔ 約2,000人） | 対戦ログから自動生成した動画約30本をTikTok・YouTube Shortsの2媒体へ計約60投稿（平均約1,000再生×約60投稿の概算。※直接流入計測ではなく投稿期間前後の登録者推移） |
 | **ストア獲得数（参考値）** | **iOS 累計約1,830 DL**<br>**Android 約223台（過去6カ月）** | 各ストア管理画面の統計（OS間で集計期間・定義が異なるため参考値） |
-| **収益・運用コスト** | **広告収益 年間約2万円（黒字化）** | Google AdMob収益がLLM API費・サーバー運用費を上回り単体黒字化 |
+| **収益・運用コスト** | **広告収益により黒字化** | Google AdMob収益がLLM API費・サーバー運用費を上回り単体黒字化 |
 | **AI判定コスト削減** | **1判定あたり概算 約70%削減** | 審判モデルを Gemini API から DeepSeek API（`deepseek-chat`）へ移行した効果 |
 
 ---
@@ -148,6 +148,96 @@ SNSのコメント欄で意見の違いが相手への悪口や誹謗中傷に�
 | **BaaS / DB** | **Supabase (PostgreSQL)** | Firebase (Firestore) / AWS自前構築 | 個人開発でインフラ構築よりサービス公開と検証速度を優先しBaaSを選択。Firebaseと比較し、PostgreSQLの関数・トリガー（選択肢一致時の再抽選や勝敗確定時の処理）と、`Presence`・`Broadcast`・`Postgres Changes` の3種のRealtime機能を同じ基盤で一貫して扱える点を重視 |
 | **非同期予約実行** | **Upstash QStash** | 定期Cron実行 / クライアント側タイマー起動 | 定期実行のCronではなく「各試合の開始から10分後に1回だけEdge Functionを叩く」という試合単位の遅延メッセージングが要件に合致し、どちらのユーザー端末にも依存せずサーバー側で判定を開始できるため採用 |
 | **AI審判モデル** | **DeepSeek API** | Gemini API（初期採用） / OpenAI API | 初期はGeminiで勝敗と理由のみを取得していたが、黒字運用と納得感向上を目指しLM Arenaの評価およびAPI料金を比較。コストと日本語性能のバランスに優れたDeepSeekへ移行し、5項目採点へ拡張しつつ1回あたりのAI利用コストを概算約70%削減 |
+
+### 状態管理をMVVMにした理由（Riverpodとの関係）
+
+Riverpod自体は特定のアーキテクチャを強制するライブラリではありません。ただし、Notifier（`StateNotifier` / `Notifier`）と Provider というモデルを採用した時点で、**「状態と更新処理をWidgetの外に置き、Widgetは状態を監視して描画するだけ」**という構造になります。Flutterは状態変化でViewを再描画する宣言的UIのため、MVCとしてControllerを分離しても、Controllerは実質的にViewModelとして振る舞います（Viewが状態を監視する以上、Modelの変更をViewへ直接通知する古典的MVCは成立しにくい）。本プロジェクトはこの性質を前提に、役割が曖昧になりやすいMVCではなく、**MVVMとして責務を固定**して実装しています。
+
+| Riverpod / Flutter の要素 | MVVM上の役割 | 本プロジェクトでの実装 |
+| :--- | :--- | :--- |
+| **View** | 画面の描画と入力の受付 | `lib/views/` `lib/widgets/` の Widget（`ConsumerWidget` / `HookConsumerWidget`） |
+| **ViewModel** | 画面状態の保持、更新操作、通信、Realtime購読 | `lib/provider/` の `StateNotifier` / `Notifier` サブクラス（`state` と更新メソッドを公開） |
+| **状態（State）** | ViewModelが公開する描画用データ | `lib/modes/` の Freezed モデル（非同期は `AsyncValue` で読込中・成功・失敗を表現） |
+| **Model** | ドメインデータと永続化 | Freezedモデル + Supabase（PostgreSQL / Realtime / Edge Functions） |
+| **Provider** | ViewModel・状態・サービスの生成と取得経路 | `StateNotifierProvider` / `NotifierProvider` / `Provider` / `StateProvider` |
+
+※ `lib/view_model/` はダイアログや課金初期化など画面に付随する処理の置き場であり、**状態そのものは `lib/provider/` の Notifier が保持**します（MVVMのViewModel層は `lib/provider/` が担う）。
+
+#### MVVMを選んだ理由
+
+- **状態と操作の取得経路が最初から分かれている**：`ref.watch(provider)` は状態、`ref.read(provider.notifier)` は更新操作を返します。Viewが状態を直接書き換える余地がなく、変更は必ずViewModelのメソッドを経由するため、責務の逸脱を構造的に防げます。
+- **ロジックをUIから切り離して検証できる**：マッチング成立判定、切断時の復帰猶予、NGワード検証などをWidgetを起動せずに単体で検証できます。
+- **Realtime購読のライフサイクルを状態に紐づけられる**：`ref.onDispose` による購読解除と `autoDispose` による画面離脱時の破棄で、画面とViewModelの寿命を一致させています。
+- **状態の型がViewの契約になる**：Freezedモデルと `AsyncValue` により「読込中・成功・失敗」を型で表現でき、View側は状態の全パターンを網羅的に描画できます。
+
+#### MVVMの制約として発生したトレードオフ
+
+- 画面ごとにViewModel（Notifier）が増えるため、画面固有の状態とアプリ全体の横断状態の線引きが必要。本プロジェクトでは認証・設定・広告・通知は特定画面に紐づかない共有状態として扱っており、**Notifierが常に画面のViewModelになるわけではない**。
+- 小規模な画面でもProvider定義とNotifierクラスが必要になり、記述量はMVCを単一Widgetで書く場合より増える。
+- ViewModel同士がProvider経由で依存し合うと初期化順や循環依存が把握しづらくなるため、依存方向を「View → ViewModel → Service / Repository」の一方向に保つルールを置いている。
+
+<details>
+<summary>💻 具体的なコードで見る（カウンターを例に、Notifier・Provider・Viewの関係）</summary>
+
+**① Notifier（状態と更新処理＝ViewModel）と Provider（窓口）**
+
+```dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+/// 状態を持ち、更新処理を提供するクラス（ViewModel）
+class Counter extends Notifier<int> {
+  @override
+  int build() => 0; // 状態の初期値
+
+  void increment() {
+    state = state + 1; // 状態の更新（ref.watch しているViewが再描画される）
+  }
+}
+
+/// Provider：Counter を生成し、状態と操作を外部へ公開する窓口
+final counterProvider = NotifierProvider<Counter, int>(
+  Counter.new,
+);
+```
+
+`Notifier<int>` の `int` は管理する状態の型、`NotifierProvider<Counter, int>` の1つ目は操作を担当するNotifierの型、2つ目は画面に公開する状態の型です。
+
+**② View（状態を監視し、操作はNotifierへ委譲する）**
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class CounterView extends ConsumerWidget {
+  const CounterView({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 状態を取得。値が変わるとこのWidgetが再描画される
+    final count = ref.watch(counterProvider);
+
+    return Scaffold(
+      body: Center(child: Text('$count')),
+      floatingActionButton: FloatingActionButton(
+        // 更新処理はNotifierインスタンス経由でのみ呼ぶ
+        onPressed: () => ref.read(counterProvider.notifier).increment(),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+```
+
+| 書き方 | 取得するもの | 用途 |
+| :--- | :--- | :--- |
+| `ref.watch(counterProvider)` | 状態（`0`, `1`, `2`…） | 描画に使う。変更を購読して再描画 |
+| `ref.read(counterProvider.notifier)` | `Counter` インスタンス | ボタン押下時などに更新メソッドを呼ぶ |
+
+**③ 同じコードをMVCとして読むと**
+
+このコードは Model＝`state`（`int`）、Controller＝`Counter` のメソッド、View＝`CounterView` と読み替えられます。ただしFlutterは状態変化でViewが再描画されるため、Controllerを分離しても実質はViewModelになり、**クラス名をControllerに変えても構造はMVVMと同一**です。これが「Riverpodを採用するとMVVMに収束する」という主張の根拠です。
+
+</details>
 
 ---
 
@@ -338,7 +428,7 @@ sequenceDiagram
 - **対応**：
   1. **プロダクト改善（試合時間延長・待機通知・SNS化）**：レビューを受けて試合時間を3分から10分へ延長。さらに、誰かがランダムマッチを開始した際に通知許可ユーザーへ知らせる待機通知（同一ユーザーの連続通知を防ぐレート制限つき）を実装しました。加えて、ユーザーが対戦チャットを雑談にも使っている行動に着目し、対戦相手がいない時間にも滞在・交流できる掲示板・対戦募集・クラブ・DM機能（チャット内から直接対戦を送れる導線つき）を追加しました。
   2. **集客用ショート動画の自動生成**：アプリ内で生まれる対戦ログに着目し、`room_id` を渡すと発言の匿名化、VOICEVOXによる2人の掛け合い音声生成、無音区間（-40dB以下）のミリ秒単位カット、RemotionによるチャットUI＆結果画面の動画レンダリングまでを約10分で自動完結するパイプラインを構築し、TikTok・YouTube Shorts へ約3カ月間（週3回ペース）継続投稿しました。
-- **結果・検証**：待機通知後に実際にユーザーが参加する挙動を実機で確認し、SNS機能でもユーザー間の投稿・交流が生まれました。ショート動画は約30本（2媒体合計約60投稿）で累計約6万再生相当となり、投稿を行った約3カ月で登録者数は約1,000人から約2,000人へ増加（現在累計約2,180人・約7,000試合、広告収益で年間約2万円の黒字化を達成）。
+- **結果・検証**：待機通知後に実際にユーザーが参加する挙動を実機で確認し、SNS機能でもユーザー間の投稿・交流が生まれました。ショート動画は約30本（2媒体合計約60投稿）で累計約6万再生相当となり、投稿を行った約3カ月で登録者数は約1,000人から約2,000人へ増加（現在累計約2,180人・約7,000試合、広告収益による単体黒字化を達成）。
 
 ---
 
